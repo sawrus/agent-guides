@@ -47,8 +47,7 @@ your-project/
 - Coding → qwen3-coder:30b
 - Wording / Docs → gemma3:27b
     - num_ctx: 50k – 100k
-- API: https://ollapi.x001af.com/api/tags
-- Обычно прокидывается через port-forward Ollama API (Teleport).
+- API: https://0.0.0.0/api/tags
 
 ## 🧾 Prompts
 
