@@ -1,36 +1,44 @@
 ---
-trigger: always_on
-glob: testing-ci-guide
-description: Run CI & Testing pipeline after every new AI task
+name: testing-ci-pipeline
+type: workflow
+description: Run CI & Testing pipeline. Abstract workflow usable for both Backend and Frontend.
+inputs:
+  - project_type (backend|frontend)
+  - test_scope (unit|e2e|all)
+outputs:
+  - test_report
+related-rules:
+  - testing-ci-guide.md
+  - code-quality-guide.md
+uses-skills:
+  - blackbox-testing
 ---
 
 # Testing & CI Workflow
 
-**Steps (invokes Rule)**:
+**Goal:** Verify code quality and functionality.
 
-1. **Migrate Database**
-    - command: `make migrate`
-    - expect: no errors
-2. **Format & Lint**
-    - command: `make format lint`
-    - expect: all checks passed
-3. **Unit Tests**
-    - command: `make test-cov`
-    - expect: coverage ≥70%
-4. **Start Services**
-    - command: `make docker-up`
-    - expect: no errors in logs
-5. **E2E Test**
-    - command: `make e2e-test`
-    - expect: all scenarios passed
-6. **SVT Test**
-    - command: `make svt-test`
-    - expect: all load test scenarios passed
+## Steps
 
-**Rules Applied**:
+1.  **Code Quality Check**
+    - Action: Run Linters & Formatters.
+    - Expectation: No errors.
+    - _Note:_ Uses project-specific tools (e.g., `ruff` for Python, `eslint` for JS).
 
-- testing-ci-guide.md
+2.  **Unit Tests**
+    - Action: Run Unit Tests.
+    - Expectation: Pass with required coverage.
 
-**Violations**:
+3.  **Build / Prepare (If applicable)**
+    - Action: Build artifacts or Docker containers.
+    - Expectation: Successful build.
 
-- Any stage fails → report as violation
+4.  **E2E / Integration Tests**
+    - Action: Run Blackbox/E2E tests.
+    - Condition: If `test_scope` includes 'e2e' or 'all'.
+    - Expectation: All scenarios pass.
+
+## Failure Policy
+
+- If any step fails, the pipeline halts.
+- Fix violations before proceeding.
