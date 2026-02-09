@@ -1,6 +1,14 @@
 ---
 name: app-builder
+type: skill
 description: Main application building orchestrator. Creates full-stack applications from natural language requests. Determines project type, selects tech stack, coordinates agents.
+inputs:
+  - implementation_plan.md
+outputs:
+  - source_code
+related-rules:
+  - code-quality-guide.md
+  - tech-stack.md
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 ---
 
@@ -13,7 +21,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 **Read ONLY files relevant to the request!** Check the content map, find what you need.
 
 | File                    | Description                            | When to Read                        |
-|-------------------------|----------------------------------------|-------------------------------------|
+| ----------------------- | -------------------------------------- | ----------------------------------- |
 | `project-detection.md`  | Keyword matrix, project type detection | Starting new project                |
 | `tech-stack.md`         | 2025 default stack, alternatives       | Choosing technologies               |
 | `agent-coordination.md` | Agent pipeline, execution order        | Coordinating multi-agent work       |
@@ -28,7 +36,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 Quick-start scaffolding for new projects. **Read the matching template only!**
 
 | Template                                                       | Tech Stack          | When to Use           |
-|----------------------------------------------------------------|---------------------|-----------------------|
+| -------------------------------------------------------------- | ------------------- | --------------------- |
 | [nextjs-fullstack](templates/nextjs-fullstack/TEMPLATE.md)     | Next.js + Prisma    | Full-stack web app    |
 | [nextjs-saas](templates/nextjs-saas/TEMPLATE.md)               | Next.js + Stripe    | SaaS product          |
 | [nextjs-static](templates/nextjs-static/TEMPLATE.md)           | Next.js + Framer    | Landing page          |
@@ -47,7 +55,7 @@ Quick-start scaffolding for new projects. **Read the matching template only!**
 ## 🔗 Related Agents
 
 | Agent                 | Role                             |
-|-----------------------|----------------------------------|
+| --------------------- | -------------------------------- |
 | `project-planner`     | Task breakdown, dependency graph |
 | `frontend-specialist` | UI components, pages             |
 | `backend-specialist`  | API, business logic              |

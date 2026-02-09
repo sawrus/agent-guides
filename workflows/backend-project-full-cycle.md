@@ -1,16 +1,18 @@
 ---
 name: backend-project-full-cycle
+type: workflow
 description: >
   Full backend project lifecycle workflow:
   planning → implementation → blackbox validation.
   Enforces strict phase separation and skill switching.
-
-uses-skills:
-  - prompt-project-planner
-  - app-builder
-  - blackbox-testing
-
-enforced-rules:
+inputs:
+  - project_name
+  - project_dir
+  - tech_stack
+  - business_logic_description
+outputs:
+  - production_ready_service
+related-rules:
   - project-setup-guide.md
   - code-quality-guide.md
   - env-settings-guide.md
@@ -18,6 +20,10 @@ enforced-rules:
   - e2e-test-guide.md
   - svt-test-guide.md
   - ci-cd-deployment-guide.md
+uses-skills:
+  - prompt-project-planner
+  - app-builder
+  - blackbox-testing
 ---
 
 ## 🎯 Workflow Goal
@@ -43,24 +49,26 @@ Rules:
 
 Steps:
 
-1. Ask clarifying questions about:
-    - event schema
-    - domain entities
-    - fingerprint definition
-    - idempotency & deduplication
-    - storage model
-    - failure handling
-    - throughput expectations
-2. Do NOT write code.
-3. Do NOT inspect source files.
-4. Structure output strictly according to `output.schema.md`.
-5. Generate artifacts:
-    - `artifacts/plan_<task_id>.md`
-6. Include in the plan:
-    - module layout inside `src/`
-    - applied rules
-    - selected skills
-    - this workflow reference
+1. **Define Tech Stack:**
+   - Determine Language, Framework, Database, and Messaging system.
+   - If not provided in input, ask user to select from available options.
+2. Ask clarifying questions about **Architecture & Requirements**:
+   - Event schema & boundaries
+   - Domain entities & relationships
+   - Idempotency & deduplication strategies
+   - Storage models & access patterns
+   - Failure handling & retries
+   - Throughput expectations & scaling
+3. Do NOT write code.
+4. Do NOT inspect source files.
+5. Structure output strictly according to `output.schema.md`.
+6. Generate artifacts:
+   - `artifacts/plan_<task_id>.md`
+7. Include in the plan:
+   - Module layout inside `src/` (adapted to selected language)
+   - Applied rules
+   - Selected skills
+   - This workflow reference
 
 End condition:
 
@@ -80,22 +88,20 @@ Entry condition:
 
 Rules:
 
-- Code ONLY in `src/`
+- Code ONLY in `src/` (or strictly equivalent for the language)
 - Unit tests ONLY in `tests/`
 
 Steps:
 
-1. Implement backend logic using:
-    - Python 3.12
-    - FastAPI
-    - Pydantic models
-    - DSN-based settings
-    - Alembic migrations
-    - Kafka consumers with clear boundaries
+1. Implement backend logic using **Selected Tech Stack**:
+   - Adhere to the defined architecture (e.g., Domain/Service/Repository layers).
+   - Use strict typing and validation where applicable (e.g., Pydantic for Python, Interfaces for TS).
+   - Implement database migrations for any schema changes.
+   - Implement clear boundaries for external systems (e.g., Kafka consumers).
 2. Cover all logic with unit tests.
 3. Ensure:
-    - `make format lint` → passed
-    - `make test-cov` → coverage ≥ 70%
+   - Formatting & Linting → passed (using project-standard tools)
+   - Test Coverage → meets project threshold (default ≥ 70%)
 
 Exit condition:
 
@@ -127,3 +133,4 @@ Steps:
 4. Run:
    ```bash
    make e2e-test
+   ```

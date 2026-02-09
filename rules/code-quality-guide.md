@@ -9,17 +9,14 @@ description: enforce code formatting, linting, and static typing after code chan
 **Rules:**
 
 - After writing or modifying code, always run formatters and linters.
-- Execute `make format` and fix all formatting issues.
-- Execute `make lint` and fix all lint/type errors until passed.
-- For Python projects, use the following tools via Poetry:
-    - `ruff` — linting
-    - `black` — code formatting
-    - `mypy` — static type checking
-- All tools must be installed and run inside the project venv via Poetry.
+- Execute formatting tools and fix all formatting issues.
+- Execute linting tools and fix all lint/type errors until passed.
+- For Python projects, use standard tools (e.g. `ruff`, `black`, `mypy`) via the project's dependency manager.
+- All tools must be installed and run inside the project's virtual environment.
 
 **Violations:**
 
-- Skipping `make format` or `make lint`.
+- Skipping formatting or linting.
 - Ignoring formatter or linter errors.
-- Running tools outside venv.
-- Missing ruff/black/mypy in Poetry dependencies.
+- Running tools outside the virtual environment.
+- Missing standard quality tools in dependencies.

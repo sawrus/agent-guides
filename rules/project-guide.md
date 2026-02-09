@@ -29,6 +29,6 @@ description: agent execution rules and project workflow
 
 **Execution Safety:**
 
-- Run `pytest` after logic changes.
+- Run tests after logic changes.
 - Browser only for read-only verification.
 - Never execute destructive system commands.

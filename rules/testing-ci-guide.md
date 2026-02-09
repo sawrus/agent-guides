@@ -9,17 +9,17 @@ description: enforce unit, integration, and e2e testing with formatting and depl
 **Rules:**
 
 - Every new code file must have a corresponding unit test file.
-- Run formatting & linting: `make format lint` → fix until passed.
-- Run unit tests: `make test-cov` → coverage ≥70%. Add tests for positive/negative scenarios.
-- Start dependent services: `make docker-up` → logs must be clean.
-- Apply migrations: `make migrate` → no errors allowed.
-- Develop blackbox e2e-test with input data → full API scenario must pass (make e2e-test)
+- Run formatting & linting and fix until passed.
+- Run unit tests and ensure coverage meets the required threshold (default ≥70%). Add tests for positive/negative scenarios.
+- Start dependent services and ensure logs are clean.
+- Apply migrations without errors.
+- Develop blackbox e2e-test with input data; full API scenario must pass.
 
 **Violations:**
 
 - Missing unit tests.
-- Coverage <70%.
+- Coverage below threshold.
 - Format/lint errors not fixed.
-- Docker logs contain errors.
+- Service logs contain errors.
 - Migrations fail.
 - E2E test fails.
