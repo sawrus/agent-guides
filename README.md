@@ -80,6 +80,10 @@ agentos-install.sh
 ./agentos-install.sh tui
 ```
 
+Пример запуска TUI:
+
+![Пример запуска AgentOS installer в TUI режиме](docs/images/tui-example.svg)
+
 Пошагово:
 1. Ввод директории проекта.
 2. Выбор AgentOS (`codex`, `antigravity`, `opencode`, `gemini`, ...).
@@ -98,4 +102,3 @@ agentos-install.sh
 - CLI: `opencode + software.backend`
 - CLI: `codex + software.frontend`
 - TUI: `default + software.backend,software.frontend`
-

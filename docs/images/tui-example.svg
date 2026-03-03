@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="1500" viewBox="0 0 1120 1500" role="img" aria-label="AgentOS installer TUI example">
+  <rect width="1120" height="1500" fill="#ececec"/>
+  <text x="24" y="54" font-family="'DejaVu Sans Mono', Consolas, monospace" font-size="24" fill="#111" xml:space="preserve">    _    ____ _____ _   _ _____ ___  ____  
+   / \  / ___| ____| \ | |_   _/ _ \/ ___| 
+  / _ \| |  _|  _| |  \| | | || | | \___ \ 
+ / ___ \ |_| | |___| |\  | | || |_| |___) |
+/_/   \_\____|_____|_| \_| |_| \___/|____/ 
+AgentOS installer (TUI mode)
+
+Target project directory [/tmp/agentos-project]:
+Select target Agent OS:
+  1) default
+  2) codex
+  3) antigravity
+  4) cursor
+  5) claude
+  6) agents
+  7) gemini
+  8) opencode
+  9) kilocode
+Select one (empty=1): 8
+Select area(s):
+  1) software
+Select one or more (comma-separated indexes): 1
+Select specialization(s) for area 'software':
+  1) backend
+  2) data-engineering
+  3) frontend
+  4) full-stack
+  5) mlops
+  6) mobile
+  7) platform
+  8) qa
+  9) security</text>
+</svg>
