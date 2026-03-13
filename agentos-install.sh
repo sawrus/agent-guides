@@ -18,14 +18,17 @@ AGENT_OS="$DEFAULT_AGENT_OS"
 SELECTED_AREAS=()
 SELECTED_SPECS=()
 
-# Agent-specific directory mappings
-# Format: "<rules_dir> <skills_dir> <workflows_dir> <prompts_dir>"
-# Use "-" to skip copying a bucket for a given agent OS
-declare -A AGENT_DIR_MAP
-AGENT_DIR_MAP[opencode]=".opencode/rules .opencode/skills .opencode/commands -"
-AGENT_DIR_MAP[cursor]=".cursor/rules .cursor/skills - -"
-AGENT_DIR_MAP[kilocode]=".kilocode/rules .kilocode/skills .kilocode/workflows -"
-AGENT_DIR_MAP[antigravity]=".kilocode/rules .kilocode/skills .kilocode/workflows -"
+# Agent-specific directory mappings using case statements for Bash 3.2 compatibility
+get_agent_dir_mapping() {
+  local agent_os="$1"
+  case "$agent_os" in
+    opencode)     echo ".opencode/rules .opencode/skills .opencode/commands -" ;;
+    cursor)       echo ".cursor/rules .cursor/skills - -" ;;
+    kilocode)     echo ".kilocode/rules .kilocode/skills .kilocode/workflows -" ;;
+    antigravity)  echo ".kilocode/rules .kilocode/skills .kilocode/workflows -" ;;
+    *)            echo "" ;;
+  esac
+}
 
 CREATED_PATHS=()
 COPIED_PATHS=()
@@ -68,15 +71,14 @@ warn() {
 
 unique_append() {
   local value="$1"
-  shift
-  local -n arr_ref="$1"
+  local arr_name="$2"
   local item
-  for item in "${arr_ref[@]:-}"; do
-    if [[ "$item" == "$value" ]]; then
+  eval "for item in \"\${${arr_name}[@]:-}\"; do
+    if [[ \"\$item\" == \"\$value\" ]]; then
       return
     fi
   done
-  arr_ref+=("$value")
+  eval \"\${arr_name}+=(\\\"\$value\\\")\""
 }
 
 trim() {
@@ -86,12 +88,21 @@ trim() {
   echo "$s"
 }
 
+readlines() {
+  local arr_name="$1"
+  local line
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    eval "${arr_name}+=(\"\$line\")"
+  done
+}
+
 get_dest_dir() {
   local agent_os="$1"
   local bucket="$2"
 
-  if [[ -n "${AGENT_DIR_MAP[$agent_os]:-}" ]]; then
-    local mapping="${AGENT_DIR_MAP[$agent_os]}"
+  local mapping
+  mapping="$(get_agent_dir_mapping "$agent_os")"
+  if [[ -n "$mapping" ]]; then
     local -a parts
     read -r -a parts <<< "$mapping"
     local dir
@@ -110,12 +121,12 @@ get_dest_dir() {
 
 split_csv() {
   local raw="$1"
-  local -n out_ref="$2"
+  local arr_name="$2"
   local part
   IFS=',' read -r -a parts <<< "$raw"
   for part in "${parts[@]}"; do
     part="$(trim "$part")"
-    [[ -n "$part" ]] && out_ref+=("$part")
+    [[ -n "$part" ]] && eval "${arr_name}+=(\"\$part\")"
   done
 }
 
@@ -496,11 +507,14 @@ run_tui() {
 
   PROJECT_DIR="$(prompt_with_default "Target project directory" "/tmp/agentos-project")"
 
-  mapfile -t agentos_choices < <(get_agentos_choices)
+  agentos_choices=()
+  readlines agentos_choices < <(get_agentos_choices)
   AGENT_OS="$(choose_single_by_index "Select target Agent OS:" "${agentos_choices[@]}")"
 
-  mapfile -t areas < <(list_areas)
-  mapfile -t picked_areas < <(choose_multi_by_index "Select area(s):" "${areas[@]}")
+  areas=()
+  readlines areas < <(list_areas)
+  picked_areas=()
+  readlines picked_areas < <(choose_multi_by_index "Select area(s):" "${areas[@]}")
   if [[ "${#picked_areas[@]}" -eq 0 ]]; then
     SELECTED_AREAS=(software)
   else
@@ -510,8 +524,10 @@ run_tui() {
   SELECTED_SPECS=()
   local area
   for area in "${SELECTED_AREAS[@]}"; do
-    mapfile -t specs < <(list_specs "$area")
-    mapfile -t chosen_specs < <(choose_multi_by_index "Select specialization(s) for area '$area':" "${specs[@]}")
+    specs=()
+    readlines specs < <(list_specs "$area")
+    chosen_specs=()
+    readlines chosen_specs < <(choose_multi_by_index "Select specialization(s) for area '$area':" "${specs[@]}")
     if [[ "${#chosen_specs[@]}" -eq 0 ]]; then
       echo "No specialization selected for $area" >&2
       exit 1
