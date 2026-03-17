@@ -60,3 +60,5 @@ This section covers foundational software development practices applicable to an
 - Write self-documenting code with meaningful names
 - Apply DRY principles - avoid duplication
 - Keep functions focused on single responsibility
+
+### Spawn a subagent to explore this repo.
