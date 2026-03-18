@@ -15,6 +15,8 @@ roles:
   - "@backend-dev"
   - "@qa-engineer"
   - "@team-lead"
+execution:
+  initiator: developer
 related-rules:
   - backend-architecture-rule.md
   - testing-ci-guide.md

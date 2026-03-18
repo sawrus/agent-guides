@@ -14,6 +14,8 @@ outputs:
   - setup_report
 roles:
   - devops-engineer
+execution:
+  initiator: developer
 related-rules:
   - golden-signals.md
   - alerting-standards.md

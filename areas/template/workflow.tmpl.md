@@ -12,6 +12,8 @@ outputs:
 roles:
   - {{role-1 — job title or function, e.g. "copywriter", "campaign-manager", "legal-reviewer"}}
   - {{role-2}}
+execution:
+  initiator: {{role-1 — must be one of: product-owner|pm|team-lead|developer|qa|designer}}
 related-rules:
   - {{rule-filename.md}}
 uses-skills:
@@ -27,12 +29,13 @@ AGENT INSTRUCTIONS:
 1. Fill all frontmatter fields. Missing fields cause the workflow to be skipped by some agents.
 2. "trigger" must start with / and match the prompt file name exactly.
 3. "roles" are who performs the steps — not job levels. Use function names, not seniority (not "senior copywriter").
-4. "quality-gates" must be checkable. "Looks good" is NOT a quality gate. "Draft passes all 5 headline criteria from headline-frameworks skill" IS.
-5. Every step MUST have: @role, Input, Actions (specific), Done when (checkable).
-6. Use imperative voice in steps: "Create", "Check", "Ask", "Verify" — not "You should" or "Consider".
-7. Include failure paths for at least one step.
-8. Target: 60–200 lines total. If > 200 lines, split into two workflows.
-9. Delete all AGENT INSTRUCTIONS comments before finalising.
+4. "execution.initiator" must be one of: `product-owner`, `pm`, `team-lead`, `developer`, `qa`, `designer`.
+5. "quality-gates" must be checkable. "Looks good" is NOT a quality gate. "Draft passes all 5 headline criteria from headline-frameworks skill" IS.
+6. Every step MUST have: @role, Input, Actions (specific), Done when (checkable).
+7. Use imperative voice in steps: "Create", "Check", "Ask", "Verify" — not "You should" or "Consider".
+8. Include failure paths for at least one step.
+9. Target: 60–200 lines total. If > 200 lines, split into two workflows.
+10. Delete all AGENT INSTRUCTIONS comments before finalising.
 -->
 
 ## Steps

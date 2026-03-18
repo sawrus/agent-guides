@@ -23,6 +23,7 @@ general/
 │   ├── lint-format-guide.md
 │   ├── sdlc-methodology-guide.md
 │   ├── sdlc-role-responsibilities.md
+│   ├── readme-sync-guide.md
 │   └── code-style-guide.md
 ├── skills/
 │   └── general-dev-tools/SKILL.md

@@ -13,6 +13,8 @@ roles:
   - developer
   - qa
   - team-lead
+execution:
+  initiator: developer
 related-rules:
   - testing-ci-guide.md
   - code-quality-guide.md

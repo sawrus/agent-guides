@@ -13,6 +13,8 @@ roles:
   - developer
   - team-lead
   - qa
+execution:
+  initiator: team-lead
 related-rules:
   - schema-management.md
   - pipeline-integrity.md

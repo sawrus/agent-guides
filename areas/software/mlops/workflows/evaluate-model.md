@@ -12,6 +12,8 @@ outputs:
 roles:
   - qa
   - team-lead
+execution:
+  initiator: qa
 related-rules:
   - model-governance.md
   - data-integrity.md

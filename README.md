@@ -122,7 +122,7 @@ An `AGENTS.md` is generated at the root of the target project, assembled from:
 `general` contains cross-cutting rules and workflows applicable to any software project regardless of stack:
 
 - **Rules:** git workflow, code style, Makefile conventions, Docker Compose, CI/CD, linting, SDLC methodology, role
-  responsibilities
+  responsibilities, README synchronization (`readme-sync-guide.md`)
 - **Workflows:** `/dev` (development cycle), `/code-review`, `/project-setup`
 
 **Recommendation:** always include `general` alongside any specialization:
@@ -150,6 +150,8 @@ description: <one sentence>
 inputs: [ ... ]
 outputs: [ ... ]
 roles: [ subagents used ]
+execution:
+  initiator: <common-sdlc-role> # one of: product-owner|pm|team-lead|developer|qa|designer
 related-rules: [ rule files referenced in steps ]
 uses-skills: [ skills loaded during this workflow ]
 quality-gates: [ exit criteria ]
@@ -172,7 +174,8 @@ quality-gates: [ exit criteria ]
 
 Workflows are designed for the **orchestrator agent**: they provide explicit per-step ownership (`@role`), inputs,
 outputs, and done-criteria. Technical details are referenced via `uses-skills` — agents load skill files only when a
-step requires them, minimizing token consumption.
+step requires them, minimizing token consumption. `execution.initiator` sets the subagent start role for the mandatory
+repository-exploration phase using the common SDLC role taxonomy.
 
 ---
 

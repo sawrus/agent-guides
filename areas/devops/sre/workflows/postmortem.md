@@ -14,6 +14,8 @@ roles:
   - devops-engineer (facilitator)
   - team-lead
   - developer (technical lead for RCA)
+execution:
+  initiator: developer
 related-rules:
   - on-call-standards.md
   - error-budget-policy.md

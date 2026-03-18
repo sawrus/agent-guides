@@ -13,6 +13,8 @@ roles:
   - qa
   - developer
   - team-lead
+execution:
+  initiator: qa
 related-rules:
   - quality-gates.md
   - test-strategy.md

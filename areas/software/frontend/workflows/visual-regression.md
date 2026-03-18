@@ -14,6 +14,8 @@ roles:
   - qa
   - designer
   - team-lead
+execution:
+  initiator: developer
 related-rules:
   - quality.md
   - accessibility.md

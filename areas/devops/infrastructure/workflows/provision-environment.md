@@ -13,6 +13,8 @@ outputs:
 roles:
   - devops-engineer
   - team-lead
+execution:
+  initiator: developer
 related-rules:
   - iac-standards.md
   - state-management.md

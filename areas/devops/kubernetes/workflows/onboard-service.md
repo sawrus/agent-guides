@@ -16,6 +16,8 @@ roles:
   - devops-engineer
   - developer
   - team-lead
+execution:
+  initiator: developer
 related-rules:
   - cluster-standards.md
   - workload-security.md

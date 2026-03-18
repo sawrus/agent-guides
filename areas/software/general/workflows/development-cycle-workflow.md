@@ -16,6 +16,8 @@ roles:
   - team-lead
   - developer
   - qa
+execution:
+  initiator: product-owner
 related-rules:
   - git-workflow-guide.md
   - sdlc-methodology-guide.md

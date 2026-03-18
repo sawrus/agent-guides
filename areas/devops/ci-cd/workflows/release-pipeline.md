@@ -15,6 +15,8 @@ roles:
   - developer
   - team-lead
   - pm
+execution:
+  initiator: developer
 related-rules:
   - pipeline-standards.md
   - quality-gates.md

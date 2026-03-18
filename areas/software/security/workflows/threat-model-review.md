@@ -12,6 +12,8 @@ roles:
   - team-lead
   - developer
   - qa
+execution:
+  initiator: team-lead
 related-rules:
   - secure-coding.md
   - compliance-baseline.md

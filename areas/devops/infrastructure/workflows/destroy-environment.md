@@ -12,6 +12,8 @@ outputs:
 roles:
   - devops-engineer
   - team-lead
+execution:
+  initiator: developer
 related-rules:
   - state-management.md
   - immutability.md

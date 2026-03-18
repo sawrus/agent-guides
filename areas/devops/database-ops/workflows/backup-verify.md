@@ -11,6 +11,8 @@ outputs:
   - restore_test_passed (bool)
 roles:
   - devops-engineer
+execution:
+  initiator: developer
 related-rules:
   - backup-policy.md
 uses-skills:

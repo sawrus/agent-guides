@@ -14,6 +14,8 @@ roles:
   - developer
   - qa
   - team-lead
+execution:
+  initiator: developer
 related-rules:
   - platform-compliance.md
   - security-mobile.md

@@ -14,6 +14,8 @@ roles:
   - devops-engineer (SRE)
   - team-lead
   - product-owner
+execution:
+  initiator: developer
 related-rules:
   - slo-policy.md
   - error-budget-policy.md

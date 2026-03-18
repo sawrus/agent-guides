@@ -13,6 +13,8 @@ outputs:
 roles:
   - devops-engineer
   - team-lead
+execution:
+  initiator: developer
 related-rules:
   - upgrade-policy.md
   - cluster-standards.md

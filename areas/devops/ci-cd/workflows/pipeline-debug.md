@@ -11,6 +11,8 @@ outputs:
   - pipeline_fix
 roles:
   - devops-engineer
+execution:
+  initiator: developer
 related-rules:
   - pipeline-standards.md
 uses-skills:

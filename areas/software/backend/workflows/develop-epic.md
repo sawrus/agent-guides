@@ -15,6 +15,8 @@ roles:
   - team-lead
   - developer
   - qa
+execution:
+  initiator: product-owner
 related-rules:
   - architecture.md
   - data_access.md

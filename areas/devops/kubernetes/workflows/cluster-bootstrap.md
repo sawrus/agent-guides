@@ -14,6 +14,8 @@ outputs:
   - bootstrap_report
 roles:
   - devops-engineer
+execution:
+  initiator: developer
 related-rules:
   - cluster-standards.md
   - workload-security.md

@@ -13,6 +13,8 @@ roles:
   - team-lead
   - developer
   - qa
+execution:
+  initiator: team-lead
 related-rules:
   - data_access.md
   - architecture.md

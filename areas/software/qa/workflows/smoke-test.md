@@ -14,6 +14,8 @@ roles:
   - developer
   - team-lead
   - pm
+execution:
+  initiator: qa
 related-rules:
   - quality-gates.md
   - test-strategy.md

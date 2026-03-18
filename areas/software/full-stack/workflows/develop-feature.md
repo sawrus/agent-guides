@@ -16,6 +16,8 @@ roles:
   - "@backend-dev"
   - "@frontend-dev"
   - "@qa-engineer"
+execution:
+  initiator: team-lead
 related-rules:
   - backend-architecture-rule.md
   - api-design-guide.md

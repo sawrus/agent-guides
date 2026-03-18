@@ -13,6 +13,8 @@ roles:
   - team-lead
   - developer
   - qa
+execution:
+  initiator: developer
 related-rules:
   - code-style-guide.md
   - git-workflow-guide.md

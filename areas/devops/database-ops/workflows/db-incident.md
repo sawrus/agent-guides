@@ -13,6 +13,8 @@ outputs:
 roles:
   - devops-engineer
   - developer
+execution:
+  initiator: developer
 related-rules:
   - backup-policy.md
   - access-control.md

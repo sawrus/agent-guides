@@ -13,6 +13,8 @@ outputs:
   - policies_applied
 roles:
   - devops-engineer
+execution:
+  initiator: developer
 related-rules:
   - network-segmentation.md
   - tls-policy.md

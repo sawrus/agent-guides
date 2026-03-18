@@ -14,6 +14,8 @@ roles:
   - devops-engineer (IC)
   - developer (technical lead)
   - pm (comms)
+execution:
+  initiator: developer
 related-rules:
   - on-call-standards.md
   - error-budget-policy.md

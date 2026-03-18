@@ -12,6 +12,8 @@ outputs:
 roles:
   - developer
   - team-lead
+execution:
+  initiator: developer
 related-rules:
   - secrets-policy.md
   - security-posture.md

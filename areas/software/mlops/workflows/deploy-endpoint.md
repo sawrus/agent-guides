@@ -14,6 +14,8 @@ roles:
   - team-lead
   - developer
   - qa
+execution:
+  initiator: team-lead
 related-rules:
   - production-safety.md
   - model-governance.md

@@ -13,6 +13,8 @@ outputs:
   - service_accessible
 roles:
   - devops-engineer
+execution:
+  initiator: developer
 related-rules:
   - ingress-standards.md
   - tls-policy.md

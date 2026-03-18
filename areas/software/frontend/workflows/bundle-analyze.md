@@ -14,6 +14,8 @@ roles:
   - qa
   - team-lead
   - pm
+execution:
+  initiator: developer
 related-rules:
   - performance.md
   - architecture.md

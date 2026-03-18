@@ -13,6 +13,8 @@ outputs:
 roles:
   - developer
   - devops-engineer
+execution:
+  initiator: developer
 related-rules:
   - workload-security.md
   - resource-governance.md

@@ -13,6 +13,8 @@ outputs:
   - test_results
 roles:
   - devops-engineer
+execution:
+  initiator: developer
 related-rules:
   - policy-as-code.md
   - container-security.md

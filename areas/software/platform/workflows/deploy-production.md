@@ -13,6 +13,8 @@ roles:
   - team-lead
   - developer
   - qa
+execution:
+  initiator: team-lead
 related-rules:
   - reliability.md
   - security-posture.md

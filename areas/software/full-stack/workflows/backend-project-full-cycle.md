@@ -15,6 +15,8 @@ roles:
   - team-lead
   - developer
   - qa
+execution:
+  initiator: team-lead
 related-rules:
   - project-setup-guide.md
   - backend-architecture-rule.md

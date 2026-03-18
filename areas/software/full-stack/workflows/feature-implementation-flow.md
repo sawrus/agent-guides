@@ -15,6 +15,8 @@ roles:
   - designer
   - developer
   - qa
+execution:
+  initiator: pm
 related-rules:
   - backend-architecture-rule.md
   - code-quality-guide.md

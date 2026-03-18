@@ -13,6 +13,8 @@ roles:
   - developer
   - team-lead
   - qa
+execution:
+  initiator: developer
 related-rules:
   - secure-coding.md
   - dependency-policy.md

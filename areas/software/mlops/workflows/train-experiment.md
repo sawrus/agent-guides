@@ -12,6 +12,8 @@ outputs:
 roles:
   - developer
   - qa
+execution:
+  initiator: developer
 related-rules:
   - reproducibility.md
   - data-integrity.md

@@ -14,6 +14,8 @@ outputs:
 roles:
   - devops-engineer
   - developer
+execution:
+  initiator: developer
 related-rules:
   - pipeline-standards.md
   - quality-gates.md
