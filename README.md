@@ -1,6 +1,7 @@
 # agent-guides
 
 ![agent-guides · Coverage & Efficiency Report](images/coverage_scorecard.png)
+
 A unified catalog of AgentOS specializations and the `agentos-install.sh` installer. Provides orchestrator-ready rules,
 skills, workflows, and prompts that any AI agent can load in a target project.
 
@@ -57,32 +58,110 @@ Each specialization follows a consistent layout:
 
 ## How to use the installer
 
+### Default behavior (no args)
+
+```bash
+./agentos-install.sh
+```
+
+- In an interactive terminal: starts TUI mode
+- In non-interactive mode (CI/pipe): prints usage and exits with code `1`
+
 ### TUI mode (interactive)
 
 ```bash
 ./agentos-install.sh tui
 ```
 
-Launches a guided terminal UI to select project directory, agent OS, area, and specializations.
+Launches a guided terminal UI to select:
+- theme (`auto|dark|light`)
+- project directory
+- one or more agent OS targets
+- one or more areas and specializations
+
+Selected theme is persisted between runs in
+`$XDG_CONFIG_HOME/agentos-installer/theme` (fallback: `~/.config/agentos-installer/theme`).
+
+TUI uses `fzf` for hotkeys (Up/Down + Space + Enter). If `fzf` is missing, the script:
+1. asks permission to auto-install it (Linux: `apt/dnf/yum/pacman/zypper/apk`; Windows Git Bash: `winget/choco/scoop`)
+2. falls back to index-based menus if install is declined/failed
+
+### Install TUI dependencies (`fzf`)
+
+You can install `fzf` manually before running TUI:
+
+Linux:
+```bash
+# Ubuntu / Debian
+sudo apt-get update && sudo apt-get install -y fzf
+
+# Fedora / RHEL
+sudo dnf install -y fzf
+# or
+sudo yum install -y fzf
+
+# Arch
+sudo pacman -Sy --noconfirm fzf
+
+# openSUSE
+sudo zypper --non-interactive install fzf
+
+# Alpine
+sudo apk add --no-cache fzf
+```
+
+macOS:
+```bash
+brew install fzf
+```
+
+Windows (run from Git Bash):
+```bash
+winget install --id junegunn.fzf -e
+# or
+choco install fzf -y
+# or
+scoop install fzf
+```
 
 ### CLI mode
 
 ```bash
 ./agentos-install.sh install \
   --project-dir /path/to/your-project \
-  --agent-os opencode \
+  --agent-os opencode,codex \
   --areas software \
   --specializations software.general,software.backend
 ```
+
+### Self-install command
+
+```bash
+./agentos-install.sh self-install
+```
+
+Installs the script binary to `~/.local/bin/agentos-install` by default.
+
+### HTTP install flow
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/<org>/<repo>/main/agentos-install.sh -o /tmp/agentos-install.sh && \
+bash /tmp/agentos-install.sh self-install
+```
+
+Homebrew distribution is planned as v2.
 
 ### Options
 
 | Flag                | Required | Description                                                                 |
 |---------------------|----------|-----------------------------------------------------------------------------|
 | `--project-dir`     | ✅        | Target project directory (created if missing)                               |
-| `--agent-os`        | —        | Target agent environment (default: `default`)                               |
+| `--agent-os`        | —        | Comma-separated agent OS targets (default: `default`)                       |
 | `--areas`           | ✅        | Comma-separated area list (e.g. `software`)                                 |
 | `--specializations` | ✅        | Comma-separated `area.spec` list (e.g. `software.backend,software.general`) |
+| `--theme`           | —        | Interface theme: `auto`, `dark`, `light` (saved and reused on next runs)    |
+| `--bin-dir`         | —        | Install directory for `self-install` (default: `~/.local/bin`)              |
+| `--force`           | —        | Overwrite target file in `self-install`                                     |
 | `--dry-run`         | —        | Show planned actions without writing files                                  |
 
 ### List available options
@@ -97,8 +176,9 @@ Launches a guided terminal UI to select project directory, agent OS, area, and s
 
 ## What gets installed where
 
-The installer copies selected rules, skills, workflows, and prompts into the target project. Destination directories
-depend on `--agent-os`:
+The installer copies selected rules, skills, workflows, and prompts into the target project. For multi-value
+`--agent-os`, assets are installed for each selected target (plus shared `.agent/*` paths via `agents` compatibility).
+Destination directories per agent type:
 
 | Agent OS   | rules             | skills             | workflows            | prompts          |
 |------------|-------------------|--------------------|----------------------|------------------|
@@ -228,9 +308,9 @@ areas/software/<new-spec>/
 
 1. Create `extensions/<agent-os>/` directory
 2. Add agent configs, commands, and plugins
-3. Add entry to `AGENT_DIR_MAP` in `agentos-install.sh` with directory mappings:
+3. Add mapping in `get_agent_dir_mapping()` in `agentos-install.sh`:
    ```bash
-   AGENT_DIR_MAP[myagent]=".<myagent>/rules .<myagent>/skills .<myagent>/commands -"
+   myagent) echo ".myagent/rules .myagent/skills .myagent/commands -" ;;
    ```
 4. Use `-` for any bucket not supported by the agent OS
 
