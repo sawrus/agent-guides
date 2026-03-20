@@ -82,6 +82,44 @@ TUI uses `fzf` for hotkeys (Up/Down + Space + Enter). If `fzf` is missing, the s
 1. asks permission to auto-install it (Linux: `apt/dnf/yum/pacman/zypper/apk`; Windows Git Bash: `winget/choco/scoop`)
 2. falls back to index-based menus if install is declined/failed
 
+### Install TUI dependencies (`fzf`)
+
+You can install `fzf` manually before running TUI:
+
+Linux:
+```bash
+# Ubuntu / Debian
+sudo apt-get update && sudo apt-get install -y fzf
+
+# Fedora / RHEL
+sudo dnf install -y fzf
+# or
+sudo yum install -y fzf
+
+# Arch
+sudo pacman -Sy --noconfirm fzf
+
+# openSUSE
+sudo zypper --non-interactive install fzf
+
+# Alpine
+sudo apk add --no-cache fzf
+```
+
+macOS:
+```bash
+brew install fzf
+```
+
+Windows (run from Git Bash):
+```bash
+winget install --id junegunn.fzf -e
+# or
+choco install fzf -y
+# or
+scoop install fzf
+```
+
 ### CLI mode
 
 ```bash
