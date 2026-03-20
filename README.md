@@ -57,32 +57,69 @@ Each specialization follows a consistent layout:
 
 ## How to use the installer
 
+### Default behavior (no args)
+
+```bash
+./agentos-install.sh
+```
+
+- In an interactive terminal: starts TUI mode
+- In non-interactive mode (CI/pipe): prints usage and exits with code `1`
+
 ### TUI mode (interactive)
 
 ```bash
 ./agentos-install.sh tui
 ```
 
-Launches a guided terminal UI to select project directory, agent OS, area, and specializations.
+Launches a guided terminal UI to select:
+- theme (`auto|dark|light`)
+- project directory
+- one or more agent OS targets
+- one or more areas and specializations
+
+TUI uses `fzf` for hotkeys (Up/Down + Space + Enter). If `fzf` is missing, the script:
+1. asks permission to auto-install it (Linux: `apt/dnf/yum/pacman/zypper/apk`; Windows Git Bash: `winget/choco/scoop`)
+2. falls back to index-based menus if install is declined/failed
 
 ### CLI mode
 
 ```bash
 ./agentos-install.sh install \
   --project-dir /path/to/your-project \
-  --agent-os opencode \
+  --agent-os opencode,codex \
   --areas software \
   --specializations software.general,software.backend
 ```
+
+### Self-install command
+
+```bash
+./agentos-install.sh self-install
+```
+
+Installs the script binary to `~/.local/bin/agentos-install` by default.
+
+### HTTP install flow
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/<org>/<repo>/main/agentos-install.sh -o /tmp/agentos-install.sh && \
+bash /tmp/agentos-install.sh self-install
+```
+
+Homebrew distribution is planned as v2.
 
 ### Options
 
 | Flag                | Required | Description                                                                 |
 |---------------------|----------|-----------------------------------------------------------------------------|
 | `--project-dir`     | ✅        | Target project directory (created if missing)                               |
-| `--agent-os`        | —        | Target agent environment (default: `default`)                               |
+| `--agent-os`        | —        | Comma-separated agent OS targets (default: `default`)                       |
 | `--areas`           | ✅        | Comma-separated area list (e.g. `software`)                                 |
 | `--specializations` | ✅        | Comma-separated `area.spec` list (e.g. `software.backend,software.general`) |
+| `--theme`           | —        | Interface theme: `auto`, `dark`, `light`                                    |
+| `--bin-dir`         | —        | Install directory for `self-install` (default: `~/.local/bin`)              |
+| `--force`           | —        | Overwrite target file in `self-install`                                     |
 | `--dry-run`         | —        | Show planned actions without writing files                                  |
 
 ### List available options
@@ -97,8 +134,9 @@ Launches a guided terminal UI to select project directory, agent OS, area, and s
 
 ## What gets installed where
 
-The installer copies selected rules, skills, workflows, and prompts into the target project. Destination directories
-depend on `--agent-os`:
+The installer copies selected rules, skills, workflows, and prompts into the target project. For multi-value
+`--agent-os`, assets are installed for each selected target (plus shared `.agent/*` paths via `agents` compatibility).
+Destination directories per agent type:
 
 | Agent OS   | rules             | skills             | workflows            | prompts          |
 |------------|-------------------|--------------------|----------------------|------------------|
@@ -228,9 +266,9 @@ areas/software/<new-spec>/
 
 1. Create `extensions/<agent-os>/` directory
 2. Add agent configs, commands, and plugins
-3. Add entry to `AGENT_DIR_MAP` in `agentos-install.sh` with directory mappings:
+3. Add mapping in `get_agent_dir_mapping()` in `agentos-install.sh`:
    ```bash
-   AGENT_DIR_MAP[myagent]=".<myagent>/rules .<myagent>/skills .<myagent>/commands -"
+   myagent) echo ".myagent/rules .myagent/skills .myagent/commands -" ;;
    ```
 4. Use `-` for any bucket not supported by the agent OS
 
