@@ -15,6 +15,7 @@ roles:
   - team-lead
   - developer
   - qa
+  - designer  
 execution:
   initiator: product-owner
 related-rules:
@@ -40,11 +41,11 @@ quality-gates:
 - **Output:** `docs/<feature>/README.md` with acceptance criteria
 - **Done when:** criteria are testable and approved by `@product-owner`
 
-### 2. Solution Design & Risk Plan — `@team-lead`
+### 2. Solution Design & Risk Plan — `@team-lead` + `@designer`
 - **Input:** approved acceptance criteria
-- **Actions:** identify impacted domain entities and service boundaries; design API contracts and data model changes; flag security and performance risks; confirm approach with `@developer` for feasibility
+- **Actions:** identify impacted domain entities and service boundaries; design API contracts and data model changes; define UX states and interaction constraints; flag security and performance risks; confirm approach with `@developer` for feasibility
 - **Output:** `docs/<feature>/implementation_plan.md` — layers affected, risks, migration notes if any
-- **Done when:** `@team-lead` approves plan; no open architecture blockers
+- **Done when:** `@team-lead` and `@designer` approve plan; no open architecture blockers
 
 ### 3. Implementation — `@developer`
 - **Input:** approved implementation plan
@@ -86,6 +87,12 @@ quality-gates:
 
 ## Iteration Loop
 Steps 3–6 repeat per increment for large features. `@pm` tracks scope changes and timeline impact.
+
+## Mandatory Role Delegation
+- For `/develop-feature`, the executor must spawn exactly 6 subagents, one per role: `@product-owner`, `@pm`, `@team-lead`, `@developer`, `@qa`, `@designer`.
+- Role consolidation is forbidden: one subagent cannot own multiple roles.
+- Implementation work may start only after requirements outputs from `@product-owner` and `@pm`, and design outputs from `@team-lead` and `@designer`, are complete.
+- Final delivery requires QA recommendation and team-lead sign-off.
 
 ## Exit
 `@product-owner` acceptance + no unresolved blockers = feature complete and ready for release.
