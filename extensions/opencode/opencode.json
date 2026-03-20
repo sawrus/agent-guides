@@ -11,7 +11,8 @@
       "mode": "primary",
       "model": "google/antigravity-claude-sonnet-4-6",
       "fallback": [
-        "openai/gpt-5.2"
+        "openai/gpt-5.4",
+        "opencode/minimax-m2.5-free"
       ],
       "permission": {
         "task": {
@@ -28,7 +29,8 @@
       "mode": "subagent",
       "model": "google/antigravity-claude-sonnet-4-6",
       "fallback": [
-        "openai/gpt-5.2"
+        "openai/gpt-5.4",
+        "opencode/minimax-m2.5-free"
       ],
       "permission": {
         "task": {
@@ -56,17 +58,26 @@
     "developer": {
       "description": "Developer - implements code",
       "mode": "subagent",
-      "model": "openai/gpt-5.3-codex",
+      "model": "google/antigravity-claude-opus-4-6-thinking",
       "fallback": [
-        "google/gemini-3.1-pro-preview-customtools"
+        "openai/gpt-5.3-codex"
+      ]
+    },
+    "devops-engineer": {
+      "description": "DevOps Engineer - infrastructure, CI/CD, and platform reliability",
+      "mode": "subagent",
+      "model": "google/antigravity-claude-opus-4-6-thinking",
+      "fallback": [
+        "openai/gpt-5.3-codex"
       ]
     },
     "qa": {
       "description": "QA Engineer - runs tests",
       "mode": "subagent",
-      "model": "google/gemini-3-flash-preview",
+      "model": "google/antigravity-gemini-3-flash",
       "fallback": [
-        "opencode/minimax-m2.5-free"
+        "opencode/minimax-m2.5-free",
+        "openai/gpt-5.4"
       ]
     },
     "designer": {
@@ -74,7 +85,8 @@
       "mode": "subagent",
       "model": "google/antigravity-claude-sonnet-4-6",
       "fallback": [
-        "google/antigravity-gemini-3.1-pro"
+        "opencode/minimax-m2.5-free",
+        "openai/gpt-5.4"
       ]
     }
   }

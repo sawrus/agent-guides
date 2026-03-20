@@ -222,7 +222,6 @@ async function regenerateOpencodeJson(projectDir: string, selected: string, pass
       if (agentConfig.mode !== "subagent") continue
 
       config.agent[agentName].model = selected
-      config.agent[agentName].fallback = passed.filter((m) => m !== selected).slice(0, 3)
     }
 
     await writeFile(filePath, `${JSON.stringify(config, null, 2)}\n`, "utf-8")
