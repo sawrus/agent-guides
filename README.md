@@ -75,23 +75,18 @@ flowchart LR
 
 ## Quick start
 
-### 1) One-line install (recommended)
+### install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/agentic -o /tmp/agentic && bash /tmp/agentic self-install --install-fzf
 ```
 
-### 2) Run
-
-```bash
-./agentic
-```
-
-If you installed into `~/.local/bin`, you can also run:
+### execute
 
 ```bash
 agentic
 ```
+
 
 ### Full instructions
 
