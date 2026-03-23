@@ -1,17 +1,34 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+shopt -s inherit_errexit 2>/dev/null || true
 
 SCRIPT_SOURCE="${BASH_SOURCE[0]}"
-SCRIPT_NAME="$(basename "$SCRIPT_SOURCE")"
-REPO_ROOT="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
-AREAS_ROOT="$REPO_ROOT/areas"
-EXTENSIONS_ROOT="$REPO_ROOT/extensions"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$SCRIPT_SOURCE")" && pwd -P)"
+SCRIPT_NAME="$(basename -- "$SCRIPT_SOURCE")"
+
+APP_NAME="agentic"
+APP_TITLE="Agentic Installer"
+APP_TUI_TITLE="Agentic installer (TUI mode)"
+APP_REPO_URL="https://github.com/sawrus/agent-guides.git"
 
 DEFAULT_AGENT_OS="default"
 STATIC_AGENT_OS=(default opencode codex claude antigravity cursor agents)
 INSTALL_DIRS=(rules skills workflows prompts)
 THEME_CHOICES=(auto dark light)
+
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+APP_CONFIG_DIR="$XDG_CONFIG_HOME/$APP_NAME"
+APP_CONFIG_FILE="$APP_CONFIG_DIR/config"
+APP_DATA_DIR="$XDG_DATA_HOME/$APP_NAME"
+APP_REPO_DIR="$APP_DATA_DIR/repo"
+
+REPO_ROOT=""
+AREAS_ROOT=""
+EXTENSIONS_ROOT=""
+ROOT_AGENTS_FILE=""
+THEME_LOADED_FROM_CONFIG=false
 
 DRY_RUN=false
 PROJECT_DIR=""
@@ -25,7 +42,7 @@ SELECTED_SPECS=()
 
 SELF_INSTALL_FORCE=false
 SELF_INSTALL_BIN_DIR="${HOME}/.local/bin"
-SELF_INSTALL_NAME="agentos-install"
+SELF_INSTALL_NAME="$APP_NAME"
 
 CREATED_PATHS=()
 COPIED_PATHS=()
@@ -42,24 +59,26 @@ FZF_COLOR_ARGS=()
 
 usage() {
   cat <<USAGE
-AgentOS Installer
+$APP_TITLE
 
 Usage:
   $SCRIPT_NAME list [agentos|areas|specs --area <name>]
   $SCRIPT_NAME install --project-dir <dir> [--agent-os <comma_list>] --areas <comma_list> --specializations <comma_list> [--theme auto|dark|light]
   $SCRIPT_NAME tui [--theme auto|dark|light]
+  $SCRIPT_NAME upgrade
   $SCRIPT_NAME self-install [--bin-dir <dir>] [--force] [--dry-run]
 
 Behavior:
   - No arguments in interactive terminal: runs TUI mode
   - No arguments in non-interactive mode: prints usage and exits with code 1
+  - Installed mode bootstraps a local knowledge-base checkout on first use
 
 Options:
   --project-dir         Target project directory (created if missing)
   --agent-os            Comma-separated agent OS list (default: ${DEFAULT_AGENT_OS})
   --areas               Comma-separated area list (example: software)
   --specializations     Comma-separated specializations in area.spec format (example: software.backend,software.frontend)
-  --theme               Interface theme: auto|dark|light (default: auto)
+  --theme               Interface theme: auto|dark|light (default: config value or auto)
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)
   --force               Overwrite existing binary for self-install
   --dry-run             Show actions without writing files
@@ -69,12 +88,13 @@ Examples:
   $SCRIPT_NAME list agentos
   $SCRIPT_NAME install --project-dir /tmp/demo --agent-os opencode,codex --areas software --specializations software.backend,software.frontend
   $SCRIPT_NAME tui --theme dark
+  $SCRIPT_NAME upgrade
   $SCRIPT_NAME self-install --force
 USAGE
 }
 
 is_interactive_terminal() {
-  if [[ "${AGENTOS_FORCE_INTERACTIVE:-}" == "1" ]]; then
+  if [[ "${AGENTIC_FORCE_INTERACTIVE:-${AGENTOS_FORCE_INTERACTIVE:-}}" == "1" ]]; then
     return 0
   fi
   [[ -t 0 && -t 1 ]]
@@ -91,8 +111,8 @@ supports_color() {
 }
 
 detect_platform() {
-  if [[ -n "${AGENTOS_PLATFORM_OVERRIDE:-}" ]]; then
-    echo "$AGENTOS_PLATFORM_OVERRIDE"
+  if [[ -n "${AGENTIC_PLATFORM_OVERRIDE:-${AGENTOS_PLATFORM_OVERRIDE:-}}" ]]; then
+    echo "${AGENTIC_PLATFORM_OVERRIDE:-${AGENTOS_PLATFORM_OVERRIDE:-}}"
     return
   fi
 
@@ -184,16 +204,16 @@ set_theme_colors() {
 }
 
 log() {
-  echo "${COLOR_INFO}[installer]${COLOR_RESET} $1"
+  printf '%s[agentic]%s %s\n' "$COLOR_INFO" "$COLOR_RESET" "$1"
 }
 
 warn() {
-  echo "${COLOR_WARN}[installer][warn]${COLOR_RESET} $1"
+  printf '%s[agentic][warn]%s %s\n' "$COLOR_WARN" "$COLOR_RESET" "$1"
   WARNINGS+=("$1")
 }
 
 error() {
-  echo "${COLOR_ERROR}[installer][error]${COLOR_RESET} $1" >&2
+  printf '%s[agentic][error]%s %s\n' "$COLOR_ERROR" "$COLOR_RESET" "$1" >&2
 }
 
 unique_append() {
@@ -212,7 +232,7 @@ trim() {
   local s="$1"
   s="${s#${s%%[![:space:]]*}}"
   s="${s%${s##*[![:space:]]}}"
-  echo "$s"
+  printf '%s\n' "$s"
 }
 
 readlines() {
@@ -246,11 +266,164 @@ validate_theme() {
   return 1
 }
 
+is_repo_root() {
+  local dir="$1"
+  [[ -n "$dir" ]] || return 1
+  [[ -d "$dir/areas" ]] && [[ -d "$dir/extensions" ]] && [[ -f "$dir/AGENTS.md" ]]
+}
+
+resolve_dev_repo_root() {
+  local candidates=(
+    "$SCRIPT_DIR"
+    "$(cd -- "$SCRIPT_DIR/.." 2>/dev/null && pwd -P || true)"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    [[ -n "$candidate" ]] || continue
+    if is_repo_root "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+resolve_data_repo_root() {
+  if is_repo_root "$APP_REPO_DIR"; then
+    printf '%s\n' "$APP_REPO_DIR"
+    return 0
+  fi
+  return 1
+}
+
+refresh_repo_paths() {
+  local resolved_root=""
+  if resolved_root="$(resolve_dev_repo_root 2>/dev/null)"; then
+    :
+  elif resolved_root="$(resolve_data_repo_root 2>/dev/null)"; then
+    :
+  else
+    resolved_root="$APP_REPO_DIR"
+  fi
+
+  REPO_ROOT="$resolved_root"
+  AREAS_ROOT="$REPO_ROOT/areas"
+  EXTENSIONS_ROOT="$REPO_ROOT/extensions"
+  ROOT_AGENTS_FILE="$REPO_ROOT/AGENTS.md"
+}
+
 ensure_repo_layout() {
-  if [[ ! -d "$AREAS_ROOT" ]]; then
-    error "areas directory not found at '$AREAS_ROOT'. Run this script from an agent-guides checkout."
+  refresh_repo_paths
+  if ! is_repo_root "$REPO_ROOT"; then
+    error "knowledge base checkout is not available at '$REPO_ROOT'"
+    error "Run '$APP_NAME upgrade' or any supported command again after bootstrap succeeds."
     exit 1
   fi
+}
+
+ensure_git_available() {
+  if ! command -v git >/dev/null 2>&1; then
+    error "git is required to bootstrap or upgrade the local knowledge base checkout"
+    exit 1
+  fi
+}
+
+clone_repo_checkout() {
+  ensure_git_available
+  ensure_dir "$APP_DATA_DIR"
+
+  if [[ -e "$APP_REPO_DIR" ]]; then
+    warn "Replacing invalid knowledge base checkout at $APP_REPO_DIR"
+    if [[ "$DRY_RUN" == true ]]; then
+      log "DRY-RUN rm -rf $APP_REPO_DIR"
+    else
+      rm -rf -- "$APP_REPO_DIR"
+    fi
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    log "DRY-RUN git clone $APP_REPO_URL $APP_REPO_DIR"
+    return
+  fi
+
+  log "Bootstrapping knowledge base checkout into $APP_REPO_DIR"
+  git clone "$APP_REPO_URL" "$APP_REPO_DIR"
+  refresh_repo_paths
+  if ! is_repo_root "$APP_REPO_DIR"; then
+    error "Bootstrapped checkout is invalid: expected areas/, extensions/, and AGENTS.md in $APP_REPO_DIR"
+    exit 1
+  fi
+}
+
+ensure_repo_checkout() {
+  refresh_repo_paths
+  if is_repo_root "$REPO_ROOT"; then
+    return 0
+  fi
+  clone_repo_checkout
+  refresh_repo_paths
+  ensure_repo_layout
+}
+
+ensure_repo_available_for_command() {
+  if resolve_dev_repo_root >/dev/null 2>&1; then
+    refresh_repo_paths
+    return
+  fi
+  ensure_repo_checkout
+}
+
+load_user_config() {
+  local line key value
+  THEME_LOADED_FROM_CONFIG=false
+
+  if [[ ! -f "$APP_CONFIG_FILE" ]]; then
+    return
+  fi
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="$(trim "$line")"
+    [[ -z "$line" ]] && continue
+    [[ "$line" == \#* ]] && continue
+    if [[ "$line" != *=* ]]; then
+      warn "Ignoring malformed config line in $APP_CONFIG_FILE: $line"
+      continue
+    fi
+
+    key="${line%%=*}"
+    value="${line#*=}"
+    key="$(trim "$key")"
+    value="$(trim "$value")"
+
+    case "$key" in
+      theme)
+        if validate_theme "$value"; then
+          THEME="$value"
+          THEME_LOADED_FROM_CONFIG=true
+        else
+          warn "Ignoring invalid theme '$value' in $APP_CONFIG_FILE; falling back to auto"
+          THEME="auto"
+        fi
+        ;;
+      *)
+        ;;
+    esac
+  done < "$APP_CONFIG_FILE"
+}
+
+save_user_config() {
+  ensure_dir "$APP_CONFIG_DIR"
+
+  if [[ "$DRY_RUN" == true ]]; then
+    log "DRY-RUN write config to $APP_CONFIG_FILE"
+    return
+  fi
+
+  cat > "$APP_CONFIG_FILE" <<CONFIG
+# $APP_NAME user configuration
+theme=$THEME
+CONFIG
+  unique_append "$APP_CONFIG_FILE" COPIED_PATHS
 }
 
 # Agent-specific directory mappings using case statements for Bash 3.2 compatibility
@@ -282,9 +455,9 @@ get_dest_dir() {
       prompts)   dir="${parts[3]:-}" ;;
       *)         dir=".agent/$bucket" ;;
     esac
-    echo "$dir"
+    printf '%s\n' "$dir"
   else
-    echo ".agent/$bucket"
+    printf '%s\n' ".agent/$bucket"
   fi
 }
 
@@ -308,7 +481,7 @@ get_agentos_choices() {
 }
 
 list_areas() {
-  find "$AREAS_ROOT" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | grep -v "^template$"
+  find "$AREAS_ROOT" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | grep -v '^template$'
 }
 
 list_specs() {
@@ -439,9 +612,9 @@ build_header() {
   local rules_dir
   rules_dir="$(get_dest_dir "${SELECTED_AGENT_OS[0]}" "rules")"
   {
-    echo "# AgentOS Project Guidelines"
+    echo "# Agentic Project Guidelines"
     echo
-    echo "Generated by $SCRIPT_NAME on $(date -u +"%Y-%m-%dT%H:%M:%SZ")."
+    echo "Generated by $SCRIPT_NAME on $(date -u +'%Y-%m-%dT%H:%M:%SZ')."
     echo
     echo "## Installation Context"
     echo "- Agent OS targets: ${SELECTED_AGENT_OS[*]}"
@@ -477,7 +650,7 @@ append_specialization_template() {
 
 append_root_agents_template() {
   local out="$1"
-  local src="$REPO_ROOT/AGENTS.md"
+  local src="$ROOT_AGENTS_FILE"
 
   {
     echo "## Shared guidance"
@@ -585,6 +758,8 @@ print_report() {
   echo
   echo "${COLOR_HEADER}=== Installation report ===${COLOR_RESET}"
   echo "Project dir: $PROJECT_DIR"
+  echo "Knowledge base repo: $REPO_ROOT"
+  echo "Config file: $APP_CONFIG_FILE"
   echo "Agent OS targets: ${SELECTED_AGENT_OS[*]}"
   echo "Areas: ${SELECTED_AREAS[*]}"
   echo "Specializations: ${SELECTED_SPECS[*]}"
@@ -628,11 +803,11 @@ run_install() {
 
 ascii_banner() {
   cat <<'ART'
-    _    ____ _____ _   _ _____ ___  ____
-   / \  / ___| ____| \ | |_   _/ _ \/ ___|
-  / _ \| |  _|  _| |  \| | | || | | \___ \
- / ___ \ |_| | |___| |\  | | || |_| |___) |
-/_/   \_\____|_____|_| \_| |_| \___/|____/
+    _    ____ _____ _   _ _____ ___ ____
+   / \  / ___| ____| \ | |_   _|_ _/ ___|
+  / _ \| |  _|  _| |  \| | | |  | | |
+ / ___ \ |_| | |___| |\  | | |  | | |___
+/_/   \_\____|_____|_| \_| |_| |___\____|
 ART
 }
 
@@ -643,9 +818,9 @@ prompt_with_default() {
   read -r -p "$prompt [$default]: " answer
   answer="$(trim "$answer")"
   if [[ -z "$answer" ]]; then
-    echo "$default"
+    printf '%s\n' "$default"
   else
-    echo "$answer"
+    printf '%s\n' "$answer"
   fi
 }
 
@@ -662,14 +837,14 @@ choose_single_by_index() {
   read -r -p "Select one (empty=1): " answer
   answer="$(trim "$answer")"
   if [[ -z "$answer" ]]; then
-    echo "${options[0]}"
+    printf '%s\n' "${options[0]}"
     return
   fi
   if [[ ! "$answer" =~ ^[0-9]+$ ]] || (( answer < 1 || answer > ${#options[@]} )); then
     error "Invalid choice"
     exit 1
   fi
-  echo "${options[$((answer - 1))]}"
+  printf '%s\n' "${options[$((answer - 1))]}"
 }
 
 choose_multi_by_index() {
@@ -868,7 +1043,7 @@ choose_multi_fzf() {
 }
 
 pick_theme_if_needed() {
-  if [[ "$THEME_EXPLICIT" == true ]]; then
+  if [[ "$THEME_EXPLICIT" == true ]] || [[ "$THEME_LOADED_FROM_CONFIG" == true ]]; then
     return
   fi
 
@@ -897,7 +1072,7 @@ run_tui() {
   set_theme_colors
 
   ascii_banner
-  echo "${COLOR_HEADER}AgentOS installer (TUI mode)${COLOR_RESET}"
+  echo "${COLOR_HEADER}$APP_TUI_TITLE${COLOR_RESET}"
   echo "${COLOR_DIM}Theme: $THEME (resolved: $ACTIVE_THEME)${COLOR_RESET}"
   echo
 
@@ -907,7 +1082,7 @@ run_tui() {
     set_theme_colors
   fi
 
-  PROJECT_DIR="$(prompt_with_default "Target project directory" "/tmp/agentos-project")"
+  PROJECT_DIR="$(prompt_with_default "Target project directory" "/tmp/agentic-project")"
 
   local agentos_choices=()
   readlines agentos_choices < <(get_agentos_choices)
@@ -964,6 +1139,7 @@ run_tui() {
     done
   done
 
+  save_user_config
   run_install
 }
 
@@ -1012,8 +1188,41 @@ self_install() {
   echo
   echo "${COLOR_HEADER}=== Self-install report ===${COLOR_RESET}"
   echo "Source: $source_path"
-  echo "Target: $target"
+  echo "Target binary: $target"
+  echo "Config directory: $APP_CONFIG_DIR"
+  echo "Knowledge base repo: $APP_REPO_DIR"
   echo "Dry-run: $DRY_RUN"
+}
+
+upgrade_repo_checkout() {
+  refresh_repo_paths
+
+  if resolve_dev_repo_root >/dev/null 2>&1; then
+    ensure_git_available
+    log "Updating development checkout at $REPO_ROOT"
+    if [[ "$DRY_RUN" == true ]]; then
+      log "DRY-RUN git -C $REPO_ROOT pull --ff-only"
+      return
+    fi
+    git -C "$REPO_ROOT" pull --ff-only
+    return
+  fi
+
+  if ! resolve_data_repo_root >/dev/null 2>&1; then
+    log "Knowledge base checkout not found; bootstrapping initial clone first"
+    ensure_repo_checkout
+    return
+  fi
+
+  ensure_git_available
+  log "Updating installed knowledge base checkout at $APP_REPO_DIR"
+  if [[ "$DRY_RUN" == true ]]; then
+    log "DRY-RUN git -C $APP_REPO_DIR pull --ff-only"
+    return
+  fi
+  git -C "$APP_REPO_DIR" pull --ff-only
+  refresh_repo_paths
+  ensure_repo_layout
 }
 
 parse_theme_option() {
@@ -1028,6 +1237,7 @@ parse_theme_option() {
 
 handle_no_args() {
   if is_interactive_terminal; then
+    ensure_repo_available_for_command
     run_tui
     exit 0
   fi
@@ -1036,7 +1246,9 @@ handle_no_args() {
   exit 1
 }
 
+load_user_config
 set_theme_colors
+refresh_repo_paths
 
 if [[ $# -eq 0 ]]; then
   handle_no_args
@@ -1047,6 +1259,7 @@ shift
 
 case "$COMMAND" in
   list)
+    ensure_repo_available_for_command
     ensure_repo_layout
     SUBCOMMAND="${1:-}"
     case "$SUBCOMMAND" in
@@ -1109,6 +1322,8 @@ case "$COMMAND" in
           ;;
       esac
     done
+    ensure_repo_available_for_command
+    ensure_repo_layout
     set_theme_colors
     run_install
     ;;
@@ -1135,7 +1350,29 @@ case "$COMMAND" in
           ;;
       esac
     done
+    ensure_repo_available_for_command
     run_tui
+    ;;
+
+  upgrade)
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --dry-run)
+          DRY_RUN=true
+          shift
+          ;;
+        -h|--help)
+          usage
+          exit 0
+          ;;
+        *)
+          error "Unknown option: $1"
+          usage
+          exit 1
+          ;;
+      esac
+    done
+    upgrade_repo_checkout
     ;;
 
   self-install)
