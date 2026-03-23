@@ -43,6 +43,7 @@ SELECTED_SPECS=()
 SELF_INSTALL_FORCE=false
 SELF_INSTALL_BIN_DIR="${HOME}/.local/bin"
 SELF_INSTALL_NAME="$APP_NAME"
+SELF_INSTALL_WITH_FZF=false
 
 CREATED_PATHS=()
 COPIED_PATHS=()
@@ -66,7 +67,7 @@ Usage:
   $SCRIPT_NAME install --project-dir <dir> [--agent-os <comma_list>] --areas <comma_list> --specializations <comma_list> [--theme auto|dark|light]
   $SCRIPT_NAME tui [--theme auto|dark|light]
   $SCRIPT_NAME upgrade
-  $SCRIPT_NAME self-install [--bin-dir <dir>] [--force] [--dry-run]
+  $SCRIPT_NAME self-install [--bin-dir <dir>] [--force] [--install-fzf] [--dry-run]
 
 Behavior:
   - No arguments in interactive terminal: runs TUI mode
@@ -81,6 +82,7 @@ Options:
   --theme               Interface theme: auto|dark|light (default: config value or auto)
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)
   --force               Overwrite existing binary for self-install
+  --install-fzf         During self-install, try to auto-install fzf (optional)
   --dry-run             Show actions without writing files
   -h, --help            Show this help
 
@@ -943,6 +945,14 @@ auto_install_fzf_windows() {
   return 1
 }
 
+auto_install_fzf_macos() {
+  if command -v brew >/dev/null 2>&1; then
+    brew install fzf
+    return 0
+  fi
+  return 1
+}
+
 auto_install_fzf() {
   local platform
   platform="$(detect_platform)"
@@ -954,10 +964,38 @@ auto_install_fzf() {
     windows)
       auto_install_fzf_windows
       ;;
+    macos)
+      auto_install_fzf_macos
+      ;;
     *)
       return 1
       ;;
   esac
+}
+
+self_install_fzf_optional() {
+  if [[ "$SELF_INSTALL_WITH_FZF" != true ]]; then
+    return 0
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    log "DRY-RUN would try to auto-install fzf for platform: $(detect_platform)"
+    return 0
+  fi
+
+  if fzf_available; then
+    log "fzf already available"
+    return 0
+  fi
+
+  log "Trying to install fzf for platform: $(detect_platform)"
+  if auto_install_fzf && fzf_available; then
+    log "fzf installed successfully"
+    return 0
+  fi
+
+  warn "Could not auto-install fzf. TUI will use index-based fallback menus."
+  return 0
 }
 
 ensure_fzf_or_fallback() {
@@ -1175,6 +1213,8 @@ self_install() {
     log "Installed: $target"
   fi
 
+  self_install_fzf_optional
+
   case ":$PATH:" in
     *":$bin_dir:"*)
       log "PATH already includes $bin_dir"
@@ -1191,6 +1231,7 @@ self_install() {
   echo "Target binary: $target"
   echo "Config directory: $APP_CONFIG_DIR"
   echo "Knowledge base repo: $APP_REPO_DIR"
+  echo "Install fzf requested: $SELF_INSTALL_WITH_FZF"
   echo "Dry-run: $DRY_RUN"
 }
 
@@ -1384,6 +1425,10 @@ case "$COMMAND" in
           ;;
         --force)
           SELF_INSTALL_FORCE=true
+          shift
+          ;;
+        --install-fzf)
+          SELF_INSTALL_WITH_FZF=true
           shift
           ;;
         --theme)

@@ -2,6 +2,8 @@
 
 ![agent-guides · Coverage & Efficiency Report](images/coverage_scorecard.png)
 
+**agentic = Agent Intelligence Configuration.**
+
 A unified catalog of Agentic specializations and the `agentic` CLI. The repository provides orchestrator-ready rules,
 skills, workflows, and prompts that can be installed into a target project from either a local checkout or an installed
 binary in `~/.local/bin`.
@@ -58,241 +60,43 @@ Each specialization follows a consistent layout:
 
 ---
 
-## Installed CLI lifecycle
+## Architecture
 
-The new lifecycle is centered around the installed `agentic` binary.
-
-### XDG directories
-
-`agentic` uses XDG-compatible defaults:
-
-- Config home: `${XDG_CONFIG_HOME:-$HOME/.config}`
-- Data home: `${XDG_DATA_HOME:-$HOME/.local/share}`
-- Config directory: `~/.config/agentic`
-- Config file: `~/.config/agentic/config`
-- Knowledge base data directory: `~/.local/share/agentic`
-- Knowledge base checkout: `~/.local/share/agentic/repo`
-
-The config file currently stores the selected theme:
-
-```ini
-theme=auto
+```mermaid
+flowchart LR
+  U["User"] --> IDE["Agent IDE"]
+  IDE --> LLM["LLM"]
+  IDE --> AG["Agentic (`agentic` CLI)"]
+  AG --> KB["agent-guides knowledge base"]
+  AG --> PRJ["Target project"]
 ```
-
-Supported values are `auto`, `dark`, and `light`.
-
-### Repo resolution modes
-
-`agentic` supports two repository source modes:
-
-1. **Dev mode**: when you run `agentic` from a real `agent-guides` checkout and the script can find sibling
-   `areas/`, `extensions/`, and `AGENTS.md`, it uses the local repository directly.
-2. **Installed mode**: when the binary is installed to a standalone location such as `~/.local/bin/agentic`, it uses
-   `~/.local/share/agentic/repo` as its knowledge base checkout.
-
-### First-run bootstrap clone
-
-In installed mode, the first command that needs repository data automatically bootstraps the knowledge base checkout by
-running:
-
-```bash
-git clone https://github.com/sawrus/agent-guides.git ~/.local/share/agentic/repo
-```
-
-After cloning, `agentic` validates that the checkout contains:
-
-- `areas/`
-- `extensions/`
-- `AGENTS.md`
-
-Commands that auto-bootstrap when needed:
-
-- `agentic list ...`
-- `agentic install ...`
-- `agentic tui`
-- `agentic upgrade`
-
-### Upgrade flow
-
-To refresh the installed knowledge base checkout, run:
-
-```bash
-agentic upgrade
-```
-
-Behavior:
-
-- If `~/.local/share/agentic/repo` does not exist yet, `agentic upgrade` performs the initial clone.
-- If the checkout already exists, `agentic` runs:
-
-```bash
-git -C ~/.local/share/agentic/repo pull --ff-only
-```
-
-In dev mode, `upgrade` targets the active local checkout that `agentic` resolved next to the script.
 
 ---
 
-## Installation
+## Quick start
 
-### Run directly from a local checkout
+### 1) One-line install (recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/agentic -o /tmp/agentic && bash /tmp/agentic self-install --install-fzf
+```
+
+### 2) Run
 
 ```bash
 ./agentic
 ```
 
-Default behavior:
-
-- In an interactive terminal: starts TUI mode
-- In non-interactive mode (CI/pipe): prints usage and exits with code `1`
-
-### Self-install the standalone binary
+If you installed into `~/.local/bin`, you can also run:
 
 ```bash
-./agentic self-install
+agentic
 ```
 
-By default this installs the executable to:
+### Full instructions
 
-```text
-~/.local/bin/agentic
-```
-
-The self-install report also shows:
-
-- installed binary path
-- config directory
-- knowledge base repository directory
-
-Use `--force` to overwrite an existing binary:
-
-```bash
-./agentic self-install --force
-```
-
-Or install into a custom bin directory:
-
-```bash
-./agentic self-install --bin-dir /custom/bin
-```
-
-### Example HTTP install flow
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/agentic -o /tmp/agentic && bash /tmp/agentic self-install
-```
-
-Homebrew distribution is still planned separately.
-
-### Deprecated wrapper
-
-A backward-compatible `agentos-install.sh` wrapper remains in the repository for now, but it only forwards to
-`agentic`. New documentation and user-facing commands should use `agentic`.
-
----
-
-## CLI commands
-
-### TUI mode
-
-```bash
-agentic tui
-```
-
-Launches a guided terminal UI to select:
-
-- theme (`auto|dark|light`)
-- project directory
-- one or more agent OS targets
-- one or more areas and specializations
-
-Theme behavior:
-
-1. default theme is `auto`
-2. if `~/.config/agentic/config` exists, its `theme=` value is loaded
-3. `--theme` overrides the config for the current run
-4. when the TUI saves a user-selected theme, it is persisted back to the config file
-
-TUI uses `fzf` for hotkeys (Up/Down + Space + Enter). If `fzf` is missing, the script:
-
-1. asks permission to auto-install it (Linux: `apt/dnf/yum/pacman/zypper/apk`; Windows Git Bash: `winget/choco/scoop`)
-2. falls back to index-based menus if install is declined or fails
-
-### Install guidance into a project
-
-```bash
-agentic install \
-  --project-dir /path/to/your-project \
-  --agent-os opencode,codex \
-  --areas software \
-  --specializations software.general,software.backend
-```
-
-### List available options
-
-```bash
-agentic list agentos
-agentic list areas
-agentic list specs --area software
-```
-
-### Upgrade the local knowledge base checkout
-
-```bash
-agentic upgrade
-```
-
-### Common examples
-
-```bash
-agentic self-install
-agentic install --project-dir /tmp/demo --areas software --specializations software.backend
-agentic tui
-agentic upgrade
-```
-
----
-
-## Install TUI dependency (`fzf`)
-
-You can install `fzf` manually before running TUI.
-
-Linux:
-
-```bash
-# Ubuntu / Debian
-sudo apt-get update && sudo apt-get install -y fzf
-
-# Fedora / RHEL
-sudo dnf install -y fzf
-# or
-sudo yum install -y fzf
-
-# Arch
-sudo pacman -Sy --noconfirm fzf
-
-# openSUSE
-sudo zypper --non-interactive install fzf
-
-# Alpine
-sudo apk add --no-cache fzf
-```
-
-macOS:
-
-```bash
-brew install fzf
-```
-
-Windows (run from Git Bash):
-
-```bash
-winget install --id junegunn.fzf -e
-# or
-choco install fzf -y
-# or
-scoop install fzf
-```
+- [CLI usage guide](docs/agentic-usage.md)
+- [Installed CLI lifecycle](docs/agentic-lifecycle.md)
 
 ---
 

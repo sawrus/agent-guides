@@ -114,6 +114,31 @@ exit 1
 EOS
 chmod +x "$FAKE_GIT_BIN/git"
 
+FAKE_PKG_BIN="$TMP_ROOT/fake-pkg-bin"
+mkdir -p "$FAKE_PKG_BIN"
+cat > "$FAKE_PKG_BIN/brew" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+LOG_FILE="${AGENTIC_TEST_FZF_LOG:?missing AGENTIC_TEST_FZF_LOG}"
+printf 'brew %s\n' "$*" >> "$LOG_FILE"
+
+mode="${AGENTIC_TEST_BREW_MODE:-success}"
+if [[ "$mode" == "success" ]]; then
+  if [[ -n "${AGENTIC_TEST_FZF_BIN_DIR:-}" ]]; then
+    mkdir -p "$AGENTIC_TEST_FZF_BIN_DIR"
+    cat > "$AGENTIC_TEST_FZF_BIN_DIR/fzf" <<'EOX'
+#!/usr/bin/env bash
+exit 0
+EOX
+    chmod +x "$AGENTIC_TEST_FZF_BIN_DIR/fzf"
+  fi
+  exit 0
+fi
+
+exit 1
+EOS
+chmod +x "$FAKE_PKG_BIN/brew"
+
 echo "[e2e] Scenario 0: no args in non-interactive mode -> usage + exit 1"
 OUT0="$TMP_ROOT/no-args-noninteractive.log"
 set +e
@@ -158,6 +183,69 @@ HOME="$HOME_SELF" "$CLI" self-install --bin-dir "$BIN_DIR" >"$OUT2B" 2>&1
 assert_exists "$BIN_DIR/agentic"
 assert_executable "$BIN_DIR/agentic"
 assert_not_exists "$BIN_DIR/agentos-install"
+assert_file_contains "$OUT2B" "Install fzf requested: false"
+
+echo "[e2e] Scenario 2b: self-install does not install fzf without --install-fzf"
+HOME_SELF_NO_FZF_FLAG="$TMP_ROOT/home-self-no-fzf-flag"
+BIN_DIR_NO_FZF_FLAG="$HOME_SELF_NO_FZF_FLAG/.local/bin"
+NO_FZF_PATH_SELF="$TMP_ROOT/no-fzf-self-install"
+OUT2C="$TMP_ROOT/self-install-no-fzf-flag.log"
+FZF_LOG_NO_FLAG="$TMP_ROOT/fzf-no-flag.log"
+mkdir -p "$NO_FZF_PATH_SELF"
+
+HOME="$HOME_SELF_NO_FZF_FLAG" \
+  PATH="$FAKE_PKG_BIN:$NO_FZF_PATH_SELF:/usr/bin:/bin" \
+  AGENTIC_PLATFORM_OVERRIDE=macos \
+  AGENTIC_TEST_FZF_LOG="$FZF_LOG_NO_FLAG" \
+  AGENTIC_TEST_BREW_MODE=success \
+  AGENTIC_TEST_FZF_BIN_DIR="$NO_FZF_PATH_SELF" \
+  "$CLI" self-install --bin-dir "$BIN_DIR_NO_FZF_FLAG" >"$OUT2C" 2>&1
+
+assert_exists "$BIN_DIR_NO_FZF_FLAG/agentic"
+assert_not_exists "$NO_FZF_PATH_SELF/fzf"
+assert_not_exists "$FZF_LOG_NO_FLAG"
+assert_file_contains "$OUT2C" "Install fzf requested: false"
+
+echo "[e2e] Scenario 2c: self-install --install-fzf installs fzf when requested"
+HOME_SELF_WITH_FZF="$TMP_ROOT/home-self-with-fzf"
+BIN_DIR_WITH_FZF="$HOME_SELF_WITH_FZF/.local/bin"
+FZF_PATH_SELF="$TMP_ROOT/fzf-self-install"
+OUT2D="$TMP_ROOT/self-install-with-fzf.log"
+FZF_LOG_WITH_FLAG="$TMP_ROOT/fzf-with-flag.log"
+mkdir -p "$FZF_PATH_SELF"
+
+HOME="$HOME_SELF_WITH_FZF" \
+  PATH="$FAKE_PKG_BIN:$FZF_PATH_SELF:/usr/bin:/bin" \
+  AGENTIC_PLATFORM_OVERRIDE=macos \
+  AGENTIC_TEST_FZF_LOG="$FZF_LOG_WITH_FLAG" \
+  AGENTIC_TEST_BREW_MODE=success \
+  AGENTIC_TEST_FZF_BIN_DIR="$FZF_PATH_SELF" \
+  "$CLI" self-install --bin-dir "$BIN_DIR_WITH_FZF" --install-fzf >"$OUT2D" 2>&1
+
+assert_exists "$BIN_DIR_WITH_FZF/agentic"
+assert_exists "$FZF_PATH_SELF/fzf"
+assert_file_contains "$FZF_LOG_WITH_FLAG" "brew install fzf"
+assert_file_contains "$OUT2D" "Install fzf requested: true"
+
+echo "[e2e] Scenario 2d: self-install --install-fzf falls back on install failure"
+HOME_SELF_WITH_FZF_FAIL="$TMP_ROOT/home-self-with-fzf-fail"
+BIN_DIR_WITH_FZF_FAIL="$HOME_SELF_WITH_FZF_FAIL/.local/bin"
+FZF_PATH_SELF_FAIL="$TMP_ROOT/fzf-self-install-fail"
+OUT2E="$TMP_ROOT/self-install-with-fzf-fail.log"
+FZF_LOG_WITH_FLAG_FAIL="$TMP_ROOT/fzf-with-flag-fail.log"
+mkdir -p "$FZF_PATH_SELF_FAIL"
+
+HOME="$HOME_SELF_WITH_FZF_FAIL" \
+  PATH="$FAKE_PKG_BIN:$FZF_PATH_SELF_FAIL:/usr/bin:/bin" \
+  AGENTIC_PLATFORM_OVERRIDE=macos \
+  AGENTIC_TEST_FZF_LOG="$FZF_LOG_WITH_FLAG_FAIL" \
+  AGENTIC_TEST_BREW_MODE=fail \
+  AGENTIC_TEST_FZF_BIN_DIR="$FZF_PATH_SELF_FAIL" \
+  "$CLI" self-install --bin-dir "$BIN_DIR_WITH_FZF_FAIL" --install-fzf >"$OUT2E" 2>&1
+
+assert_exists "$BIN_DIR_WITH_FZF_FAIL/agentic"
+assert_file_contains "$FZF_LOG_WITH_FLAG_FAIL" "brew install fzf"
+assert_file_contains "$OUT2E" "Could not auto-install fzf. TUI will use index-based fallback menus."
 
 echo "[e2e] Scenario 3: installed mode bootstrap clone on first command"
 HOME_INSTALLED="$TMP_ROOT/home-installed"
