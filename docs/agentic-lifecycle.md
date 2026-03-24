@@ -1,8 +1,8 @@
 # Installed CLI lifecycle
 
-This document describes how installed `agentic` binaries resolve and maintain their knowledge base checkout.
+This guide describes how an installed `agentic` binary resolves and updates its knowledge base checkout.
 
-## XDG directories
+## Paths
 
 `agentic` uses XDG-compatible defaults:
 
@@ -21,22 +21,22 @@ theme=auto
 
 Supported values are `auto`, `dark`, and `light`.
 
-## Repository resolution modes
+## Repository modes
 
 `agentic` supports two repository source modes:
 
 1. Dev mode: when `agentic` runs from a real `agent-guides` checkout and can find sibling `areas/`, `extensions/`, and `AGENTS.md`, it uses the local repository directly.
 2. Installed mode: when the binary is installed to a standalone path such as `~/.local/bin/agentic`, it uses `~/.local/share/agentic/repo` as knowledge base checkout.
 
-## First-run bootstrap clone
+## Bootstrap
 
-In installed mode, commands that need repository data auto-bootstrap checkout with:
+In installed mode, commands that need repository data clone the checkout on first use:
 
 ```bash
 git clone https://github.com/sawrus/agent-guides.git ~/.local/share/agentic/repo
 ```
 
-After cloning, `agentic` validates that checkout contains:
+After cloning, `agentic` validates that the checkout contains:
 
 - `areas/`
 - `extensions/`
@@ -51,7 +51,7 @@ Commands that auto-bootstrap when needed:
 
 ## Upgrade flow
 
-To refresh the installed knowledge base checkout:
+Refresh the knowledge base checkout with:
 
 ```bash
 agentic upgrade
@@ -66,4 +66,4 @@ Behavior:
 git -C ~/.local/share/agentic/repo pull --ff-only
 ```
 
-In dev mode, `upgrade` targets the active local checkout resolved next to the script.
+In dev mode, `upgrade` targets the active local checkout instead of `~/.local/share/agentic/repo`.
