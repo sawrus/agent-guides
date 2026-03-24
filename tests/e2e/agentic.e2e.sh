@@ -29,19 +29,19 @@ assert_executable() {
 assert_file_contains() {
   local path="$1"
   local needle="$2"
-  grep -Fq "$needle" "$path" || fail "Expected '$needle' in $path"
+  grep -Fq -- "$needle" "$path" || fail "Expected '$needle' in $path"
 }
 
 assert_output_contains() {
   local output="$1"
   local needle="$2"
-  grep -Fq "$needle" <<< "$output" || fail "Expected '$needle' in output"
+  grep -Fq -- "$needle" <<< "$output" || fail "Expected '$needle' in output"
 }
 
 assert_output_not_contains() {
   local output="$1"
   local needle="$2"
-  if grep -Fq "$needle" <<< "$output"; then
+  if grep -Fq -- "$needle" <<< "$output"; then
     fail "Did not expect '$needle' in output"
   fi
 }
@@ -149,14 +149,15 @@ set -e
 assert_file_contains "$OUT0" "Agentic Installer"
 assert_file_contains "$OUT0" "Usage:"
 
-echo "[e2e] Scenario 1: dev mode install from repository checkout"
+echo "[e2e] Scenario 1: dev mode install from repository checkout persists --theme=<value> to config"
 P1="$TMP_ROOT/project-dev-install"
-"$CLI" install \
+HOME_DEV_INSTALL="$TMP_ROOT/home-dev-install"
+HOME="$HOME_DEV_INSTALL" "$CLI" install \
   --project-dir "$P1" \
   --agent-os opencode \
   --areas software \
   --specializations software.backend \
-  --theme light
+  --theme=light
 
 assert_exists "$P1/.opencode"
 assert_exists "$P1/.agent/rules"
@@ -166,6 +167,8 @@ assert_exists "$P1/.agent/prompts"
 assert_exists "$P1/AGENTS.md"
 assert_file_contains "$P1/AGENTS.md" "software/backend"
 assert_file_contains "$P1/AGENTS.md" "Dynamic loading of guidance"
+assert_exists "$HOME_DEV_INSTALL/.config/agentic/config"
+assert_file_contains "$HOME_DEV_INSTALL/.config/agentic/config" "theme=light"
 
 echo "[e2e] Scenario 2: self-install creates agentic binary"
 HOME_SELF="$TMP_ROOT/home-self"
@@ -288,5 +291,100 @@ printf '%s\n' "n" "$P5B" "1" "1" "1" | \
 assert_exists "$P5B/.agent/rules"
 assert_file_contains "$OUT5B" "Theme: light"
 assert_output_not_contains "$(cat "$OUT5B")" "Select interface theme:"
+
+echo "[e2e] Scenario 6: TUI with available fzf uses dark fzf palette in --theme=dark mode"
+HOME_TUI_FZF="$TMP_ROOT/home-tui-fzf"
+OUT6="$TMP_ROOT/tui-fzf-dark.log"
+P6="$TMP_ROOT/project-tui-fzf-dark"
+FAKE_FZF_BIN="$TMP_ROOT/fake-fzf-bin"
+FZF_CALLS_LOG="$TMP_ROOT/fzf-calls.log"
+mkdir -p "$FAKE_FZF_BIN"
+
+cat > "$FAKE_FZF_BIN/fzf" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+LOG_FILE="${AGENTIC_TEST_FZF_CALLS_LOG:?missing AGENTIC_TEST_FZF_CALLS_LOG}"
+printf 'fzf %s\n' "$*" >> "$LOG_FILE"
+
+# Drain stdin fully so the producer side of the pipe does not fail with SIGPIPE.
+cat >/dev/null || true
+
+case "$*" in
+  *"Target project directory [/tmp/agentic-project]: "*)
+    printf '%s\n' "${AGENTIC_TEST_FZF_DIR_QUERY_RESULT:-}" "/tmp/agentic-project"
+    ;;
+  *"Select Agent OS target(s): "*)
+    printf '%s\n' "default"
+    ;;
+  *"Select area(s): "*)
+    printf '%s\n' "software"
+    ;;
+  *"Select specialization(s) for 'software': "*)
+    printf '%s\n' "backend"
+    ;;
+  *)
+    printf '%s\n' "default"
+    ;;
+esac
+EOS
+chmod +x "$FAKE_FZF_BIN/fzf"
+
+env HOME="$HOME_TUI_FZF" AGENTIC_FORCE_INTERACTIVE=1 PATH="$FAKE_FZF_BIN:$FAKE_GIT_BIN:/usr/bin:/bin" \
+  AGENTIC_TEST_GIT_LOG="$GIT_LOG" AGENTIC_TEST_FZF_CALLS_LOG="$FZF_CALLS_LOG" \
+  AGENTIC_TEST_FZF_DIR_QUERY_RESULT="$P6" \
+  "$INSTALLED_BIN" tui --theme=dark >"$OUT6" 2>&1
+
+assert_exists "$P6/.agent/rules"
+assert_file_contains "$FZF_CALLS_LOG" "Target project directory [/tmp/agentic-project]:"
+assert_file_contains "$FZF_CALLS_LOG" "Select Agent OS target(s):"
+assert_file_contains "$FZF_CALLS_LOG" "Select area(s):"
+assert_file_contains "$FZF_CALLS_LOG" "Select specialization(s) for 'software':"
+assert_file_contains "$FZF_CALLS_LOG" "--color=fg:#e5e7eb,bg:#111827,hl:#60a5fa"
+assert_file_contains "$FZF_CALLS_LOG" "--color=fg+:#ffffff,bg+:#1f2937,hl+:#93c5fd"
+assert_file_contains "$FZF_CALLS_LOG" "--color=query:#e5e7eb,prompt:#22c55e,pointer:#f97316,marker:#a3e635,spinner:#06b6d4,header:#d1d5db"
+
+REAL_FZF_BIN="$(command -v fzf || true)"
+if [[ -n "$REAL_FZF_BIN" ]] && [[ -t 0 ]] && [[ -t 1 ]]; then
+  echo "[e2e] Scenario 7: real fzf blackbox accepts typed directory query"
+  HOME_TUI_REAL_FZF="$TMP_ROOT/home-tui-real-fzf"
+  OUT7="$TMP_ROOT/tui-real-fzf.log"
+  P7="$TMP_ROOT/project-tui-real-fzf"
+  REAL_FZF_PROXY_BIN="$TMP_ROOT/real-fzf-proxy-bin"
+  mkdir -p "$REAL_FZF_PROXY_BIN"
+
+  cat > "$REAL_FZF_PROXY_BIN/fzf" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+REAL_FZF="${AGENTIC_TEST_REAL_FZF_BIN:?missing AGENTIC_TEST_REAL_FZF_BIN}"
+
+case "$*" in
+  *"Target project directory [/tmp/agentic-project]: "*)
+    exec "$REAL_FZF" "$@" --filter "${AGENTIC_TEST_FZF_DIR_QUERY_RESULT:-}"
+    ;;
+  *"Select Agent OS target(s): "*)
+    exec "$REAL_FZF" "$@" --filter "default"
+    ;;
+  *"Select area(s): "*)
+    exec "$REAL_FZF" "$@" --filter "software"
+    ;;
+  *"Select specialization(s) for 'software': "*)
+    exec "$REAL_FZF" "$@" --filter "backend"
+    ;;
+  *)
+    exec "$REAL_FZF" "$@"
+    ;;
+esac
+EOS
+  chmod +x "$REAL_FZF_PROXY_BIN/fzf"
+
+  env HOME="$HOME_TUI_REAL_FZF" AGENTIC_FORCE_INTERACTIVE=1 PATH="$REAL_FZF_PROXY_BIN:$FAKE_GIT_BIN:/usr/bin:/bin" \
+    AGENTIC_TEST_GIT_LOG="$GIT_LOG" AGENTIC_TEST_REAL_FZF_BIN="$REAL_FZF_BIN" \
+    AGENTIC_TEST_FZF_DIR_QUERY_RESULT="$P7" \
+    "$INSTALLED_BIN" tui --theme=dark >"$OUT7" 2>&1
+
+  assert_exists "$P7/.agent/rules"
+else
+  echo "[e2e] Scenario 7 skipped: requires real fzf and an interactive TTY"
+fi
 
 echo "[e2e] All scenarios passed"
