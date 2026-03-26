@@ -1,3 +1,7 @@
+---
+workflow: performance-audit
+---
+
 # Prompt: `/performance-audit`
 
 Use when: investigating latency regressions or establishing performance baselines.

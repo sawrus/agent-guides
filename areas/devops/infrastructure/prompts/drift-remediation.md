@@ -1,4 +1,8 @@
-# Prompt: `/drift-check`
+---
+workflow: drift-remediation
+---
+
+# Prompt: `/drift-remediation`
 
 Use when: detecting and remediating infrastructure drift between Terraform state and actual cloud resources.
 
@@ -8,7 +12,7 @@ Use when: detecting and remediating infrastructure drift between Terraform state
 
 **EN:**
 ```
-/drift-check
+/drift-remediation
 
 Environment: production
 Scope: all Terraform components (vpc, k8s-nodes, rds, iam-roles)
@@ -22,7 +26,7 @@ Output:
 
 **RU:**
 ```
-/drift-check
+/drift-remediation
 
 Окружение: production
 Скоуп: все Terraform компоненты (vpc, k8s-nodes, rds, iam-roles)
@@ -40,7 +44,7 @@ Output:
 
 **EN:**
 ```
-/drift-check
+/drift-remediation
 
 Context: INC-2024-099 — RDS manually scaled during P1 (db.r6g.large → db.r6g.xlarge)
 Environment: production / Component: rds-postgres only
@@ -54,7 +58,7 @@ Task:
 
 **RU:**
 ```
-/drift-check
+/drift-remediation
 
 Контекст: INC-2024-099 — RDS вручную масштабирован во время P1 (db.r6g.large → db.r6g.xlarge)
 Окружение: production / Компонент: только rds-postgres

@@ -1,3 +1,7 @@
+---
+workflow: cost-audit
+---
+
 # Prompt: `/cost-audit`
 
 Use when: auditing cloud spend, finding waste, and producing an optimisation plan with ROI estimates.

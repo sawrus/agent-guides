@@ -1,6 +1,10 @@
+---
+workflow: alert-investigation
+---
+
 # Prompt: `/alert-investigation`
 
-Use when: investigating a firing alert to determine root cause and remediation.
+Use when: investigating a firing alert, burn-rate anomaly, or correlated trace/log signal to determine root cause and mitigation.
 
 ---
 
@@ -76,4 +80,38 @@ Analysis needed:
   2. Сопоставить время пиков памяти с расписанием batch job
   3. Предложить новый порог или стратегию алертинга (например, rate-of-change вместо абсолютного значения)
   4. Обновить PrometheusRule + runbook
+```
+
+---
+
+## Example 3 — Trace slow checkout (multi-service waterfall)
+
+**EN:**
+```
+/alert-investigation
+
+Symptom: checkout p99 latency = 3.2s; SLO threshold = 500ms
+Trace available: trace_id=abc123def456 (found in Loki error log, captured during slow request)
+Services in trace: api-gateway → checkout-service → payment-service → order-service → postgres
+Goal:
+  1. Open trace in Tempo; identify which span is slow
+  2. Check for: sequential calls that could be parallelised, N+1 DB queries, missing DB indexes
+  3. If DB span is slow: correlate with postgres slow query log (Loki query by trace_id)
+  4. Output: root cause span + recommended fix (code change or index)
+Tempo URL: https://tempo.monitoring.internal
+```
+
+**RU:**
+```
+/alert-investigation
+
+Симптом: checkout p99 latency = 3.2s; порог SLO = 500ms
+Трейс доступен: trace_id=abc123def456 (найден в Loki error log, захвачен во время медленного запроса)
+Сервисы в трейсе: api-gateway → checkout-service → payment-service → order-service → postgres
+Цель:
+  1. Открыть трейс в Tempo; определить какой span медленный
+  2. Проверить: последовательные вызовы которые можно распараллелить, N+1 DB запросы, отсутствующие индексы
+  3. Если медленный DB span: сопоставить с postgres slow query log (запрос Loki по trace_id)
+  4. Результат: корневой медленный span + рекомендуемое исправление (изменение кода или индекс)
+Tempo URL: https://tempo.monitoring.internal
 ```

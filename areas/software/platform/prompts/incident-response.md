@@ -1,3 +1,7 @@
+---
+workflow: incident-response
+---
+
 # Prompt: `/incident-response`
 
 Use when: a production incident is active — to coordinate triage, mitigation, communication, and postmortem.

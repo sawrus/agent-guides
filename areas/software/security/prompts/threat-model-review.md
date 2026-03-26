@@ -1,3 +1,7 @@
+---
+workflow: threat-model-review
+---
+
 # Prompt: `/threat-model-review`
 
 Use when: reviewing an existing or new system design for security threats using STRIDE methodology before implementation or as part of an architecture review.

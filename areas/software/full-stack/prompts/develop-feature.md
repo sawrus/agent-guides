@@ -1,3 +1,7 @@
+---
+workflow: develop-feature
+---
+
 # Prompt: `/develop-feature`
 
 Use when: implementing a feature end-to-end in an existing full-stack Python/FastAPI + Next.js project — DB model through API to UI.

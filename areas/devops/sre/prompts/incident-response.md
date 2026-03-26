@@ -1,6 +1,10 @@
+---
+workflow: incident-response
+---
+
 # Prompt: `/incident-response`
 
-Use when: actively responding to a P0/P1 production incident.
+Use when: actively responding to a production incident or resilience event that demands mitigation, communication, and a clear escalation path.
 
 ---
 
@@ -84,4 +88,42 @@ Severity: P1
   2. Определить: исчерпание DB connections vs медленный запрос vs внешняя зависимость
   3. Варианты быстрой митигации без деплоя
   4. Коммуникация: уведомить в Slack (не status page пока — только деградация)
+```
+
+---
+
+## Example 3 — Network partition: database failover test
+
+**EN:**
+```
+/incident-response
+
+System under test: payment-service → postgres-primary (CloudNativePG cluster)
+Hypothesis: "payment-service automatically reconnects within 30s after postgres primary failover, with < 500ms added latency per request during reconnect"
+Experiment:
+  - Inject NetworkChaos: block traffic from payment-service pods to postgres-primary for 90s
+  - CloudNativePG should auto-promote replica to primary during network partition
+  - Monitor: payment-service error rate, connection pool exhaustion (pgbouncer stats), reconnect time
+  - Verify: after partition heals, service recovers automatically (no manual intervention)
+Pre-conditions:
+  - Confirm postgres replica is healthy before starting
+  - Confirm pgbouncer reconnect_timeout is set appropriately
+  - Run at 10% of normal traffic (k6 load generator)
+```
+
+**RU:**
+```
+/incident-response
+
+Система под тестом: payment-service → postgres-primary (CloudNativePG кластер)
+Гипотеза: "payment-service автоматически переподключается в течение 30с после failover postgres primary, с задержкой < 500ms на запрос во время переподключения"
+Эксперимент:
+  - Инжектировать NetworkChaos: блокировать трафик от подов payment-service к postgres-primary на 90с
+  - CloudNativePG должен автоматически назначить реплику primary во время сетевого раздела
+  - Мониторинг: error rate payment-service, исчерпание connection pool (статистика pgbouncer), время переподключения
+  - Проверить: после восстановления раздела сервис восстанавливается автоматически (без ручного вмешательства)
+Предусловия:
+  - Убедиться что postgres реплика здорова перед началом
+  - Убедиться что pgbouncer reconnect_timeout настроен правильно
+  - Запустить при 10% от нормального трафика (k6 генератор нагрузки)
 ```

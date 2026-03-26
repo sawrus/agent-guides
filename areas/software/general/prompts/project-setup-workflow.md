@@ -1,4 +1,8 @@
-# Prompt: `/project-setup`
+---
+workflow: project-setup-workflow
+---
+
+# Prompt: `/project-setup-workflow`
 
 Use when: bootstrapping a new project from scratch with proper tooling, CI, and conventions.
 
@@ -8,7 +12,7 @@ Use when: bootstrapping a new project from scratch with proper tooling, CI, and 
 
 **EN:**
 ```
-/project-setup "Notifications Service"
+/project-setup-workflow "Notifications Service"
 
 Language/framework: Python 3.12 + FastAPI
 Database: PostgreSQL (via SQLAlchemy async)
@@ -21,7 +25,7 @@ First milestone: REST API for creating and delivering email/push notifications
 
 **RU:**
 ```
-/project-setup "Сервис уведомлений"
+/project-setup-workflow "Сервис уведомлений"
 
 Язык/фреймворк: Python 3.12 + FastAPI
 База данных: PostgreSQL (через SQLAlchemy async)
@@ -38,7 +42,7 @@ CI: GitHub Actions
 
 **EN:**
 ```
-/project-setup "E-commerce Monorepo"
+/project-setup-workflow "E-commerce Monorepo"
 
 Language: TypeScript (strict mode)
 Structure: Turborepo monorepo — apps/web (Next.js), apps/api (Fastify), packages/shared-types
@@ -51,7 +55,7 @@ Branch strategy: feature branches → main, no develop branch
 
 **RU:**
 ```
-/project-setup "E-commerce Monorepo"
+/project-setup-workflow "E-commerce Monorepo"
 
 Язык: TypeScript (strict mode)
 Структура: Turborepo monorepo — apps/web (Next.js), apps/api (Fastify), packages/shared-types
@@ -68,7 +72,7 @@ CI: GitHub Actions с параллельными jobs для каждого work
 
 **EN:**
 ```
-/project-setup "Internal Admin Tool"
+/project-setup-workflow "Internal Admin Tool"
 
 Stack: Python + Flask (simple, no async needed)
 No Docker required — runs locally with sqlite for now
@@ -79,7 +83,7 @@ Just needs: Makefile, README, .gitignore, basic CI
 
 **RU:**
 ```
-/project-setup "Внутренний административный инструмент"
+/project-setup-workflow "Внутренний административный инструмент"
 
 Стек: Python + Flask (простой, async не нужен)
 Docker не требуется — локально с sqlite на данный момент

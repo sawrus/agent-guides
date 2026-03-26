@@ -1,3 +1,7 @@
+---
+workflow: flakiness-investigation
+---
+
 # Prompt: `/flakiness-investigation`
 
 Use when: a test fails intermittently in CI without a deterministic cause.

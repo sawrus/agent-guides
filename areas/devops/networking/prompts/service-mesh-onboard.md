@@ -1,4 +1,8 @@
-# Prompt: `/service-mesh`
+---
+workflow: service-mesh-onboard
+---
+
+# Prompt: `/service-mesh-onboard`
 
 Use when: onboarding a service to Istio/Linkerd, configuring mTLS, traffic policies, or debugging mesh issues.
 
@@ -8,7 +12,7 @@ Use when: onboarding a service to Istio/Linkerd, configuring mTLS, traffic polic
 
 **EN:**
 ```
-/service-mesh
+/service-mesh-onboard
 
 Mesh: Istio (installed cluster-wide, sidecar injection enabled per namespace)
 Service: payment-service / Namespace: production
@@ -24,7 +28,7 @@ Requirements:
 
 **RU:**
 ```
-/service-mesh
+/service-mesh-onboard
 
 Меш: Istio (установлен на весь кластер, инжекция sidecar включена по namespace)
 Сервис: payment-service / Namespace: production
@@ -44,7 +48,7 @@ Requirements:
 
 **EN:**
 ```
-/service-mesh
+/service-mesh-onboard
 
 Mesh: Istio / Symptom: order-service → payment-service returning "connection refused" or TLS handshake errors
 Error in envoy log: "upstream connect error or disconnect/reset before headers. retried and the latest reset reason: connection failure, transport failure reason: TLS error"
@@ -59,7 +63,7 @@ Output: root cause + YAML fix
 
 **RU:**
 ```
-/service-mesh
+/service-mesh-onboard
 
 Меш: Istio / Симптом: order-service → payment-service возвращает "connection refused" или ошибки TLS handshake
 Ошибка в envoy log: "upstream connect error or disconnect/reset before headers..."

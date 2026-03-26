@@ -1,7 +1,7 @@
 ---
 name: development-cycle-workflow
 type: workflow
-trigger: /dev
+trigger: /development-cycle-workflow
 description: Implement any development task from ticket to merged code.
 inputs:
   - task_or_issue_description

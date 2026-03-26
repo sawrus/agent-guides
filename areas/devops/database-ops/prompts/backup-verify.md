@@ -1,3 +1,7 @@
+---
+workflow: backup-verify
+---
+
 # Prompt: `/backup-verify`
 
 Use when: verifying database backup integrity or practicing a PITR restore.

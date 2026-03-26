@@ -1,3 +1,7 @@
+---
+workflow: release-build
+---
+
 # Prompt: `/release-build`
 
 Use when: creating a production-ready build for app store submission or internal distribution.

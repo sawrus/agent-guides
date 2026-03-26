@@ -1,3 +1,7 @@
+---
+workflow: compliance-report
+---
+
 # Prompt: `/compliance-report`
 
 Use when: generating a compliance evidence report for a specific framework (SOC 2, PCI-DSS, GDPR, ISO 27001) — mapping controls to evidence and identifying gaps.

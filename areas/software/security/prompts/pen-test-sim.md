@@ -1,3 +1,7 @@
+---
+workflow: pen-test-sim
+---
+
 # Prompt: `/pen-test-sim`
 
 Use when: simulating a penetration test on a staging environment to find exploitable vulnerabilities before they reach production.

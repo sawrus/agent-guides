@@ -1,3 +1,7 @@
+---
+workflow: schema-migration
+---
+
 # Prompt: `/schema-migration`
 
 Use when: applying a breaking or non-breaking schema change to a data warehouse or dbt source — using expand/contract to avoid downstream breakage.

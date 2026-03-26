@@ -1,7 +1,7 @@
 ---
 name: feature-implementation-flow
 type: workflow
-trigger: /feature-impl
+trigger: /feature-implementation-flow
 description: Implement a single feature into an existing full-stack service with strict layered architecture.
 inputs:
   - feature_request

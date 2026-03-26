@@ -1,7 +1,7 @@
 ---
 name: backend-project-full-cycle
 type: workflow
-trigger: /new-project
+trigger: /backend-project-full-cycle
 description: Full backend project lifecycle — planning → implementation → blackbox validation — for a greenfield service.
 inputs:
   - project_name

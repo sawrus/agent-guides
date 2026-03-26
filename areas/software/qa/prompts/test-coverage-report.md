@@ -1,3 +1,7 @@
+---
+workflow: test-coverage-report
+---
+
 # Prompt: `/test-coverage-report`
 
 Use when: auditing test coverage gaps and planning targeted test investment.

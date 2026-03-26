@@ -1,7 +1,7 @@
 ---
 name: module-development
 type: workflow
-trigger: /module-develop
+trigger: /module-development
 description: Develop, test, and publish a new reusable Terraform module — design, implementation, examples, tests, and versioned release.
 inputs:
   - module_name

@@ -1,3 +1,7 @@
+---
+workflow: onboard-repo
+---
+
 # Prompt: `/onboard-repo`
 
 Use when: setting up CI/CD pipeline for a new repository from scratch.

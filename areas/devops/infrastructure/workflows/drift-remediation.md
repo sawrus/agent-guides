@@ -1,7 +1,7 @@
 ---
 name: drift-remediation
 type: workflow
-trigger: /drift-check
+trigger: /drift-remediation
 description: Detect, classify, and remediate infrastructure drift between Terraform state and actual cloud state.
 inputs:
   - environment

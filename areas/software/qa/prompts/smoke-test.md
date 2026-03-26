@@ -1,3 +1,7 @@
+---
+workflow: smoke-test
+---
+
 # Prompt: `/smoke-test`
 
 Use when: validating a deployment is healthy immediately after it lands in an environment.

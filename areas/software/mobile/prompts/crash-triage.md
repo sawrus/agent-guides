@@ -1,3 +1,7 @@
+---
+workflow: crash-triage
+---
+
 # Prompt: `/crash-triage`
 
 Use when: a production crash is reported via Crashlytics, Sentry, or user report.

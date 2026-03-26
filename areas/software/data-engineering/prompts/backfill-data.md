@@ -1,3 +1,7 @@
+---
+workflow: backfill-data
+---
+
 # Prompt: `/backfill-data`
 
 Use when: reprocessing historical data after a pipeline fix, schema change, or new metric definition — safely and in batches.

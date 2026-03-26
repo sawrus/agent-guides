@@ -1,3 +1,7 @@
+---
+workflow: lineage-trace
+---
+
 # Prompt: `/lineage-trace`
 
 Use when: tracing the full upstream and downstream lineage of a dataset, column, or metric — to assess the blast radius of a change, investigate a data quality issue, or document data provenance.

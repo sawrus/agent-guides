@@ -1,3 +1,7 @@
+---
+workflow: debug-issue
+---
+
 # Prompt: `/debug-issue`
 
 Use when: diagnosing a bug in a FastAPI / SQLAlchemy service — from stack trace or symptom through to root cause, fix, and regression test.
