@@ -1,7 +1,7 @@
 ---
 name: destroy-environment
 type: workflow
-trigger: /destroy-env
+trigger: /destroy-environment
 description: Safely destroy a Terraform-managed environment — pre-checks, approval gate, ordered teardown, and state cleanup.
 inputs:
   - environment_name

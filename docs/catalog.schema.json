@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-guides.local/schemas/catalog.schema.json",
+  "title": "Agent Guides Docs Catalog",
+  "type": "object",
+  "required": [
+    "version",
+    "generated_from",
+    "areas",
+    "stats"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "generated_from": {
+      "type": "string"
+    },
+    "areas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "area",
+          "workflows"
+        ],
+        "properties": {
+          "area": {
+            "type": "string"
+          },
+          "workflows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "trigger",
+                "name",
+                "description",
+                "workflow_path",
+                "inputs",
+                "outputs",
+                "roles",
+                "related_rules",
+                "uses_skills",
+                "quality_gates",
+                "examples",
+                "skill_refs"
+              ],
+              "properties": {
+                "trigger": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "workflow_path": {
+                  "type": "string"
+                },
+                "prompt_path": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "use_when": {
+                  "type": "string"
+                },
+                "inputs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "outputs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "roles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "related_rules": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "uses_skills": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "quality_gates": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "examples": {
+                  "type": "object",
+                  "required": [
+                    "both"
+                  ],
+                  "properties": {
+                    "both": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "number",
+                          "title",
+                          "en",
+                          "ru"
+                        ],
+                        "properties": {
+                          "number": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "en": {
+                            "type": "string"
+                          },
+                          "ru": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "prompt_command_refs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "skill_refs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "path"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "required": [
+        "workflows",
+        "prompts",
+        "problems",
+        "matched_prompts"
+      ],
+      "properties": {
+        "workflows": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prompts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "problems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched_prompts": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

@@ -1,3 +1,7 @@
+---
+workflow: add-migration
+---
+
 # Prompt: `/add-migration`
 
 Use when: adding or modifying database schema — columns, tables, indexes, constraints.

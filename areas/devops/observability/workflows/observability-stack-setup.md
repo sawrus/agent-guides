@@ -1,7 +1,7 @@
 ---
 name: observability-stack-setup
 type: workflow
-trigger: /obs-stack-setup
+trigger: /observability-stack-setup
 description: Deploy the full observability stack (Prometheus + Loki + Tempo + Grafana) to a Kubernetes cluster from scratch.
 inputs:
   - cluster_name

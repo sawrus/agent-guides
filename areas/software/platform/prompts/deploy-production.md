@@ -1,3 +1,7 @@
+---
+workflow: deploy-production
+---
+
 # Prompt: `/deploy-production`
 
 Use when: executing a production deployment with canary rollout, progressive traffic shifting, and automated rollback gates.

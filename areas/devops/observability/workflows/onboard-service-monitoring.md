@@ -1,7 +1,7 @@
 ---
 name: onboard-service-monitoring
 type: workflow
-trigger: /onboard-monitoring
+trigger: /onboard-service-monitoring
 description: Add full observability (metrics, logs, traces, alerts, dashboard) to an existing service.
 inputs:
   - service_name

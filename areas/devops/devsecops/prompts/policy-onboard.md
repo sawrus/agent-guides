@@ -1,3 +1,7 @@
+---
+workflow: policy-onboard
+---
+
 # Prompt: `/policy-onboard`
 
 Use when: adding OPA/Kyverno admission policies to a cluster or namespace.

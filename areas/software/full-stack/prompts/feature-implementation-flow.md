@@ -1,4 +1,8 @@
-# Prompt: `/backend-feature-impl`
+---
+workflow: feature-implementation-flow
+---
+
+# Prompt: `/feature-implementation-flow`
 
 Use when: implementing a single feature in an existing FastAPI/SQLAlchemy service — following the layered architecture (model → repo → service → endpoint).
 
@@ -8,7 +12,7 @@ Use when: implementing a single feature in an existing FastAPI/SQLAlchemy servic
 
 **EN:**
 ```
-/backend-feature-impl
+/feature-implementation-flow
 
 Feature: "Refund order"
 Existing codebase: src/ (FastAPI + SQLAlchemy async, layered architecture)
@@ -30,7 +34,7 @@ Tests required: service unit tests (all business rules) + API integration tests 
 
 **RU:**
 ```
-/backend-feature-impl
+/feature-implementation-flow
 
 Фича: "Возврат заказа"
 Существующий код: src/ (FastAPI + SQLAlchemy async, layered architecture)
@@ -56,7 +60,7 @@ Tests required: service unit tests (all business rules) + API integration tests 
 
 **EN:**
 ```
-/backend-feature-impl
+/feature-implementation-flow
 
 Feature: "Product reviews"
 Existing codebase: src/ (order-service extended with product catalog)
@@ -76,7 +80,7 @@ Performance: GET list uses cursor pagination; N+1 safeguard (eager-load author u
 
 **RU:**
 ```
-/backend-feature-impl
+/feature-implementation-flow
 
 Фича: "Отзывы на продукты"
 Существующий код: src/ (order-service расширенный каталогом продуктов)
@@ -100,7 +104,7 @@ Performance: GET list uses cursor pagination; N+1 safeguard (eager-load author u
 
 **EN:**
 ```
-/backend-feature-impl
+/feature-implementation-flow
 
 Feature: "Send order confirmation email (async)"
 Trigger: OrderPaid event consumed from RabbitMQ queue
@@ -117,7 +121,7 @@ Tests: mock SendGrid client; test retry logic; test dead-letter on repeated fail
 
 **RU:**
 ```
-/backend-feature-impl
+/feature-implementation-flow
 
 Фича: "Отправка email подтверждения заказа (async)"
 Триггер: событие OrderPaid потребляемое из очереди RabbitMQ

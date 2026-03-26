@@ -1,3 +1,7 @@
+---
+workflow: regression-suite
+---
+
 # Prompt: `/regression-suite`
 
 Use when: running full regression before a significant release or after a major code change.

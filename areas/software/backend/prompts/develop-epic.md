@@ -1,3 +1,7 @@
+---
+workflow: develop-epic
+---
+
 # Prompt: `/develop-epic`
 
 Use when: delivering a large multi-sprint epic that must be broken into independently deployable increments.

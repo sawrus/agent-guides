@@ -1,7 +1,7 @@
 ---
 name: security-scan-pipeline
 type: workflow
-trigger: /security-scan
+trigger: /security-scan-pipeline
 description: Run a full security scan pipeline — SAST, dependency CVE, secrets, container image, IaC, and SBOM generation.
 inputs:
   - service_name

@@ -1,4 +1,8 @@
-# Prompt: `/module-develop`
+---
+workflow: module-development
+---
+
+# Prompt: `/module-development`
 
 Use when: creating or refactoring a Terraform module for team-wide reuse.
 
@@ -8,7 +12,7 @@ Use when: creating or refactoring a Terraform module for team-wide reuse.
 
 **EN:**
 ```
-/module-develop
+/module-development
 
 Module: k8s-node-pool
 Purpose: provision worker nodes with uniform config (Hetzner primary, AWS secondary)
@@ -23,7 +27,7 @@ Constraints:
 
 **RU:**
 ```
-/module-develop
+/module-development
 
 Модуль: k8s-node-pool
 Назначение: создание worker нод с единой конфигурацией (Hetzner основной, AWS вторичный)
@@ -42,7 +46,7 @@ Constraints:
 
 **EN:**
 ```
-/module-develop
+/module-development
 
 Task: extract VPC/subnet config from environments/production/main.tf into reusable module
 Current state: all networking hardcoded in one file (3 AZs, specific CIDRs, specific tags)
@@ -54,7 +58,7 @@ Include: README.md with required vs optional variables, outputs, example usage
 
 **RU:**
 ```
-/module-develop
+/module-development
 
 Задача: извлечь конфигурацию VPC/подсетей из environments/production/main.tf в переиспользуемый модуль
 Текущее состояние: вся сеть захардкожена в одном файле (3 AZ, конкретные CIDR, конкретные теги)

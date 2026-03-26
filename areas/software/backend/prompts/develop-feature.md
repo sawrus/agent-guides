@@ -1,3 +1,7 @@
+---
+workflow: develop-feature
+---
+
 # Prompt: `/develop-feature`
 
 Use when: starting end-to-end backend feature delivery from a business request to an accepted, tested increment.

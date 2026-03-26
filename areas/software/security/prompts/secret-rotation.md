@@ -1,3 +1,7 @@
+---
+workflow: secret-rotation
+---
+
 # Prompt: `/secret-rotation`
 
 Use when: rotating credentials, API keys, or certificates without service downtime — using the dual-read window pattern.

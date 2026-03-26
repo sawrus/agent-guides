@@ -1,3 +1,7 @@
+---
+workflow: testing-ci-pipeline
+---
+
 # Prompt: `/testing-ci-pipeline`
 
 Use when: running the full CI validation pipeline — lint, type check, unit tests, integration tests, E2E — or diagnosing a CI failure.

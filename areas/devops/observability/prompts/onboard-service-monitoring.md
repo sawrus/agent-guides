@@ -1,4 +1,8 @@
-# Prompt: `/onboard-monitoring`
+---
+workflow: onboard-service-monitoring
+---
+
+# Prompt: `/onboard-service-monitoring`
 
 Use when: adding observability (metrics, logs, traces, alerts, dashboard) to a service.
 
@@ -8,7 +12,7 @@ Use when: adding observability (metrics, logs, traces, alerts, dashboard) to a s
 
 **EN:**
 ```
-/onboard-monitoring
+/onboard-service-monitoring
 
 Service: checkout-service / Namespace: production / Language: Python 3.12 + FastAPI
 Current state: service runs, zero observability
@@ -25,7 +29,7 @@ Business metric to add: checkout_success_total / checkout_attempt_total (gauge p
 
 **RU:**
 ```
-/onboard-monitoring
+/onboard-service-monitoring
 
 Сервис: checkout-service / Namespace: production / Язык: Python 3.12 + FastAPI
 Текущее состояние: сервис работает, нет observability
@@ -46,7 +50,7 @@ Business metric to add: checkout_success_total / checkout_attempt_total (gauge p
 
 **EN:**
 ```
-/onboard-monitoring
+/onboard-service-monitoring
 
 Service: notification-service / Namespace: production
 Current state: metrics already scraped (ServiceMonitor exists); no alerts defined
@@ -61,7 +65,7 @@ Alertmanager routing: critical → PagerDuty; warning → #alerts-warning Slack
 
 **RU:**
 ```
-/onboard-monitoring
+/onboard-service-monitoring
 
 Сервис: notification-service / Namespace: production
 Текущее состояние: метрики уже собираются (ServiceMonitor есть); алерты не настроены

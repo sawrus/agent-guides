@@ -1,8 +1,12 @@
+---
+workflow: {{workflow-name}}
+---
+
 # Prompt: `/{{command-name}}`
 
 <!--
 AGENT INSTRUCTIONS:
-1. "command-name" must match the workflow trigger exactly (if a workflow exists for this command).
+1. "workflow-name" and "command-name" must match the workflow file stem exactly (if a workflow exists for this command).
 2. "Use when:" is ONE sentence describing the exact scenario. Not "Use when working in this spec."
 3. Write 2–3 examples. Two is the minimum. Three is standard.
 4. Every example MUST have both an EN block and an RU block.
@@ -13,7 +17,8 @@ AGENT INSTRUCTIONS:
 9. Example 1 = most common / standard case.
    Example 2 = more complex, edge case, or different scenario.
    Example 3 (optional) = quick/minimal version or contrasting context.
-10. Delete all AGENT INSTRUCTIONS comments before finalising.
+10. Remove any legacy "Workflow link command:" section. The front matter is the mapping.
+11. Delete all AGENT INSTRUCTIONS comments before finalising.
 -->
 
 Use when: {{SPECIFIC_SCENARIO_ONE_SENTENCE}}

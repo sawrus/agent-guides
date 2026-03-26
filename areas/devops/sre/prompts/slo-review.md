@@ -1,6 +1,10 @@
+---
+workflow: slo-review
+---
+
 # Prompt: `/slo-review`
 
-Use when: conducting a quarterly SLO review — adjusting targets, reviewing error budget burn, planning reliability work.
+Use when: reviewing SLO health, error budget burn, and upcoming capacity risks before committing to reliability or scaling work.
 
 ---
 
@@ -78,4 +82,44 @@ Task:
   3. Оценить: если бы все события вызванные инфрой были исключены, какой % доступности был бы достигнут?
   4. Предложить новую цель SLO с обоснованием
   5. Установить точку проверки: оценить новую цель через 30 дней
+```
+
+---
+
+## Example 3 — Black Friday capacity runbook
+
+**EN:**
+```
+/slo-review
+
+Event: Black Friday (peak 5× normal traffic, 4-hour window)
+Services affected: checkout, payment, order (top 3 by load)
+Normal peak: 800 RPS; expected BF peak: 4000 RPS
+Pre-event checklist needed:
+  - Scale workers from 6 → 10 (pre-provision 48h before event)
+  - Set HPA min replicas: checkout→10, payment→8, order→8 (prevent cold start during spike)
+  - Pre-warm: connection pools, DNS TTLs flushed, CDN cache warmed
+  - Load test: k6 script targeting 4500 RPS (10% above expected peak); run 2 days before
+  - DB: pre-warm vacuumed + analysed; connection pool max set to 80% of max_connections
+  - War room: open 1h before event; on-call + dev leads + DBA on standby
+  - Auto-scale-down: trigger 2h after event peak (cost control)
+Output: runbook document + pre-event checklist + post-event scale-down procedure
+```
+
+**RU:**
+```
+/slo-review
+
+Событие: Чёрная пятница (пик 5× нормального трафика, 4-часовое окно)
+Затронутые сервисы: checkout, payment, order (топ-3 по нагрузке)
+Нормальный пик: 800 RPS; ожидаемый пик ЧП: 4000 RPS
+Необходимый чеклист перед событием:
+  - Масштабировать workers с 6 → 10 (заранее за 48ч до события)
+  - Установить HPA min replicas: checkout→10, payment→8, order→8 (предотвратить cold start при скачке)
+  - Pre-warm: connection pools, сброс DNS TTL, прогрев CDN кэша
+  - Нагрузочное тестирование: k6 скрипт на 4500 RPS (10% сверх ожидаемого пика); запустить за 2 дня
+  - БД: прогрев vacuum + analyse; max connection pool = 80% от max_connections
+  - Военная комната: открыть за 1ч до события; on-call + dev leads + DBA в режиме ожидания
+  - Авто-уменьшение масштаба: через 2ч после пика события (контроль затрат)
+Результат: runbook документ + чеклист до события + процедура уменьшения масштаба после события
 ```

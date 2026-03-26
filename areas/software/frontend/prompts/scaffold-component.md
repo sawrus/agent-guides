@@ -1,3 +1,7 @@
+---
+workflow: scaffold-component
+---
+
 # Prompt: `/scaffold-component`
 
 Use when: creating a new reusable UI component from scratch.

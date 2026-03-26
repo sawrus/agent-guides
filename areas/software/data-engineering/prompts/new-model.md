@@ -1,3 +1,7 @@
+---
+workflow: new-model
+---
+
 # Prompt: `/new-model`
 
 Use when: scaffolding a new dbt model with sources, staging, mart layers, YAML documentation, and data quality tests.

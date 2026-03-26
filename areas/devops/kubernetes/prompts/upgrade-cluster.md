@@ -1,3 +1,7 @@
+---
+workflow: upgrade-cluster
+---
+
 # Prompt: `/upgrade-cluster`
 
 Use when: upgrading Kubernetes control plane and worker nodes to a new minor or patch version.

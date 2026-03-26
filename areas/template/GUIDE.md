@@ -487,12 +487,16 @@ Choose 5 tasks that:
 - Benefit from structured input (not just "write me copy")
 - Together cover the spec's most important activities
 
-Name format: `/verb-noun` — matches the workflow trigger name where a workflow exists.
+Name format: `/verb-noun` — and where a workflow exists, the prompt file name, front matter key, header command, and workflow trigger must all match the workflow file stem exactly.
 
 ### 7.2 Write each prompt file using `prompt.tmpl.md`
 
 Structure of each prompt file:
 ```markdown
+---
+workflow: [workflow-file-stem]
+---
+
 # Prompt: `/[command]`
 
 Use when: [exact scenario — one sentence]
@@ -548,9 +552,12 @@ Use when: [exact scenario — one sentence]
 ### 7.4 Prompts quality bar
 
 - [ ] 2–3 examples per file (not 1, not 4+)
+- [ ] Front matter includes `workflow: <workflow-stem>`
+- [ ] Prompt filename matches the workflow stem
 - [ ] Both EN and RU blocks in every example
 - [ ] EN block ≥ 200 words (enough context for the agent to act without follow-up)
 - [ ] No `[PLACEHOLDER]` strings remain
+- [ ] No legacy `Workflow link command:` section remains
 - [ ] Example 1 is immediately usable without modification
 - [ ] "Use when:" line is specific (not "Use when: working in this spec")
 

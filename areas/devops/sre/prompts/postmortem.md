@@ -1,3 +1,7 @@
+---
+workflow: postmortem
+---
+
 # Prompt: `/postmortem`
 
 Use when: writing or facilitating a blameless postmortem after a P0/P1 incident.

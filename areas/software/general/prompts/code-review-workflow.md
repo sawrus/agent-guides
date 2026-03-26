@@ -1,4 +1,8 @@
-# Prompt: `/code-review`
+---
+workflow: code-review-workflow
+---
+
+# Prompt: `/code-review-workflow`
 
 Use when: reviewing an open pull/merge request or a specific code change.
 
@@ -8,7 +12,7 @@ Use when: reviewing an open pull/merge request or a specific code change.
 
 **EN:**
 ```
-/code-review PR #87 "Add rate limiting to public API"
+/code-review-workflow PR #87 "Add rate limiting to public API"
 
 PR scope: adds Redis-backed sliding window rate limiter to all /api/v1/* endpoints.
 Focus areas:
@@ -21,7 +25,7 @@ Files changed: src/middleware/rate_limit.py, tests/test_rate_limit.py, src/confi
 
 **RU:**
 ```
-/code-review PR #87 "Добавить rate limiting на публичный API"
+/code-review-workflow PR #87 "Добавить rate limiting на публичный API"
 
 Скоуп PR: Redis-backed sliding window rate limiter для всех /api/v1/* эндпоинтов.
 Фокус:
@@ -38,7 +42,7 @@ Files changed: src/middleware/rate_limit.py, tests/test_rate_limit.py, src/confi
 
 **EN:**
 ```
-/code-review PR #104 "Migrate order processing to event-driven"
+/code-review-workflow PR #104 "Migrate order processing to event-driven"
 
 This is a large architectural PR. Key review concerns:
 - Does OrderService still have any direct calls to PaymentService? (should emit event only)
@@ -50,7 +54,7 @@ Diff size: ~800 lines across 12 files
 
 **RU:**
 ```
-/code-review PR #104 "Миграция обработки заказов на event-driven"
+/code-review-workflow PR #104 "Миграция обработки заказов на event-driven"
 
 Это большой архитектурный PR. Ключевые вопросы:
 - Нет ли прямых вызовов OrderService → PaymentService? (должен только emit event)
@@ -66,7 +70,7 @@ Diff size: ~800 lines across 12 files
 
 **EN:**
 ```
-/code-review PR #91 "Add admin user deletion endpoint"
+/code-review-workflow PR #91 "Add admin user deletion endpoint"
 
 Security-focused review: DELETE /admin/users/{id}
 Check: auth middleware applied (admin scope required); audit log written on deletion;
@@ -75,7 +79,7 @@ soft-delete or hard-delete with confirmation; no IDOR possible via id parameter.
 
 **RU:**
 ```
-/code-review PR #91 "Добавить эндпоинт удаления пользователей для администратора"
+/code-review-workflow PR #91 "Добавить эндпоинт удаления пользователей для администратора"
 
 Ревью с фокусом на безопасность: DELETE /admin/users/{id}
 Проверить: применён auth middleware (требуется admin scope); запись в audit log при удалении;

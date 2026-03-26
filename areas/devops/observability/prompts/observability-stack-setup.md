@@ -1,4 +1,8 @@
-# Prompt: `/observability-stack`
+---
+workflow: observability-stack-setup
+---
+
+# Prompt: `/observability-stack-setup`
 
 Use when: setting up the full observability stack from scratch on a K8s cluster.
 
@@ -8,7 +12,7 @@ Use when: setting up the full observability stack from scratch on a K8s cluster.
 
 **EN:**
 ```
-/observability-stack
+/observability-stack-setup
 
 Cluster: prod-cluster-eu (bare-metal K8s 1.31, Cilium)
 Storage: Longhorn (block storage available)
@@ -30,7 +34,7 @@ Ingress: observability tools exposed via NGINX Ingress with mTLS (internal only)
 
 **RU:**
 ```
-/observability-stack
+/observability-stack-setup
 
 Кластер: prod-cluster-eu (bare-metal K8s 1.31, Cilium)
 Хранилище: Longhorn (блочное хранилище доступно)
@@ -56,7 +60,7 @@ Ingress: инструменты observability через NGINX Ingress с mTLS (
 
 **EN:**
 ```
-/observability-stack
+/observability-stack-setup
 
 Task: migrate log aggregation from Elasticsearch + Kibana to Grafana Loki
 Current: ELK stack consuming 200Gi storage, 8 CPU, 32Gi memory (3 ES nodes)
@@ -76,7 +80,7 @@ Migration plan:
 
 **RU:**
 ```
-/observability-stack
+/observability-stack-setup
 
 Задача: миграция агрегации логов с Elasticsearch + Kibana на Grafana Loki
 Текущее: ELK стек потребляет 200Gi хранилища, 8 CPU, 32Gi памяти (3 ноды ES)

@@ -1,4 +1,8 @@
-# Prompt: `/backend-new-project`
+---
+workflow: backend-project-full-cycle
+---
+
+# Prompt: `/backend-project-full-cycle`
 
 Use when: scaffolding a new Python/FastAPI backend service from scratch — architecture plan, project structure, Makefile, CI, and initial domain implementation.
 
@@ -8,7 +12,7 @@ Use when: scaffolding a new Python/FastAPI backend service from scratch — arch
 
 **EN:**
 ```
-/backend-new-project
+/backend-project-full-cycle
 
 Project name: order-service
 Directory: src/
@@ -32,7 +36,7 @@ Non-functional: all DB operations async; Pydantic BaseSettings for config;
 
 **RU:**
 ```
-/backend-new-project
+/backend-project-full-cycle
 
 Название проекта: order-service
 Директория: src/
@@ -60,7 +64,7 @@ Non-functional: all DB operations async; Pydantic BaseSettings for config;
 
 **EN:**
 ```
-/backend-new-project
+/backend-project-full-cycle
 
 Project name: inventory-service
 Directory: src/
@@ -82,7 +86,7 @@ No auth: internal network only (API key via X-API-Key header is sufficient)
 
 **RU:**
 ```
-/backend-new-project
+/backend-project-full-cycle
 
 Название проекта: inventory-service
 Директория: src/
@@ -108,7 +112,7 @@ No auth: internal network only (API key via X-API-Key header is sufficient)
 
 **EN:**
 ```
-/backend-new-project
+/backend-project-full-cycle
 
 Project name: webhook-receiver
 Directory: .
@@ -123,7 +127,7 @@ Keep minimal: no domain layers needed — single service file is fine; focus on 
 
 **RU:**
 ```
-/backend-new-project
+/backend-project-full-cycle
 
 Название проекта: webhook-receiver
 Директория: .

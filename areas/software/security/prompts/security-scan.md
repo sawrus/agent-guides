@@ -1,3 +1,7 @@
+---
+workflow: security-scan
+---
+
 # Prompt: `/security-scan`
 
 Use when: running a full automated security sweep — SAST, dependency audit, secrets detection, IaC checks — before a release or after a major change.

@@ -1,3 +1,7 @@
+---
+workflow: create-endpoint
+---
+
 # Prompt: `/create-endpoint`
 
 Use when: adding a single new API endpoint to an existing backend service.

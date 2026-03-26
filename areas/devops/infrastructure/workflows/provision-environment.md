@@ -1,7 +1,7 @@
 ---
 name: provision-environment
 type: workflow
-trigger: /provision-env
+trigger: /provision-environment
 description: Provision a complete infrastructure environment using Terraform + Ansible — from VPC to configured K8s-ready nodes.
 inputs:
   - environment_name (staging|production)

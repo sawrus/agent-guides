@@ -1,3 +1,7 @@
+---
+workflow: drift-check
+---
+
 # Prompt: `/drift-check`
 
 Use when: detecting infrastructure drift — differences between IaC state and actual cloud resources — and deciding whether to remediate or update state.

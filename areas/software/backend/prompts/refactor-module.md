@@ -1,3 +1,7 @@
+---
+workflow: refactor-module
+---
+
 # Prompt: `/refactor-module`
 
 Use when: improving the structure, readability, or maintainability of existing backend code without changing behavior.

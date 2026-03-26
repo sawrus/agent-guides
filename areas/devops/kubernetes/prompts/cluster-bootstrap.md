@@ -1,3 +1,7 @@
+---
+workflow: cluster-bootstrap
+---
+
 # Prompt: `/cluster-bootstrap`
 
 Use when: provisioning a new self-hosted Kubernetes cluster from bare-metal.

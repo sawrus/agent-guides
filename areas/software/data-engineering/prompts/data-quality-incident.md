@@ -1,3 +1,7 @@
+---
+workflow: data-quality-incident
+---
+
 # Prompt: `/data-quality-incident`
 
 Use when: a data quality issue is detected — wrong numbers in dashboards, failed dbt tests, or downstream consumer complaints — and needs systematic triage and remediation.

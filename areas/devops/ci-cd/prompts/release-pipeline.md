@@ -1,6 +1,10 @@
+---
+workflow: release-pipeline
+---
+
 # Prompt: `/release-pipeline`
 
-Use when: designing or running a production release pipeline with versioning, changelogs, and deployment gates.
+Use when: designing or running a production release pipeline with versioning, supply-chain controls, and deployment gates.
 
 ---
 
@@ -72,4 +76,40 @@ Rollback plan: v2.1.0 image already in registry — Helm rollback in < 2 min if 
   - Пропустить: автоматизацию changelog (написать вручную)
   - Оставить: security scan (обязательно), smoke test (обязательно), canary deploy (обязательно)
 План отката: образ v2.1.0 уже в реестре — Helm rollback за < 2 мин при необходимости
+```
+
+---
+
+## Example 3 — Add full supply chain to existing pipeline
+
+**EN:**
+```
+/release-pipeline
+
+Service: checkout-service / CI: GitHub Actions
+Current state: images built and pushed, no signing, no SBOM
+Required:
+  1. SBOM: generate CycloneDX SBOM with Syft during build; attach to image with cosign
+  2. Signing: sign image with cosign using GitHub OIDC (keyless) after push
+  3. Provenance: enable SLSA level 2 via docker/build-push-action (provenance: true)
+  4. Verification: add cosign verify step in CD pipeline before every deploy
+  5. Policy: Kyverno ClusterPolicy — block unsigned images in production namespace
+  6. Dependency pinning: base image must reference @sha256 digest, not tag
+Show full updated GitHub Actions workflow + Kyverno policy
+```
+
+**RU:**
+```
+/release-pipeline
+
+Сервис: checkout-service / CI: GitHub Actions
+Текущее состояние: образы собираются и пушатся, без подписи, без SBOM
+Требуется:
+  1. SBOM: генерация CycloneDX SBOM через Syft при сборке; прикрепление к образу через cosign
+  2. Подпись: подпись образа через cosign с GitHub OIDC (keyless) после push
+  3. Provenance: SLSA level 2 через docker/build-push-action (provenance: true)
+  4. Верификация: добавить шаг cosign verify в CD pipeline перед каждым деплоем
+  5. Политика: Kyverno ClusterPolicy — блокировка неподписанных образов в production namespace
+  6. Pinning зависимостей: base image должен ссылаться на @sha256 digest, не тег
+Показать полный обновлённый workflow GitHub Actions + Kyverno политику
 ```

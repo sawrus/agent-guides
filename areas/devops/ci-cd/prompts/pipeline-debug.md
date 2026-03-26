@@ -1,6 +1,10 @@
+---
+workflow: pipeline-debug
+---
+
 # Prompt: `/pipeline-debug`
 
-Use when: a CI/CD pipeline is failing and needs root cause diagnosis and fix.
+Use when: a CI/CD pipeline is failing, a build is too slow, or a delivery job needs root-cause diagnosis and recovery.
 
 ---
 
@@ -56,4 +60,44 @@ Pipeline: GitLab CI / Проект: backend/payment-service / Ветка: main
 Подозрение: тест зависит от datetime.now() — проблема с timezone или таймингом в CI runner
 Окружение: GitLab shared runner (UTC) vs локальная разработка (Europe/Moscow)
 Цель: определить корневую причину + исправить тест + добавить в flaky-test tracking
+```
+
+---
+
+## Example 3 — Reduce Docker build time from 12 min to < 3 min
+
+**EN:**
+```
+/pipeline-debug
+
+Service: order-service / Language: Python 3.12 + FastAPI
+Current build time: 12 min (GitHub Actions); cache hit rate: ~15%
+Problems observed:
+  - pip install runs from scratch every build (no layer caching)
+  - Test dependencies bundled into production image
+  - Base image pulled fresh every build (no registry mirror)
+Goals:
+  - Achieve < 3 min build on cache hit
+  - Separate build deps from runtime image (multi-stage)
+  - Use GitHub Actions cache for pip + Docker layer cache (type=gha)
+  - Produce minimal production image (target < 200MB)
+Show: before/after Dockerfile + updated GitHub Actions workflow
+```
+
+**RU:**
+```
+/pipeline-debug
+
+Сервис: order-service / Язык: Python 3.12 + FastAPI
+Текущее время сборки: 12 мин (GitHub Actions); cache hit rate: ~15%
+Наблюдаемые проблемы:
+  - pip install запускается с нуля при каждой сборке (нет layer caching)
+  - Зависимости для тестов входят в production образ
+  - Base image скачивается заново при каждой сборке (нет registry mirror)
+Цели:
+  - Достичь < 3 мин при попадании в кэш
+  - Разделить build и runtime зависимости (multi-stage)
+  - Использовать GitHub Actions cache для pip + Docker layer cache (type=gha)
+  - Минимальный production образ (цель < 200MB)
+Показать: Dockerfile до/после + обновлённый GitHub Actions workflow
 ```

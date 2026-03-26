@@ -1,3 +1,7 @@
+---
+workflow: debug-issue
+---
+
 # Prompt: `/debug-issue`
 
 Use when: investigating and resolving a backend defect, incident, or unexpected behavior.

@@ -1,3 +1,7 @@
+---
+workflow: provision-env
+---
+
 # Prompt: `/provision-env`
 
 Use when: provisioning a new environment (staging, preview, feature env) from Terraform/Helm configs with cost estimation and DNS/smoke validation.

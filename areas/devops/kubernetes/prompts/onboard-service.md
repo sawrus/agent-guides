@@ -1,6 +1,10 @@
+---
+workflow: onboard-service
+---
+
 # Prompt: `/onboard-service`
 
-Use when: deploying a new application to Kubernetes for the first time — namespace through monitoring.
+Use when: deploying a new application to Kubernetes with namespace, workload, and least-privilege access defined together.
 
 ---
 
@@ -60,4 +64,38 @@ Image: registry.internal/api-gateway:v0.9.0 / Порт: 8080
 Профиль ресурсов: medium (250m CPU / 256Mi memory)
 Auth: mTLS между внутренними сервисами
 PDB: minAvailable 1 (в staging минимум 2 реплики)
+```
+
+---
+
+## Example 3 — Pre-compliance namespace audit
+
+**EN:**
+```
+/onboard-service
+
+Target: namespace production
+Goal: identify overprivileged accounts before SOC 2 review
+Checks:
+  - ServiceAccounts with automountServiceAccountToken: true
+  - Bindings referencing cluster-admin or wildcard verbs/resources
+  - Orphaned ServiceAccounts (no workload)
+  - SA with cross-namespace ClusterRoleBindings
+  - CI/CD SA (github-actions-sa) permissions vs required minimum
+Output: findings table (SA / bound role / verdict: OK|REDUCE|REMOVE) + fix manifests
+```
+
+**RU:**
+```
+/onboard-service
+
+Цель: namespace production
+Задача: выявить привилегированные аккаунты перед SOC 2 ревью
+Проверки:
+  - ServiceAccount с automountServiceAccountToken: true
+  - Bindings ссылающиеся на cluster-admin или wildcard verbs/resources
+  - Orphaned ServiceAccount (без workload)
+  - SA с межnamespace ClusterRoleBinding
+  - Права CI/CD SA (github-actions-sa) vs необходимый минимум
+Результат: таблица находок (SA / роль / вердикт: OK|REDUCE|REMOVE) + fix манифесты
 ```

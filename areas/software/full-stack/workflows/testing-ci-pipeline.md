@@ -1,7 +1,7 @@
 ---
 name: testing-ci-pipeline
 type: workflow
-trigger: /run-ci
+trigger: /testing-ci-pipeline
 description: Run the full CI and testing pipeline for backend or frontend projects and produce a verified quality signal.
 inputs:
   - project_type

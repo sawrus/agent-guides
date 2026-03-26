@@ -1,7 +1,7 @@
 ---
 name: code-review-workflow
 type: workflow
-trigger: /code-review
+trigger: /code-review-workflow
 description: Conduct a structured, constructive code review of a pull or merge request.
 inputs:
   - pull_request_or_merge_request

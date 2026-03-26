@@ -1,3 +1,7 @@
+---
+workflow: test-feature
+---
+
 # Prompt: `/test-feature`
 
 Use when: expanding test coverage for an existing feature that is undertested or has known coverage gaps.

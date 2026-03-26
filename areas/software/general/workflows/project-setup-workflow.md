@@ -1,7 +1,7 @@
 ---
 name: project-setup-workflow
 type: workflow
-trigger: /project-setup
+trigger: /project-setup-workflow
 description: Bootstrap a new software project with tooling, CI, and documentation from day one.
 inputs:
   - project_name

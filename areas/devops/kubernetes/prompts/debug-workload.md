@@ -1,3 +1,7 @@
+---
+workflow: debug-workload
+---
+
 # Prompt: `/debug-workload`
 
 Use when: a pod is not Running, a service is unreachable, or a deployment is stuck.
