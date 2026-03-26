@@ -9,6 +9,7 @@ skills, workflows, and prompts that can be installed into a target project from 
 binary in `~/.local/bin`.
 
 - [coverage score card](https://claude.ai/public/artifacts/8177bc3d-3b2f-48a6-8232-47c5b02b20f3)
+- [website](https://sawrus.github.io/agent-guides/)
 
 ---
 
