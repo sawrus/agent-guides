@@ -7,15 +7,34 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header>
-      <h1>Agent Guides Docs</h1>
-      <div class="toolbar">
-        <input id="search" type="search" placeholder="Search trigger, workflow, examples..." />
-        <select id="language">
-          <option value="both">EN + RU</option>
-          <option value="en">EN only</option>
-          <option value="ru">RU only</option>
-        </select>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <div class="site-header__summary">
+          <div class="site-header__brand">
+            <p class="site-header__eyebrow">Docs</p>
+            <div>
+              <a class="site-header__title" href="https://github.com/sawrus/agent-guides">Agent Guides Docs</a>
+              <a class="site-header__github" href="https://github.com/sawrus/agent-guides">
+                Star on GitHub to support the project
+              </a>
+            </div>
+          </div>
+
+          <div class="install-box" aria-label="Agentic install example">
+            <span class="install-box__label">Install agentic</span>
+            <code>curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/agentic -o /tmp/agentic && bash /tmp/agentic self-install --install-fzf</code>
+            <code>./agentic</code>
+          </div>
+        </div>
+
+        <div class="toolbar" aria-label="Search docs">
+          <input id="search" type="search" placeholder="Search trigger, workflow, examples..." />
+          <select id="language" aria-label="Language">
+            <option value="both">EN + RU</option>
+            <option value="en">EN only</option>
+            <option value="ru">RU only</option>
+          </select>
+        </div>
       </div>
     </header>
 
