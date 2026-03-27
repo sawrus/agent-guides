@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_RAW_BASE="https://raw.githubusercontent.com/sawrus/agent-guides/main"
+INSTALLER_URL="$REPO_RAW_BASE/agentic"
+TMP_FILE="$(mktemp /tmp/agentic.XXXXXX)"
+
+cleanup() {
+  rm -f "$TMP_FILE"
+}
+trap cleanup EXIT
+
+if ! command -v curl >/dev/null 2>&1; then
+  echo "[agentic][error] curl is required for install bootstrap" >&2
+  exit 1
+fi
+
+curl -fsSL "$INSTALLER_URL" -o "$TMP_FILE"
+bash "$TMP_FILE" self-install --install-fzf "$@"

@@ -505,6 +505,79 @@ ensure_dir() {
   unique_append "$path" CREATED_PATHS
 }
 
+path_ref_for_shell_export() {
+  local dir="$1"
+  if [[ "$dir" == "$HOME/"* ]]; then
+    printf '$HOME/%s\n' "${dir#"$HOME/"}"
+    return
+  fi
+  printf '%s\n' "$dir"
+}
+
+profile_has_path_export() {
+  local profile_file="$1"
+  local dir="$2"
+  [[ -f "$profile_file" ]] || return 1
+
+  local path_ref
+  path_ref="$(path_ref_for_shell_export "$dir")"
+
+  if grep -Fq "$dir" "$profile_file"; then
+    return 0
+  fi
+
+  grep -Fq "$path_ref" "$profile_file"
+}
+
+self_install_profile_file() {
+  local shell_name
+  shell_name="$(basename -- "${SHELL:-}")"
+  case "$shell_name" in
+    zsh)
+      printf '%s\n' "$HOME/.zshrc"
+      ;;
+    bash)
+      printf '%s\n' "$HOME/.bashrc"
+      ;;
+    *)
+      printf '%s\n' "$HOME/.profile"
+      ;;
+  esac
+}
+
+ensure_bin_dir_in_shell_path() {
+  local bin_dir="$1"
+  local profile_file
+  profile_file="$(self_install_profile_file)"
+
+  local path_ref
+  path_ref="$(path_ref_for_shell_export "$bin_dir")"
+  local export_line="export PATH=\"$path_ref:\$PATH\""
+
+  if profile_has_path_export "$profile_file" "$bin_dir"; then
+    log "PATH hint already present in $profile_file"
+    return
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    log "DRY-RUN append PATH export to $profile_file"
+    log "DRY-RUN line: $export_line"
+    return
+  fi
+
+  if [[ ! -e "$profile_file" ]]; then
+    : > "$profile_file"
+    unique_append "$profile_file" COPIED_PATHS
+  fi
+
+  {
+    echo
+    echo "# Added by $APP_NAME self-install on $(date +%Y-%m-%d)"
+    echo "$export_line"
+  } >> "$profile_file"
+  log "Added PATH export to $profile_file"
+}
+
 copy_dir_contents() {
   local src="$1"
   local dest="$2"
@@ -1275,7 +1348,8 @@ self_install() {
       ;;
     *)
       warn "PATH does not include $bin_dir"
-      warn "Add this to your shell profile: export PATH=\"$bin_dir:\$PATH\""
+      ensure_bin_dir_in_shell_path "$bin_dir"
+      warn "Open a new terminal or run: export PATH=\"$(path_ref_for_shell_export "$bin_dir"):\$PATH\""
       ;;
   esac
 

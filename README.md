@@ -44,6 +44,7 @@ agent-guides/
 │   └── ...
 ├── docs/                     # Setup guides, design docs
 ├── agentic                   # Main CLI / installer
+├── install                   # One-line bootstrap installer (curl | bash)
 ├── agentos-install.sh        # Deprecated compatibility wrapper that forwards to agentic
 └── AGENTS.md                 # Root agent guidance (loaded into every project)
 ```
@@ -79,7 +80,7 @@ flowchart LR
 ### install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/agentic -o /tmp/agentic && bash /tmp/agentic self-install --install-fzf
+curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash
 ```
 
 ### execute
