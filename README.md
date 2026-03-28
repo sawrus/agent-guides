@@ -108,6 +108,12 @@ Destination directories per agent type:
 | `default`  | `.agent/rules`    | `.agent/skills`    | `.agent/workflows`   | `.agent/prompts` |
 | `opencode` | `.opencode/rules` | `.opencode/skills` | `.opencode/commands` | _(skipped)_      |
 | `cursor`   | `.cursor/rules`   | `.cursor/skills`   | _(skipped)_          | _(skipped)_      |
+| `copilot`  | `.github/instructions` | `.github/skills` | _(skipped)_      | _(skipped)_      |
+| `aider`    | `.aider/rules`    | `.aider/skills`    | `.aider/workflows`   | `.aider/prompts` |
+| `windsurf` | `.windsurf/rules` | `.windsurf/skills` | `.windsurf/workflows`| `.windsurf/prompts` |
+| `qwen`     | `.qwen/rules`     | `.qwen/skills`     | `.qwen/workflows`    | `.qwen/prompts`  |
+| `kimi`     | `.kimi/rules`     | `.kimi/skills`     | `.kimi/workflows`    | `.kimi/prompts`  |
+| `openclaw` | `.openclaw/rules` | `.openclaw/skills` | `.openclaw/workflows`| `.openclaw/prompts` |
 | `claude`   | `.agent/rules`    | `.agent/skills`    | `.agent/workflows`   | `.agent/prompts` |
 
 In addition, the `extensions/<agent-os>/` directory is copied to `.<agent-os>/` in the target project (for example,

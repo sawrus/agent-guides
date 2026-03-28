@@ -13,7 +13,7 @@ APP_TUI_TITLE="Agentic installer (TUI mode)"
 APP_REPO_URL="https://github.com/sawrus/agent-guides.git"
 
 DEFAULT_AGENT_OS="default"
-STATIC_AGENT_OS=(default opencode codex claude antigravity cursor agents)
+STATIC_AGENT_OS=(default opencode codex claude antigravity cursor agents copilot aider windsurf qwen kimi openclaw)
 INSTALL_DIRS=(rules skills workflows prompts)
 THEME_CHOICES=(auto dark light)
 
@@ -438,10 +438,40 @@ get_agent_dir_mapping() {
   case "$agent_os" in
     opencode)     echo ".opencode/rules .opencode/skills .opencode/commands -" ;;
     cursor)       echo ".cursor/rules .cursor/skills - -" ;;
+    copilot)      echo ".github/instructions .github/skills - -" ;;
+    aider)        echo ".aider/rules .aider/skills .aider/workflows .aider/prompts" ;;
+    windsurf)     echo ".windsurf/rules .windsurf/skills .windsurf/workflows .windsurf/prompts" ;;
+    qwen)         echo ".qwen/rules .qwen/skills .qwen/workflows .qwen/prompts" ;;
+    kimi)         echo ".kimi/rules .kimi/skills .kimi/workflows .kimi/prompts" ;;
+    openclaw)     echo ".openclaw/rules .openclaw/skills .openclaw/workflows .openclaw/prompts" ;;
     kilocode)     echo ".kilocode/rules .kilocode/skills .kilocode/workflows -" ;;
     antigravity)  echo ".kilocode/rules .kilocode/skills .kilocode/workflows -" ;;
     *)            echo "" ;;
   esac
+}
+
+detect_agentos() {
+  local detected=()
+
+  [[ -f "$HOME/.config/opencode/opencode.json" ]] && unique_append "opencode" detected
+  [[ -d "$HOME/.cursor" ]] && unique_append "cursor" detected
+  [[ -d "$HOME/.claude" ]] && unique_append "claude" detected
+  [[ -f "$HOME/.aider.conf.yml" || -d "$HOME/.config/aider" ]] && unique_append "aider" detected
+  [[ -d "$HOME/.codeium/windsurf" || -d "$HOME/.windsurf" ]] && unique_append "windsurf" detected
+  [[ -d "$HOME/.qwen" ]] && unique_append "qwen" detected
+  [[ -d "$HOME/.kimi" ]] && unique_append "kimi" detected
+  [[ -d "$HOME/.openclaw" ]] && unique_append "openclaw" detected
+  [[ -d "$HOME/.github/copilot" || -f "$HOME/.config/github-copilot/apps.json" ]] && unique_append "copilot" detected
+
+  command -v opencode >/dev/null 2>&1 && unique_append "opencode" detected
+  command -v cursor >/dev/null 2>&1 && unique_append "cursor" detected
+  command -v aider >/dev/null 2>&1 && unique_append "aider" detected
+  command -v windsurf >/dev/null 2>&1 && unique_append "windsurf" detected
+  command -v qwen >/dev/null 2>&1 && unique_append "qwen" detected
+  command -v kimi >/dev/null 2>&1 && unique_append "kimi" detected
+  command -v openclaw >/dev/null 2>&1 && unique_append "openclaw" detected
+
+  printf '%s\n' "${detected[@]}"
 }
 
 get_dest_dir() {
@@ -1251,6 +1281,8 @@ run_tui() {
 
   local agentos_choices=()
   readlines agentos_choices < <(get_agentos_choices)
+  local detected_agent_os=()
+  readlines detected_agent_os < <(detect_agentos)
 
   local picked_agent_os=()
   if [[ "$use_fzf" == true ]]; then
@@ -1259,7 +1291,12 @@ run_tui() {
     readlines picked_agent_os < <(choose_multi_by_index "Select Agent OS target(s):" "${agentos_choices[@]}")
   fi
   if [[ "${#picked_agent_os[@]}" -eq 0 ]]; then
-    SELECTED_AGENT_OS=("$DEFAULT_AGENT_OS")
+    if [[ "${#detected_agent_os[@]}" -gt 0 ]]; then
+      SELECTED_AGENT_OS=("${detected_agent_os[@]}")
+      log "No explicit Agent OS selection made; using detected targets: ${SELECTED_AGENT_OS[*]}"
+    else
+      SELECTED_AGENT_OS=("$DEFAULT_AGENT_OS")
+    fi
   else
     SELECTED_AGENT_OS=("${picked_agent_os[@]}")
   fi

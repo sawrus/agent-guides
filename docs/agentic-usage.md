@@ -49,7 +49,7 @@ Install guidance into a project:
 ```bash
 agentic install \
   --project-dir /path/to/your-project \
-  --agent-os opencode,codex \
+  --agent-os opencode,codex,copilot,aider \
   --areas software \
   --specializations software.general,software.backend
 ```
@@ -74,6 +74,10 @@ TUI uses `fzf` for interactive selection. If `fzf` is missing, `agentic` can:
 
 1. ask permission to auto-install it
 2. fall back to index-based menus if install is declined or fails
+
+If you leave Agent OS selection empty in TUI, `agentic` now attempts local auto-detection (for example: `opencode`,
+`cursor`, `claude`, `copilot`, `aider`, `windsurf`, `qwen`, `kimi`, `openclaw`) and uses detected targets as defaults.
+If nothing is detected, it falls back to `default`.
 
 `--install-fzf` only affects `self-install`. If auto-install fails, self-install still completes.
 
