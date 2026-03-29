@@ -1,68 +1,72 @@
-# Full Stack guidance index
+# Full Stack — guidance index
 
-Use this file as a lightweight map of full-stack guidance artifacts.
-Load only files relevant to the active task.
+## What this area covers
 
-## Guidance tree
+End-to-end product feature development spanning backend services and frontend interfaces: API design, backend architecture, database access, async processing, frontend integration, testing pipelines, and full project lifecycle management.
+
+## Guidance chain
+
+1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
+2. `software/general/rules/*` — always active
+3. `full-stack/rules/*` — load all for this spec
+4. `full-stack/skills/*/SKILL.md` — load only the skill matching the current task
+5. `full-stack/workflows/*` — load the workflow matching the triggered command
+
+## Inherited from general
+
+- SDLC methodology, role responsibilities, and handoff contracts
+- Git / CI / lint / format and code style baselines
+- General development and code review workflows
+
+## Full-stack-specific constraints
+
+- API contracts are versioned and documented before implementation; no breaking changes without a migration path.
+- Frontend and backend changes for the same feature ship together in a coordinated, backward-compatible rollout.
+- Every new feature includes end-to-end tests covering at least the critical user path.
+
+## Spec map
 
 ```text
 full-stack/
-└── .agent/
-    ├── rules/
-        ├── api-design-guide.md
-        ├── async-concurrency-guide.md
-        ├── backend-architecture-rule.md
-        ├── background-jobs-guide.md
-        ├── ci-cd-deployment-guide.md
-        ├── code-quality-guide.md
-        ├── code-style-guide.md
-        ├── database-access-guide.md
-        ├── database-migrations-guide.md
-        ├── domain-models-guide.md
-        ├── e2e-test-guide.md
-        ├── env-settings-guide.md
-        ├── error-handling-guide.md
-        ├── git-versioning-guide.md
-        ├── logging-observability-guide.md
-        ├── project-guide.md
-        ├── project-setup-guide.md
-        ├── python-venv-guide.md
-        ├── security-guide.md
-        ├── svt-test-guide.md
-        └── testing-ci-guide.md
-    ├── skills/
-        ├── api-design-principles/
-            └── SKILL.md
-        ├── api-patterns/
-            └── SKILL.md
-        ├── app-builder/
-            └── SKILL.md
-        ├── backend-developer/
-            └── SKILL.md
-        ├── bash-pro/
-            └── SKILL.md
-        ├── blackbox-test/
-            └── SKILL.md
-        ├── prompt-project-planner/
-            └── SKILL.md
-        ├── python-pro/
-            └── SKILL.md
-        └── skill-creator/
-            └── SKILL.md
-    ├── workflows/
-        ├── backend-project-full-cycle.md
-        ├── feature-implementation-flow.md
-        └── testing-ci-pipeline.md
-    └── prompts/
-        ├── backend-feature-impl.md
-        ├── backend-new-project.md
-        ├── backend-run-tests.md
-        └── frontend-run-tests.md
+├── rules/
+│   ├── api-design-guide.md            ← REST/GraphQL/tRPC conventions, versioning
+│   ├── backend-architecture-rule.md   ← layering, module boundaries, DI
+│   ├── database-access-guide.md       ← ORM patterns, query safety, N+1 prevention
+│   ├── database-migrations-guide.md   ← migration safety, backward compatibility
+│   ├── async-concurrency-guide.md     ← queues, workers, deadlock prevention
+│   ├── background-jobs-guide.md       ← job design, retry, DLQ
+│   ├── error-handling-guide.md        ← error taxonomy, propagation, user messaging
+│   ├── logging-observability-guide.md ← structured logs, trace IDs, metrics
+│   ├── security-guide.md              ← authN/authZ, input validation, secret handling
+│   ├── testing-ci-guide.md            ← test pyramid, CI checks, coverage thresholds
+│   ├── e2e-test-guide.md              ← e2e tool setup, test scope, flakiness policy
+│   ├── code-quality-guide.md          ← naming, DRY, single responsibility
+│   ├── env-settings-guide.md          ← environment config, secrets, local setup
+│   ├── domain-models-guide.md         ← entity design, value objects, aggregates
+│   └── project-guide.md               ← folder structure, module boundaries, tech stack
+├── skills/
+│   ├── api-design-principles/SKILL.md   ← REST best practices, GraphQL schema design
+│   ├── api-patterns/SKILL.md            ← auth, rate limiting, versioning, tRPC
+│   ├── app-builder/SKILL.md             ← project scaffolding, templates, tech stack detection
+│   ├── backend-developer/SKILL.md       ← service patterns, DI, repository design
+│   ├── python-pro/SKILL.md              ← Python idioms, packaging, async patterns
+│   ├── bash-pro/SKILL.md                ← shell scripting, automation, CI helpers
+│   ├── blackbox-test/SKILL.md           ← external API testing, contract validation
+│   ├── prompt-project-planner/SKILL.md  ← project planning, milestone scoping
+│   └── skill-creator/SKILL.md           ← authoring new skills for this repo
+├── workflows/
+│   ├── develop-feature.md              ← /develop-feature
+│   ├── debug-issue.md                  ← /debug-issue
+│   ├── backend-project-full-cycle.md   ← /backend-project-full-cycle
+│   ├── feature-implementation-flow.md  ← /feature-implementation-flow
+│   └── testing-ci-pipeline.md          ← /testing-ci-pipeline
+└── prompts/
+    └── *.md
 ```
 
 ## Discovery patterns
 
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`
+- `rules/*.md`
+- `skills/*/SKILL.md`
+- `workflows/*.md`
+- `prompts/*.md`

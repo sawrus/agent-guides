@@ -1,0 +1,61 @@
+name: New spec request
+description: Propose a new specialization area for agent-guides
+labels: ["new-spec"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to propose a new specialization. A strong proposal includes a clear scope, a real use case, and a sketch of the file structure.
+
+  - type: input
+    id: spec-name
+    attributes:
+      label: Proposed spec name
+      description: Kebab-case name for the new spec directory
+      placeholder: "chaos-engineering or graphql-api"
+    validations:
+      required: true
+
+  - type: input
+    id: area
+    attributes:
+      label: Parent area
+      description: Which area does this spec belong to?
+      placeholder: "devops/sre or software/backend"
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: What this spec covers
+      description: One paragraph describing the domain, who uses it, and what kinds of tasks it guides agents through.
+    validations:
+      required: true
+
+  - type: textarea
+    id: structure
+    attributes:
+      label: Proposed file structure
+      description: Sketch the rules, skills, and workflows you plan to include.
+      placeholder: |
+        rules/
+          experiment-safety.md
+          blast-radius-policy.md
+        skills/
+          hypothesis-design/SKILL.md
+          failure-injection/SKILL.md
+        workflows/
+          run-experiment.md
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have checked that this spec does not already exist in the repository
+          required: true
+        - label: I am willing to author at least the initial version of this spec
+          required: false

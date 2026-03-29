@@ -1,0 +1,43 @@
+name: Bug report
+description: Something is incorrect, outdated, or broken in agent-guides
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to report incorrect information, broken commands, outdated tooling references, or any content that causes an agent to behave incorrectly.
+
+  - type: input
+    id: file
+    attributes:
+      label: Affected file(s)
+      description: Path(s) to the file(s) containing the issue
+      placeholder: "areas/devops/kubernetes/skills/helm-charts/SKILL.md"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What is wrong
+      description: Describe the incorrect, outdated, or broken content
+      placeholder: "The helm upgrade command in the SKILL.md uses a deprecated --atomic flag syntax..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What it should be
+      description: Describe the correct content or behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Agent tool, model, and any relevant session context
+      placeholder: "Discovered while running /upgrade-cluster workflow in opencode with claude-sonnet"
+    validations:
+      required: false

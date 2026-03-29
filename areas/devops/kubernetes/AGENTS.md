@@ -1,41 +1,50 @@
-# Kubernetes guidance index
+# Kubernetes — guidance index
 
-Use this map to load Kubernetes-specific guidance for self-hosted and bare-metal cluster operations.
+## What this area covers
+
+Self-hosted and managed Kubernetes cluster operations: cluster bootstrap, workload onboarding, RBAC design, network policies, resource governance, upgrade management, and pod-level debugging.
 
 ## Guidance chain
 
-1. project `.agent/` baseline guidance (`AGENTS.md` + `.agent/*`)
-2. kubernetes `rules/*`
-3. kubernetes `skills/*/SKILL.md` (load only what the task needs)
-4. kubernetes `workflows/*`
+1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
+2. `kubernetes/rules/*` — load all
+3. `kubernetes/skills/*/SKILL.md` — load only the skill matching the current task
+4. `kubernetes/workflows/*` — load the workflow matching the triggered command
 
-## Inherited from devops/general
+## Inherited from devops area
 
-- Infrastructure-as-Code immutability principle
-- Git-based change management
-- Incident response severity classification
+- Infrastructure-as-Code immutability principle — no manual kubectl edits in production.
+- Git-based change management — all manifests version-controlled.
+- Incident response severity classification from `sre/` area.
 
-## Kubernetes-specific overrides
+## Kubernetes-specific constraints
+
+- All workloads require resource requests and limits before admission.
+- Network policies must be explicit — no implicit allow-all in non-development namespaces.
+- RBAC follows least-privilege; no cluster-admin bindings without documented justification.
+- Cluster upgrades follow the approved version-skew window; no skip-version upgrades.
+
+## Spec map
 
 ```text
 kubernetes/
 ├── rules/
-│   ├── cluster-standards.md       ← node sizing, OS, CRI, CNI constraints
-│   ├── workload-security.md       ← PSA, RBAC, network policy defaults
-│   ├── resource-governance.md     ← requests/limits, LimitRange, QoS
-│   └── upgrade-policy.md         ← version skew, upgrade cadence
+│   ├── cluster-standards.md      ← node sizing, OS, CRI, CNI constraints
+│   ├── workload-security.md      ← PSA levels, RBAC defaults, network policy baselines
+│   ├── resource-governance.md    ← requests/limits, LimitRange, QoS class targets
+│   └── upgrade-policy.md         ← version skew rules, upgrade cadence, pre-checks
 ├── skills/
-│   ├── helm-charts/SKILL.md
-│   ├── rbac-design/SKILL.md
-│   ├── network-policies/SKILL.md
-│   ├── resource-tuning/SKILL.md
-│   ├── pod-troubleshooting/SKILL.md
-│   └── cluster-operations/SKILL.md
+│   ├── helm-charts/SKILL.md          ← chart authoring, values design, release management
+│   ├── rbac-design/SKILL.md          ← role/binding patterns, least-privilege recipes
+│   ├── network-policies/SKILL.md     ← ingress/egress policies, namespace isolation
+│   ├── resource-tuning/SKILL.md      ← VPA/HPA, right-sizing, QoS optimization
+│   ├── pod-troubleshooting/SKILL.md  ← crash loops, OOM, pending pods, exec debugging
+│   └── cluster-operations/SKILL.md  ← etcd, control plane, node drain/cordon
 ├── workflows/
-│   ├── onboard-service.md
-│   ├── upgrade-cluster.md
-│   ├── debug-workload.md
-│   └── cluster-bootstrap.md
+│   ├── onboard-service.md     ← /onboard-service
+│   ├── upgrade-cluster.md     ← /upgrade-cluster
+│   ├── debug-workload.md      ← /debug-workload
+│   └── cluster-bootstrap.md  ← /cluster-bootstrap
 └── prompts/
     └── *.md
 ```

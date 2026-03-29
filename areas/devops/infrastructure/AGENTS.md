@@ -1,38 +1,50 @@
-# Infrastructure guidance index
+# Infrastructure — guidance index
 
-Use this map to load infrastructure-as-code guidance — Terraform module design, Ansible playbooks, state management, and cloud-agnostic provisioning patterns.
+## What this area covers
+
+Infrastructure-as-Code lifecycle: Terraform module authoring, environment provisioning and destruction, drift detection and remediation, state management, Ansible playbooks, cost optimization, and secret hygiene.
 
 ## Guidance chain
 
-1. project `.agent/` baseline guidance
-2. infrastructure `rules/*`
-3. infrastructure `skills/*/SKILL.md`
-4. infrastructure `workflows/*`
+1. Project `.agent/` baseline
+2. `infrastructure/rules/*` — load all
+3. `infrastructure/skills/*/SKILL.md` — load only the skill matching the current task
+4. `infrastructure/workflows/*` — load the workflow matching the triggered command
 
-## Scope
+## Cross-cutting constraints
 
-- **IaC**: Terraform (primary), Ansible (configuration management), Pulumi (where used)
-- **Clouds**: AWS, GCP, Hetzner, bare-metal — patterns are cloud-agnostic; cloud-specific examples annotated
-- **Not in scope**: application-level K8s manifests (→ kubernetes specialization), CI/CD pipeline config (→ ci-cd specialization)
+- **IaC-only changes** — zero manual console or CLI changes in non-development environments; document exceptions.
+- **State is sacred** — never manually edit Terraform state; always use `terraform state` commands with documented justification.
+- **Immutability over mutation** — replace resources rather than patching them in place where possible.
+- **Secret hygiene** — no credentials, tokens, or keys in IaC code, state, or commit history.
+
+## Spec map
 
 ```text
 infrastructure/
 ├── rules/
-│   ├── iac-standards.md        ← Terraform/Ansible hygiene rules
-│   ├── state-management.md     ← remote state, locking, isolation
-│   ├── immutability.md         ← no manual changes, drift policy
-│   └── secret-hygiene.md       ← no secrets in IaC code or state
+│   ├── iac-standards.md       ← module structure, naming, provider pinning
+│   ├── immutability.md        ← replace-before-destroy, no in-place secret mutations
+│   ├── secret-hygiene.md      ← vault integration, forbidden patterns, rotation policy
+│   └── state-management.md   ← backend config, state locking, import procedures
 ├── skills/
-│   ├── terraform-modules/SKILL.md
-│   ├── ansible-playbooks/SKILL.md
-│   ├── state-management/SKILL.md
-│   ├── drift-detection/SKILL.md
-│   └── cost-optimization/SKILL.md
+│   ├── terraform-modules/SKILL.md    ← module authoring, variable design, output contracts
+│   ├── ansible-playbooks/SKILL.md    ← idempotency, role structure, vault integration
+│   ├── drift-detection/SKILL.md      ← plan-diff analysis, scheduled drift checks
+│   ├── state-management/SKILL.md     ← import, mv, rm, split-state patterns
+│   └── cost-optimization/SKILL.md   ← right-sizing, reserved capacity, unused resource cleanup
 ├── workflows/
-│   ├── provision-environment.md
-│   ├── destroy-environment.md
-│   ├── drift-remediation.md
-│   └── module-development.md
+│   ├── provision-environment.md   ← /provision-environment
+│   ├── destroy-environment.md     ← /destroy-environment
+│   ├── drift-remediation.md       ← /drift-remediation
+│   └── module-development.md      ← /module-development
 └── prompts/
     └── *.md
 ```
+
+## Discovery patterns
+
+- `rules/*.md`
+- `skills/*/SKILL.md`
+- `workflows/*.md`
+- `prompts/*.md`

@@ -1,22 +1,47 @@
-# Database Operations guidance index
+# Database Operations — guidance index
 
-PostgreSQL, Redis, and generic database operations for DevOps — backup/restore, performance, migration safety, K8s-hosted DB ops.
+## What this area covers
+
+Operational database management: backup verification, performance tuning, migration safety, incident response, PostgreSQL and Redis operations. Focus is on production database reliability, not application-level ORM usage.
+
+## Guidance chain
+
+1. Project `.agent/` baseline
+2. `database-ops/rules/*` — load all
+3. `database-ops/skills/*/SKILL.md` — load only the skill matching the current task
+4. `database-ops/workflows/*` — load the workflow matching the triggered command
+
+## Cross-cutting constraints
+
+- **Backups are not optional** — every production database has a verified backup and a tested restore procedure.
+- **Migrations are backward-compatible** — no breaking schema change without a multi-step rollout plan.
+- **No production access without audit log** — all direct DB sessions in production are logged and justified.
+- **Verify before restore** — backup integrity is tested on a schedule; untested backups are treated as non-existent.
+
+## Spec map
 
 ```text
 database-ops/
 ├── rules/
-│   ├── backup-policy.md
-│   ├── migration-runbook.md
-│   └── access-control.md
+│   ├── backup-policy.md         ← frequency, retention, offsite requirements
+│   ├── access-control.md        ← least-privilege roles, audit logging, break-glass
+│   └── migration-runbook.md     ← pre/post checks, rollback gates, zero-downtime patterns
 ├── skills/
-│   ├── postgres-operations/SKILL.md
-│   ├── redis-operations/SKILL.md
-│   ├── backup-restore/SKILL.md
-│   ├── db-performance/SKILL.md
-│   └── migration-safety/SKILL.md
+│   ├── backup-restore/SKILL.md       ← pg_dump, WAL archiving, PITR, restore drills
+│   ├── db-performance/SKILL.md       ← EXPLAIN ANALYZE, index design, vacuum, slow query
+│   ├── migration-safety/SKILL.md     ← expand/contract pattern, lock avoidance, online DDL
+│   ├── postgres-operations/SKILL.md  ← replication, failover, extensions, pg_stat_*
+│   └── redis-operations/SKILL.md     ← persistence modes, eviction, cluster, keyspace audit
 ├── workflows/
-│   ├── backup-verify.md
-│   └── db-incident.md
+│   ├── backup-verify.md    ← /backup-verify
+│   └── db-incident.md      ← /db-incident
 └── prompts/
     └── *.md
 ```
+
+## Discovery patterns
+
+- `rules/*.md`
+- `skills/*/SKILL.md`
+- `workflows/*.md`
+- `prompts/*.md`

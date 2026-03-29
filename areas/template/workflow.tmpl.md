@@ -2,39 +2,39 @@
 name: {{kebab-case-workflow-name}}
 type: workflow
 trigger: /{{workflow-name}}
-description: {{ONE_SENTENCE — what does completing this workflow produce?}}
+description: {{ONE_SENTENCE — what completing this workflow produces}}
 inputs:
-  - {{input_1 — name of the required input}}
+  - {{input_1 — name and description of required input}}
   - {{input_2}}
 outputs:
-  - {{output_1 — concrete deliverable}}
+  - {{output_1 — concrete deliverable, e.g. "signed-off implementation_plan.md"}}
   - {{output_2}}
 roles:
-  - {{role-1 — job title or function, e.g. "copywriter", "campaign-manager", "legal-reviewer"}}
+  - {{role-1 — function name, e.g. "copywriter", "campaign-manager"}}
   - {{role-2}}
 execution:
-  initiator: {{role-1 — must be one of: product-owner|pm|team-lead|developer|qa|designer}}
+  initiator: {{role — must be one of: product-owner | pm | team-lead | developer | qa | designer}}
 related-rules:
   - {{rule-filename.md}}
 uses-skills:
   - {{skill-directory-name}}
-  - {{skill-directory-name}}
 quality-gates:
-  - {{MEASURABLE_CRITERION_1 — checkable without human judgment, e.g. "all copy variants pass brand-voice rule 2"}}
+  - {{MEASURABLE_CRITERION_1 — checkable without human judgment}}
   - {{MEASURABLE_CRITERION_2}}
 ---
 
 <!--
 AGENT INSTRUCTIONS:
-1. Fill all frontmatter fields. Missing fields cause the workflow to be skipped by some agents.
-2. "trigger" must start with / and match the prompt file name exactly.
-3. "roles" are who performs the steps — not job levels. Use function names, not seniority (not "senior copywriter").
-4. "execution.initiator" must be one of: `product-owner`, `pm`, `team-lead`, `developer`, `qa`, `designer`.
-5. "quality-gates" must be checkable. "Looks good" is NOT a quality gate. "Draft passes all 5 headline criteria from headline-frameworks skill" IS.
-6. Every step MUST have: @role, Input, Actions (specific), Done when (checkable).
-7. Use imperative voice in steps: "Create", "Check", "Ask", "Verify" — not "You should" or "Consider".
-8. Include failure paths for at least one step.
-9. Target: 60–200 lines total. If > 200 lines, split into two workflows.
+1. Fill all frontmatter fields. Missing fields cause the workflow to be skipped.
+2. "trigger" must start with / and match the prompt filename exactly.
+3. "roles" are who performs steps — use function names, not seniority titles.
+4. "execution.initiator" must be one of the six standard roles.
+5. "quality-gates" must be objectively checkable. "Looks good" is NOT a gate.
+   Good gate: "All copy variants pass brand-voice rule 2 and score ≥ 70 on Flesch-Kincaid."
+6. Every step MUST have: @role, Input, Actions (specific), Done when (checkable criterion).
+7. Use imperative voice: "Create", "Check", "Verify", "Ask" — not "You should" or "Consider".
+8. Include a failure path for at least one step.
+9. Target: 60–200 lines total. Over 200 lines = split into two workflows.
 10. Delete all AGENT INSTRUCTIONS comments before finalising.
 -->
 
@@ -49,17 +49,15 @@ AGENT INSTRUCTIONS:
 
   {{SPECIFIC_ACTION_2}}
 
-  {{SPECIFIC_ACTION_3}}
+  > **If {{FAILURE_CONDITION}}:** {{EXPLICIT_FAILURE_PATH — what to do instead, not just "handle the error"}}
 
-  > **If {{FAILURE_CONDITION}}:** {{EXPLICIT_FAILURE_PATH — what to do instead}}
-
-- **Done when:** {{CHECKABLE_CRITERION — e.g. "brief confirmed by stakeholder in writing", "all fields in the template are filled"}}
+- **Done when:** {{CHECKABLE_CRITERION — e.g. "brief confirmed in writing", "all required fields in the template are non-empty"}}
 
 ---
 
 ### 2. {{STEP_NAME}} — `@{{role-1}}`
 
-- **Input:** {{output of step 1}}
+- **Input:** output of step 1
 - **Actions:**
 
   {{ACTIONS}}
@@ -71,11 +69,11 @@ AGENT INSTRUCTIONS:
 ### 3. {{STEP_NAME}} — `@{{role-2}}`
 
 <!--
-Steps that involve a different role must clearly state the handoff.
-Example: "Receive draft from @copywriter. Review against brand-voice-standards.md Rule 2."
+Steps involving a different role must state the handoff explicitly.
+Example: "Receive draft from @developer. Review against architecture.md constraints."
 -->
 
-- **Input:** {{output of step 2}}
+- **Input:** output of step 2
 - **Actions:**
 
   {{ACTIONS}}
@@ -88,11 +86,11 @@ Example: "Receive draft from @copywriter. Review against brand-voice-standards.m
 
 <!--
 Add or remove steps as needed. Most workflows are 3–7 steps.
-Fewer than 3 steps = not complex enough to need a workflow (write a skill instead).
+Fewer than 3 steps = write a skill instead.
 More than 8 steps = split into two workflows.
 -->
 
-- **Input:** {{output of step 3}}
+- **Input:** output of step 3
 - **Actions:**
 
   {{ACTIONS}}
@@ -103,4 +101,4 @@ More than 8 steps = split into two workflows.
 
 ## Exit
 
-{{ONE_SENTENCE: when the workflow is complete and what was produced — e.g. "Workflow complete when all outputs are approved, published, and tracked in the campaign tracker."}}
+{{ONE_SENTENCE: when the workflow is complete and what was produced.}}
