@@ -138,6 +138,15 @@ Quick checklist before opening a PR:
 - [ ] Constraints in rules use imperative language.
 - [ ] Prompt examples include both EN and RU blocks.
 
+### Publishing to npm from GitHub Actions
+
+The publish workflow (`.github/workflows/publish-npm.yml`) expects a repository secret named `NPM_TOKEN`.
+
+- Use an **npm Automation token** (classic), or
+- Use a **granular npm access token** with package publish permission and **bypass 2FA enabled**.
+
+Without one of those token types, npm publish from CI fails with `E403` (`Two-factor authentication or granular access token with bypass 2fa enabled is required to publish packages`).
+
 ---
 
 ## License
