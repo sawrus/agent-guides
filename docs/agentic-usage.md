@@ -15,7 +15,7 @@ Run from a local checkout:
 Run directly with NPX (no prior install):
 
 ```bash
-npx agentic@latest
+npx @jetrabbits/agentic@latest
 ```
 
 Run the installed binary:
@@ -28,7 +28,7 @@ Default behavior:
 
 - In an interactive terminal: starts TUI mode
 - In non-interactive mode (CI/pipe): prints usage and exits with code `1`
-- For CI one-off execution, prefer `npx agentic@latest <command>`
+- For CI one-off execution, prefer `npx @jetrabbits/agentic@latest <command>`
 
 Install the standalone binary:
 

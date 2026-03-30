@@ -69,7 +69,7 @@ agent-guides/
 ### Install
 
 ```bash
-npx agentic@latest
+npx @jetrabbits/agentic@latest
 ```
 
 Alternative bootstrap (installs local binary):
