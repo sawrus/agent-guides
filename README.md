@@ -69,6 +69,12 @@ agent-guides/
 ### Install
 
 ```bash
+npx agentic@latest
+```
+
+Alternative bootstrap (installs local binary):
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash
 ```
 
