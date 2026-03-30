@@ -6,7 +6,8 @@
     "opencode/minimax-m2.5-free",
     "google/antigravity-claude-opus-4-6-thinking",
     "google/antigravity-claude-sonnet-4-6",
-    "google/antigravity-gemini-3-flash"
+    "google/antigravity-gemini-3-flash",
+    "google/antigravity-gemini-3.1-pro"
   ],
   "timeoutMs": 10000,
   "concurrency": 10
