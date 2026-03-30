@@ -1,0 +1,15 @@
+{
+  "name": "agentic",
+  "version": "0.0.0-dev",
+  "description": "Agent Intelligence Configuration CLI",
+  "bin": {
+    "agentic": "bin/agentic.js"
+  },
+  "files": [
+    "AGENTS.md",
+    "agentic",
+    "areas",
+    "extensions"
+  ],
+  "license": "MIT"
+}
