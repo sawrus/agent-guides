@@ -1,27 +1,46 @@
-# agent-guides
+# Agent Intelligence Configuration (agentic)
 
-**agentic = Agent Intelligence Configuration.**
+> **18 areas · 10 Software specs · 8 DevOps specs · 7 SDLC agents · 105+ skills · 73+ workflows**
 
-A unified catalog of agentic specializations and the `agentic` CLI. The repository provides orchestrator-ready rules, skills, workflows, and prompts that can be installed into a target project from either a local checkout or an installed binary in `~/.local/bin`.
+A unified catalog of agentic specializations and the `agentic` CLI. Install orchestrator-ready rules, skills, workflows,
+and prompts into any project — and run a full SDLC agent team out of the box.
+
+![agent-guides · Coverage & Efficiency Report](images/coverage_scorecard.png)
 
 - [Coverage scorecard](https://claude.ai/public/artifacts/8177bc3d-3b2f-48a6-8232-47c5b02b20f3)
 - [Website](https://sawrus.github.io/agent-guides/)
 
 ---
 
+## Why agent-guides is different
+
+Most agent prompt libraries give you a smarter *single agent*. agent-guides gives you a **coordinated team**:
+
+```
+@product-owner → @team-lead → @developer → @qa → @devops-engineer
+```
+
+Each role has hard boundaries, explicit handoff criteria, and measurable success metrics. The Product Owner orchestrates
+the full SDLC; no other agent library ships this out of the box.
+
+Works with **Claude Code**, **opencode**, **Cursor**, **Codex**, **kilocode**, **antigravity** and **Gemini**.
+
+---
+
 ## What this is
 
-agent-guides is a structured knowledge base for AI coding agents. Instead of writing long system prompts, you install focused, composable guidance files that agents load on demand based on the task at hand.
+agent-guides is a structured knowledge base for AI coding agents. Instead of writing long system prompts, you install
+focused, composable guidance files that agents load on demand based on the task at hand.
 
 Each **area** (e.g., `devops/kubernetes`) provides:
 
-| File type | Purpose | When loaded |
-|:---|:---|:---|
-| `AGENTS.md` | Navigation index, load order, constraints | First — always |
-| `rules/*.md` | Hard constraints the agent must follow | Always, for the active spec |
-| `skills/*/SKILL.md` | Technical capabilities and patterns | On demand, matching "When to load" |
-| `workflows/*.md` | Orchestrated step-by-step processes | On `/command` trigger |
-| `prompts/*.md` | Human copy-paste templates (EN + RU) | Reference / paste |
+| File type           | Purpose                                   | When loaded                        |
+|:--------------------|:------------------------------------------|:-----------------------------------|
+| `AGENTS.md`         | Navigation index, load order, constraints | First — always                     |
+| `rules/*.md`        | Hard constraints the agent must follow    | Always, for the active spec        |
+| `skills/*/SKILL.md` | Technical capabilities and patterns       | On demand, matching "When to load" |
+| `workflows/*.md`    | Orchestrated step-by-step processes       | On `/command` trigger              |
+| `prompts/*.md`      | Human copy-paste templates (EN + RU)      | Reference / paste                  |
 
 ---
 
@@ -52,7 +71,9 @@ agent-guides/
 │       └── database-ops/      # PostgreSQL, Redis, migrations, backup/restore
 ├── extensions/
 │   ├── opencode/              # opencode agent definitions, commands, skills
-│   ├── claude/                # Claude-specific configs
+│   │   └── agents/            # 7 SDLC agents for .opencode/agents/
+│   ├── claude/                # Claude Code configs
+│   │   └── agents/            # 7 SDLC agents for .claude/agents/
 │   ├── antigravity/           # Antigravity platform configs
 │   ├── codex/                 # Codex override configs
 │   └── gemini/                # Gemini-specific configs
@@ -91,31 +112,37 @@ agentic
 
 ---
 
-## Agents (opencode)
+## SDLC Agent team
 
-The `extensions/opencode/agents/` directory defines the SDLC agent team:
+The same 7-agent team works across **Claude Code**, **opencode**, and any tool that supports agent/subagent files.
 
-| Agent | Role | Mode |
-|:---|:---|:---|
-| `product-owner` | Value definition, scope, acceptance | primary |
-| `pm` | Planning, dependencies, stakeholder comms | subagent |
-| `team-lead` | Technical strategy, architecture, quality gates | subagent |
-| `developer` | Implementation, tests, delivery | subagent |
-| `qa` | Verification, risk classification, go/no-go | subagent |
-| `designer` | UX quality, interaction design, accessibility | subagent |
-| `devops-engineer` | Infrastructure, CI/CD, platform reliability | subagent |
+| Agent             | Role                                           | Invoke when                                   |
+|:------------------|:-----------------------------------------------|:----------------------------------------------|
+| `product-owner`   | Scope, acceptance criteria, SDLC orchestration | Start of any feature; final acceptance        |
+| `pm`              | Planning, milestones, risk register            | Scope is defined, execution needs tracking    |
+| `team-lead`       | Architecture, code review, quality gates       | Planning and pre-release sign-off             |
+| `developer`       | Implementation, tests, delivery                | Implementation plan is approved               |
+| `qa`              | Verification, defect classification, go/no-go  | Developer hands off an increment              |
+| `designer`        | UX flows, accessibility, design-system review  | Planning and implementation review            |
+| `devops-engineer` | CI/CD, IaC, platform reliability               | Anything touching infra, pipelines, or deploy |
 
-Each agent has:
-- A `vibe` — one-line personality hook.
-- An `Identity` section — personality, memory, and experience.
-- A `Communication Style` section — how to report, flag, and escalate.
-- `Success Metrics` — measurable criteria for a well-functioning agent.
+Each agent has a `vibe` (one-line personality), `Identity`, `Communication Style`, `Success Metrics`, and explicit
+`Boundaries` — so roles never overlap and handoffs are always documented.
+
+### Claude Code
+
+Agent files live in `project/.claude/agents/`.
+
+### opencode
+
+Agent files live in `project/.opencode/agents/`. See [opencode setup guide](docs/opencode_setup.md) for configuration.
 
 ---
 
 ## What gets installed where
 
-Running `agentic` in a target project installs guidance into the project's `.agent/` directory, making it discoverable by supported agent tools (opencode, Claude Code, Cursor, etc.).
+Running `agentic` in a target project installs guidance into the project's `.agent/` directory, making it discoverable
+by supported agent tools (opencode, Claude Code, Cursor, etc.).
 
 ```text
 project/.agent/
@@ -132,13 +159,15 @@ project/.agent/
 See [CONTRIBUTING.md](CONTRIBUTING.md) for authoring standards, templates, and the pull request process.
 
 Quick checklist before opening a PR:
+
 - [ ] Used the appropriate template from `areas/template/`.
 - [ ] No `{{PLACEHOLDER}}` values remain.
 - [ ] Spec map in `AGENTS.md` updated.
 - [ ] Constraints in rules use imperative language.
 - [ ] Prompt examples include both EN and RU blocks.
+
 ---
 
 ## License
 
-This repository is licensed under the MIT License. See [LICENSE](LICENSE).
+See [LICENSE](LICENSE) if present, or contact the maintainers.
