@@ -141,4 +141,4 @@ Quick checklist before opening a PR:
 
 ## License
 
-See [LICENSE](LICENSE) if present, or contact the maintainers.
+This repository is licensed under the MIT License. See [LICENSE](LICENSE).
