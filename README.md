@@ -5,10 +5,15 @@
 A unified catalog of agentic specializations and the `agentic` CLI. Install orchestrator-ready rules, skills, workflows,
 and prompts into any project — and run a full SDLC agent team out of the box.
 
+- [Website](https://sawrus.github.io/agent-guides/)
+- [Coverage scorecard](https://claude.ai/public/artifacts/8177bc3d-3b2f-48a6-8232-47c5b02b20f3)
+- [CLI usage guide](docs/agentic-usage.md)
+
+## Coverage snapshot
+
 ![agent-guides · Coverage & Efficiency Report](images/coverage_scorecard.png)
 
-- [Coverage scorecard](https://claude.ai/public/artifacts/8177bc3d-3b2f-48a6-8232-47c5b02b20f3)
-- [Website](https://sawrus.github.io/agent-guides/)
+Coverage report for the current catalog across areas, specs, skills, and workflows.
 
 ---
 
@@ -105,10 +110,23 @@ curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | 
 agentic
 ```
 
+### Upgrade
+
+```bash
+agentic upgrade
+```
+
 ### Full instructions
 
 - [CLI usage guide](docs/agentic-usage.md)
 - [Installed CLI lifecycle](docs/agentic-lifecycle.md)
+
+## See agentic in action
+
+![how to use agentic](images/how_to_use_agentic.gif)
+
+Interactive walkthrough of the `agentic` CLI flow: choose a target project, pick agent platforms, and install the
+guidance bundle.
 
 ---
 
