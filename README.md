@@ -75,12 +75,13 @@ agent-guides/
 │       ├── devsecops/         # Shift-left, SBOM, OPA/Kyverno, container hardening
 │       └── database-ops/      # PostgreSQL, Redis, migrations, backup/restore
 ├── extensions/
-│   ├── opencode/              # opencode agent definitions, commands, skills
+│   ├── opencode/              # OpenCode agent definitions, commands, skills
 │   │   └── agents/            # 7 SDLC agents for .opencode/agents/
 │   ├── claude/                # Claude Code configs
 │   │   └── agents/            # 7 SDLC agents for .claude/agents/
 │   ├── antigravity/           # Antigravity platform configs
-│   ├── codex/                 # Codex override configs
+│   ├── codex/                 # Codex custom agents and override configs
+│   │   └── agents/            # 7 SDLC agents for .codex/agents/
 │   └── gemini/                # Gemini-specific configs
 ├── areas/template/            # Authoring templates — start here for new content
 ├── docs/                      # Setup and usage guides
@@ -132,7 +133,7 @@ guidance bundle.
 
 ## SDLC Agent team
 
-The same 7-agent team works across **Claude Code**, **opencode**, and any tool that supports agent/subagent files.
+The same 7-agent team works across **Claude Code**, **OpenCode**, **Codex**, and any tool that supports agent or subagent files.
 
 | Agent             | Role                                           | Invoke when                                   |
 |:------------------|:-----------------------------------------------|:----------------------------------------------|
@@ -147,20 +148,20 @@ The same 7-agent team works across **Claude Code**, **opencode**, and any tool t
 Each agent has a `vibe` (one-line personality), `Identity`, `Communication Style`, `Success Metrics`, and explicit
 `Boundaries` — so roles never overlap and handoffs are always documented.
 
-### Claude Code
+| Platform | Agent path | Format | Guide |
+|:---------|:-----------|:-------|:------|
+| Claude Code | `project/.claude/agents/*.md` | Markdown with YAML frontmatter | [Claude Code subagents](https://docs.claude.com/en/api/agent-sdk/subagents) |
+| OpenCode | `project/.opencode/agents/*.md` | Markdown with frontmatter | [OpenCode agents](https://opencode.ai/docs/agents/) · [repo setup note](docs/opencode_setup.md) |
+| Codex | `project/.codex/agents/*.toml` | TOML custom agents | [Codex subagents](https://developers.openai.com/codex/subagents) |
 
-Agent files live in `project/.claude/agents/`.
-
-### opencode
-
-Agent files live in `project/.opencode/agents/`. See [opencode setup guide](docs/opencode_setup.md) for configuration.
+Codex installs both `.codex/agents/*.toml` custom agents and `.codex/AGENTS.override.md`.
 
 ---
 
 ## What gets installed where
 
-Running `agentic` in a target project installs guidance into the project's `.agent/` directory, making it discoverable
-by supported agent tools (opencode, Claude Code, Cursor, etc.).
+Running `agentic` in a target project installs shared guidance into the project's `.agent/` directory and copies any
+selected platform extensions into tool-specific directories such as `.claude/`, `.opencode/`, and `.codex/`.
 
 ```text
 project/.agent/

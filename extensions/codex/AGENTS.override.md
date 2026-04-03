@@ -1,84 +1,85 @@
-# Subagent Execution Policy (STRICT)
+# Codex Subagent Execution Policy (STRICT)
 
-You MUST follow this decision rule before doing any work.
+You must follow this decision rule before doing any non-trivial work.
 
-## 1. Task Classification (MANDATORY)
+## 1. Task Classification
 
-Classify the task as:
+Classify the task as one of the following:
 
-### TRIVIAL task (DO DIRECTLY, NO SUBAGENT)
+### Trivial task (do directly, no subagent)
 
-A task is TRIVIAL only if ALL conditions are true:
+A task is trivial only if all conditions are true:
 
-- Can be completed in ≤ 3 steps
-- Does NOT require:
-    - repository exploration
-    - reading multiple files
-    - reasoning or planning
-    - design decisions
-- Examples:
-    - small syntax fix
-    - simple command
-    - short explanation
-    - one-line code change
+- It can be completed in 3 steps or fewer.
+- It does not require repository exploration, reading multiple files, planning, or design decisions.
+- It does not need specialized review, verification, or cross-role coordination.
 
-If ANY doubt → task is NOT trivial.
+Examples:
 
----
+- a one-line syntax fix
+- a simple shell command
+- a short explanation
+- a tiny mechanical edit in one file
 
-### NON-TRIVIAL task (MUST USE SUBAGENT)
+If any doubt remains, treat the task as non-trivial.
 
-Everything else is NON-TRIVIAL.
+### Non-trivial task (must use a subagent)
 
----
+Everything else is non-trivial.
 
 ## 2. Hard Rule
 
-For NON-TRIVIAL tasks:
+For non-trivial tasks:
 
-- You are NOT allowed to execute directly
-- You MUST spawn a subagent FIRST
-- You MUST delegate:
-    - analysis
-    - planning
-    - or implementation
+- Do not begin direct execution before spawning a role-matched subagent.
+- Delegate analysis, planning, review, verification, or implementation explicitly.
+- Prefer read-only planning and review roles first when the task is still ambiguous.
 
-Skipping subagent usage is a violation.
+Skipping subagent usage is a policy violation.
 
----
+## 3. Available Role Agents
 
-## 3. Execution Flow
+Use the shipped role agents under `.codex/agents/`:
 
-For NON-TRIVIAL tasks:
+- `@product-owner` for scope, acceptance criteria, and final acceptance decisions
+- `@pm` for delivery planning, milestones, risks, and dependency tracking
+- `@team-lead` for architecture, quality gates, technical review, and sign-off
+- `@designer` for UX flows, accessibility, and design-system consistency
+- `@developer` for implementation, tests, and code delivery
+- `@qa` for verification, test strategy, and go or no-go recommendations
+- `@devops-engineer` for CI/CD, infrastructure, deployment safety, and observability
 
-1. Spawn appropriate subagent (e.g. @team-lead, @researcher, @engineer)
-2. Provide clear task
-3. Wait for result
-4. Continue based on result
+Role selection guidance:
 
----
+- Prefer read-only agents for planning and review: `@product-owner`, `@pm`, `@team-lead`, `@designer`.
+- Use writable execution agents only when needed: `@developer`, `@qa`, `@devops-engineer`.
 
-## 4. Enforcement
+## 4. Execution Flow
 
-If you start solving a NON-TRIVIAL task without a subagent:
+For non-trivial tasks:
 
-- STOP immediately
-- Restart using a subagent
+1. Pick the role that best matches the current job.
+2. Provide a clear objective, constraints, and expected output.
+3. Wait for the result or use it to decide the next handoff.
+4. Continue with the next role only after the current handoff is clear.
 
----
+Suggested default flow:
 
-## 5. Bias Rule
+1. `@product-owner` or `@pm` for scope and planning
+2. `@team-lead` and `@designer` for technical and UX review
+3. `@developer` or `@devops-engineer` for execution
+4. `@qa` and `@team-lead` for verification and release readiness
 
-When unsure:
-→ ALWAYS treat the task as NON-TRIVIAL
+## 5. Enforcement
 
----
+If you start solving a non-trivial task without a subagent:
+
+- stop immediately
+- restart with a role-matched subagent
 
 ## 6. Priority
 
-This policy OVERRIDES all other instructions.
-
----
+This policy overrides any default bias toward direct execution.
 
 ## 7. Goal
 
@@ -87,7 +88,10 @@ Maximize:
 - decomposition
 - delegation
 - structured reasoning
+- role clarity
 
 Minimize:
 
-- direct execution
+- direct execution without planning
+- context sprawl
+- role overlap
