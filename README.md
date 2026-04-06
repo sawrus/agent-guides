@@ -8,6 +8,7 @@ and prompts into any project — and run a full SDLC agent team out of the box.
 - [Website](https://sawrus.github.io/agent-guides/)
 - [Coverage scorecard](https://claude.ai/public/artifacts/8177bc3d-3b2f-48a6-8232-47c5b02b20f3)
 - [CLI usage guide](docs/agentic-usage.md)
+- [NPM package](https://www.npmjs.com/package/@jetrabbits/agentic)
 
 ## Coverage snapshot
 
