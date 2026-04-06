@@ -83,6 +83,7 @@ agent-guides/
 │   ├── codex/                 # Codex custom agents and override configs
 │   │   └── agents/            # 7 SDLC agents for .codex/agents/
 │   └── gemini/                # Gemini-specific configs
+│   │   └── agents/            # 7 SDLC agents for .gemini/agents/
 ├── areas/template/            # Authoring templates — start here for new content
 ├── docs/                      # Setup and usage guides
 ├── AGENTS.md                  # Root agent guidance (loaded into every project)
@@ -133,7 +134,8 @@ guidance bundle.
 
 ## SDLC Agent team
 
-The same 7-agent team works across **Claude Code**, **OpenCode**, **Codex**, and any tool that supports agent or subagent files.
+The same 7-agent team works across **Claude Code**, **OpenCode**, **Codex**, and any tool that supports agent or
+subagent files.
 
 | Agent             | Role                                           | Invoke when                                   |
 |:------------------|:-----------------------------------------------|:----------------------------------------------|
@@ -148,13 +150,12 @@ The same 7-agent team works across **Claude Code**, **OpenCode**, **Codex**, and
 Each agent has a `vibe` (one-line personality), `Identity`, `Communication Style`, `Success Metrics`, and explicit
 `Boundaries` — so roles never overlap and handoffs are always documented.
 
-| Platform | Agent path | Format | Guide |
-|:---------|:-----------|:-------|:------|
-| Claude Code | `project/.claude/agents/*.md` | Markdown with YAML frontmatter | [Claude Code subagents](https://docs.claude.com/en/api/agent-sdk/subagents) |
-| OpenCode | `project/.opencode/agents/*.md` | Markdown with frontmatter | [OpenCode agents](https://opencode.ai/docs/agents/) · [repo setup note](docs/opencode_setup.md) |
-| Codex | `project/.codex/agents/*.toml` | TOML custom agents | [Codex subagents](https://developers.openai.com/codex/subagents) |
-
-Codex installs both `.codex/agents/*.toml` custom agents and `.codex/AGENTS.override.md`.
+| Platform    | Agent path                      | Format                         | Guide                                                                                           |
+|:------------|:--------------------------------|:-------------------------------|:------------------------------------------------------------------------------------------------|
+| Claude Code | `project/.claude/agents/*.md`   | Markdown with YAML frontmatter | [Claude Code subagents](https://docs.claude.com/en/api/agent-sdk/subagents)                     |
+| OpenCode    | `project/.opencode/agents/*.md` | Markdown with frontmatter      | [OpenCode agents](https://opencode.ai/docs/agents/) · [repo setup note](docs/opencode_setup.md) |
+| Codex       | `project/.codex/agents/*.toml`  | TOML custom agents             | [Codex subagents](https://developers.openai.com/codex/subagents)                                |
+| Gemini      | `project/.gemini/agents/*.toml` | Markdown with YAML frontmatter | [Gemini subagents](https://geminicli.com/docs/core/subagents)                                   |
 
 ---
 
