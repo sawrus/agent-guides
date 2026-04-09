@@ -61,6 +61,12 @@ Cross-cutting practices that apply to every project regardless of area.
 - Document requirements before implementation — "we'll figure it out" is not a requirement.
 - Conduct design reviews for any change with architectural, security, or data model impact.
 
+### Documentation of Behavior Changes
+
+- Any behavior change captured in Markdown artifacts must be documented under the project `docs/` directory.
+- Use documentation paths that match the change type, for example `docs/<feature>/README.md` for feature behavior and `docs/incidents/<date>-<workload>-root-cause.md` for incident root cause reports.
+- Create or update the relevant `docs/` artifact in the same change set; do not leave behavior changes documented only in workflow outputs, tickets, or PR comments.
+
 ### Code Style
 
 - Write self-documenting code with meaningful names — comments explain why, not what.
