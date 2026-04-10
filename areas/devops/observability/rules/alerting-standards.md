@@ -1,36 +1,42 @@
 # Rule: Alerting Standards
 
-**Priority**: P1 — Alerts without runbooks are not deployed.
+**Priority**: P1 — Alerts must be actionable, SLO-aligned, and mapped to ownership.
 
 ## Alert Quality Rules
 
-1. **Every alert has a runbook** — `annotations.runbook_url` is mandatory.
-2. **No alert fires without a human action** — if no one can do anything about it, it's not an alert (it's a dashboard).
-3. **Alert on symptoms, not causes** — `HighErrorRate` is an alert; `HighCPU` is a warning unless it causes user impact.
-4. **Severity classification**
+1. **Runbook required** — every alert includes `runbook_url` and service owner.
+2. **Actionability required** — alerts without a defined human or automated action are downgraded to dashboard signals.
+3. **Symptom-first** — page on user impact, not raw infrastructure noise.
 
-   | Severity | Meaning | Response |
-   |:---|:---|:---|
-   | `critical` | User-facing outage or data loss risk | Page on-call immediately |
-   | `warning` | Degraded but not broken; trending toward critical | Notify Slack; fix in business hours |
-   | `info` | Informational; no action required | Dashboard only |
+## Severity Model
 
-5. **`for:` duration** — critical alerts: `for: 2m`; warning alerts: `for: 10m`. Instant alerts cause false positives.
-6. **Alert fatigue policy** — if an alert fires more than 3 times in a week without action → reduce sensitivity or fix root cause.
+| Severity | Meaning | Response |
+|:---|:---|:---|
+| `critical` | Active user-impacting incident / fast error-budget burn | Page on-call immediately |
+| `warning` | Degradation trending toward SLO breach | Notify team channel, triage in business hours or sooner |
+| `info` | Context signal only | Dashboard or ticket, no paging |
 
-## Notification Routing (Alertmanager)
+## Multi-Window Burn-Rate Standard
 
-```yaml
-route:
-  group_by: [alertname, namespace]
-  group_wait: 30s
-  group_interval: 5m
-  repeat_interval: 4h
-  receiver: slack-warning
-  routes:
-    - matchers: [severity="critical"]
-      receiver: pagerduty-oncall
-      continue: true
-    - matchers: [severity="critical"]
-      receiver: slack-critical
-```
+4. Define at least:
+   - **fast burn** alert (e.g., ~1h window),
+   - **slow burn** alert (e.g., ~6h window).
+5. Fast burn pages on-call; slow burn creates prioritized reliability action.
+6. Burn-rate thresholds must map to error-budget policy and release gating.
+
+## Anti-Fatigue and Signal Hygiene
+
+7. Configure `for:` durations to reduce noise.
+8. If an alert fires repeatedly without action, either improve runbook/automation or retire the alert.
+9. Track alert precision/recall metrics during reliability reviews.
+
+## Routing and Escalation
+
+10. Route by service ownership and environment (prod vs non-prod).
+11. Define escalation path and timeout for unacknowledged critical alerts.
+12. Support maintenance windows and silence policies with audit logging.
+
+## Auto-Remediation
+
+13. For known-safe remediations (e.g., restart stateless worker), allow guarded auto-remediation.
+14. Auto-remediation actions must emit events and be reversible.

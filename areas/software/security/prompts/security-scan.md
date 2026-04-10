@@ -4,88 +4,80 @@ workflow: security-scan
 
 # Prompt: `/security-scan`
 
-Use when: running a full automated security sweep — SAST, dependency audit, secrets detection, IaC checks — before a release or after a major change.
+Use when: running a security scan that must produce actionable release decisions (`exploitable-now`, `not-reachable`, `accepted-risk`) rather than only raw scanner output.
 
 ---
 
-## Example 1 — Pre-release security gate
+## Example 1 — Release gate with reachability triage and VEX output
 
 **EN:**
 ```
 /security-scan
 
-Trigger: release candidate v2.5.0 ready for staging sign-off
-Scope: full — SAST + dependency CVEs + secrets + IaC (Terraform)
-Stack: Python 3.12 / FastAPI, PostgreSQL, Redis, Terraform (AWS)
-Tools available: bandit, ruff, safety, trufflehog, tfsec, semgrep
-Severity threshold: block release on any Critical or High; report Medium/Low
-Output: security-scan-report.md with findings, severity, remediation steps
-Branch: release/2.5.0
+Trigger: release candidate v4.2.0
+Scope: SAST + dependency + secrets + IaC
+Stack: Node.js 22, Python 3.12, Terraform
+Policy:
+  - Block release for any Critical finding classified as exploitable-now
+  - High findings require remediation plan <= 72h or time-bound exception
+Required output sections:
+  1) Findings summary by severity
+  2) Reachability analysis for each High/Critical dependency CVE
+  3) Classification table: exploitable-now / not-reachable / accepted-risk
+  4) VEX-style statements for not-reachable items with evidence
+  5) Exception register (owner, expiry, compensating controls)
 ```
 
 **RU:**
 ```
 /security-scan
 
-Триггер: release candidate v2.5.0 готов к sign-off на staging
-Скоуп: полный — SAST + CVE зависимостей + секреты + IaC (Terraform)
-Стек: Python 3.12 / FastAPI, PostgreSQL, Redis, Terraform (AWS)
-Доступные инструменты: bandit, ruff, safety, trufflehog, tfsec, semgrep
-Порог серьёзности: блокировать релиз на любом Critical или High; отчитываться о Medium/Low
-Результат: security-scan-report.md с находками, серьёзностью, шагами устранения
-Ветка: release/2.5.0
+Триггер: release candidate v4.2.0
+Скоуп: SAST + зависимости + секреты + IaC
+Стек: Node.js 22, Python 3.12, Terraform
+Политика:
+  - Блокировать релиз при любом Critical, классифицированном как exploitable-now
+  - Для High нужен план устранения <= 72ч или ограниченное по времени исключение
+Обязательные разделы результата:
+  1) Сводка находок по серьёзности
+  2) Reachability-анализ для каждого High/Critical dependency CVE
+  3) Таблица классификации: exploitable-now / not-reachable / accepted-risk
+  4) VEX-подобные записи для not-reachable с доказательствами
+  5) Реестр исключений (owner, expiry, compensating controls)
 ```
 
 ---
 
-## Example 2 — Post-incident targeted scan
+## Example 2 — Fast incident-mode scan focused on exploitability
 
 **EN:**
 ```
 /security-scan
 
-Trigger: post-incident — suspected SQL injection in orders module (INC-2024-088)
-Scope: targeted — SAST only on src/api/ and src/repositories/; dependency audit for SQLAlchemy
-Priority: SQL injection patterns, unsanitised inputs, ORM bypass risks
-Skip: IaC scan, secrets scan (already clean, saves time)
-Output: findings with code location + PoC query if reproducible
-Timeframe: results needed within 2 hours for incident postmortem
+Context: actively exploited CVE announced in a transitive dependency
+Timebox: 90 minutes
+Scope:
+  - Dependency path tracing to affected services
+  - Runtime reachability confirmation
+  - Exposure check for internet-facing routes
+Output:
+  - List of impacted services sorted by exploitability risk
+  - Immediate mitigations (feature flags, traffic isolation, WAF rules)
+  - Patch and rollback plan
 ```
 
 **RU:**
 ```
 /security-scan
 
-Триггер: после инцидента — подозрение на SQL injection в модуле orders (INC-2024-088)
-Скоуп: целевой — только SAST на src/api/ и src/repositories/; аудит зависимостей для SQLAlchemy
-Приоритет: паттерны SQL injection, неэкранированные входные данные, риски обхода ORM
-Пропустить: IaC сканирование, проверку секретов (уже чисто, экономия времени)
-Результат: находки с расположением кода + PoC запрос если воспроизводимо
-Срок: результаты нужны в течение 2 часов для postmortem инцидента
-```
-
----
-
-## Example 3 — Dependency-only quick scan
-
-**EN:**
-```
-/security-scan
-
-Scope: dependency CVE audit only
-Stack: Node.js 20 / Express, npm lockfile
-Command: npm audit --audit-level=high
-Auto-fix: apply non-breaking patches automatically (npm audit fix)
-Report: list packages with unresolved High/Critical CVEs that need manual review
-```
-
-**RU:**
-```
-/security-scan
-
-Скоуп: только аудит CVE зависимостей
-Стек: Node.js 20 / Express, npm lockfile
-Команда: npm audit --audit-level=high
-Авто-исправление: применить неломающие патчи автоматически (npm audit fix)
-Отчёт: список пакетов с неустранёнными High/Critical CVE которые требуют ручного ревью
+Контекст: опубликован активно эксплуатируемый CVE в транзитивной зависимости
+Таймбокс: 90 минут
+Скоуп:
+  - Трассировка dependency path до затронутых сервисов
+  - Подтверждение runtime reachability
+  - Проверка экспозиции интернет-facing маршрутов
+Результат:
+  - Список затронутых сервисов, отсортированный по риску exploitability
+  - Немедленные mitigation-шаги (feature flags, изоляция трафика, WAF rules)
+  - План патча и отката
 ```
