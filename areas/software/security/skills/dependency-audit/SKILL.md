@@ -2,28 +2,49 @@
 
 ## When to load
 
-When adding new packages, reviewing a PR that adds dependencies, or performing security reviews.
+When adding/updating dependencies, handling security findings, preparing releases, or reviewing supply-chain risk in PRs.
 
-## Pre-Add Checklist
+## Objective
 
-```
-Before npm install [package]:
-1. POPULARITY: > 100k weekly downloads?
-2. MAINTENANCE: Last commit within 12 months? Open PRs reviewed?
-3. OWNERSHIP: Well-known org/individual? History of incidents?
-4. SCOPE: Does the package scope match its stated purpose?
-          (A CSV parser with network dependencies is suspicious)
-5. AUDIT: Run npm audit / snyk test immediately after adding
-6. SIZE: Check bundlephobia.com
-7. ALTERNATIVES: Is there a built-in API that does this?
-```
+Produce a dependency risk decision based on exploitability and business impact, not scanner output alone.
 
-## Supply Chain Attack Red Flags
+## Audit Workflow
 
-```
-- Recently transferred ownership
-- Sudden version bump with no changelog
-- Minified/obfuscated code in source (not just dist)
-- postinstall / preinstall scripts making network requests
-- Name similar to popular package (typosquatting)
-```
+1. **Inventory**
+   - Identify direct and transitive dependencies changed in PR/release.
+   - Record package source (registry), maintainer trust indicators, and version deltas.
+
+2. **Scan**
+   - Run ecosystem-native audit tools + repository policy checks.
+   - Capture High/Critical findings with package path and affected components.
+
+3. **Exploitability Triage**
+   - Determine runtime reachability (is vulnerable code path invoked?).
+   - Evaluate exposure (public endpoint, privileged process, internal-only).
+   - Assess mitigations (WAF, sandbox, feature flags, auth boundaries).
+
+4. **Classify each finding**
+   - `exploitable-now` → block release, fix immediately.
+   - `not-reachable` → document evidence and add VEX status.
+   - `accepted-risk` → temporary exception with owner + expiry.
+
+5. **Remediation Plan**
+   - Prefer upgrade to patched version.
+   - If upgrade is breaking: isolate vulnerability, add compensating controls, schedule upgrade milestone.
+
+## Supply-Chain Red Flags
+
+- Maintainer transfer shortly before suspicious release.
+- Sudden dependency graph expansion unrelated to package purpose.
+- install/postinstall scripts performing unexpected network activity.
+- Obfuscated source in runtime package.
+- Package source not in approved registries.
+
+## Output Template (required)
+
+- Dependency name and version delta
+- Severity and advisory source
+- Reachability evidence
+- Classification (`exploitable-now` / `not-reachable` / `accepted-risk`)
+- Decision and next action
+- Owner and deadline

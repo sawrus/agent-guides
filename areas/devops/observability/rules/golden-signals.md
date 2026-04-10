@@ -1,28 +1,37 @@
-# Rule: Golden Signals & Observability Baseline
+# Rule: Golden Signals & SLO-First Observability Baseline
 
-**Priority**: P1 — Services without golden signals cannot be promoted to production.
+**Priority**: P1 — Services without measurable user-impact SLIs and enforceable SLO alerts cannot be promoted to production.
 
-## Four Golden Signals (mandatory for every service)
+## Required Coverage
 
-| Signal | Metric | Alert threshold |
+1. **Golden signals are mandatory**: latency, traffic, errors, saturation.
+2. **User-journey SLIs are mandatory** for critical flows (e.g., checkout success, login success, payment confirmation latency).
+3. **Instrumentation is vendor-neutral**: do not hardcode stack-specific ports/endpoints in policy; enforce metric contract and discoverability.
+
+## Signal Baseline
+
+| Signal | Minimum metric coverage | Alerting baseline |
 |:---|:---|:---|
-| **Latency** | p50, p95, p99 request duration | p99 > 1s for 5 min |
-| **Traffic** | Requests per second (RPS) | Drop > 50% from baseline |
-| **Errors** | 5xx rate / error rate | > 1% for 2 min |
-| **Saturation** | CPU %, memory %, queue depth | CPU > 80%, Memory > 85% |
+| Latency | p50/p95/p99 by endpoint/operation | p99 SLO burn alert |
+| Traffic | request rate + success volume | anomaly vs rolling baseline |
+| Errors | error rate by class (4xx/5xx/domain) | user-impacting error budget burn |
+| Saturation | CPU, memory, queue/concurrency, DB saturation | sustained saturation with user impact |
 
-## Instrumentation Requirements
+## SLO and Alerting Requirements
 
-1. **Every HTTP service exposes** `/metrics` in Prometheus format on port 9090 (or sidecar).
-2. **Every service has** a `ServiceMonitor` (kube-prometheus-stack) or scrape config.
-3. **Structured JSON logging** — no unstructured log lines in production.
-4. **Trace context propagated** — W3C TraceContext headers forwarded between all services.
-5. **Health endpoints** — `/health/ready` (readiness) and `/health/live` (liveness) separate.
+4. Define at least one availability and one latency SLO per critical service.
+5. Use multi-window multi-burn-rate alerting (fast + slow burn).
+6. Link alert severity to error-budget policy actions.
+7. Every alert must include runbook URL and primary owner.
 
-## Three Pillars Coverage
+## Cardinality and Cost Governance
 
-| Pillar | Stack | Retention |
-|:---|:---|:---|
-| Metrics | Prometheus + VictoriaMetrics (long-term) | 15 days hot / 1 year cold |
-| Logs | Loki or ELK (Elasticsearch+Logstash+Kibana) | 30 days |
-| Traces | Tempo or Jaeger (via OpenTelemetry) | 7 days |
+8. Define metric label cardinality budget per service.
+9. For high-cardinality telemetry, apply sampling, aggregation, or drop policy with documented rationale.
+10. Retention tiers must be explicit and mapped to compliance + incident forensics needs.
+
+## Trace and Log Correlation
+
+11. Propagate trace context across service boundaries.
+12. Ensure logs, metrics, and traces can be correlated via request/trace IDs.
+13. Sensitive data must be redacted before ingestion.

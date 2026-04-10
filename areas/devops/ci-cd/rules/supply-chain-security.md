@@ -1,34 +1,54 @@
 # Rule: Supply Chain Security
 
-**Priority**: P0 — Unsigned or unverified artifacts are blocked from production.
+**Priority**: P0 — Artifacts without verified identity, provenance, and policy compliance are blocked from production.
 
-## SBOM (Software Bill of Materials)
+## Baseline (mandatory)
 
-1. Every container image build generates an SBOM (Syft / Trivy).
-2. SBOM attached to image in OCI registry (cosign attach sbom).
-3. SBOM stored for minimum 1 year per compliance requirements.
+1. **Keyless signing by default**: use Sigstore keyless (`cosign` + OIDC/Fulcio/Rekor) for CI-produced artifacts.
+2. **Immutable references only**: deploy by digest (`@sha256:...`), never mutable tags (`latest`, `stable`).
+3. **Provenance required**: generate SLSA-compatible provenance attestations for every production build.
+4. **SBOM required**: generate CycloneDX or SPDX SBOM and attach/store with the exact artifact digest.
+5. **Admission policy enforcement**: clusters must verify signature + provenance + digest pinning before workload admission.
 
-## Image Signing (Sigstore/cosign)
+## Signing and Verification
 
 ```bash
-# Sign image after build
-cosign sign --key env://COSIGN_PRIVATE_KEY \
-  registry.example.com/my-service@sha256:<digest>
+# Keyless signing (preferred)
+cosign sign --yes registry.example.com/my-service@sha256:<digest>
 
-# Verify before deploy (in CD pipeline)
-cosign verify --key env://COSIGN_PUBLIC_KEY \
+# Verification with issuer/identity constraints (required in CD)
+cosign verify \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp 'https://github.com/myorg/myrepo/\.github/workflows/.+@refs/tags/v.+' \
   registry.example.com/my-service@sha256:<digest>
 ```
 
-4. Unsigned images are blocked from production namespaces via OPA/Kyverno policy.
+6. **Key-pair signing is fallback only**: if keyless is unavailable, keys must be in KMS/HSM and rotated at least quarterly.
+7. **Transparency log evidence**: verification must include Rekor entry checks when supported.
 
-## Dependency Pinning
+## Provenance and Build Integrity
 
-5. All `package.json`, `requirements.txt`, `go.sum` must pin exact versions.
-6. `pip install requests` (unpinned) is forbidden in CI — use `requirements.txt` with hashes.
-7. Base images pinned to digest in Dockerfile: `FROM python:3.12-slim@sha256:...`
+8. Production builds run only on trusted CI and produce attestations bound to exact commit SHA.
+9. Build provenance must include: repository, workflow identity, source revision, build parameters, and builder identity.
+10. Reproducibility target: deterministic builds for critical services; if not feasible, document non-deterministic inputs.
 
-## Audit Trail
+## Dependency and Base Image Controls
 
-8. Every build records: git commit, build timestamp, base image digest, all dependency versions.
-9. Provenance attestation (SLSA level 2+) generated for production releases.
+11. Pin direct dependencies and commit lockfiles (`package-lock.json`, `poetry.lock`, `go.sum`, etc.).
+12. Base images pinned by digest in Dockerfile; floating tags are forbidden.
+13. Package managers must verify checksums/hashes where available.
+14. External CI actions/plugins must be pinned to immutable commit SHA.
+
+## Policy Enforcement (Kubernetes / CD)
+
+15. Admission controllers (Kyverno/Gatekeeper) must enforce:
+   - signed image verification;
+   - digest-only image references;
+   - required provenance attestation for production namespaces.
+16. Deploy pipeline fails closed if verification services are unavailable (no silent bypass).
+17. Exceptions require documented risk acceptance with owner + expiry date (max 14 days).
+
+## Audit Trail and Retention
+
+18. Keep artifact metadata for at least 1 year: commit SHA, SBOM digest, provenance digest, signer identity, scan results.
+19. Every release record must be traceable from ticket/PR → commit → artifact digest → deployment event.
