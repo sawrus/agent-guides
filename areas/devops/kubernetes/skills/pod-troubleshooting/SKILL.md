@@ -1,7 +1,7 @@
 ---
 name: pod-troubleshooting
 type: skill
-description: Systematic diagnosis of pod failures — CrashLoopBackOff, OOMKilled, Pending, ImagePullBackOff, and service connectivity issues.
+description: "Systematic diagnosis of Kubernetes pod failures — CrashLoopBackOff, OOMKilled, Pending, ImagePullBackOff, and service connectivity issues. Use when the user encounters pods not starting, container restart loops, scheduling failures, or service unreachability in a K8s cluster."
 related-rules:
   - resource-governance.md
   - workload-security.md

@@ -1,7 +1,7 @@
 ---
 name: component-design
 type: skill
-description: Design reusable React/Vue components with correct patterns, typed APIs, state handling, and accessibility.
+description: "Design reusable React components with compound patterns, controlled/uncontrolled hybrids, typed prop APIs, async state handling, and ARIA accessibility. Use when the user creates, refactors, or reviews React components, or mentions props, hooks, .tsx files, component APIs, or accessible UI patterns."
 related-rules:
   - architecture.md
   - accessibility.md
@@ -11,6 +11,18 @@ allowed-tools: Read, Write, Edit, Bash
 # Component Design Patterns Skill
 
 > **Expertise:** Compound components, controlled/uncontrolled, render props, component API design, accessibility requirements.
+
+## When to load
+
+When creating, refactoring, or reviewing React components — especially when choosing between compound, controlled/uncontrolled, or headless patterns, designing typed prop APIs, or implementing accessible interactive widgets.
+
+## Component Design Workflow
+
+1. **Choose pattern** — use the decision tree below to select the right component pattern
+2. **Define typed props** — follow the Props API Design Rules (explicit variants, no boolean explosion)
+3. **Implement all states** — loading, error, empty, success for any async data
+4. **Add accessibility** — use the ARIA requirements table to add correct roles and keyboard support
+5. **Verify** — confirm keyboard navigation works, screen reader announces states, and TypeScript compiles with `--strict`
 
 ## Pattern Selection Guide
 
