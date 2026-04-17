@@ -1,7 +1,7 @@
 ---
 name: distributed-tracing
 type: skill
-description: Implement distributed tracing with OpenTelemetry, Tempo/Jaeger — instrumentation, sampling, and trace-to-log correlation.
+description: "Implement distributed tracing with OpenTelemetry, Tempo/Jaeger — instrumentation, sampling, and trace-to-log correlation. Use when the user asks about distributed tracing, OpenTelemetry setup, span instrumentation, trace propagation, or connecting traces to logs and metrics."
 related-rules:
   - golden-signals.md
   - data-retention.md
@@ -15,6 +15,15 @@ allowed-tools: Read, Write, Edit
 ## When to load
 
 When adding tracing to a service, debugging slow distributed transactions, or setting up trace → log → metric correlation.
+
+## End-to-End Setup Workflow
+
+1. **Deploy collector** — configure and deploy the OTel Collector as a DaemonSet (see config below)
+2. **Instrument service** — add SDK initialization and auto-instrumentation for your framework (Python/Go examples below)
+3. **Verify traces** — confirm traces appear in Tempo/Jaeger: `curl -s http://tempo:3200/api/search?q={}&limit=5`
+4. **Add log correlation** — inject `trace_id` and `span_id` into log lines for Loki/Grafana linkage
+5. **Validate linkage** — click a trace in Grafana → Explore → verify it links to the corresponding log entries
+6. **Tune sampling** — apply tail-based sampling policies for errors and slow traces (see strategy table)
 
 ## OpenTelemetry Collector (K8s DaemonSet)
 

@@ -1,7 +1,7 @@
 ---
 name: github-actions-patterns
 type: skill
-description: Production-grade GitHub Actions workflows — reusable workflows, OIDC auth, caching, matrix builds, environment protection.
+description: "Production-grade GitHub Actions workflows — reusable workflows, OIDC cloud auth, caching, matrix builds, and environment protection rules. Use when the user creates, reviews, or debugs CI/CD pipelines in .github/workflows, or asks about GitHub Actions deployment, OIDC authentication, or workflow optimization."
 related-rules:
   - pipeline-standards.md
   - quality-gates.md
@@ -152,6 +152,11 @@ jobs:
             --set image.digest=${{ inputs.image-digest }} \
             --namespace ${{ inputs.environment }} \
             --atomic --timeout 5m
+
+      - name: Verify deployment health
+        run: |
+          kubectl rollout status deployment/my-service -n ${{ inputs.environment }} --timeout=120s
+          curl -sf http://my-service.${{ inputs.environment }}.svc.cluster.local/health || exit 1
 ```
 
 ## OIDC Cloud Authentication (no long-lived keys)
