@@ -145,16 +145,17 @@
         {
           "trigger": "/release-pipeline",
           "name": "release-pipeline",
-          "description": "Run a full production release — version tagging, changelog generation, image signing, staging validation, canary deploy to production.",
+          "description": "Run a production release with supply-chain verification, database compatibility controls, progressive delivery, and measurable rollback criteria.",
           "workflow_path": "areas/devops/ci-cd/workflows/release-pipeline.md",
           "prompt_path": "areas/devops/ci-cd/prompts/release-pipeline.md",
           "prompt_command_refs": [
             "release-pipeline"
           ],
-          "use_when": "designing or running a production release pipeline with versioning, supply-chain controls, and deployment gates.",
+          "use_when": "designing or executing a production release pipeline with strong supply-chain guarantees, safe database rollout, and progressive delivery controls.",
           "inputs": [
             "version (semver: v1.2.3)",
-            "release_notes (optional)"
+            "release_notes (optional)",
+            "risk_level (low|medium|high)"
           ],
           "outputs": [
             "published_release",
@@ -165,7 +166,8 @@
             "devops-engineer",
             "developer",
             "team-lead",
-            "pm"
+            "pm",
+            "qa"
           ],
           "related_rules": [
             "pipeline-standards.md",
@@ -193,28 +195,23 @@
           ],
           "quality_gates": [
             "all CI gates pass on release commit",
-            "image signed and SBOM attached before deploy",
-            "staging deploy healthy ≥ 15 min before production gate"
+            "image signed, provenance generated, and SBOM attached before deploy",
+            "staging deploy healthy >= 15 min before production gate",
+            "manual approval from team-lead for production"
           ],
           "examples": {
             "both": [
               {
                 "number": 1,
-                "title": "Semantic versioning + automated changelog",
-                "en": "/release-pipeline\n\nRepo: github.com/myorg/api-service\nRelease strategy: semantic versioning (semver) via git tags\nChangelog: auto-generated from conventional commits (feat/fix/breaking)\nTrigger: manual tag push (v1.2.3) → full release pipeline\nPipeline steps:\n  1. Validate: all CI gates pass on tagged commit\n  2. Build: image with tag=v1.2.3 AND digest; push to ghcr.io\n  3. Sign: cosign sign + SBOM attach\n  4. Release: GitHub Release with changelog + image digest in description\n  5. Deploy staging: Helm upgrade --set image.tag=v1.2.3 --atomic\n  6. Smoke test staging: automated; gate before production\n  7. Deploy production: manual approval; canary 10% → 100%",
-                "ru": "/release-pipeline\n\nРепо: github.com/myorg/api-service\nСтратегия релизов: semantic versioning (semver) через git теги\nChangelog: авто-генерация из conventional commits (feat/fix/breaking)\nТриггер: ручной push тега (v1.2.3) → полный pipeline релиза\nШаги pipeline:\n  1. Validate: все CI gates проходят на тегированном коммите\n  2. Build: образ с tag=v1.2.3 И digest; push в ghcr.io\n  3. Sign: cosign sign + SBOM attach\n  4. Release: GitHub Release с changelog + image digest в описании\n  5. Deploy staging: Helm upgrade --set image.tag=v1.2.3 --atomic\n  6. Smoke test staging: автоматический; gate перед production\n  7. Deploy production: ручное подтверждение; canary 10% → 100%"
+                "title": "High-risk release with schema change + feature flags",
+                "en": "/release-pipeline\n\nService: payments-api\nVersion: v3.8.0\nRisk level: high\nChange type:\n  - New payment routing engine behind feature flag `routing_v2`\n  - Database migration (expand phase only) adding nullable columns + backfill job\nRequirements:\n  1. Build immutable image digest and sign keylessly with cosign\n  2. Generate SLSA provenance + CycloneDX SBOM\n  3. Verify identity-constrained signature and attestation before deploy\n  4. Staging gate: 15 min soak + critical path integration tests\n  5. Production canary: 5% (10m) -> 25% (15m) -> 50% (15m) -> 100%\n  6. Rollback criteria:\n     - 5xx > 1% for 5 min\n     - p99 latency > 20% regression for 10 min\n     - fast burn-rate alert fires\n  7. Feature flag rollout by cohorts after service-level stability\nOutput:\n  - Full CI/CD workflow YAML\n  - Migration safety checklist\n  - Rollback runbook",
+                "ru": "/release-pipeline\n\nСервис: payments-api\nВерсия: v3.8.0\nУровень риска: high\nТип изменений:\n  - Новый роутинг платежей под feature flag `routing_v2`\n  - Миграция БД (только expand-фаза): новые nullable-колонки + backfill job\nТребования:\n  1. Собрать immutable digest и подписать keyless через cosign\n  2. Сгенерировать SLSA provenance + CycloneDX SBOM\n  3. Выполнить verify подписи/attestation с identity constraints перед деплоем\n  4. Staging gate: 15 минут наблюдения + интеграционные критичные тесты\n  5. Canary в production: 5% (10м) -> 25% (15м) -> 50% (15м) -> 100%\n  6. Критерии отката:\n     - 5xx > 1% в течение 5 минут\n     - p99 latency хуже baseline на >20% в течение 10 минут\n     - сработал fast burn-rate alert\n  7. Раскатка feature flag по когортам после стабилизации сервиса\nРезультат:\n  - Полный CI/CD workflow YAML\n  - Чеклист безопасности миграции\n  - Runbook отката"
               },
               {
                 "number": 2,
-                "title": "Emergency hotfix release",
-                "en": "/release-pipeline\n\nContext: critical bug in v2.1.0 (CVE exploited in production); hotfix needed in < 2 hours\nBranch: hotfix/cve-2024-payment from tag v2.1.0 (NOT from main — main has unreleased features)\nVersion: v2.1.1\nSpeed optimizations allowed:\n  - Skip: integration tests (replace with targeted regression test for the fix)\n  - Skip: changelog automation (write manually)\n  - Keep: security scan (mandatory), smoke test (mandatory), canary deploy (mandatory)\nRollback plan: v2.1.0 image already in registry — Helm rollback in < 2 min if needed",
-                "ru": "/release-pipeline\n\nКонтекст: критический баг в v2.1.0 (CVE эксплуатируется в production); hotfix нужен за < 2 часа\nВетка: hotfix/cve-2024-payment от тега v2.1.0 (НЕ от main — там незарелиженные фичи)\nВерсия: v2.1.1\nДопустимые оптимизации скорости:\n  - Пропустить: интеграционные тесты (заменить целевым регрессионным тестом для исправления)\n  - Пропустить: автоматизацию changelog (написать вручную)\n  - Оставить: security scan (обязательно), smoke test (обязательно), canary deploy (обязательно)\nПлан отката: образ v2.1.0 уже в реестре — Helm rollback за < 2 мин при необходимости"
-              },
-              {
-                "number": 3,
-                "title": "Add full supply chain to existing pipeline",
-                "en": "/release-pipeline\n\nService: checkout-service / CI: GitHub Actions\nCurrent state: images built and pushed, no signing, no SBOM\nRequired:\n  1. SBOM: generate CycloneDX SBOM with Syft during build; attach to image with cosign\n  2. Signing: sign image with cosign using GitHub OIDC (keyless) after push\n  3. Provenance: enable SLSA level 2 via docker/build-push-action (provenance: true)\n  4. Verification: add cosign verify step in CD pipeline before every deploy\n  5. Policy: Kyverno ClusterPolicy — block unsigned images in production namespace\n  6. Dependency pinning: base image must reference @sha256 digest, not tag\nShow full updated GitHub Actions workflow + Kyverno policy",
-                "ru": "/release-pipeline\n\nСервис: checkout-service / CI: GitHub Actions\nТекущее состояние: образы собираются и пушатся, без подписи, без SBOM\nТребуется:\n  1. SBOM: генерация CycloneDX SBOM через Syft при сборке; прикрепление к образу через cosign\n  2. Подпись: подпись образа через cosign с GitHub OIDC (keyless) после push\n  3. Provenance: SLSA level 2 через docker/build-push-action (provenance: true)\n  4. Верификация: добавить шаг cosign verify в CD pipeline перед каждым деплоем\n  5. Политика: Kyverno ClusterPolicy — блокировка неподписанных образов в production namespace\n  6. Pinning зависимостей: base image должен ссылаться на @sha256 digest, не тег\nПоказать полный обновлённый workflow GitHub Actions + Kyverno политику"
+                "title": "Compliance-grade supply chain hardening",
+                "en": "/release-pipeline\n\nContext: move existing GitHub Actions pipeline to compliance-grade release controls\nCurrent state: tests + image build only\nTarget:\n  - OIDC federation for cloud auth (remove static secrets)\n  - Keyless cosign signing of container digest\n  - SLSA provenance attestation generation and verification\n  - SBOM attach and retention policy >= 1 year\n  - Admission policy in production namespace: signed + attested + digest-only images\nProvide:\n  - Updated release workflow\n  - Example Kyverno/Gatekeeper policies\n  - Failure-mode behavior (fail closed)",
+                "ru": "/release-pipeline\n\nКонтекст: перевести существующий GitHub Actions pipeline на compliance-grade контроль релизов\nТекущее состояние: только тесты + сборка образа\nЦель:\n  - OIDC federation для cloud auth (убрать static secrets)\n  - Keyless cosign-подпись digest контейнера\n  - Генерация и проверка SLSA provenance attestation\n  - Прикрепление SBOM и политика хранения >= 1 года\n  - Admission policy в production: только signed + attested + digest-only образы\nНужно выдать:\n  - Обновлённый workflow релиза\n  - Примеры политик Kyverno/Gatekeeper\n  - Поведение при сбоях (fail closed)"
               }
             ]
           }
@@ -2920,17 +2917,17 @@
             "logging-observability-guide.md"
           ],
           "uses_skills": [
-            "troubleshooting",
-            "observability"
+            "backend-developer",
+            "blackbox-test"
           ],
           "skill_refs": [
             {
-              "name": "troubleshooting",
-              "path": null
+              "name": "backend-developer",
+              "path": "areas/software/full-stack/skills/backend-developer/SKILL.md"
             },
             {
-              "name": "observability",
-              "path": null
+              "name": "blackbox-test",
+              "path": "areas/software/full-stack/skills/blackbox-test/SKILL.md"
             }
           ],
           "quality_gates": [
@@ -4872,7 +4869,7 @@
           "prompt_command_refs": [
             "security-scan"
           ],
-          "use_when": "running a full automated security sweep — SAST, dependency audit, secrets detection, IaC checks — before a release or after a major change.",
+          "use_when": "running a security scan that must produce actionable release decisions (`exploitable-now`, `not-reachable`, `accepted-risk`) rather than only raw scanner output.",
           "inputs": [
             "scan_scope",
             "scan_mode"
@@ -4913,21 +4910,15 @@
             "both": [
               {
                 "number": 1,
-                "title": "Pre-release security gate",
-                "en": "/security-scan\n\nTrigger: release candidate v2.5.0 ready for staging sign-off\nScope: full — SAST + dependency CVEs + secrets + IaC (Terraform)\nStack: Python 3.12 / FastAPI, PostgreSQL, Redis, Terraform (AWS)\nTools available: bandit, ruff, safety, trufflehog, tfsec, semgrep\nSeverity threshold: block release on any Critical or High; report Medium/Low\nOutput: security-scan-report.md with findings, severity, remediation steps\nBranch: release/2.5.0",
-                "ru": "/security-scan\n\nТриггер: release candidate v2.5.0 готов к sign-off на staging\nСкоуп: полный — SAST + CVE зависимостей + секреты + IaC (Terraform)\nСтек: Python 3.12 / FastAPI, PostgreSQL, Redis, Terraform (AWS)\nДоступные инструменты: bandit, ruff, safety, trufflehog, tfsec, semgrep\nПорог серьёзности: блокировать релиз на любом Critical или High; отчитываться о Medium/Low\nРезультат: security-scan-report.md с находками, серьёзностью, шагами устранения\nВетка: release/2.5.0"
+                "title": "Release gate with reachability triage and VEX output",
+                "en": "/security-scan\n\nTrigger: release candidate v4.2.0\nScope: SAST + dependency + secrets + IaC\nStack: Node.js 22, Python 3.12, Terraform\nPolicy:\n  - Block release for any Critical finding classified as exploitable-now\n  - High findings require remediation plan <= 72h or time-bound exception\nRequired output sections:\n  1) Findings summary by severity\n  2) Reachability analysis for each High/Critical dependency CVE\n  3) Classification table: exploitable-now / not-reachable / accepted-risk\n  4) VEX-style statements for not-reachable items with evidence\n  5) Exception register (owner, expiry, compensating controls)",
+                "ru": "/security-scan\n\nТриггер: release candidate v4.2.0\nСкоуп: SAST + зависимости + секреты + IaC\nСтек: Node.js 22, Python 3.12, Terraform\nПолитика:\n  - Блокировать релиз при любом Critical, классифицированном как exploitable-now\n  - Для High нужен план устранения <= 72ч или ограниченное по времени исключение\nОбязательные разделы результата:\n  1) Сводка находок по серьёзности\n  2) Reachability-анализ для каждого High/Critical dependency CVE\n  3) Таблица классификации: exploitable-now / not-reachable / accepted-risk\n  4) VEX-подобные записи для not-reachable с доказательствами\n  5) Реестр исключений (owner, expiry, compensating controls)"
               },
               {
                 "number": 2,
-                "title": "Post-incident targeted scan",
-                "en": "/security-scan\n\nTrigger: post-incident — suspected SQL injection in orders module (INC-2024-088)\nScope: targeted — SAST only on src/api/ and src/repositories/; dependency audit for SQLAlchemy\nPriority: SQL injection patterns, unsanitised inputs, ORM bypass risks\nSkip: IaC scan, secrets scan (already clean, saves time)\nOutput: findings with code location + PoC query if reproducible\nTimeframe: results needed within 2 hours for incident postmortem",
-                "ru": "/security-scan\n\nТриггер: после инцидента — подозрение на SQL injection в модуле orders (INC-2024-088)\nСкоуп: целевой — только SAST на src/api/ и src/repositories/; аудит зависимостей для SQLAlchemy\nПриоритет: паттерны SQL injection, неэкранированные входные данные, риски обхода ORM\nПропустить: IaC сканирование, проверку секретов (уже чисто, экономия времени)\nРезультат: находки с расположением кода + PoC запрос если воспроизводимо\nСрок: результаты нужны в течение 2 часов для postmortem инцидента"
-              },
-              {
-                "number": 3,
-                "title": "Dependency-only quick scan",
-                "en": "/security-scan\n\nScope: dependency CVE audit only\nStack: Node.js 20 / Express, npm lockfile\nCommand: npm audit --audit-level=high\nAuto-fix: apply non-breaking patches automatically (npm audit fix)\nReport: list packages with unresolved High/Critical CVEs that need manual review",
-                "ru": "/security-scan\n\nСкоуп: только аудит CVE зависимостей\nСтек: Node.js 20 / Express, npm lockfile\nКоманда: npm audit --audit-level=high\nАвто-исправление: применить неломающие патчи автоматически (npm audit fix)\nОтчёт: список пакетов с неустранёнными High/Critical CVE которые требуют ручного ревью"
+                "title": "Fast incident-mode scan focused on exploitability",
+                "en": "/security-scan\n\nContext: actively exploited CVE announced in a transitive dependency\nTimebox: 90 minutes\nScope:\n  - Dependency path tracing to affected services\n  - Runtime reachability confirmation\n  - Exposure check for internet-facing routes\nOutput:\n  - List of impacted services sorted by exploitability risk\n  - Immediate mitigations (feature flags, traffic isolation, WAF rules)\n  - Patch and rollback plan",
+                "ru": "/security-scan\n\nКонтекст: опубликован активно эксплуатируемый CVE в транзитивной зависимости\nТаймбокс: 90 минут\nСкоуп:\n  - Трассировка dependency path до затронутых сервисов\n  - Подтверждение runtime reachability\n  - Проверка экспозиции интернет-facing маршрутов\nРезультат:\n  - Список затронутых сервисов, отсортированный по риску exploitability\n  - Немедленные mitigation-шаги (feature flags, изоляция трафика, WAF rules)\n  - План патча и отката"
               }
             ]
           }

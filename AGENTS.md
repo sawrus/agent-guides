@@ -60,12 +60,21 @@ Cross-cutting practices that apply to every project regardless of area.
 - Follow phases in order: Requirements → Design → Implementation → Verification → Deployment → Maintenance.
 - Document requirements before implementation — "we'll figure it out" is not a requirement.
 - Conduct design reviews for any change with architectural, security, or data model impact.
+- Before changing project logic, read the relevant design and behavior documents under `docs/**`.
+- Run validation, tests, coverage, and CI-style checks through Makefile targets only.
 
 ### Documentation of Behavior Changes
 
 - Any behavior change captured in Markdown artifacts must be documented under the project `docs/` directory.
 - Use documentation paths that match the change type, for example `docs/<feature>/README.md` for feature behavior and `docs/incidents/<date>-<workload>-root-cause.md` for incident root cause reports.
 - Create or update the relevant `docs/` artifact in the same change set; do not leave behavior changes documented only in workflow outputs, tickets, or PR comments.
+- Apply the `product-owner` role to confirm that docs describe the user-facing behavior, acceptance criteria, and operational constraints of the change.
+
+### Context7 Knowledge Source
+
+- Use Context7 for framework, library, SDK, API, and setup documentation before relying on model memory.
+- Resolve the library or framework identity first, then request focused docs for the exact task and version when version matters.
+- If Context7 is unavailable, state that explicitly and fall back to local docs or official project documentation.
 
 ### Code Style
 

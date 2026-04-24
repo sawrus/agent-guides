@@ -1,5 +1,6 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { spawn } from "node:child_process"
@@ -23,6 +24,23 @@ type CommandResult = {
   output: string
   timedOut: boolean
   durationMs: number
+}
+
+type AgenticPluginConfig = {
+  modelChecker?: {
+    enabled?: boolean
+  }
+}
+
+function readAgenticConfig(): AgenticPluginConfig {
+  const configHome = process.env.XDG_CONFIG_HOME || join(process.env.HOME || "", ".config")
+  const configPath = join(configHome, "agentic", "opencode-plugins.json")
+
+  try {
+    return JSON.parse(readFileSync(configPath, "utf-8")) as AgenticPluginConfig
+  } catch {
+    return {}
+  }
 }
 
 async function readModelsJson(projectDir: string): Promise<ModelCheckerConfig> {
@@ -231,6 +249,11 @@ async function regenerateOpencodeJson(projectDir: string, selected: string, pass
 }
 
 export const ModelCheckerPlugin: Plugin = async ({ directory }) => {
+  const config = readAgenticConfig()
+  if (!config.modelChecker?.enabled) {
+    return {}
+  }
+
   if (process.env.OPENCODE_MODEL_CHECKER_ACTIVE === "1") {
     return {}
   }

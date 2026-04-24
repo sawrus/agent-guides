@@ -1,6 +1,6 @@
 name = "team-lead"
 description = "Use this agent for technical strategy, architecture decisions, code review, planning, and pre-release technical sign-off."
-model = "gpt-5.4"
+model = "gpt-5.5"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """

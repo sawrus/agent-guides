@@ -61,6 +61,8 @@ agentic install \
   --specializations software.general,software.backend
 ```
 
+After install, `agentic` writes `.agentic.json` in the target project. It records copied/generated files and their hashes. A later install rerun updates only manifest-managed files and skips files changed by the user.
+
 List available options:
 
 ```bash
@@ -107,6 +109,20 @@ choco install fzf -y
 # or
 scoop install fzf
 ```
+
+## OpenCode optional plugins
+
+When `opencode` is selected, interactive installs ask whether to enable Telegram notifications and the model checker. The answer is stored globally in:
+
+```text
+~/.config/agentic/opencode-plugins.json
+```
+
+Non-interactive installs create a disabled config when no config exists. Telegram can also read `OPENCODE_TELEGRAM_BOT_TOKEN` and `OPENCODE_TELEGRAM_CHAT_ID`.
+
+## Context7
+
+For `opencode` and `codex`, `agentic` adds project-level Context7 MCP configuration when possible. The Context7 API key is optional. Agents are instructed to use Context7 for framework, library, SDK, API, and setup documentation.
 
 ## Deprecated wrapper
 

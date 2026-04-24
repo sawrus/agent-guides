@@ -1,6 +1,6 @@
 name = "developer"
 description = "Use this agent for feature implementation, bug fixes, writing tests, and code delivery after scope and architecture are approved."
-model = "gpt-5-codex"
+model = "gpt-5.5"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """

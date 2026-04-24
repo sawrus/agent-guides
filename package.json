@@ -11,10 +11,14 @@
   },
   "files": [
     "AGENTS.md",
+    "AGENTIC_KNOWLEDGEMENT.md",
     "LICENSE",
+    "Makefile",
     "agentic",
     "areas",
-    "extensions"
+    "docs",
+    "extensions",
+    "scripts"
   ],
   "license": "MIT"
 }

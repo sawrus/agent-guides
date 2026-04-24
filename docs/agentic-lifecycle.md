@@ -10,6 +10,7 @@ This guide describes how an installed `agentic` binary resolves and updates its 
 - Data home: `${XDG_DATA_HOME:-$HOME/.local/share}`
 - Config directory: `~/.config/agentic`
 - Config file: `~/.config/agentic/config`
+- OpenCode plugin config: `~/.config/agentic/opencode-plugins.json`
 - Knowledge base data directory: `~/.local/share/agentic`
 - Knowledge base checkout: `~/.local/share/agentic/repo`
 
@@ -20,6 +21,8 @@ theme=auto
 ```
 
 Supported values are `auto`, `dark`, and `light`.
+
+Target projects receive `.agentic.json`. It stores selected install settings, managed file paths, source paths, hashes, generated marker type, and skipped files from the latest rerun.
 
 ## Repository modes
 
@@ -67,3 +70,14 @@ git -C ~/.local/share/agentic/repo pull --ff-only
 ```
 
 In dev mode, `upgrade` targets the active local checkout instead of `~/.local/share/agentic/repo`.
+
+## Managed reruns
+
+When `.agentic.json` exists in the target project, `agentic install` treats the project as already managed:
+
+- only files listed in `.agentic.json` are eligible for update;
+- files whose current hash differs from the stored hash are skipped as user-modified;
+- new hashes are written for successfully updated managed files;
+- skipped paths are recorded in `.agentic.json`.
+
+Every copied or generated file carries an internal marker. Markdown uses YAML front matter, comment-capable formats use comments, and JSON uses an `_agentic` object.
