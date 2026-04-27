@@ -71,6 +71,10 @@ git -C ~/.local/share/agentic/repo pull --ff-only
 
 In dev mode, `upgrade` targets the active local checkout instead of `~/.local/share/agentic/repo`.
 
+After the knowledge base is updated, `agentic upgrade` checks the current working directory for `.agentic.json`. If present, it treats the directory as an already managed project, reloads the recorded `agent_os`, `areas`, and `specializations`, and reruns the install sync against the upgraded knowledge base.
+
+The project sync follows the same manifest protection as `agentic install`: user-modified managed files are skipped, existing unmanaged files are not overwritten, and new generated files from the upgraded knowledge base are added when their target path does not already exist.
+
 ## Managed reruns
 
 When `.agentic.json` exists in the target project, `agentic install` treats the project as already managed:

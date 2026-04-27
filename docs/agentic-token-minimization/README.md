@@ -45,10 +45,16 @@ OPENCODE_TELEGRAM_CHAT_ID
 
 `agentic` adds Context7 MCP configuration for known project-level formats:
 
-- `.opencode/opencode.json`
+- `opencode.json`
+- `.opencode/opencode.json` for backward compatibility with existing generated OpenCode extension config
 - `.codex/config.toml`
+- `.mcp.json` for Claude Code project-scoped MCP servers
+- `.cursor/mcp.json`
+- `.gemini/settings.json`
 
 Interactive installs ask whether to enable Context7. If enabled, the Context7 API key is optional. Empty keys keep the install usable with default Context7 limits or rule-only fallback behavior. Non-interactive installs enable Context7 only when `CONTEXT7_API_KEY` is already set. Generated guidance requires agents to use Context7 for framework, SDK, library, and API documentation before relying on model memory when the project config is present.
+
+Directory copies are processed in batches so large specialization installs avoid spawning a separate marker/manifest process for every copied file. Manifest protection still applies: existing unmanaged files are skipped on rerun, user-modified managed files are skipped, and new generated files can be added by newer `agentic` versions.
 
 ## Full-Stack Skill Budget
 
