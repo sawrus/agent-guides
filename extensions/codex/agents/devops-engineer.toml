@@ -1,6 +1,6 @@
 name = "devops-engineer"
 description = "Use this agent for CI/CD pipelines, infrastructure-as-code, deployment automation, container configuration, secrets management, and observability setup."
-model = "gpt-5-codex"
+model = "gpt-5.5"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """

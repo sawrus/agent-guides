@@ -22,8 +22,8 @@ related-rules:
   - testing-ci-guide.md
   - logging-observability-guide.md
 uses-skills:
-  - troubleshooting
-  - observability
+  - backend-developer
+  - blackbox-test
 quality-gates:
   - bug reproducible before fix
   - regression test fails before fix, passes after

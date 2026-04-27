@@ -1,6 +1,6 @@
 {
   "name": "@jetrabbits/agentic",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Agent Intelligence Configuration CLI",
   "bin": {
     "agentic": "bin/agentic.js"
@@ -11,10 +11,14 @@
   },
   "files": [
     "AGENTS.md",
+    "UPGRADE.md",
     "LICENSE",
+    "Makefile",
     "agentic",
     "areas",
-    "extensions"
+    "docs",
+    "extensions",
+    "scripts"
   ],
   "license": "MIT"
 }

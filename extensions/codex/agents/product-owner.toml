@@ -1,6 +1,6 @@
 name = "product-owner"
 description = "Use this agent to define scope, write acceptance criteria, orchestrate the SDLC handoff order, and make final acceptance decisions."
-model = "gpt-5.4"
+model = "gpt-5.5"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """

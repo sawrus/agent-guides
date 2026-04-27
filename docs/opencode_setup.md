@@ -24,3 +24,22 @@ OpenCode stores authentication data in two locations:
 - Back up credentials before machine migration.
 - Keep auth files out of version control.
 - Prefer least-privilege API keys for automation.
+
+## Agentic optional plugins
+
+When `agentic` installs the OpenCode extension, it configures optional plugins in:
+
+```text
+~/.config/agentic/opencode-plugins.json
+```
+
+Telegram notifications and model checking are opt-in. If the config is absent or a plugin is disabled, the plugin returns no hooks and OpenCode continues without that behavior.
+
+Telegram notifications use either the stored config values or these environment variables:
+
+```text
+OPENCODE_TELEGRAM_BOT_TOKEN
+OPENCODE_TELEGRAM_CHAT_ID
+```
+
+Non-interactive `agentic install` defaults optional plugins to disabled when no config exists.

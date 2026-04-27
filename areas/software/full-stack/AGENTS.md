@@ -49,11 +49,8 @@ full-stack/
 │   ├── api-patterns/SKILL.md            ← auth, rate limiting, versioning, tRPC
 │   ├── app-builder/SKILL.md             ← project scaffolding, templates, tech stack detection
 │   ├── backend-developer/SKILL.md       ← service patterns, DI, repository design
-│   ├── python-pro/SKILL.md              ← Python idioms, packaging, async patterns
-│   ├── bash-pro/SKILL.md                ← shell scripting, automation, CI helpers
 │   ├── blackbox-test/SKILL.md           ← external API testing, contract validation
-│   ├── prompt-project-planner/SKILL.md  ← project planning, milestone scoping
-│   └── skill-creator/SKILL.md           ← authoring new skills for this repo
+│   └── prompt-project-planner/SKILL.md  ← project planning, milestone scoping
 ├── workflows/
 │   ├── develop-feature.md              ← /develop-feature
 │   ├── debug-issue.md                  ← /debug-issue

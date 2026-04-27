@@ -10,6 +10,7 @@ This guide describes how an installed `agentic` binary resolves and updates its 
 - Data home: `${XDG_DATA_HOME:-$HOME/.local/share}`
 - Config directory: `~/.config/agentic`
 - Config file: `~/.config/agentic/config`
+- OpenCode plugin config: `~/.config/agentic/opencode-plugins.json`
 - Knowledge base data directory: `~/.local/share/agentic`
 - Knowledge base checkout: `~/.local/share/agentic/repo`
 
@@ -20,6 +21,8 @@ theme=auto
 ```
 
 Supported values are `auto`, `dark`, and `light`.
+
+Target projects receive `.agentic.json`. It stores selected install settings, managed file paths, source paths, hashes, generated marker type, and skipped files from the latest rerun.
 
 ## Repository modes
 
@@ -67,3 +70,18 @@ git -C ~/.local/share/agentic/repo pull --ff-only
 ```
 
 In dev mode, `upgrade` targets the active local checkout instead of `~/.local/share/agentic/repo`.
+
+After the knowledge base is updated, `agentic upgrade` checks the current working directory for `.agentic.json`. If present, it treats the directory as an already managed project, reloads the recorded `agent_os`, `areas`, and `specializations`, and reruns the install sync against the upgraded knowledge base.
+
+The project sync follows the same manifest protection as `agentic install`: user-modified managed files are skipped, existing unmanaged files are not overwritten, and new generated files from the upgraded knowledge base are added when their target path does not already exist.
+
+## Managed reruns
+
+When `.agentic.json` exists in the target project, `agentic install` treats the project as already managed:
+
+- only files listed in `.agentic.json` are eligible for update;
+- files whose current hash differs from the stored hash are skipped as user-modified;
+- new hashes are written for successfully updated managed files;
+- skipped paths are recorded in `.agentic.json`.
+
+Every copied or generated file carries an internal marker. Markdown uses YAML front matter, comment-capable formats use comments, and JSON uses an `_agentic` object.
