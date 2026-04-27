@@ -77,6 +77,8 @@ Refresh the local knowledge base checkout:
 agentic upgrade
 ```
 
+When `agentic upgrade` runs from a project containing `.agentic.json`, it also syncs that project from the upgraded knowledge base using the recorded install settings. Files changed by the user are skipped and recorded in `.agentic.json`; new generated files from the upgraded knowledge base are added when they do not collide with unmanaged project files.
+
 ## TUI and `fzf`
 
 TUI uses `fzf` for interactive selection. If `fzf` is missing, `agentic` can:
@@ -122,7 +124,15 @@ Non-interactive installs create a disabled config when no config exists. Telegra
 
 ## Context7
 
-For `opencode` and `codex`, `agentic` adds project-level Context7 MCP configuration when possible. The Context7 API key is optional. Agents are instructed to use Context7 for framework, library, SDK, API, and setup documentation.
+For `opencode`, `codex`, `claude`, `cursor`, and `gemini`, `agentic` adds project-level Context7 MCP configuration when possible. The Context7 API key is optional. Agents are instructed to use Context7 for framework, library, SDK, API, and setup documentation.
+
+Generated Context7 config files:
+
+- OpenCode: `opencode.json` (plus `.opencode/opencode.json` for backward compatibility with existing generated extension config)
+- Codex: `.codex/config.toml`
+- Claude Code: `.mcp.json`
+- Cursor: `.cursor/mcp.json`
+- Gemini CLI: `.gemini/settings.json`
 
 ## Deprecated wrapper
 
