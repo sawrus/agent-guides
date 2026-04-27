@@ -122,7 +122,9 @@ Non-interactive installs create a disabled config when no config exists. Telegra
 
 ## Context7
 
-For `opencode` and `codex`, `agentic` adds project-level Context7 MCP configuration when possible. The Context7 API key is optional. Agents are instructed to use Context7 for framework, library, SDK, API, and setup documentation.
+For `opencode` and `codex`, interactive installs ask whether to add project-level Context7 MCP configuration. If enabled, the Context7 API key prompt is optional; leave it empty to configure Context7 without a key.
+
+Non-interactive installs skip Context7 unless `CONTEXT7_API_KEY` is set in the environment. Agents are instructed to use Context7 for framework, library, SDK, API, and setup documentation when the project config is present.
 
 ## Deprecated wrapper
 

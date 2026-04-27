@@ -1069,10 +1069,22 @@ configure_context7_if_needed() {
     return
   fi
 
-  if [[ -z "$CONTEXT7_API_KEY" && "$(is_interactive_terminal && echo yes || echo no)" == "yes" ]]; then
-    local answer
-    read -r -p "Context7 API key (optional, empty = no key): " answer
-    CONTEXT7_API_KEY="$(trim "$answer")"
+  if is_interactive_terminal; then
+    local enable_context7 answer
+    read -r -p "Enable Context7 MCP configuration? [y/N]: " enable_context7
+    enable_context7="$(trim "$enable_context7")"
+    if [[ ! "$enable_context7" =~ ^[Yy]$ ]]; then
+      log "Context7 MCP configuration disabled"
+      return
+    fi
+
+    if [[ -z "$CONTEXT7_API_KEY" ]]; then
+      read -r -p "Context7 API key (optional, empty = no key): " answer
+      CONTEXT7_API_KEY="$(trim "$answer")"
+    fi
+  elif [[ -z "$CONTEXT7_API_KEY" ]]; then
+    log "Context7 MCP configuration skipped; set CONTEXT7_API_KEY or use an interactive install to enable it"
+    return
   fi
 
   if selected_agent_os_contains "opencode"; then
@@ -1906,6 +1918,22 @@ self_install() {
   local target="$bin_dir/$SELF_INSTALL_NAME"
 
   ensure_dir "$bin_dir"
+
+  if [[ -e "$source_path" && -e "$target" ]]; then
+    local source_real target_real
+    source_real="$(cd -- "$(dirname -- "$source_path")" && pwd -P)/$(basename -- "$source_path")"
+    target_real="$(cd -- "$(dirname -- "$target")" && pwd -P)/$(basename -- "$target")"
+    if [[ "$source_real" == "$target_real" ]]; then
+      if [[ -e "$APP_REPO_DIR/agentic" ]]; then
+        source_path="$APP_REPO_DIR/agentic"
+      else
+        log "Source and target are already the same file: $target"
+        log "Nothing to copy. Run '$APP_NAME upgrade' first to refresh the knowledge base checkout, or run self-install from a checkout."
+        self_install_fzf_optional
+        return
+      fi
+    fi
+  fi
 
   if [[ -e "$target" ]] && [[ "$SELF_INSTALL_FORCE" != true ]]; then
     error "Target already exists: $target"

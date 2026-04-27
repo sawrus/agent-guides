@@ -48,7 +48,7 @@ OPENCODE_TELEGRAM_CHAT_ID
 - `.opencode/opencode.json`
 - `.codex/config.toml`
 
-The Context7 API key is optional. Empty keys keep the install usable with default Context7 limits or rule-only fallback behavior. Generated guidance requires agents to use Context7 for framework, SDK, library, and API documentation before relying on model memory.
+Interactive installs ask whether to enable Context7. If enabled, the Context7 API key is optional. Empty keys keep the install usable with default Context7 limits or rule-only fallback behavior. Non-interactive installs enable Context7 only when `CONTEXT7_API_KEY` is already set. Generated guidance requires agents to use Context7 for framework, SDK, library, and API documentation before relying on model memory when the project config is present.
 
 ## Full-Stack Skill Budget
 
