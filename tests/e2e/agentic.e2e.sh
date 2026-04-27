@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 CLI="$ROOT_DIR/agentic"
+export AGENTIC_TEST_SOURCE_AGENTIC="$CLI"
 TMP_ROOT="$(mktemp -d /tmp/agentic-e2e.XXXXXX)"
 PYTHON_ONLY_BIN="$TMP_ROOT/python-bin"
 mkdir -p "$PYTHON_ONLY_BIN"
@@ -109,6 +110,7 @@ EOT
   echo '{}' > "$dest/extensions/opencode/opencode.json"
   echo '{}' > "$dest/extensions/codex/config.json"
   echo '{}' > "$dest/extensions/claude/config.json"
+  cp "$AGENTIC_TEST_SOURCE_AGENTIC" "$dest/agentic"
 }
 
 if [[ "${1:-}" == "clone" ]]; then
@@ -124,6 +126,9 @@ if [[ "${1:-}" == "-C" ]]; then
   shift 2
   if [[ "${1:-}" == "pull" ]] && [[ "${2:-}" == "--ff-only" ]]; then
     echo 'pull complete' > "$repo_dir/.last-pull"
+    if [[ -n "${AGENTIC_TEST_PULL_AGENTIC_MARKER:-}" ]]; then
+      printf '\n# %s\n' "$AGENTIC_TEST_PULL_AGENTIC_MARKER" >> "$repo_dir/agentic"
+    fi
     exit 0
   fi
 fi
@@ -335,9 +340,11 @@ assert_file_contains "$GIT_LOG" "git clone https://github.com/sawrus/agent-guide
 
 echo "[e2e] Scenario 4: installed mode upgrade runs git pull --ff-only"
 OUT4="$TMP_ROOT/upgrade.log"
-HOME="$HOME_INSTALLED" PATH="$FAKE_GIT_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" "$INSTALLED_BIN" upgrade >"$OUT4" 2>&1
+HOME="$HOME_INSTALLED" PATH="$FAKE_GIT_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" AGENTIC_TEST_PULL_AGENTIC_MARKER="upgraded agentic marker" "$INSTALLED_BIN" upgrade >"$OUT4" 2>&1
 assert_file_contains "$GIT_LOG" "git -C $HOME_INSTALLED/.local/share/agentic/repo pull --ff-only"
 assert_exists "$HOME_INSTALLED/.local/share/agentic/repo/.last-pull"
+assert_file_contains "$OUT4" "Updated installed binary: $INSTALLED_BIN"
+assert_file_contains "$INSTALLED_BIN" "# upgraded agentic marker"
 
 echo "[e2e] Scenario 5: TUI stores theme config and reuses it"
 HOME_TUI="$TMP_ROOT/home-tui"

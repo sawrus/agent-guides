@@ -36,6 +36,18 @@ Install the standalone binary:
 ./agentic self-install
 ```
 
+For users with an old installed `agentic`, do not run `agentic self-install --force` from `$PATH`: that invokes the old binary and may try to copy itself over itself. From a fresh `agent-guides` checkout, run from the repository root instead:
+
+```bash
+./agentic self-install --force
+```
+
+Recover or update an already installed binary without relying on the old local copy:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash -s -- --force
+```
+
 Common options:
 
 - `--bin-dir <dir>`: install into a custom binary directory
@@ -76,6 +88,8 @@ Refresh the local knowledge base checkout:
 ```bash
 agentic upgrade
 ```
+
+In installed mode, `agentic upgrade` also refreshes the installed `agentic` binary from the updated knowledge base checkout. If an older binary cannot self-update, use the `curl ... | bash -s -- --force` bootstrap command above once.
 
 ## TUI and `fzf`
 

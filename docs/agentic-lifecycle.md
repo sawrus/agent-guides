@@ -71,6 +71,22 @@ git -C ~/.local/share/agentic/repo pull --ff-only
 
 In dev mode, `upgrade` targets the active local checkout instead of `~/.local/share/agentic/repo`.
 
+In installed mode, after the checkout is updated, `agentic upgrade` copies `~/.local/share/agentic/repo/agentic` over the running installed binary when the contents differ. This keeps future `agentic upgrade` runs able to update both the knowledge base and the local executable.
+
+If a user already has an older installed binary that cannot self-update, do not ask them to run `agentic self-install --force` from `$PATH`: that invokes the old binary. Use one of these recovery paths:
+
+From a fresh `agent-guides` checkout, run from the repository root:
+
+```bash
+./agentic self-install --force
+```
+
+Or refresh through the bootstrap installer, which downloads a fresh script before installing:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash -s -- --force
+```
+
 After the knowledge base is updated, `agentic upgrade` checks the current working directory for `.agentic.json`. If present, it treats the directory as an already managed project, reloads the recorded `agent_os`, `areas`, and `specializations`, and reruns the install sync against the upgraded knowledge base.
 
 The project sync follows the same manifest protection as `agentic install`: user-modified managed files are skipped, existing unmanaged files are not overwritten, and new generated files from the upgraded knowledge base are added when their target path does not already exist.

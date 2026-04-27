@@ -2255,6 +2255,30 @@ self_install() {
   echo "Dry-run: $DRY_RUN"
 }
 
+update_installed_binary_from_repo() {
+  local source_path="$APP_REPO_DIR/agentic"
+  local target="$SCRIPT_SOURCE"
+
+  if [[ ! -r "$source_path" ]]; then
+    warn "Cannot self-update installed binary; source not found: $source_path"
+    return
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    log "DRY-RUN self-update installed binary $target from $source_path"
+    return
+  fi
+
+  if cmp -s "$source_path" "$target"; then
+    log "Installed binary already up to date: $target"
+    return
+  fi
+
+  cp "$source_path" "$target"
+  chmod +x "$target"
+  log "Updated installed binary: $target"
+}
+
 upgrade_repo_checkout() {
   refresh_repo_paths
 
@@ -2284,6 +2308,7 @@ upgrade_repo_checkout() {
   git -C "$APP_REPO_DIR" pull --ff-only
   refresh_repo_paths
   ensure_repo_layout
+  update_installed_binary_from_repo
 }
 
 sync_current_project_after_upgrade() {
