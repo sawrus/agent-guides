@@ -164,6 +164,9 @@ Each agent has a `vibe` (one-line personality), `Identity`, `Communication Style
 
 Running `agentic` in a target project installs shared guidance into the project's `.agent/` directory and copies any
 selected platform extensions into tool-specific directories such as `.claude/`, `.opencode/`, and `.codex/`.
+Generated operating guidance is written to `AGENTS.md` at the project root for most agents. OpenCode receives the same
+generated guidance at `.opencode/AGENTS.md`; multi-target installs that include OpenCode and another agent write both
+files.
 
 ```text
 project/.agent/

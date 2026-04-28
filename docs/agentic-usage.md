@@ -73,7 +73,7 @@ agentic install \
   --specializations software.general,software.backend
 ```
 
-After install, `agentic` writes `.agentic.json` in the target project. It records copied/generated files and their hashes. A later install rerun updates only manifest-managed files and skips files changed by the user.
+After install, `agentic` writes `.agentic.json` in the target project. It records copied/generated files and their hashes. A later install rerun updates only manifest-managed files and skips files changed by the user. Generated guidance is written to root `AGENTS.md` for most agents and to `.opencode/AGENTS.md` when OpenCode is selected; multi-target installs that include OpenCode and another agent write both files.
 
 List available options:
 

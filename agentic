@@ -1610,11 +1610,31 @@ append_root_agents_template() {
 
 generate_agents_md() {
   local project_dir="$1"
-  local out="$project_dir/AGENTS.md"
+  local outputs=()
+  local needs_root=false
+  local agent_os
+
+  if selected_agent_os_contains "opencode"; then
+    unique_append "$project_dir/.opencode/AGENTS.md" outputs
+  fi
+
+  for agent_os in "${SELECTED_AGENT_OS[@]}"; do
+    if [[ "$agent_os" != "opencode" ]]; then
+      needs_root=true
+      break
+    fi
+  done
+
+  if [[ "$needs_root" == true ]] || ! selected_agent_os_contains "opencode"; then
+    unique_append "$project_dir/AGENTS.md" outputs
+  fi
 
   if [[ "$DRY_RUN" == true ]]; then
-    log "DRY-RUN generate $out"
-    unique_append "$out" COPIED_PATHS
+    local dry_run_out
+    for dry_run_out in "${outputs[@]}"; do
+      log "DRY-RUN generate $dry_run_out"
+      unique_append "$dry_run_out" COPIED_PATHS
+    done
     return
   fi
 
@@ -1629,7 +1649,10 @@ generate_agents_md() {
     append_specialization_template "$tmp" "$spec_key"
   done
 
-  write_file_with_agentic_marker "$tmp" "$out" "generated:AGENTS.md"
+  local out
+  for out in "${outputs[@]}"; do
+    write_file_with_agentic_marker "$tmp" "$out" "generated:AGENTS.md"
+  done
   rm -f "$tmp"
 }
 
@@ -2396,6 +2419,9 @@ case "$COMMAND" in
           shift 2
           ;;
         --agent-os)
+          if [[ "${#SELECTED_AGENT_OS[@]}" -eq 1 && "${SELECTED_AGENT_OS[0]}" == "$DEFAULT_AGENT_OS" ]]; then
+            SELECTED_AGENT_OS=()
+          fi
           split_csv "$2" SELECTED_AGENT_OS
           shift 2
           ;;

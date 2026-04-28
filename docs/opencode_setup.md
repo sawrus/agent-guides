@@ -43,3 +43,6 @@ OPENCODE_TELEGRAM_CHAT_ID
 ```
 
 Non-interactive `agentic install` defaults optional plugins to disabled when no config exists.
+
+For OpenCode targets, `agentic` writes generated operating guidance to `.opencode/AGENTS.md`. If OpenCode is installed
+alongside another agent target, root `AGENTS.md` is generated as well for the non-OpenCode target.

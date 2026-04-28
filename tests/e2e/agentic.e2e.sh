@@ -187,12 +187,14 @@ assert_exists "$P1/.agent/rules"
 assert_exists "$P1/.agent/skills"
 assert_exists "$P1/.agent/workflows"
 assert_exists "$P1/.agent/prompts"
-assert_exists "$P1/AGENTS.md"
-assert_file_contains "$P1/AGENTS.md" "software/backend"
-assert_file_contains "$P1/AGENTS.md" "Dynamic loading of guidance"
-assert_file_contains "$P1/AGENTS.md" "generated_by: agentic"
+assert_not_exists "$P1/AGENTS.md"
+assert_exists "$P1/.opencode/AGENTS.md"
+assert_file_contains "$P1/.opencode/AGENTS.md" "software/backend"
+assert_file_contains "$P1/.opencode/AGENTS.md" "Dynamic loading of guidance"
+assert_file_contains "$P1/.opencode/AGENTS.md" "generated_by: agentic"
 assert_exists "$P1/.agentic.json"
 assert_file_contains "$P1/.agentic.json" "\"managed_files\""
+assert_file_contains "$P1/.agentic.json" ".opencode/AGENTS.md"
 assert_file_contains "$P1/.agentic.json" "https://github.com/sawrus/agent-guides"
 assert_file_contains "$P1/.opencode/opencode.json" "\"_agentic\""
 assert_file_not_contains "$P1/.opencode/opencode.json" "\"context7\""
@@ -202,7 +204,24 @@ assert_file_contains "$HOME_DEV_INSTALL/.config/agentic/opencode-plugins.json" "
 assert_exists "$HOME_DEV_INSTALL/.config/agentic/config"
 assert_file_contains "$HOME_DEV_INSTALL/.config/agentic/config" "theme=light"
 
-echo "[e2e] Scenario 1a: interactive install asks before enabling Context7"
+echo "[e2e] Scenario 1a: multi-target opencode,codex writes OpenCode and root AGENTS.md"
+P1_MULTI="$TMP_ROOT/project-multi-target"
+HOME_MULTI="$TMP_ROOT/home-multi-target"
+HOME="$HOME_MULTI" "$CLI" install \
+  --project-dir "$P1_MULTI" \
+  --agent-os opencode,codex \
+  --areas software \
+  --specializations software.backend \
+  --theme=light
+
+assert_exists "$P1_MULTI/.opencode/AGENTS.md"
+assert_exists "$P1_MULTI/AGENTS.md"
+assert_file_contains "$P1_MULTI/.opencode/AGENTS.md" "software/backend"
+assert_file_contains "$P1_MULTI/AGENTS.md" "software/backend"
+assert_file_contains "$P1_MULTI/.agentic.json" ".opencode/AGENTS.md"
+assert_file_contains "$P1_MULTI/.agentic.json" "\"AGENTS.md\""
+
+echo "[e2e] Scenario 1b: interactive install asks before enabling Context7"
 P1_CTX="$TMP_ROOT/project-context7"
 HOME_CTX="$TMP_ROOT/home-context7"
 OUT1A="$TMP_ROOT/project-context7.log"
@@ -228,7 +247,7 @@ printf '%s\n' "y" "" | \
 assert_file_contains "$P1_CTX_EMPTY/.codex/config.toml" "[mcp_servers.context7]"
 assert_file_not_contains "$P1_CTX_EMPTY/.codex/config.toml" "CONTEXT7_API_KEY"
 
-echo "[e2e] Scenario 1b: rerun skips user-modified managed files"
+echo "[e2e] Scenario 1c: rerun skips user-modified managed files"
 P1_RULE="$P1/.agent/rules/architecture.md"
 assert_exists "$P1_RULE"
 printf '%s\n' "# user edit" >> "$P1_RULE"

@@ -1,6 +1,6 @@
 {
   "name": "@jetrabbits/agentic",
-  "version": "0.0.5",
+  "version": "0.1.0",
   "description": "Agent Intelligence Configuration CLI",
   "bin": {
     "agentic": "bin/agentic.js"
