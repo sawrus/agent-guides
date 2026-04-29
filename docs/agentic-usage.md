@@ -48,6 +48,8 @@ Recover or update an already installed binary without relying on the old local c
 curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash -s -- --force
 ```
 
+The bootstrap script also accepts `force` (without dashes) as a shorthand and maps it to `--force`.
+
 Common options:
 
 - `--bin-dir <dir>`: install into a custom binary directory

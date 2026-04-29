@@ -107,6 +107,12 @@ Alternative bootstrap (installs local binary):
 curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash
 ```
 
+Force-update the installed `agentic` binary via bootstrap:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash -s -- force
+```
+
 ### Run
 
 ```bash
