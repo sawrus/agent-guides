@@ -16,17 +16,5 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 1
 fi
 
-FORWARDED_ARGS=()
-for arg in "$@"; do
-  case "$arg" in
-    force)
-      FORWARDED_ARGS+=("--force")
-      ;;
-    *)
-      FORWARDED_ARGS+=("$arg")
-      ;;
-  esac
-done
-
 curl -fsSL "$INSTALLER_URL" -o "$TMP_FILE"
-bash "$TMP_FILE" self-install --install-fzf "${FORWARDED_ARGS[@]}"
+bash "$TMP_FILE" self-install --force --install-fzf "$@"
