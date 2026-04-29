@@ -17,4 +17,4 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 curl -fsSL "$INSTALLER_URL" -o "$TMP_FILE"
-bash "$TMP_FILE" self-install --install-fzf "$@"
+bash "$TMP_FILE" self-install --force --install-fzf "$@"
