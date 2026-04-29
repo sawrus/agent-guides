@@ -45,10 +45,8 @@ For users with an old installed `agentic`, do not run `agentic self-install --fo
 Recover or update an already installed binary without relying on the old local copy:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash
+curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash -s -- --force
 ```
-
-The bootstrap script runs `self-install` with `--force` by default, so a plain `curl ... | bash` refreshes the installed binary.
 
 Common options:
 
@@ -91,7 +89,7 @@ Refresh the local knowledge base checkout:
 agentic upgrade
 ```
 
-In installed mode, `agentic upgrade` also refreshes the installed `agentic` binary from the updated knowledge base checkout. If an older binary cannot self-update, use the `curl ... | bash` bootstrap command above once.
+In installed mode, `agentic upgrade` also refreshes the installed `agentic` binary from the updated knowledge base checkout. If an older binary cannot self-update, use the `curl ... | bash -s -- --force` bootstrap command above once.
 
 ## TUI and `fzf`
 
