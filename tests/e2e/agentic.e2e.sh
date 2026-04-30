@@ -221,6 +221,22 @@ assert_file_contains "$P1_MULTI/AGENTS.md" "software/backend"
 assert_file_contains "$P1_MULTI/.agentic.json" ".opencode/AGENTS.md"
 assert_file_contains "$P1_MULTI/.agentic.json" "\"AGENTS.md\""
 
+echo "[e2e] Scenario 1aa: install prints missing binary recommendations for selected gemini and antigravity"
+P1_BIN="$TMP_ROOT/project-binary-recommendations"
+HOME_BIN="$TMP_ROOT/home-binary-recommendations"
+OUT1AA="$TMP_ROOT/project-binary-recommendations.log"
+env HOME="$HOME_BIN" PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
+  --project-dir "$P1_BIN" \
+  --agent-os gemini,antigravity \
+  --areas software \
+  --specializations software.backend \
+  --theme=light >"$OUT1AA" 2>&1
+assert_file_contains "$OUT1AA" "=== Agent binary setup recommendations ==="
+assert_file_contains "$OUT1AA" "- gemini: binary 'gemini' is not installed"
+assert_file_contains "$OUT1AA" "https://github.com/google-gemini/gemini-cli"
+assert_file_contains "$OUT1AA" "- antigravity: binary 'antigravity' is not installed"
+assert_file_contains "$OUT1AA" "https://github.com/getantigravity/antigravity"
+
 echo "[e2e] Scenario 1b: interactive install asks before enabling Context7"
 P1_CTX="$TMP_ROOT/project-context7"
 HOME_CTX="$TMP_ROOT/home-context7"

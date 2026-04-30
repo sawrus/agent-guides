@@ -1757,6 +1757,70 @@ print_report() {
   fi
 }
 
+detect_runtime_platform_label() {
+  local platform
+  platform="$(detect_platform)"
+  if [[ "$platform" == "linux" ]] && grep -qiE "(microsoft|wsl)" /proc/version 2>/dev/null; then
+    echo "wsl"
+    return
+  fi
+  echo "$platform"
+}
+
+get_agent_binary_name() {
+  local agent_os="$1"
+  case "$agent_os" in
+    codex) echo "codex" ;;
+    claude) echo "claude" ;;
+    opencode) echo "opencode" ;;
+    cursor) echo "cursor-agent" ;;
+    gemini) echo "gemini" ;;
+    antigravity) echo "antigravity" ;;
+    *) echo "" ;;
+  esac
+}
+
+print_missing_agent_binary_guides() {
+  local platform_label
+  platform_label="$(detect_runtime_platform_label)"
+  local missing_lines=()
+  local agent_os
+
+  for agent_os in "${SELECTED_AGENT_OS[@]}"; do
+    local binary_name
+    binary_name="$(get_agent_binary_name "$agent_os")"
+    if [[ -z "$binary_name" ]]; then
+      continue
+    fi
+    if command -v "$binary_name" >/dev/null 2>&1; then
+      continue
+    fi
+
+    local install_link=""
+    case "$agent_os" in
+      codex) install_link="https://github.com/openai/codex" ;;
+      claude) install_link="https://docs.anthropic.com/en/docs/claude-code/quickstart" ;;
+      opencode) install_link="https://opencode.ai/docs" ;;
+      cursor) install_link="https://docs.cursor.com/get-started/installation" ;;
+      gemini) install_link="https://github.com/google-gemini/gemini-cli" ;;
+      antigravity) install_link="https://github.com/getantigravity/antigravity" ;;
+    esac
+
+    missing_lines+=("- $agent_os: binary '$binary_name' is not installed on $platform_label.")
+    if [[ -n "$install_link" ]]; then
+      missing_lines+=("  Install guide: $install_link")
+    fi
+  done
+
+  if [[ "${#missing_lines[@]}" -eq 0 ]]; then
+    return
+  fi
+
+  echo
+  echo "${COLOR_HEADER}=== Agent binary setup recommendations ===${COLOR_RESET}"
+  printf '%s\n' "${missing_lines[@]}"
+}
+
 run_install() {
   ensure_repo_layout
   ensure_python_available
@@ -1771,6 +1835,7 @@ run_install() {
   configure_context7_if_needed
   write_agentic_manifest "$PROJECT_DIR"
   print_report
+  print_missing_agent_binary_guides
 }
 
 ascii_banner() {
