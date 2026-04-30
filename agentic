@@ -2362,8 +2362,13 @@ update_installed_binary_from_repo() {
     return
   fi
 
-  cp "$source_path" "$target"
-  chmod +x "$target"
+  local target_dir target_tmp
+  target_dir="$(dirname "$target")"
+  target_tmp="$(mktemp "$target_dir/.agentic-update.XXXXXX")"
+
+  cp "$source_path" "$target_tmp"
+  chmod +x "$target_tmp"
+  mv -f "$target_tmp" "$target"
   log "Updated installed binary: $target"
 }
 
