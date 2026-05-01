@@ -1314,6 +1314,37 @@ mcp_servers["context7"] = context7
   write_json_config_file "$dest" "generated:context7-cursor-config" "$body"
 }
 
+
+write_context7_kilocode_config() {
+  local dest="$PROJECT_DIR/.kilocode/mcp.json"
+  local body
+  body='
+mcp_servers = data.setdefault("mcpServers", {})
+context7 = {
+    "url": "https://mcp.context7.com/mcp",
+}
+if context7_api_key:
+    context7["headers"] = {"CONTEXT7_API_KEY": context7_api_key}
+mcp_servers["context7"] = context7
+'
+  write_json_config_file "$dest" "generated:context7-kilocode-config" "$body"
+}
+
+write_context7_antigravity_config() {
+  local dest="$HOME/.gemini/antigravity/mcp_config.json"
+  local body
+  body='
+mcp_servers = data.setdefault("mcpServers", {})
+context7 = {
+    "url": "https://mcp.context7.com/mcp",
+}
+if context7_api_key:
+    context7["headers"] = {"CONTEXT7_API_KEY": context7_api_key}
+mcp_servers["context7"] = context7
+'
+  write_json_config_file "$dest" "generated:context7-antigravity-config" "$body"
+}
+
 write_context7_gemini_config() {
   local dest="$PROJECT_DIR/.gemini/settings.json"
   local body
@@ -1334,7 +1365,9 @@ configure_context7_if_needed() {
     && ! selected_agent_os_contains "codex" \
     && ! selected_agent_os_contains "claude" \
     && ! selected_agent_os_contains "cursor" \
-    && ! selected_agent_os_contains "gemini"; then
+    && ! selected_agent_os_contains "gemini" \
+    && ! selected_agent_os_contains "kilocode" \
+    && ! selected_agent_os_contains "antigravity"; then
     return
   fi
 
@@ -1375,6 +1408,14 @@ configure_context7_if_needed() {
 
   if selected_agent_os_contains "gemini"; then
     write_context7_gemini_config
+  fi
+
+  if selected_agent_os_contains "kilocode"; then
+    write_context7_kilocode_config
+  fi
+
+  if selected_agent_os_contains "antigravity"; then
+    write_context7_antigravity_config
   fi
 }
 
