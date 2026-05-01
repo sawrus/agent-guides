@@ -263,6 +263,20 @@ printf '%s\n' "y" "" | \
 assert_file_contains "$P1_CTX_EMPTY/.codex/config.toml" "[mcp_servers.context7]"
 assert_file_not_contains "$P1_CTX_EMPTY/.codex/config.toml" "CONTEXT7_API_KEY"
 
+echo "[e2e] Scenario 1b1: Context7 writes antigravity-specific path"
+P1_CTX_MULTI="$TMP_ROOT/project-context7-antigravity"
+OUT1A_MULTI="$TMP_ROOT/project-context7-antigravity.log"
+printf '%s\n' "y" "" | \
+  env HOME="$HOME_CTX" AGENTIC_FORCE_INTERACTIVE=1 "$CLI" install \
+    --project-dir "$P1_CTX_MULTI" \
+    --agent-os antigravity \
+    --areas software \
+    --specializations software.backend \
+    --theme=light >"$OUT1A_MULTI" 2>&1
+assert_file_contains "$HOME_CTX/.gemini/antigravity/mcp_config.json" "\"context7\""
+assert_not_exists "$P1_CTX_MULTI/.antigravity/mcp.json"
+assert_not_exists "$P1_CTX_MULTI/.kilocode/mcp.json"
+
 echo "[e2e] Scenario 1c: rerun skips user-modified managed files"
 P1_RULE="$P1/.agent/rules/architecture.md"
 assert_exists "$P1_RULE"
