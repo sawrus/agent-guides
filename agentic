@@ -1419,6 +1419,54 @@ configure_context7_if_needed() {
   fi
 }
 
+
+write_memoryhub_codex_config() {
+  local dest="$PROJECT_DIR/.codex/config.toml"
+  local db_path="$PROJECT_DIR/.agentic/memory-hub.sqlite3"
+  local escaped_db="${db_path//\/\\}"
+  write_generated_text_file "$dest" "generated:memoryhub-codex-config" "[mcp_servers.memory_hub]
+command = "python3"
+args = ["-m", "memory_hub_mcp.server", "--db-path", "$escaped_db"]
+"
+}
+
+write_memoryhub_claude_config() {
+  local dest="$PROJECT_DIR/.mcp.json"
+  local body
+  body='
+mcp_servers = data.setdefault("mcpServers", {})
+mcp_servers["memory_hub"] = {"type": "stdio", "command": "python3", "args": ["-m", "memory_hub_mcp.server", "--db-path", "'"$PROJECT_DIR"'/.agentic/memory-hub.sqlite3"]}
+'
+  write_json_config_file "$dest" "generated:memoryhub-claude-config" "$body"
+}
+
+configure_memory_hub_if_needed() {
+  if ! selected_agent_os_contains "opencode"     && ! selected_agent_os_contains "codex"     && ! selected_agent_os_contains "claude"     && ! selected_agent_os_contains "cursor"     && ! selected_agent_os_contains "gemini"     && ! selected_agent_os_contains "kilocode"     && ! selected_agent_os_contains "antigravity"; then
+    return
+  fi
+
+  local enable_memoryhub="${MEMORY_HUB_MCP_ENABLE:-}"
+  if is_interactive_terminal; then
+    if [[ -z "$enable_memoryhub" ]]; then
+      read -r -p "Enable local Memory Hub MCP configuration? [y/N]: " enable_memoryhub
+    fi
+    enable_memoryhub="$(trim "$enable_memoryhub")"
+    if [[ ! "$enable_memoryhub" =~ ^[Yy]$ ]]; then
+      log "Memory Hub MCP configuration disabled"
+      return
+    fi
+  elif [[ "$enable_memoryhub" != "1" ]]; then
+    return
+  fi
+
+  if selected_agent_os_contains "codex"; then
+    write_memoryhub_codex_config
+  fi
+  if selected_agent_os_contains "claude"; then
+    write_memoryhub_claude_config
+  fi
+}
+
 write_default_opencode_plugin_config() {
   ensure_dir "$APP_CONFIG_DIR"
   if [[ "$DRY_RUN" == true ]]; then
@@ -1874,6 +1922,7 @@ run_install() {
   copy_specialization_assets "$PROJECT_DIR"
   generate_agents_md "$PROJECT_DIR"
   configure_context7_if_needed
+  configure_memory_hub_if_needed
   write_agentic_manifest "$PROJECT_DIR"
   print_report
   print_missing_agent_binary_guides
