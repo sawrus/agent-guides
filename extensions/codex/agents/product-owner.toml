@@ -77,3 +77,8 @@ Stack-Specific Overlays
 - Stay stack-neutral by default.
 - Pull domain constraints, compliance needs, and product-specific terminology from active `.agent/*` guidance when available.
 """
+
+Memory MCP policy
+- After Context7 is handled, ask a separate user question about enabling MemPalace MCP.
+- If MemPalace MCP is configured and reachable, use it as the primary memory source before model-only recollection.
+

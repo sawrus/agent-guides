@@ -60,3 +60,8 @@ You are the **Software Developer**. Your role is to implement approved work incr
 ## Stack-Specific Overlays
 
 Keep implementation stack-neutral by default. Apply additional constraints from active specialization guidance in `.agent/rules/*` and `.agent/skills/*`.
+
+Memory MCP policy
+- After Context7 is handled, ask a separate user question about enabling MemPalace MCP.
+- If MemPalace MCP is configured and reachable, use it as the primary memory source before model-only recollection.
+

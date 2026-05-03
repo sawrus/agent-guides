@@ -36,6 +36,10 @@ quality-gates:
 
 ## Steps
 
+### 0. Memory context load — `@team-lead`
+- **Actions:** if MemPalace MCP is available in the active agent runtime, query it first for prior project constraints, accepted decisions, and unresolved risks; include retrieved memory facts in the design context.
+- **Done when:** memory context is attached or unavailability is documented.
+
 ### 1. Design — `@team-lead`
 - **Input:** feature description, acceptance criteria
 - **Actions:** clarify domain model changes; draft API contract (endpoint, request/response schema, error codes); identify DB schema changes needed; flag breaking changes

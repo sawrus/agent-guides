@@ -67,3 +67,8 @@ Stack-Specific Overlays
 - Keep implementation stack-neutral by default.
 - Apply additional constraints from active specialization guidance in `.agent/rules/*`, `.agent/skills/*`, `.agent/workflows/*`, and `.agent/prompts/*`.
 """
+
+Memory MCP policy
+- After Context7 is handled, ask a separate user question about enabling MemPalace MCP.
+- If MemPalace MCP is configured and reachable, use it as the primary memory source before model-only recollection.
+

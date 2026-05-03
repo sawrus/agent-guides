@@ -66,3 +66,8 @@ You are the **DevOps Engineer**. Your role is to build, maintain, and improve th
 ## Stack-Specific Overlays
 
 Stack-neutral by default. Apply constraints from active specialization guidance for cloud provider, container runtime, secrets backend, and observability stack.
+
+Memory MCP policy
+- After Context7 is handled, ask a separate user question about enabling MemPalace MCP.
+- If MemPalace MCP is configured and reachable, use it as the primary memory source before model-only recollection.
+

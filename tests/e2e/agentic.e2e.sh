@@ -292,6 +292,36 @@ assert_file_contains "$P1_RULE" "# user edit"
 assert_file_contains "$OUT1B" "Skipping user-modified managed file: .agent/rules/architecture.md"
 assert_file_contains "$P1/.agentic.json" ".agent/rules/architecture.md"
 
+
+
+echo "[e2e] Scenario 1b: context7 + mempalace MCP config is generated for multi-agent install"
+P1_MEM="$TMP_ROOT/project-mempalace"
+HOME_MEM="$TMP_ROOT/home-mempalace"
+HOME="$HOME_MEM" "$CLI" install   --project-dir "$P1_MEM"   --agent-os opencode,codex,claude,cursor,gemini,antigravity   --areas software   --specializations software.full-stack
+
+assert_file_contains "$P1_MEM/opencode.json" '"mempalace"'
+assert_file_contains "$P1_MEM/.codex/config.toml" '[mcp_servers.mempalace]'
+assert_file_contains "$P1_MEM/.mcp.json" '"mempalace"'
+assert_file_contains "$P1_MEM/.cursor/mcp.json" '"mempalace"'
+assert_file_contains "$P1_MEM/.gemini/settings.json" '"mempalace"'
+assert_file_contains "$HOME_MEM/.gemini/antigravity/mcp_config.json" '"mempalace"'
+
+echo "[e2e] Scenario 1d: codex runtime reads mempalace MCP from generated codex config"
+FAKE_CODEX_BIN="$TMP_ROOT/fake-codex-bin"
+mkdir -p "$FAKE_CODEX_BIN"
+cat > "$FAKE_CODEX_BIN/codex" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+cfg="${CODEX_CONFIG_PATH:-}"
+[[ -n "$cfg" ]] || exit 11
+grep -Fq '[mcp_servers.mempalace]' "$cfg"
+grep -Fq 'https://mcp.mempalace.xyz/mcp' "$cfg"
+echo "codex-mcp-ok"
+EOS
+chmod +x "$FAKE_CODEX_BIN/codex"
+OUT_CODEX="$TMP_ROOT/codex-mcp-check.log"
+CODEX_CONFIG_PATH="$P1_MEM/.codex/config.toml" PATH="$FAKE_CODEX_BIN:$PATH" codex >"$OUT_CODEX" 2>&1
+assert_file_contains "$OUT_CODEX" "codex-mcp-ok"
 echo "[e2e] Scenario 2: self-install creates agentic binary"
 HOME_SELF="$TMP_ROOT/home-self"
 BIN_DIR="$HOME_SELF/.local/bin"

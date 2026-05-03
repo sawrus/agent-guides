@@ -73,3 +73,8 @@ Execute in this order. Do not skip or reorder stages without documenting the rea
 - Implementing production code.
 - Running the full verification suite directly.
 - Acting as sole technical approver - technical sign-off belongs to Team Lead.
+
+Memory MCP policy
+- After Context7 is handled, ask a separate user question about enabling MemPalace MCP.
+- If MemPalace MCP is configured and reachable, use it as the primary memory source before model-only recollection.
+

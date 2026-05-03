@@ -1360,6 +1360,74 @@ mcp_servers["context7"] = context7
   write_json_config_file "$dest" "generated:context7-gemini-config" "$body"
 }
 
+write_mempalace_opencode_config() {
+  local dest="$1"
+  local body
+  body='
+mcp = data.setdefault("mcp", {})
+mcp["mempalace"] = {"type": "remote", "url": "https://mcp.mempalace.xyz/mcp"}
+'
+  write_json_config_file "$dest" "generated:mempalace-opencode-config" "$body"
+}
+
+write_mempalace_codex_config() {
+  local dest="$PROJECT_DIR/.codex/config.toml"
+  local body
+  body="$(python3 - "$dest" <<'PYCODE'
+import pathlib, sys
+path = pathlib.Path(sys.argv[1])
+text = path.read_text(encoding='utf-8') if path.exists() else ''
+block = "[mcp_servers.mempalace]\nurl = \"https://mcp.mempalace.xyz/mcp\"\n"
+if block not in text:
+    if text and not text.endswith("\n"):
+        text += "\n"
+    text += block
+print(text, end="")
+PYCODE
+)"
+  write_generated_text_file "$dest" "generated:mempalace-codex-config" "$body"
+}
+
+write_mempalace_generic_json_config() {
+  local dest="$1"
+  local marker="$2"
+  local body
+  body='
+servers = data.setdefault("mcpServers", {})
+servers["mempalace"] = {"url": "https://mcp.mempalace.xyz/mcp"}
+'
+  write_json_config_file "$dest" "$marker" "$body"
+}
+
+configure_mempalace_if_needed() {
+  if ! selected_agent_os_contains "opencode"     && ! selected_agent_os_contains "codex"     && ! selected_agent_os_contains "claude"     && ! selected_agent_os_contains "cursor"     && ! selected_agent_os_contains "gemini"     && ! selected_agent_os_contains "antigravity"; then
+    return
+  fi
+
+  local enable_mempalace="y"
+  if is_interactive_terminal && [[ -z "${AGENTIC_TEST_SOURCE_AGENTIC:-}" ]]; then
+    read -r -p "Enable MemPalace MCP memory integration? [Y/n]: " enable_mempalace
+    enable_mempalace="$(trim "${enable_mempalace:-y}")"
+    if [[ -z "$enable_mempalace" ]]; then enable_mempalace="y"; fi
+  fi
+  if [[ "$enable_mempalace" =~ ^[Nn]$ ]]; then
+    log "Skipped MemPalace MCP configuration"
+    return
+  fi
+
+  if selected_agent_os_contains "opencode"; then
+    write_mempalace_opencode_config "$PROJECT_DIR/opencode.json"
+    write_mempalace_opencode_config "$PROJECT_DIR/.opencode/opencode.json"
+  fi
+  if selected_agent_os_contains "codex"; then write_mempalace_codex_config; fi
+  if selected_agent_os_contains "claude"; then write_mempalace_generic_json_config "$PROJECT_DIR/.mcp.json" "generated:mempalace-claude-config"; fi
+  if selected_agent_os_contains "cursor"; then write_mempalace_generic_json_config "$PROJECT_DIR/.cursor/mcp.json" "generated:mempalace-cursor-config"; fi
+  if selected_agent_os_contains "gemini"; then write_mempalace_generic_json_config "$PROJECT_DIR/.gemini/settings.json" "generated:mempalace-gemini-config"; fi
+  if selected_agent_os_contains "antigravity"; then write_mempalace_generic_json_config "$HOME/.gemini/antigravity/mcp_config.json" "generated:mempalace-antigravity-config"; fi
+
+  log "Configured MemPalace MCP for selected agent OS targets"
+}
+
 configure_context7_if_needed() {
   if ! selected_agent_os_contains "opencode" \
     && ! selected_agent_os_contains "codex" \
@@ -1874,6 +1942,7 @@ run_install() {
   copy_specialization_assets "$PROJECT_DIR"
   generate_agents_md "$PROJECT_DIR"
   configure_context7_if_needed
+  configure_mempalace_if_needed
   write_agentic_manifest "$PROJECT_DIR"
   print_report
   print_missing_agent_binary_guides
