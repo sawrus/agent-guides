@@ -140,6 +140,18 @@ For `opencode`, `codex`, `claude`, `cursor`, `gemini`, `kilocode`, and `antigrav
 
 Non-interactive installs skip Context7 unless `CONTEXT7_API_KEY` is set in the environment. Agents are instructed to use Context7 for framework, library, SDK, API, and setup documentation when the project config is present.
 
+## MemPalace
+
+For `opencode`, `codex`, `claude`, `cursor`, `gemini`, and `antigravity`, MemPalace MCP is configured as a local Python module instead of a hosted MCP URL. Install it first:
+
+```bash
+pip install mempalace
+```
+
+Generated configs run `python3 -m mempalace` (or equivalent `command`/`args` format per IDE). This follows the MemPalace MCP integration approach for agent IDE runtimes.
+
+During install, if MemPalace is enabled, `agentic` also runs a runtime check using `python3 -m mempalace --help`. If this check fails (for example, package not installed yet), install continues and agents fall back to standard context discovery.
+
 ## Deprecated wrapper
 
 `agentos-install.sh` remains for backward compatibility and forwards to `agentic`. Prefer `agentic` in new usage and documentation.

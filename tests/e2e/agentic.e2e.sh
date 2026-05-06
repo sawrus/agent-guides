@@ -204,6 +204,43 @@ assert_file_contains "$HOME_DEV_INSTALL/.config/agentic/opencode-plugins.json" "
 assert_exists "$HOME_DEV_INSTALL/.config/agentic/config"
 assert_file_contains "$HOME_DEV_INSTALL/.config/agentic/config" "theme=light"
 
+echo "[e2e] Scenario 1ab: MemPalace runtime check passes when module is available"
+P1_MEM_OK="$TMP_ROOT/project-mempalace-ok"
+HOME_MEM_OK="$TMP_ROOT/home-mempalace-ok"
+OUT1AB_OK="$TMP_ROOT/project-mempalace-ok.log"
+FAKE_MEMPALACE_SITE="$TMP_ROOT/fake-mempalace-site"
+mkdir -p "$FAKE_MEMPALACE_SITE/mempalace"
+cat > "$FAKE_MEMPALACE_SITE/mempalace/__main__.py" <<'EOS'
+#!/usr/bin/env python3
+import sys
+if "--help" in sys.argv:
+    print("mempalace help")
+    raise SystemExit(0)
+raise SystemExit(0)
+EOS
+
+env HOME="$HOME_MEM_OK" PYTHONPATH="$FAKE_MEMPALACE_SITE" "$CLI" install \
+  --project-dir "$P1_MEM_OK" \
+  --agent-os codex \
+  --areas software \
+  --specializations software.backend \
+  --theme=light >"$OUT1AB_OK" 2>&1
+assert_file_contains "$OUT1AB_OK" "MemPalace MCP runtime check succeeded via 'python3 -m mempalace --help'"
+assert_file_contains "$P1_MEM_OK/.codex/config.toml" "[mcp_servers.mempalace]"
+
+echo "[e2e] Scenario 1ac: MemPalace runtime check warns and install continues when module is unavailable"
+P1_MEM_WARN="$TMP_ROOT/project-mempalace-warn"
+HOME_MEM_WARN="$TMP_ROOT/home-mempalace-warn"
+OUT1AB_WARN="$TMP_ROOT/project-mempalace-warn.log"
+env HOME="$HOME_MEM_WARN" "$CLI" install \
+  --project-dir "$P1_MEM_WARN" \
+  --agent-os codex \
+  --areas software \
+  --specializations software.backend \
+  --theme=light >"$OUT1AB_WARN" 2>&1
+assert_file_contains "$OUT1AB_WARN" "MemPalace MCP runtime check failed for 'python3 -m mempalace --help'; continuing without runtime validation"
+assert_file_contains "$P1_MEM_WARN/.codex/config.toml" "[mcp_servers.mempalace]"
+
 echo "[e2e] Scenario 1a: multi-target opencode,codex writes OpenCode and root AGENTS.md"
 P1_MULTI="$TMP_ROOT/project-multi-target"
 HOME_MULTI="$TMP_ROOT/home-multi-target"
