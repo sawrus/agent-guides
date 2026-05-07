@@ -731,11 +731,6 @@ elif suffix == ".json":
     data = json.loads(text)
     if not isinstance(data, dict):
         raise SystemExit(f"Cannot add agentic metadata to non-object JSON: {dest}")
-    data["_agentic"] = {
-        "generated_by": "agentic",
-        "source": source_ref,
-        "repository": repo,
-    }
     output = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 elif suffix in {".ts", ".tsx", ".js", ".jsx", ".css"}:
     output = commented(text, "//")
