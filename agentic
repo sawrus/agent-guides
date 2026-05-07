@@ -1066,11 +1066,6 @@ def add_marker(file_path: Path, target: Path, source_ref: str) -> str:
         data = json.loads(text)
         if not isinstance(data, dict):
             raise SystemExit(f"Cannot add agentic metadata to non-object JSON: {target}")
-        data["_agentic"] = {
-            "generated_by": "agentic",
-            "source": source_ref,
-            "repository": repo,
-        }
         return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
     if suffix in {".ts", ".tsx", ".js", ".jsx", ".css"}:
         return commented(text, "//", source_ref)
