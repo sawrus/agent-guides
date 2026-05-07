@@ -1384,6 +1384,50 @@ servers["mempalace"] = {"command": "mempalace-mcp"]}
   write_json_config_file "$dest" "$marker" "$body"
 }
 
+print_mempalace_project_setup_instructions() {
+  log "MemPalace setup instructions for target project: $PROJECT_DIR"
+  cat <<EOF
+1) Ensure Python is installed and available in PATH.
+2) Install MemPalace:
+   pip install mempalace
+3) Initialize project-local MemPalace cache:
+   mempalace init "$PROJECT_DIR/.mempalace" --yes
+4) Index existing project memory:
+   mempalace mine "$PROJECT_DIR/.mempalace"
+5) Verify in your IDE/agent that MemPalace MCP tools are connected.
+Note: Ollama at localhost:11434 is optional; MemPalace can run heuristics-only without it.
+EOF
+}
+
+setup_mempalace_for_agentic_opencode() {
+  if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
+    warn "Python is not installed. Install Python 3 first, then run: pip install mempalace"
+    warn "Install help: https://www.python.org/downloads/"
+    return 1
+  fi
+  if ! command -v pip >/dev/null 2>&1 && ! command -v pip3 >/dev/null 2>&1; then
+    warn "pip is not available. Install pip for Python 3, then run: pip install mempalace"
+    return 1
+  fi
+
+  if pip install mempalace >/dev/null 2>&1; then
+    log "MemPalace package installed via 'pip install mempalace'"
+  else
+    warn "Unable to auto-install mempalace via pip; continuing with manual setup instructions"
+    print_mempalace_project_setup_instructions
+    return 1
+  fi
+
+  if command -v mempalace >/dev/null 2>&1; then
+    mempalace init "$PROJECT_DIR/.mempalace" --yes >/dev/null 2>&1 || warn "Failed: mempalace init \"$PROJECT_DIR/.mempalace\" --yes"
+    mempalace mine "$PROJECT_DIR/.mempalace" >/dev/null 2>&1 || warn "Failed: mempalace mine \"$PROJECT_DIR/.mempalace\""
+  else
+    warn "mempalace command is unavailable after install; please run setup manually"
+    print_mempalace_project_setup_instructions
+    return 1
+  fi
+}
+
 configure_mempalace_if_needed() {
   if ! selected_agent_os_contains "opencode" \
     && ! selected_agent_os_contains "codex" \
@@ -1395,7 +1439,9 @@ configure_mempalace_if_needed() {
   fi
 
   local enable_mempalace="N"
-  if is_interactive_terminal && [[ -z "${AGENTIC_TEST_SOURCE_AGENTIC:-}" ]]; then
+  if [[ -n "${AGENTIC_ENABLE_MEMPALACE:-}" ]]; then
+    enable_mempalace="$(trim "${AGENTIC_ENABLE_MEMPALACE}")"
+  elif is_interactive_terminal && [[ -z "${AGENTIC_TEST_SOURCE_AGENTIC:-}" ]]; then
     read -r -p "Enable MemPalace MCP memory integration? [y/N]: " enable_mempalace
     enable_mempalace="$(trim "${enable_mempalace:-y}")"
     if [[ -z "$enable_mempalace" ]]; then enable_mempalace="y"; fi
@@ -1414,6 +1460,12 @@ configure_mempalace_if_needed() {
     fi
   else
     warn "python3 is not available; MemPalace MCP runtime check skipped"
+  fi
+
+  if selected_agent_os_contains "opencode"; then
+    setup_mempalace_for_agentic_opencode || true
+  else
+    print_mempalace_project_setup_instructions
   fi
 
   if selected_agent_os_contains "opencode"; then
