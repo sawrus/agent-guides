@@ -1177,11 +1177,6 @@ namespace = {
 }
 exec(body, namespace)
 data = namespace["data"]
-data["_agentic"] = {
-    "generated_by": "agentic",
-    "source": source_ref,
-    "repository": repo,
-}
 path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 PY
   register_managed_file "$dest" "$source_ref" "internal"
