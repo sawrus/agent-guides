@@ -204,6 +204,43 @@ assert_file_contains "$HOME_DEV_INSTALL/.config/agentic/opencode-plugins.json" "
 assert_exists "$HOME_DEV_INSTALL/.config/agentic/config"
 assert_file_contains "$HOME_DEV_INSTALL/.config/agentic/config" "theme=light"
 
+echo "[e2e] Scenario 1ab: MemPalace runtime check passes when module is available"
+P1_MEM_OK="$TMP_ROOT/project-mempalace-ok"
+HOME_MEM_OK="$TMP_ROOT/home-mempalace-ok"
+OUT1AB_OK="$TMP_ROOT/project-mempalace-ok.log"
+FAKE_MEMPALACE_SITE="$TMP_ROOT/fake-mempalace-site"
+mkdir -p "$FAKE_MEMPALACE_SITE/mempalace"
+cat > "$FAKE_MEMPALACE_SITE/mempalace/__main__.py" <<'EOS'
+#!/usr/bin/env python3
+import sys
+if "--help" in sys.argv:
+    print("mempalace help")
+    raise SystemExit(0)
+raise SystemExit(0)
+EOS
+
+env HOME="$HOME_MEM_OK" PYTHONPATH="$FAKE_MEMPALACE_SITE" "$CLI" install \
+  --project-dir "$P1_MEM_OK" \
+  --agent-os codex \
+  --areas software \
+  --specializations software.backend \
+  --theme=light >"$OUT1AB_OK" 2>&1
+assert_file_contains "$OUT1AB_OK" "MemPalace MCP runtime check succeeded via 'python3 -m mempalace --help'"
+assert_file_contains "$P1_MEM_OK/.codex/config.toml" "[mcp_servers.mempalace]"
+
+echo "[e2e] Scenario 1ac: MemPalace runtime check warns and install continues when module is unavailable"
+P1_MEM_WARN="$TMP_ROOT/project-mempalace-warn"
+HOME_MEM_WARN="$TMP_ROOT/home-mempalace-warn"
+OUT1AB_WARN="$TMP_ROOT/project-mempalace-warn.log"
+env HOME="$HOME_MEM_WARN" "$CLI" install \
+  --project-dir "$P1_MEM_WARN" \
+  --agent-os codex \
+  --areas software \
+  --specializations software.backend \
+  --theme=light >"$OUT1AB_WARN" 2>&1
+assert_file_contains "$OUT1AB_WARN" "MemPalace MCP runtime check failed for 'python3 -m mempalace --help'; continuing without runtime validation"
+assert_file_contains "$P1_MEM_WARN/.codex/config.toml" "[mcp_servers.mempalace]"
+
 echo "[e2e] Scenario 1a: multi-target opencode,codex writes OpenCode and root AGENTS.md"
 P1_MULTI="$TMP_ROOT/project-multi-target"
 HOME_MULTI="$TMP_ROOT/home-multi-target"
@@ -515,6 +552,56 @@ EOS
   assert_exists "$P7/.agent/rules"
 else
   echo "[e2e] Scenario 7 skipped: requires real fzf and an interactive TTY"
+fi
+
+echo "[e2e] Scenario 8: real opencode blackbox MemPalace verification"
+REAL_OPENCODE_BIN="$(command -v opencode || true)"
+if [[ -n "$REAL_OPENCODE_BIN" ]] && python3 -m mempalace --help >/dev/null 2>&1; then
+  P8_NEG="$TMP_ROOT/project-opencode-mempalace-negative"
+  P8_POS="$TMP_ROOT/project-opencode-mempalace-positive"
+  OUT8_NEG="$TMP_ROOT/opencode-mempalace-negative.log"
+  OUT8_POS="$TMP_ROOT/opencode-mempalace-positive.log"
+
+  # Install for opencode with backend + general specs.
+  HOME="$TMP_ROOT/home-opencode-bb" "$CLI" install \
+    --project-dir "$P8_NEG" \
+    --agent-os opencode \
+    --areas software \
+    --specializations software.backend,software.general \
+    --theme=light >/dev/null 2>&1
+
+  HOME="$TMP_ROOT/home-opencode-bb" "$CLI" install \
+    --project-dir "$P8_POS" \
+    --agent-os opencode \
+    --areas software \
+    --specializations software.backend,software.general \
+    --theme=light >/dev/null 2>&1
+
+  # Force negative case by removing MemPalace entry from opencode local config.
+  python3 - "$P8_NEG/opencode.json" <<'PYCODE'
+import json, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+data = json.loads(path.read_text(encoding="utf-8"))
+if isinstance(data.get("mcp"), dict):
+    data["mcp"].pop("mempalace", None)
+path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+PYCODE
+
+  # Run real opencode binary in both projects.
+  # Override command can be supplied to adapt to local opencode versions:
+  #   AGENTIC_TEST_OPENCODE_VERIFY_CMD='opencode "<prompt text>"'
+  OPENCODE_VERIFY_CMD="${AGENTIC_TEST_OPENCODE_VERIFY_CMD:-opencode \"List connected MCP servers and identify mempalace usage.\"}"
+  (cd "$P8_NEG" && eval "$OPENCODE_VERIFY_CMD") >"$OUT8_NEG" 2>&1 || true
+  (cd "$P8_POS" && eval "$OPENCODE_VERIFY_CMD") >"$OUT8_POS" 2>&1 || true
+
+  # Patterns can be customized for different opencode outputs.
+  POS_PATTERN="${AGENTIC_TEST_OPENCODE_MEMPALACE_POS_PATTERN:-mempalace}"
+  NEG_PATTERN="${AGENTIC_TEST_OPENCODE_MEMPALACE_NEG_PATTERN:-mempalace}"
+
+  assert_file_not_contains "$OUT8_NEG" "$NEG_PATTERN"
+  assert_file_contains "$OUT8_POS" "$POS_PATTERN"
+else
+  echo "[e2e] Scenario 8 skipped: requires real 'opencode' binary and working 'python3 -m mempalace'"
 fi
 
 echo "[e2e] All scenarios passed"

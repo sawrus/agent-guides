@@ -76,6 +76,13 @@ Cross-cutting practices that apply to every project regardless of area.
 - Resolve the library or framework identity first, then request focused docs for the exact task and version when version matters.
 - If Context7 is unavailable, state that explicitly and fall back to local docs or official project documentation.
 
+### MemPalace + Context Strategy
+
+- If MemPalace MCP is enabled and available, load project business/domain context from MemPalace first.
+- If Context7 MCP is enabled and available, use it specifically for framework/library/API documentation.
+- If both are available, combine them: MemPalace for project/business knowledge, Context7 for framework-level references.
+- If MCP providers are unavailable, continue with standard local-repo discovery and context-building as fallback.
+
 ### Code Style
 
 - Write self-documenting code with meaningful names — comments explain why, not what.
