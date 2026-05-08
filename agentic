@@ -1350,7 +1350,7 @@ write_mempalace_opencode_config() {
   local body
   body='
 mcp = data.setdefault("mcp", {})
-mcp["mempalace"] = {"type": "local", "command": ["mempalace-mcp"]}
+mcp["mempalace"] = {"type": "local", "command": ["mempalace-mcp", "--palace", ".mempalace"]}
 '
   write_json_config_file "$dest" "generated:mempalace-opencode-config" "$body"
 }
@@ -1362,7 +1362,7 @@ write_mempalace_codex_config() {
 import pathlib, sys
 path = pathlib.Path(sys.argv[1])
 text = path.read_text(encoding='utf-8') if path.exists() else ''
-block = "[mcp_servers.mempalace]\ncommand = \"mempalace-mcp\"]\n"
+block = "[mcp_servers.mempalace]\ncommand = \"mempalace-mcp\"\nargs = [\"--palace\", \".mempalace\"]\n"
 if block not in text:
     if text and not text.endswith("\n"):
         text += "\n"
@@ -1379,7 +1379,7 @@ write_mempalace_generic_json_config() {
   local body
   body='
 servers = data.setdefault("mcpServers", {})
-servers["mempalace"] = {"command": "mempalace-mcp"]}
+servers["mempalace"] = {"command": "mempalace-mcp", "args": ["--palace", ".mempalace"]}
 '
   write_json_config_file "$dest" "$marker" "$body"
 }
@@ -1391,8 +1391,10 @@ print_mempalace_project_setup_instructions() {
 2) Install MemPalace:
    pip install mempalace
 3) Initialize project-local MemPalace cache:
-   mempalace init "$PROJECT_DIR/.mempalace" --yes
+   mkdir -p "$PROJECT_DIR/.mempalace"
+   mempalace init "$PROJECT_DIR/.mempalace" --yes --auto-mine
 4) Index existing project memory:
+   # optional if --auto-mine was skipped
    mempalace mine "$PROJECT_DIR/.mempalace"
 5) Verify in your IDE/agent that MemPalace MCP tools are connected.
 Note: Ollama at localhost:11434 is optional; MemPalace can run heuristics-only without it.
@@ -1419,7 +1421,8 @@ setup_mempalace_for_agentic_opencode() {
   fi
 
   if command -v mempalace >/dev/null 2>&1; then
-    mempalace init "$PROJECT_DIR/.mempalace" --yes >/dev/null 2>&1 || warn "Failed: mempalace init \"$PROJECT_DIR/.mempalace\" --yes"
+    mkdir -p "$PROJECT_DIR/.mempalace" || warn "Failed: mkdir -p \"$PROJECT_DIR/.mempalace\""
+    mempalace init "$PROJECT_DIR/.mempalace" --yes --auto-mine >/dev/null 2>&1 || warn "Failed: mempalace init \"$PROJECT_DIR/.mempalace\" --yes --auto-mine"
     mempalace mine "$PROJECT_DIR/.mempalace" >/dev/null 2>&1 || warn "Failed: mempalace mine \"$PROJECT_DIR/.mempalace\""
   else
     warn "mempalace command is unavailable after install; please run setup manually"

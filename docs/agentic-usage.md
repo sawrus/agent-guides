@@ -148,9 +148,9 @@ For `opencode`, `codex`, `claude`, `cursor`, `gemini`, and `antigravity`, MemPal
 pip install mempalace
 ```
 
-Generated configs run `python3 -m mempalace` (or equivalent `command`/`args` format per IDE). This follows the MemPalace MCP integration approach for agent IDE runtimes.
+Generated configs run `mempalace-mcp --palace .mempalace` (or equivalent `command`/`args` format per IDE) so each project uses its local `.mempalace` directory.
 
-During install, if MemPalace is enabled, `agentic` also runs a runtime check using `python3 -m mempalace --help`. If this check fails (for example, package not installed yet), install continues and agents fall back to standard context discovery.
+During install, if MemPalace is enabled, `agentic` also runs a runtime check using `python3 -m mempalace --help`. For OpenCode installs, `agentic` creates `<project>/.mempalace` and runs `mempalace init "<project>/.mempalace" --yes --auto-mine`. If checks fail (for example, package not installed yet), install continues and agents fall back to standard context discovery.
 
 ## Deprecated wrapper
 
