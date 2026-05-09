@@ -101,3 +101,14 @@ When `.agentic.json` exists in the target project, `agentic install` treats the 
 - skipped paths are recorded in `.agentic.json`.
 
 Every copied or generated file carries an internal marker. Markdown uses YAML front matter, comment-capable formats use comments, and JSON uses an `_agentic` object.
+
+## MemPalace install and validation logs
+
+When MemPalace MCP is enabled during interactive install, `agentic` now reports setup progress in explicit steps so users can see what succeeded or failed:
+
+1. Python availability check
+2. pip availability check
+3. `pip install mempalace`
+4. Project initialization (`mempalace init` and `mempalace mine`)
+
+After setup, runtime validation uses `mempalace-mcp --help` (the MCP entrypoint) instead of validating only the Python module import path. This avoids false warnings where the package is installed successfully but a pre-install runtime probe ran too early.

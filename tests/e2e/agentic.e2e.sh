@@ -203,22 +203,19 @@ assert_file_contains "$HOME_DEV_INSTALL/.config/agentic/opencode-plugins.json" "
 assert_exists "$HOME_DEV_INSTALL/.config/agentic/config"
 assert_file_contains "$HOME_DEV_INSTALL/.config/agentic/config" "theme=light"
 
-echo "[e2e] Scenario 1ab: MemPalace runtime check passes when module is available"
+echo "[e2e] Scenario 1ab: MemPalace runtime check passes when mempalace-mcp is available"
 P1_MEM_OK="$TMP_ROOT/project-mempalace-ok"
 HOME_MEM_OK="$TMP_ROOT/home-mempalace-ok"
 OUT1AB_OK="$TMP_ROOT/project-mempalace-ok.log"
-FAKE_MEMPALACE_SITE="$TMP_ROOT/fake-mempalace-site"
-mkdir -p "$FAKE_MEMPALACE_SITE/mempalace"
-cat > "$FAKE_MEMPALACE_SITE/mempalace/__main__.py" <<'EOS'
-#!/usr/bin/env python3
-import sys
-if "--help" in sys.argv:
-    print("mempalace help")
-    raise SystemExit(0)
-raise SystemExit(0)
+FAKE_MEMPALACE_BIN="$TMP_ROOT/fake-mempalace-bin"
+mkdir -p "$FAKE_MEMPALACE_BIN"
+cat > "$FAKE_MEMPALACE_BIN/mempalace-mcp" <<'EOS'
+#!/usr/bin/env bash
+exit 0
 EOS
+chmod +x "$FAKE_MEMPALACE_BIN/mempalace-mcp"
 
-env HOME="$HOME_MEM_OK" PYTHONPATH="$FAKE_MEMPALACE_SITE" AGENTIC_ENABLE_MEMPALACE=y "$CLI" install \
+env HOME="$HOME_MEM_OK" PATH="$FAKE_MEMPALACE_BIN:$PATH" AGENTIC_ENABLE_MEMPALACE=y "$CLI" install \
   --project-dir "$P1_MEM_OK" \
   --agent-os codex \
   --areas software \
@@ -239,7 +236,7 @@ env HOME="$HOME_MEM_WARN" AGENTIC_ENABLE_MEMPALACE=y "$CLI" install \
   --areas software \
   --specializations software.backend \
   --theme=light >"$OUT1AB_WARN" 2>&1
-assert_file_contains "$OUT1AB_WARN" "MemPalace MCP runtime check failed; continuing without runtime validation"
+assert_file_contains "$OUT1AB_WARN" "mempalace-mcp is unavailable; install/repair MemPalace and re-run setup"
 assert_file_contains "$P1_MEM_WARN/.codex/config.toml" "[mcp_servers.mempalace]"
 assert_file_contains "$OUT1AB_WARN" "MemPalace setup instructions for target project:"
 
