@@ -55,6 +55,7 @@ SKIPPED_MANAGED_PATHS=()
 WARNINGS=()
 
 CONTEXT7_API_KEY="${CONTEXT7_API_KEY:-}"
+AGENTIC_ENABLE_CONTEXT7="${AGENTIC_ENABLE_CONTEXT7:-}"
 
 COLOR_RESET=""
 COLOR_HEADER=""
@@ -1518,10 +1519,17 @@ configure_context7_if_needed() {
     return
   fi
 
-  if is_interactive_terminal; then
-    local enable_context7 answer
-    read -r -p "Enable Context7 MCP configuration? [y/N]: " enable_context7
+  local enable_context7="${AGENTIC_ENABLE_CONTEXT7:-}"
+  if [[ -n "$enable_context7" ]]; then
     enable_context7="$(trim "$enable_context7")"
+  fi
+
+  if is_interactive_terminal; then
+    local answer
+    if [[ -z "$enable_context7" ]]; then
+      read -r -p "Enable Context7 MCP configuration? [y/N]: " enable_context7
+      enable_context7="$(trim "$enable_context7")"
+    fi
     if [[ ! "$enable_context7" =~ ^[Yy]$ ]]; then
       log "Context7 MCP configuration disabled"
       return
@@ -2412,6 +2420,26 @@ run_tui() {
   else
     SELECTED_AGENT_OS=("${picked_agent_os[@]}")
   fi
+
+  local mcp_options=("context7" "mempalace")
+  local picked_mcps=()
+  if [[ "$use_fzf" == true ]]; then
+    readlines picked_mcps < <(choose_multi_fzf "Select optional MCP integration(s):" "${mcp_options[@]}")
+  else
+    local picked_mcps_output
+    picked_mcps_output="$(choose_multi_by_index "Select optional MCP integration(s):" "${mcp_options[@]}")"
+    readlines picked_mcps <<< "$picked_mcps_output"
+  fi
+
+  AGENTIC_ENABLE_CONTEXT7="n"
+  AGENTIC_ENABLE_MEMPALACE="n"
+  local picked_mcp
+  for picked_mcp in "${picked_mcps[@]}"; do
+    case "$picked_mcp" in
+      context7) AGENTIC_ENABLE_CONTEXT7="y" ;;
+      mempalace) AGENTIC_ENABLE_MEMPALACE="y" ;;
+    esac
+  done
 
   local areas=()
   readlines areas < <(list_areas)
