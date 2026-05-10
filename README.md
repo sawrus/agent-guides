@@ -178,6 +178,36 @@ project/.agent/
 
 ---
 
+## Agent IDE options (interactive install)
+
+When you run `agentic tui` (or `agentic install` in interactive mode), you can configure IDE-specific extras in
+addition to selecting Agent OS, areas, and specializations.
+
+### MCP integrations
+
+During TUI setup, `agentic` shows a multi-select step:
+
+- `context7`
+- `mempalace`
+
+Selections are applied as optional MCP configuration for supported targets (for example Codex/OpenCode/Claude/Cursor/
+Gemini/Antigravity depending on integration support).
+
+### OpenCode plugins
+
+If `opencode` is selected as a target, interactive setup also includes a multi-select OpenCode plugin step:
+
+- `telegram`
+- `model-checker`
+
+Behavior:
+
+- If `telegram` is selected, installer asks for bot token and chat id.
+- If `model-checker` is selected, it is enabled in OpenCode plugin config.
+- If nothing is selected, both remain disabled in generated plugin settings.
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for authoring standards, templates, and the pull request process.
