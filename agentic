@@ -1631,6 +1631,8 @@ configure_opencode_plugins_if_needed() {
   local enable_telegram="n" telegram_token telegram_chat enable_model_checker="n"
   local selected_plugin
   for selected_plugin in "${selected_plugins[@]}"; do
+    selected_plugin="$(trim "$selected_plugin")"
+    [[ -z "$selected_plugin" ]] && continue
     case "$selected_plugin" in
       telegram) enable_telegram="y" ;;
       model-checker) enable_model_checker="y" ;;
