@@ -1611,9 +1611,32 @@ configure_opencode_plugins_if_needed() {
     return
   fi
 
-  local enable_telegram telegram_token telegram_chat enable_model_checker
-  read -r -p "Enable OpenCode Telegram notifications? [y/N]: " enable_telegram
-  enable_telegram="$(trim "$enable_telegram")"
+  local plugin_options=("telegram" "model-checker")
+  local selected_plugins=()
+  local use_fzf_plugins=false
+  if fzf_available; then
+    use_fzf_plugins=true
+  elif ensure_fzf_or_fallback; then
+    use_fzf_plugins=true
+  fi
+
+  if [[ "$use_fzf_plugins" == true ]]; then
+    readlines selected_plugins < <(choose_multi_fzf "Select optional OpenCode plugin(s):" "${plugin_options[@]}")
+  else
+    local selected_plugins_output
+    selected_plugins_output="$(choose_multi_by_index "Select optional OpenCode plugin(s):" "${plugin_options[@]}")"
+    readlines selected_plugins <<< "$selected_plugins_output"
+  fi
+
+  local enable_telegram="n" telegram_token telegram_chat enable_model_checker="n"
+  local selected_plugin
+  for selected_plugin in "${selected_plugins[@]}"; do
+    case "$selected_plugin" in
+      telegram) enable_telegram="y" ;;
+      model-checker) enable_model_checker="y" ;;
+    esac
+  done
+
   telegram_token=""
   telegram_chat=""
   if [[ "$enable_telegram" =~ ^[Yy]$ ]]; then
@@ -1622,9 +1645,6 @@ configure_opencode_plugins_if_needed() {
     telegram_token="$(trim "$telegram_token")"
     telegram_chat="$(trim "$telegram_chat")"
   fi
-
-  read -r -p "Enable OpenCode model checker plugin? [y/N]: " enable_model_checker
-  enable_model_checker="$(trim "$enable_model_checker")"
 
   python3 - "$OPENCODE_PLUGIN_CONFIG_FILE" "$telegram_token" "$telegram_chat" "$enable_model_checker" <<'PY'
 import json
