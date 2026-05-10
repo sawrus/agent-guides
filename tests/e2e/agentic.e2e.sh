@@ -341,6 +341,23 @@ assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\
 assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"modelChecker\""
 assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"telegram\""
 assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"botToken\": \"\""
+assert_file_not_contains "$OUT1A_OC_PLUGINS" "Telegram bot token (empty disables plugin):"
+
+echo "[e2e] Scenario 1b4: interactive OpenCode plugin multi-select with no selection does not request Telegram credentials"
+P1_OC_NO_PLUGINS="$TMP_ROOT/project-opencode-no-plugins"
+HOME_OC_NO_PLUGINS="$TMP_ROOT/home-opencode-no-plugins"
+OUT1A_OC_NO_PLUGINS="$TMP_ROOT/project-opencode-no-plugins.log"
+printf '%s\n' "n" "" "n" "n" | \
+  env HOME="$HOME_OC_NO_PLUGINS" AGENTIC_FORCE_INTERACTIVE=1 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
+    --project-dir "$P1_OC_NO_PLUGINS" \
+    --agent-os opencode \
+    --areas software \
+    --specializations software.backend \
+    --theme=light >"$OUT1A_OC_NO_PLUGINS" 2>&1
+assert_exists "$HOME_OC_NO_PLUGINS/.config/agentic/opencode-plugins.json"
+assert_file_contains "$HOME_OC_NO_PLUGINS/.config/agentic/opencode-plugins.json" "\"telegram\""
+assert_file_contains "$HOME_OC_NO_PLUGINS/.config/agentic/opencode-plugins.json" "\"enabled\": false"
+assert_file_not_contains "$OUT1A_OC_NO_PLUGINS" "Telegram bot token (empty disables plugin):"
 
 echo "[e2e] Scenario 1c: rerun skips user-modified managed files"
 P1_RULE="$P1/.agent/rules/architecture.md"
