@@ -313,6 +313,35 @@ assert_file_contains "$HOME_CTX/.gemini/antigravity/mcp_config.json" "\"context7
 assert_not_exists "$P1_CTX_MULTI/.antigravity/mcp.json"
 assert_not_exists "$P1_CTX_MULTI/.kilocode/mcp.json"
 
+echo "[e2e] Scenario 1b2: non-interactive Context7 enablement via AGENTIC_ENABLE_CONTEXT7"
+P1_CTX_ENV="$TMP_ROOT/project-context7-env"
+OUT1A_ENV="$TMP_ROOT/project-context7-env.log"
+env HOME="$HOME_CTX" AGENTIC_ENABLE_CONTEXT7=y CONTEXT7_API_KEY=env-context7-key "$CLI" install \
+  --project-dir "$P1_CTX_ENV" \
+  --agent-os codex \
+  --areas software \
+  --specializations software.backend \
+  --theme=light >"$OUT1A_ENV" 2>&1
+assert_file_contains "$P1_CTX_ENV/.codex/config.toml" "[mcp_servers.context7]"
+assert_file_contains "$P1_CTX_ENV/.codex/config.toml" "env-context7-key"
+
+echo "[e2e] Scenario 1b3: interactive OpenCode plugin multi-select enables model-checker only"
+P1_OC_PLUGINS="$TMP_ROOT/project-opencode-plugins"
+HOME_OC_PLUGINS="$TMP_ROOT/home-opencode-plugins"
+OUT1A_OC_PLUGINS="$TMP_ROOT/project-opencode-plugins.log"
+printf '%s\n' "n" "2" "n" "n" | \
+  env HOME="$HOME_OC_PLUGINS" AGENTIC_FORCE_INTERACTIVE=1 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
+    --project-dir "$P1_OC_PLUGINS" \
+    --agent-os opencode \
+    --areas software \
+    --specializations software.backend \
+    --theme=light >"$OUT1A_OC_PLUGINS" 2>&1
+assert_exists "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json"
+assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"enabled\": true"
+assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"modelChecker\""
+assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"telegram\""
+assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"botToken\": \"\""
+
 echo "[e2e] Scenario 1c: rerun skips user-modified managed files"
 P1_RULE="$P1/.agent/rules/architecture.md"
 assert_exists "$P1_RULE"
@@ -503,6 +532,7 @@ env HOME="$HOME_TUI_FZF" AGENTIC_FORCE_INTERACTIVE=1 PATH="$FAKE_FZF_BIN:$FAKE_G
 assert_exists "$P6/.agent/rules"
 assert_file_contains "$FZF_CALLS_LOG" "Target project directory [/tmp/agentic-project]:"
 assert_file_contains "$FZF_CALLS_LOG" "Select Agent OS target(s):"
+assert_file_contains "$FZF_CALLS_LOG" "Select optional MCP integration(s):"
 assert_file_contains "$FZF_CALLS_LOG" "Select area(s):"
 assert_file_contains "$FZF_CALLS_LOG" "Select specialization(s) for 'software':"
 assert_file_contains "$FZF_CALLS_LOG" "--color=fg:#e5e7eb,bg:#111827,hl:#60a5fa"

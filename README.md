@@ -178,6 +178,15 @@ project/.agent/
 
 ---
 
+## Agent IDE options (interactive install)
+
+| Option block | Choices | Applies to | Result |
+|:--|:--|:--|:--|
+| MCP selection | `context7`, `mempalace` (multi-select) | Supported Agent IDE targets | Writes optional MCP configuration for selected integrations. |
+| OpenCode plugins | `telegram`, `model-checker` (multi-select) | `opencode` target only | `telegram`: prompts for bot token/chat id; `model-checker`: enables plugin; no selection keeps both disabled. |
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for authoring standards, templates, and the pull request process.
