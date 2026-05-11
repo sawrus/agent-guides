@@ -1,11 +1,14 @@
-.PHONY: help install dev test lint fmt clean build assess-areas
+.PHONY: help install dev test test-cli test-tui test-cross lint fmt clean build assess-areas
 
 help:
 	@printf '%s\n' \
 		"Available targets:" \
 		"  install       Install local development prerequisites" \
 		"  dev           Show local development entrypoints" \
-		"  test          Run end-to-end tests" \
+		"  test          Run end-to-end tests (all groups)" \
+		"  test-cli      Run CLI end-to-end tests" \
+		"  test-tui      Run TUI end-to-end tests" \
+		"  test-cross    Run cross-mode end-to-end tests" \
 		"  lint          Run prompt and catalog validation" \
 		"  fmt           Check formatting hooks placeholder" \
 		"  clean         Remove generated reports" \
@@ -19,7 +22,18 @@ dev:
 	@printf '%s\n' "Use ./agentic tui or ./agentic install ..."
 
 test:
-	bash tests/e2e/agentic.e2e.sh
+	bash tests/e2e/cli.e2e.sh
+	bash tests/e2e/tui.e2e.sh
+	bash tests/e2e/cross.e2e.sh
+
+test-cli:
+	bash tests/e2e/cli.e2e.sh
+
+test-tui:
+	bash tests/e2e/tui.e2e.sh
+
+test-cross:
+	bash tests/e2e/cross.e2e.sh
 
 lint:
 	bash -n agentic

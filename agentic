@@ -15,7 +15,7 @@ APP_REPO_LINK="https://github.com/sawrus/agent-guides"
 PROJECT_MANIFEST_NAME=".agentic.json"
 
 DEFAULT_AGENT_OS="default"
-STATIC_AGENT_OS=(default opencode codex claude antigravity cursor agents)
+STATIC_AGENT_OS=(opencode codex claude antigravity cursor)
 INSTALL_DIRS=(rules skills workflows prompts)
 THEME_CHOICES=(auto dark light)
 
@@ -1351,7 +1351,7 @@ write_mempalace_opencode_config() {
   local body
   body='
 mcp = data.setdefault("mcp", {})
-mcp["mempalace"] = {"type": "local", "command": ["mempalace-mcp", "--palace", ".mempalace"]}
+mcp["mempalace"] = {"type": "local", "command": ["mempalace-mcp", "--palace", "."]}
 '
   write_json_config_file "$dest" "generated:mempalace-opencode-config" "$body"
 }
@@ -1363,7 +1363,7 @@ write_mempalace_codex_config() {
 import pathlib, sys
 path = pathlib.Path(sys.argv[1])
 text = path.read_text(encoding='utf-8') if path.exists() else ''
-block = "[mcp_servers.mempalace]\ncommand = \"mempalace-mcp\"\nargs = [\"--palace\", \".mempalace\"]\n"
+block = "[mcp_servers.mempalace]\ncommand = \"mempalace-mcp\"\nargs = [\"--palace\", \".\"]\n"
 if block not in text:
     if text and not text.endswith("\n"):
         text += "\n"
@@ -1380,7 +1380,7 @@ write_mempalace_generic_json_config() {
   local body
   body='
 servers = data.setdefault("mcpServers", {})
-servers["mempalace"] = {"command": "mempalace-mcp", "args": ["--palace", ".mempalace"]}
+servers["mempalace"] = {"command": "mempalace-mcp", "args": ["--palace", "."]}
 '
   write_json_config_file "$dest" "$marker" "$body"
 }
@@ -1392,11 +1392,10 @@ print_mempalace_project_setup_instructions() {
 2) Install MemPalace:
    pip install mempalace
 3) Initialize project-local MemPalace cache:
-   mkdir -p "$PROJECT_DIR/.mempalace"
-   mempalace init "$PROJECT_DIR/.mempalace" --yes --auto-mine
+   mempalace init "$PROJECT_DIR" --yes --auto-mine
 4) Index existing project memory:
    # optional if --auto-mine was skipped
-   mempalace mine "$PROJECT_DIR/.mempalace"
+   mempalace mine "$PROJECT_DIR"
 5) Verify in your IDE/agent that MemPalace MCP tools are connected.
 Note: Ollama at localhost:11434 is optional; MemPalace can run heuristics-only without it.
 EOF
@@ -1429,18 +1428,17 @@ setup_mempalace_for_agentic_opencode() {
     return 1
   fi
 
-  log "$step_prefix [4/4] Initializing project memory at $PROJECT_DIR/.mempalace"
+  log "$step_prefix [4/4] Initializing project memory at $PROJECT_DIR"
   if command -v mempalace >/dev/null 2>&1; then
-    mkdir -p "$PROJECT_DIR/.mempalace" || warn "Failed: mkdir -p \"$PROJECT_DIR/.mempalace\""
-    if mempalace init "$PROJECT_DIR/.mempalace" --yes --auto-mine >/dev/null 2>&1; then
+    if mempalace init "$PROJECT_DIR" --yes --auto-mine >/dev/null 2>&1; then
       log "MemPalace init completed"
     else
-      warn "Failed: mempalace init \"$PROJECT_DIR/.mempalace\" --yes --auto-mine"
+      warn "Failed: mempalace init \"$PROJECT_DIR\" --yes --auto-mine"
     fi
-    if mempalace mine "$PROJECT_DIR/.mempalace" >/dev/null 2>&1; then
+    if mempalace mine "$PROJECT_DIR" >/dev/null 2>&1; then
       log "MemPalace mine completed"
     else
-      warn "Failed: mempalace mine \"$PROJECT_DIR/.mempalace\""
+      warn "Failed: mempalace mine \"$PROJECT_DIR\""
     fi
     log "$step_prefix [4/4] Initialization step finished"
   else
@@ -1465,8 +1463,8 @@ configure_mempalace_if_needed() {
     enable_mempalace="$(trim "${AGENTIC_ENABLE_MEMPALACE}")"
   elif is_interactive_terminal && [[ -z "${AGENTIC_TEST_SOURCE_AGENTIC:-}" ]]; then
     read -r -p "Enable MemPalace MCP memory integration? [y/N]: " enable_mempalace
-    enable_mempalace="$(trim "${enable_mempalace:-y}")"
-    if [[ -z "$enable_mempalace" ]]; then enable_mempalace="y"; fi
+    enable_mempalace="$(trim "${enable_mempalace:-n}")"
+    if [[ -z "$enable_mempalace" ]]; then enable_mempalace="n"; fi
   fi
   if [[ "$enable_mempalace" =~ ^[Nn]$ ]]; then
     log "Skipped MemPalace MCP configuration"
@@ -1611,7 +1609,7 @@ configure_opencode_plugins_if_needed() {
     return
   fi
 
-  local plugin_options=("telegram" "model-checker")
+  local plugin_options=("telegram-opencode-notifier" "llm-quota-checker")
   local selected_plugins=()
   local use_fzf_plugins=false
   if fzf_available; then
@@ -1634,8 +1632,8 @@ configure_opencode_plugins_if_needed() {
     selected_plugin="$(trim "$selected_plugin")"
     [[ -z "$selected_plugin" ]] && continue
     case "$selected_plugin" in
-      telegram) enable_telegram="y" ;;
-      model-checker) enable_model_checker="y" ;;
+      telegram-opencode-notifier) enable_telegram="y" ;;
+      llm-quota-checker) enable_model_checker="y" ;;
     esac
   done
 
@@ -2468,10 +2466,10 @@ run_tui() {
   local mcp_options=("context7" "mempalace")
   local picked_mcps=()
   if [[ "$use_fzf" == true ]]; then
-    readlines picked_mcps < <(choose_multi_fzf "Select optional MCP integration(s):" "${mcp_options[@]}")
+    readlines picked_mcps < <(choose_multi_fzf_strict "Select optional MCP integration(s):" "${mcp_options[@]}")
   else
     local picked_mcps_output
-    picked_mcps_output="$(choose_multi_by_index "Select optional MCP integration(s):" "${mcp_options[@]}")"
+    picked_mcps_output="$(choose_multi_by_index "Select optional MCP integration(s):" "<none>" "${mcp_options[@]}")"
     readlines picked_mcps <<< "$picked_mcps_output"
   fi
 
