@@ -1621,7 +1621,7 @@ configure_opencode_plugins_if_needed() {
   fi
 
   if [[ "$use_fzf_plugins" == true ]]; then
-    readlines selected_plugins < <(choose_multi_fzf "Select optional OpenCode plugin(s):" "${plugin_options[@]}")
+    readlines selected_plugins < <(choose_multi_fzf_strict "Select optional OpenCode plugin(s):" "${plugin_options[@]}")
   else
     local selected_plugins_output
     selected_plugins_output="$(choose_multi_by_index "Select optional OpenCode plugin(s):" "${plugin_options[@]}")"
@@ -2346,6 +2346,28 @@ choose_single_fzf() {
   fi
 
   printf '%s\n' "${options[@]}" | fzf "${fzf_args[@]}"
+}
+
+
+choose_multi_fzf_strict() {
+  local prompt="$1"
+  shift
+  local options=("$@")
+
+  if [[ "${#options[@]}" -eq 0 ]]; then
+    return
+  fi
+
+  local sentinel="<none>"
+  local picked=()
+  readlines picked < <(choose_multi_fzf "$prompt" "$sentinel" "${options[@]}")
+
+  local item
+  for item in "${picked[@]}"; do
+    item="$(trim "$item")"
+    [[ -z "$item" || "$item" == "$sentinel" ]] && continue
+    printf '%s\n' "$item"
+  done
 }
 
 choose_multi_fzf() {
