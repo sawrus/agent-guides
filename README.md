@@ -183,7 +183,7 @@ project/.agent/
 | Option block | Choices | Applies to | Result |
 |:--|:--|:--|:--|
 | MCP selection | `context7`, `mempalace` (multi-select) | Supported Agent IDE targets | Writes optional MCP configuration for selected integrations. |
-| OpenCode plugins | `telegram`, `model-checker` (multi-select) | `opencode` target only | `telegram`: prompts for bot token/chat id; `model-checker`: enables plugin; no selection keeps both disabled. |
+| OpenCode plugins | `telegram-opencode-notifier`, `llm-quota-checker` (multi-select) | `opencode` target only | `telegram`: prompts for bot token/chat id; `model-checker`: enables plugin; no selection keeps both disabled. |
 
 ---
 
