@@ -15,7 +15,7 @@ APP_REPO_LINK="https://github.com/sawrus/agent-guides"
 PROJECT_MANIFEST_NAME=".agentic.json"
 
 DEFAULT_AGENT_OS="default"
-STATIC_AGENT_OS=(opencode codex claude antigravity cursor)
+STATIC_AGENT_OS=(opencode codex claude antigravity cursor kilocode)
 INSTALL_DIRS=(rules skills workflows prompts)
 THEME_CHOICES=(auto dark light)
 
@@ -56,6 +56,11 @@ WARNINGS=()
 
 CONTEXT7_API_KEY="${CONTEXT7_API_KEY:-}"
 AGENTIC_ENABLE_CONTEXT7="${AGENTIC_ENABLE_CONTEXT7:-}"
+AGENTIC_DOCTOR="${AGENTIC_DOCTOR:-1}"
+AGENTIC_DOCTOR_KEEP_TMP="${AGENTIC_DOCTOR_KEEP_TMP:-0}"
+
+RUN_LOG_ACTIVE=false
+RUN_LOG_FILE=""
 
 COLOR_RESET=""
 COLOR_HEADER=""
@@ -68,7 +73,7 @@ FZF_COLOR_ARGS=()
 
 usage() {
   cat <<USAGE
-$APP_TITLE
+$APP_TITLE $(app_version_label)
 
 Usage:
   $SCRIPT_NAME list [agentos|areas|specs --area <name>]
@@ -76,6 +81,7 @@ Usage:
   $SCRIPT_NAME tui [--theme auto|dark|light]
   $SCRIPT_NAME upgrade
   $SCRIPT_NAME self-install [--bin-dir <dir>] [--force] [--install-fzf] [--dry-run]
+  $SCRIPT_NAME --version
 
 Behavior:
   - No arguments in interactive terminal: runs TUI mode
@@ -88,11 +94,13 @@ Options:
   --areas               Comma-separated area list (example: software)
   --specializations     Comma-separated specializations in area.spec format (example: software.backend,software.frontend)
   --theme               Interface theme: auto|dark|light (default: config value or auto)
+  --no-doctor           Skip real agent smoke checks after install
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)
   --force               Overwrite existing binary for self-install
   --install-fzf         During self-install, try to auto-install fzf (optional)
   --dry-run             Show actions without writing files
   -h, --help            Show this help
+  -V, --version         Show agentic version
 
 Examples:
   $SCRIPT_NAME list agentos
@@ -101,6 +109,31 @@ Examples:
   $SCRIPT_NAME upgrade
   $SCRIPT_NAME self-install --force
 USAGE
+}
+
+read_package_version() {
+  local package_file="$1"
+  [[ -f "$package_file" ]] || return 1
+
+  sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$package_file" | head -n 1
+}
+
+app_version() {
+  local version=""
+  local candidate
+  for candidate in "$SCRIPT_DIR/package.json" "$REPO_ROOT/package.json" "$APP_REPO_DIR/package.json"; do
+    [[ -n "$candidate" ]] || continue
+    version="$(read_package_version "$candidate" || true)"
+    if [[ -n "$version" ]]; then
+      printf '%s\n' "$version"
+      return
+    fi
+  done
+  printf 'unknown\n'
+}
+
+app_version_label() {
+  printf 'v%s\n' "$(app_version)"
 }
 
 is_interactive_terminal() {
@@ -218,16 +251,116 @@ set_theme_colors() {
 }
 
 log() {
-  printf '%s[agentic]%s %s\n' "$COLOR_INFO" "$COLOR_RESET" "$1"
+  emit_log_line stdout "[agentic]" "$1" "$COLOR_INFO"
 }
 
 warn() {
-  printf '%s[agentic][warn]%s %s\n' "$COLOR_WARN" "$COLOR_RESET" "$1"
+  emit_log_line stdout "[agentic][warn]" "$1" "$COLOR_WARN"
   WARNINGS+=("$1")
 }
 
 error() {
-  printf '%s[agentic][error]%s %s\n' "$COLOR_ERROR" "$COLOR_RESET" "$1" >&2
+  emit_log_line stderr "[agentic][error]" "$1" "$COLOR_ERROR"
+}
+
+timestamp_now() {
+  date '+%Y-%m-%d %H:%M:%S'
+}
+
+init_run_logging() {
+  if [[ "$RUN_LOG_ACTIVE" == true ]]; then
+    return
+  fi
+
+  local base_dir="${TMPDIR:-/tmp}"
+  local stamp
+  stamp="$(date '+%Y%m%d-%H%M%S')"
+  RUN_LOG_FILE="$(mktemp "$base_dir/agentic-$stamp.XXXXXX")"
+  RUN_LOG_ACTIVE=true
+  log "Run log initialized: $RUN_LOG_FILE"
+}
+
+write_run_log_line() {
+  local line="$1"
+  if [[ "$RUN_LOG_ACTIVE" == true && -n "$RUN_LOG_FILE" ]]; then
+    printf '%s\n' "$line" >> "$RUN_LOG_FILE"
+  fi
+}
+
+emit_log_line() {
+  local stream="$1"
+  local tag="$2"
+  local message="$3"
+  local color="${4:-}"
+
+  local line plain_line ts
+  if [[ "$RUN_LOG_ACTIVE" == true ]]; then
+    ts="$(timestamp_now)"
+    plain_line="$ts $tag $message"
+    if [[ -n "$color" ]]; then
+      line="$ts ${color}${tag}${COLOR_RESET} $message"
+    else
+      line="$plain_line"
+    fi
+  else
+    plain_line="$tag $message"
+    if [[ -n "$color" ]]; then
+      line="${color}${tag}${COLOR_RESET} $message"
+    else
+      line="$plain_line"
+    fi
+  fi
+
+  if [[ "$stream" == "stderr" ]]; then
+    printf '%s\n' "$line" >&2
+  else
+    printf '%s\n' "$line"
+  fi
+  write_run_log_line "$plain_line"
+}
+
+out() {
+  local message="${1:-}"
+  local color="${2:-}"
+  local line plain_line ts
+
+  if [[ -z "$message" ]]; then
+    printf '\n'
+    write_run_log_line ""
+    return
+  fi
+
+  if [[ "$RUN_LOG_ACTIVE" == true ]]; then
+    ts="$(timestamp_now)"
+    plain_line="$ts $message"
+    if [[ -n "$color" ]]; then
+      line="$ts ${color}${message}${COLOR_RESET}"
+    else
+      line="$plain_line"
+    fi
+  else
+    plain_line="$message"
+    if [[ -n "$color" ]]; then
+      line="${color}${message}${COLOR_RESET}"
+    else
+      line="$plain_line"
+    fi
+  fi
+
+  printf '%s\n' "$line"
+  write_run_log_line "$plain_line"
+}
+
+log_file_block() {
+  local label="$1"
+  local path="$2"
+  [[ "$RUN_LOG_ACTIVE" == true && -n "$RUN_LOG_FILE" && -f "$path" ]] || return 0
+
+  write_run_log_line "$(timestamp_now) --- $label output begin ---"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    write_run_log_line "$(timestamp_now) $line"
+  done < "$path"
+  write_run_log_line "$(timestamp_now) --- $label output end ---"
 }
 
 unique_append() {
@@ -520,6 +653,42 @@ ensure_python_available() {
   fi
 }
 
+pip_command() {
+  if command -v pip >/dev/null 2>&1; then
+    printf '%s\n' "pip"
+    return 0
+  fi
+  if command -v pip3 >/dev/null 2>&1; then
+    printf '%s\n' "pip3"
+    return 0
+  fi
+  if command -v python3 >/dev/null 2>&1 && python3 -m pip --version >/dev/null 2>&1; then
+    printf '%s\n' "python3 -m pip"
+    return 0
+  fi
+  return 1
+}
+
+ensure_pip_available() {
+  if ! pip_command >/dev/null; then
+    error "pip is required to run agentic install/tui. Install pip for Python 3 and make 'pip3', 'pip', or 'python3 -m pip' available."
+    exit 1
+  fi
+}
+
+ensure_hash_available() {
+  if ! command -v shasum >/dev/null 2>&1 && ! command -v sha256sum >/dev/null 2>&1; then
+    error "shasum or sha256sum is required to track managed files"
+    exit 1
+  fi
+}
+
+ensure_agentic_runtime_requirements() {
+  ensure_python_available
+  ensure_pip_available
+  ensure_hash_available
+}
+
 selected_agent_os_contains() {
   local expected="$1"
   local agent
@@ -548,8 +717,7 @@ hash_file() {
   elif command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$path" | awk '{print $1}'
   else
-    error "shasum or sha256sum is required to track managed files"
-    exit 1
+    ensure_hash_available
   fi
 }
 
@@ -635,12 +803,15 @@ register_managed_file() {
   local dest="$1"
   local source_ref="$2"
   local marker="$3"
+  local copied="${4:-true}"
   local rel
   rel="$(project_rel_path "$dest")"
   local digest
   digest="$(hash_file "$dest")"
   MANAGED_RECORDS+=("$rel|$source_ref|$digest|$marker")
-  unique_append "$dest" COPIED_PATHS
+  if [[ "$copied" == true ]]; then
+    unique_append "$dest" COPIED_PATHS
+  fi
 }
 
 record_agentic_event() {
@@ -680,8 +851,10 @@ write_file_with_agentic_marker() {
   can_write_managed_file "$dest" || return 0
 
   ensure_dir "$(dirname -- "$dest")"
-  python3 - "$src" "$dest" "$source_ref" "$APP_REPO_LINK" <<'PY'
+  local write_status
+  write_status="$(python3 - "$src" "$dest" "$source_ref" "$APP_REPO_LINK" "$(app_version_label)" <<'PY'
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -689,6 +862,7 @@ src = Path(sys.argv[1])
 dest = Path(sys.argv[2])
 source_ref = sys.argv[3]
 repo = sys.argv[4]
+version = sys.argv[5]
 text = src.read_text(encoding="utf-8")
 suffix = dest.suffix.lower()
 marker = f"Generated by agentic; source: {source_ref}; repository: {repo}"
@@ -698,12 +872,28 @@ def yaml_quote(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+def existing_created_by() -> str:
+    if not dest.exists():
+        return version
+    try:
+        old = dest.read_text(encoding="utf-8")
+    except Exception:
+        return version
+    match = re.search(r"(?m)^  created_by:\s*(.+?)\s*$", old)
+    if not match:
+        return version
+    return match.group(1).strip().strip('"')
+
+
 def markdown_with_marker(body: str) -> str:
+    created_by = existing_created_by()
     block = (
         "agentic:\n"
         "  generated_by: agentic\n"
         f"  source: {yaml_quote(source_ref)}\n"
         f"  repository: {yaml_quote(repo)}\n"
+        f"  created_by: {yaml_quote(created_by)}\n"
+        f"  updated_by: {yaml_quote(version)}\n"
     )
     if body.startswith("---\n"):
         end = body.find("\n---", 4)
@@ -740,9 +930,23 @@ elif suffix in {".sh", ".toml", ".py", ".yml", ".yaml"}:
 else:
     output = commented(text, "#")
 
+if dest.exists():
+    try:
+        if dest.read_text(encoding="utf-8") == output:
+            print("unchanged")
+            raise SystemExit(0)
+    except UnicodeDecodeError:
+        pass
+
 dest.write_text(output, encoding="utf-8")
+print("written")
 PY
-  register_managed_file "$dest" "$source_ref" "internal"
+)"
+  if [[ "$write_status" == "unchanged" ]]; then
+    register_managed_file "$dest" "$source_ref" "internal" false
+  else
+    register_managed_file "$dest" "$source_ref" "internal"
+  fi
 }
 
 write_agentic_manifest() {
@@ -776,7 +980,8 @@ write_agentic_manifest() {
   specs_csv="${SELECTED_SPECS[*]}"
   IFS="$old_ifs"
 
-  python3 - "$manifest" "$records_file" "$skipped_file" "$APP_REPO_LINK" "$REPO_ROOT" "$agent_os_csv" "$areas_csv" "$specs_csv" <<'PY'
+  local manifest_status
+  manifest_status="$(python3 - "$manifest" "$records_file" "$skipped_file" "$APP_REPO_LINK" "$REPO_ROOT" "$agent_os_csv" "$areas_csv" "$specs_csv" "$(app_version_label)" <<'PY'
 import json
 import sys
 from datetime import datetime, timezone
@@ -790,37 +995,55 @@ repo_root = sys.argv[5]
 agent_os = [x for x in sys.argv[6].split(",") if x]
 areas = [x for x in sys.argv[7].split(",") if x]
 specs = [x for x in sys.argv[8].split(",") if x]
+app_version = sys.argv[9]
 now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 existing = {}
 created_at = now
+old_data = None
 if manifest.exists():
     try:
         old = json.loads(manifest.read_text(encoding="utf-8"))
+        old_data = old
         created_at = old.get("created_at", created_at)
         for item in old.get("managed_files", []):
             if item.get("path"):
                 existing[item["path"]] = item
     except Exception:
         existing = {}
+original_existing = json.loads(json.dumps(existing))
 
 for line in records_file.read_text(encoding="utf-8").splitlines():
     if not line:
         continue
     path, source, digest, marker = (line.split("|", 3) + ["", "", "", ""])[:4]
+    old_item = original_existing.get(path, {})
+    old_updated_at = old_item.get("updated_at", now)
+    if (
+        old_item.get("source") == source
+        and old_item.get("content_hash") == digest
+        and old_item.get("marker") == marker
+    ):
+        item_updated_at = old_updated_at
+    else:
+        item_updated_at = now
     existing[path] = {
         "path": path,
         "source": source,
         "content_hash": digest,
         "marker": marker,
-        "updated_at": now,
+        "updated_at": item_updated_at,
     }
 
 skipped = [x for x in skipped_file.read_text(encoding="utf-8").splitlines() if x]
+old_agentic = old_data.get("_agentic", {}) if isinstance(old_data, dict) else {}
+created_by = old_agentic.get("created_by", app_version)
 data = {
     "_agentic": {
         "generated_by": "agentic",
         "repository": repo_link,
+        "created_by": created_by,
+        "updated_by": app_version,
     },
     "version": 1,
     "created_at": created_at,
@@ -835,9 +1058,26 @@ data = {
     "managed_files": sorted(existing.values(), key=lambda x: x["path"]),
     "skipped_files": skipped,
 }
+
+if old_data is not None:
+    old_compare = json.loads(json.dumps(old_data))
+    new_compare = json.loads(json.dumps(data))
+    for payload in (old_compare, new_compare):
+        payload.pop("updated_at", None)
+        if isinstance(payload.get("_agentic"), dict):
+            payload["_agentic"].pop("updated_by", None)
+    if old_compare == new_compare:
+        print("unchanged")
+        raise SystemExit(0)
+
 manifest.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+print("written")
 PY
+)"
   rm -f "$records_file" "$skipped_file"
+  if [[ "$manifest_status" == "unchanged" ]]; then
+    return
+  fi
   unique_append "$manifest" COPIED_PATHS
 }
 
@@ -977,9 +1217,10 @@ copy_dir_contents() {
 
   local event kind value events_file
   events_file="$(mktemp "${TMPDIR:-/tmp}/agentic-copy-events.XXXXXX")"
-  python3 - "$src" "$dest" "$REPO_ROOT" "$PROJECT_DIR" "$(project_manifest_path)" "$APP_REPO_LINK" > "$events_file" <<'PY'
+  python3 - "$src" "$dest" "$REPO_ROOT" "$PROJECT_DIR" "$(project_manifest_path)" "$APP_REPO_LINK" "$(app_version_label)" > "$events_file" <<'PY'
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -989,6 +1230,7 @@ repo_root = Path(sys.argv[3])
 project_dir = Path(sys.argv[4])
 manifest = Path(sys.argv[5])
 repo = sys.argv[6]
+version = sys.argv[7]
 
 
 def emit(kind: str, value: str) -> None:
@@ -1011,7 +1253,7 @@ if manifest.exists():
         for item in data.get("managed_files", []):
             rel = item.get("path")
             if rel:
-                managed[rel] = item.get("content_hash", "")
+                managed[rel] = item
     except Exception:
         managed = {}
 
@@ -1034,12 +1276,28 @@ def yaml_quote(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def markdown_with_marker(body: str, source_ref: str) -> str:
+def existing_created_by(target: Path) -> str:
+    if not target.exists():
+        return version
+    try:
+        old = target.read_text(encoding="utf-8")
+    except Exception:
+        return version
+    match = re.search(r"(?m)^  created_by:\s*(.+?)\s*$", old)
+    if not match:
+        return version
+    return match.group(1).strip().strip('"')
+
+
+def markdown_with_marker(body: str, source_ref: str, target: Path) -> str:
+    created_by = existing_created_by(target)
     block = (
         "agentic:\n"
         "  generated_by: agentic\n"
         f"  source: {yaml_quote(source_ref)}\n"
         f"  repository: {yaml_quote(repo)}\n"
+        f"  created_by: {yaml_quote(created_by)}\n"
+        f"  updated_by: {yaml_quote(version)}\n"
     )
     if body.startswith("---\n"):
         end = body.find("\n---", 4)
@@ -1062,7 +1320,7 @@ def add_marker(file_path: Path, target: Path, source_ref: str) -> str:
     text = file_path.read_text(encoding="utf-8")
     suffix = target.suffix.lower()
     if suffix == ".md":
-        return markdown_with_marker(text, source_ref)
+        return markdown_with_marker(text, source_ref, target)
     if suffix == ".json":
         data = json.loads(text)
         if not isinstance(data, dict):
@@ -1088,15 +1346,27 @@ for file_path in sorted(p for p in src.rglob("*") if p.is_file()):
                 emit("WARN", f"Skipping unmanaged target on rerun: {project_rel}")
                 emit("SKIP", project_rel)
                 continue
-        expected_hash = managed.get(project_rel, "")
+        managed_item = managed.get(project_rel, {})
+        if managed_item.get("marker") == "config":
+            continue
+        expected_hash = managed_item.get("content_hash", "")
         if target.exists() and expected_hash and sha256(target) != expected_hash:
             emit("WARN", f"Skipping user-modified managed file: {project_rel}")
             emit("SKIP", project_rel)
             continue
 
+    output = add_marker(file_path, target, source_ref)
     target.parent.mkdir(parents=True, exist_ok=True)
     emit("DIR", str(target.parent))
-    target.write_text(add_marker(file_path, target, source_ref), encoding="utf-8")
+    if target.exists():
+        try:
+            if target.read_text(encoding="utf-8") == output:
+                digest = sha256(target)
+                emit("RECORD", f"{project_rel}|{source_ref}|{digest}|internal")
+                continue
+        except UnicodeDecodeError:
+            pass
+    target.write_text(output, encoding="utf-8")
     digest = sha256(target)
     emit("RECORD", f"{project_rel}|{source_ref}|{digest}|internal")
     emit("COPIED", str(target))
@@ -1147,7 +1417,8 @@ write_json_file_with_agentic_metadata() {
 
   can_write_managed_file "$dest" || return 0
   ensure_dir "$(dirname -- "$dest")"
-  python3 - "$dest" "$source_ref" "$APP_REPO_LINK" "$CONTEXT7_API_KEY" "$python_body" <<'PY'
+  local write_status
+  write_status="$(python3 - "$dest" "$source_ref" "$APP_REPO_LINK" "$CONTEXT7_API_KEY" "$python_body" "$(app_version_label)" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -1157,11 +1428,15 @@ source_ref = sys.argv[2]
 repo = sys.argv[3]
 context7_api_key = sys.argv[4]
 body = sys.argv[5]
+version = sys.argv[6]
 
 data = {}
+created_by = version
 if path.exists():
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            created_by = data.get("_agentic", {}).get("created_by", version)
     except Exception:
         data = {}
 if not isinstance(data, dict):
@@ -1173,9 +1448,28 @@ namespace = {
 }
 exec(body, namespace)
 data = namespace["data"]
+metadata = data.setdefault("_agentic", {})
+metadata["generated_by"] = "agentic"
+metadata["repository"] = repo
+metadata["created_by"] = created_by
+metadata["updated_by"] = version
+output = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+if path.exists():
+    try:
+        if path.read_text(encoding="utf-8") == output:
+            print("unchanged")
+            raise SystemExit(0)
+    except UnicodeDecodeError:
+        pass
 path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+print("written")
 PY
-  register_managed_file "$dest" "$source_ref" "internal"
+)"
+  if [[ "$write_status" == "unchanged" ]]; then
+    register_managed_file "$dest" "$source_ref" "internal" false
+  else
+    register_managed_file "$dest" "$source_ref" "internal"
+  fi
 }
 
 write_json_config_file() {
@@ -1191,7 +1485,8 @@ write_json_config_file() {
 
   can_write_managed_file "$dest" || return 0
   ensure_dir "$(dirname -- "$dest")"
-  python3 - "$dest" "$CONTEXT7_API_KEY" "$python_body" <<'PY'
+  local write_status
+  write_status="$(python3 - "$dest" "$CONTEXT7_API_KEY" "$python_body" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -1215,9 +1510,62 @@ namespace = {
 }
 exec(body, namespace)
 data = namespace["data"]
-path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+output = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+if path.exists():
+    try:
+        if path.read_text(encoding="utf-8") == output:
+            print("unchanged")
+            raise SystemExit(0)
+    except UnicodeDecodeError:
+        pass
+path.write_text(output, encoding="utf-8")
+print("written")
 PY
-  register_managed_file "$dest" "$source_ref" "config"
+)"
+  if [[ "$write_status" == "unchanged" ]]; then
+    register_managed_file "$dest" "$source_ref" "config" false
+  else
+    register_managed_file "$dest" "$source_ref" "config"
+  fi
+}
+
+write_text_config_file() {
+  local dest="$1"
+  local source_ref="$2"
+  local content="$3"
+
+  if [[ "$DRY_RUN" == true ]]; then
+    log "DRY-RUN write text config file $dest"
+    unique_append "$dest" COPIED_PATHS
+    return
+  fi
+
+  can_write_managed_file "$dest" || return 0
+  ensure_dir "$(dirname -- "$dest")"
+
+  local write_status
+  write_status="$(python3 - "$dest" "$content" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+content = sys.argv[2]
+if path.exists():
+    try:
+        if path.read_text(encoding="utf-8") == content:
+            print("unchanged")
+            raise SystemExit(0)
+    except UnicodeDecodeError:
+        pass
+path.write_text(content, encoding="utf-8")
+print("written")
+PY
+)"
+  if [[ "$write_status" == "unchanged" ]]; then
+    register_managed_file "$dest" "$source_ref" "config" false
+  else
+    register_managed_file "$dest" "$source_ref" "config"
+  fi
 }
 
 write_context7_opencode_config() {
@@ -1251,22 +1599,32 @@ if context7_api_key:
     context7["headers"] = {"CONTEXT7_API_KEY": context7_api_key}
 mcp["context7"] = context7
 '
-  write_json_file_with_agentic_metadata "$dest" "generated:context7-opencode-legacy-config" "$body"
+  write_json_config_file "$dest" "generated:context7-opencode-legacy-config" "$body"
 }
 
 write_context7_codex_config() {
   local dest="$PROJECT_DIR/.codex/config.toml"
-  local headers=""
-  if [[ -n "$CONTEXT7_API_KEY" ]]; then
-    local escaped_key
-    escaped_key="${CONTEXT7_API_KEY//\\/\\\\}"
-    escaped_key="${escaped_key//\"/\\\"}"
-    headers="http_headers = { \"CONTEXT7_API_KEY\" = \"$escaped_key\" }
-"
-  fi
-  write_generated_text_file "$dest" "generated:context7-codex-config" "[mcp_servers.context7]
-url = \"https://mcp.context7.com/mcp\"
-${headers}"
+  local body
+  body="$(python3 - "$dest" "$CONTEXT7_API_KEY" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+api_key = sys.argv[2]
+text = path.read_text(encoding="utf-8") if path.exists() else ""
+text = re.sub(r"(?ms)^\[mcp_servers\.context7\]\n.*?(?=^\[|\Z)", "", text).strip()
+block = '[mcp_servers.context7]\nurl = "https://mcp.context7.com/mcp"\n'
+if api_key:
+    escaped = api_key.replace("\\", "\\\\").replace('"', '\\"')
+    block += f'http_headers = {{ "CONTEXT7_API_KEY" = "{escaped}" }}\n'
+if text:
+    print(block + "\n" + text.rstrip() + "\n", end="")
+else:
+    print(block, end="")
+PY
+)"
+  write_text_config_file "$dest" "generated:context7-codex-config" "$body"
 }
 
 write_context7_claude_config() {
@@ -1351,7 +1709,7 @@ write_mempalace_opencode_config() {
   local body
   body='
 mcp = data.setdefault("mcp", {})
-mcp["mempalace"] = {"type": "local", "command": ["mempalace-mcp", "--palace", "."]}
+mcp["mempalace"] = {"type": "local", "command": ["mempalace-mcp"]}
 '
   write_json_config_file "$dest" "generated:mempalace-opencode-config" "$body"
 }
@@ -1360,18 +1718,21 @@ write_mempalace_codex_config() {
   local dest="$PROJECT_DIR/.codex/config.toml"
   local body
   body="$(python3 - "$dest" <<'PYCODE'
-import pathlib, sys
+import re
+import pathlib
+import sys
+
 path = pathlib.Path(sys.argv[1])
 text = path.read_text(encoding='utf-8') if path.exists() else ''
-block = "[mcp_servers.mempalace]\ncommand = \"mempalace-mcp\"\nargs = [\"--palace\", \".\"]\n"
-if block not in text:
-    if text and not text.endswith("\n"):
-        text += "\n"
-    text += block
-print(text, end="")
+block = "[mcp_servers.mempalace]\ncommand = \"mempalace-mcp\"\n"
+text = re.sub(r"(?ms)^\[mcp_servers\.mempalace\]\n.*?(?=^\[|\Z)", "", text).strip()
+if text:
+    print(text.rstrip() + "\n\n" + block, end="")
+else:
+    print(block, end="")
 PYCODE
 )"
-  write_generated_text_file "$dest" "generated:mempalace-codex-config" "$body"
+  write_text_config_file "$dest" "generated:mempalace-codex-config" "$body"
 }
 
 write_mempalace_generic_json_config() {
@@ -1380,25 +1741,23 @@ write_mempalace_generic_json_config() {
   local body
   body='
 servers = data.setdefault("mcpServers", {})
-servers["mempalace"] = {"command": "mempalace-mcp", "args": ["--palace", "."]}
+servers["mempalace"] = {"command": "mempalace-mcp"}
 '
   write_json_config_file "$dest" "$marker" "$body"
 }
 
 print_mempalace_project_setup_instructions() {
   log "MemPalace setup instructions for target project: $PROJECT_DIR"
-  cat <<EOF
-1) Ensure Python is installed and available in PATH.
-2) Install MemPalace:
-   pip install mempalace
-3) Initialize project-local MemPalace cache:
-   mempalace init "$PROJECT_DIR" --yes --auto-mine
-4) Index existing project memory:
-   # optional if --auto-mine was skipped
-   mempalace mine "$PROJECT_DIR"
-5) Verify in your IDE/agent that MemPalace MCP tools are connected.
-Note: Ollama at localhost:11434 is optional; MemPalace can run heuristics-only without it.
-EOF
+  out "1) Ensure Python is installed and available in PATH."
+  out "2) Install MemPalace:"
+  out "   pip install mempalace"
+  out "3) Initialize project-local MemPalace cache:"
+  out "   mempalace init \"$PROJECT_DIR\" --yes --auto-mine"
+  out "4) Index existing project memory:"
+  out "   # optional if --auto-mine was skipped"
+  out "   mempalace mine \"$PROJECT_DIR\""
+  out "5) Verify in your IDE/agent that MemPalace MCP tools are connected."
+  out "Note: Ollama at localhost:11434 is optional; MemPalace can run heuristics-only without it."
 }
 
 setup_mempalace_for_agentic_opencode() {
@@ -1413,15 +1772,16 @@ setup_mempalace_for_agentic_opencode() {
   log "$step_prefix [1/4] Python check passed"
 
   log "$step_prefix [2/4] Checking pip availability"
-  if ! command -v pip >/dev/null 2>&1 && ! command -v pip3 >/dev/null 2>&1; then
+  local pip_bin
+  if ! pip_bin="$(pip_command)"; then
     warn "pip is not available. Install pip for Python 3, then run: pip install mempalace"
     return 1
   fi
   log "$step_prefix [2/4] pip check passed"
 
   log "$step_prefix [3/4] Installing mempalace package"
-  if pip install mempalace >/dev/null 2>&1; then
-    log "MemPalace package installed via 'pip install mempalace'"
+  if $pip_bin install mempalace >/dev/null 2>&1; then
+    log "MemPalace package installed via '$pip_bin install mempalace'"
   else
     warn "Unable to auto-install mempalace via pip; continuing with manual setup instructions"
     print_mempalace_project_setup_instructions
@@ -1454,6 +1814,7 @@ configure_mempalace_if_needed() {
     && ! selected_agent_os_contains "claude" \
     && ! selected_agent_os_contains "cursor" \
     && ! selected_agent_os_contains "gemini" \
+    && ! selected_agent_os_contains "kilocode" \
     && ! selected_agent_os_contains "antigravity"; then
     return
   fi
@@ -1478,11 +1839,7 @@ configure_mempalace_if_needed() {
   fi
 
   if command -v mempalace-mcp >/dev/null 2>&1; then
-    if mempalace-mcp --help >/dev/null 2>&1; then
-      log "MemPalace MCP runtime check succeeded via 'mempalace-mcp'"
-    else
-      warn "MemPalace MCP runtime check failed; continuing without runtime validation"
-    fi
+    log "MemPalace MCP binary found: mempalace-mcp"
   else
     warn "mempalace-mcp is unavailable; install/repair MemPalace and re-run setup"
   fi
@@ -1500,6 +1857,9 @@ configure_mempalace_if_needed() {
   fi
   if selected_agent_os_contains "gemini"; then
     write_mempalace_generic_json_config "$PROJECT_DIR/.gemini/settings.json" "generated:mempalace-gemini-config"
+  fi
+  if selected_agent_os_contains "kilocode"; then
+    write_mempalace_generic_json_config "$PROJECT_DIR/.kilocode/mcp.json" "generated:mempalace-kilocode-config"
   fi
   if selected_agent_os_contains "antigravity"; then
     write_mempalace_generic_json_config "$HOME/.gemini/antigravity/mcp_config.json" "generated:mempalace-antigravity-config"
@@ -1772,7 +2132,7 @@ build_header() {
   {
     echo "# Agentic Project Guidelines"
     echo
-    echo "Generated by $SCRIPT_NAME on $(date -u +'%Y-%m-%dT%H:%M:%SZ')."
+    echo "Generated by $SCRIPT_NAME."
     echo
     echo "## Installation Context"
     echo "- Agent OS targets: ${SELECTED_AGENT_OS[*]}"
@@ -1939,37 +2299,47 @@ validate_inputs() {
 }
 
 print_report() {
-  echo
-  echo "${COLOR_HEADER}=== Installation report ===${COLOR_RESET}"
-  echo "Project dir: $PROJECT_DIR"
-  echo "Knowledge base repo: $REPO_ROOT"
-  echo "Config file: $APP_CONFIG_FILE"
-  echo "Agent OS targets: ${SELECTED_AGENT_OS[*]}"
-  echo "Areas: ${SELECTED_AREAS[*]}"
-  echo "Specializations: ${SELECTED_SPECS[*]}"
+  out
+  out "=== Installation report ===" "$COLOR_HEADER"
+  out "Agentic version: $(app_version_label)"
+  out "Project dir: $PROJECT_DIR"
+  out "Knowledge base repo: $REPO_ROOT"
+  out "Config file: $APP_CONFIG_FILE"
+  out "Agent OS targets: ${SELECTED_AGENT_OS[*]}"
+  out "Areas: ${SELECTED_AREAS[*]}"
+  out "Specializations: ${SELECTED_SPECS[*]}"
 
-  echo
-  echo "Created directories:"
+  out
+  out "Created directories:"
   if [[ "${#CREATED_PATHS[@]}" -eq 0 ]]; then
-    echo "- (none)"
+    out "- (none)"
   else
-    printf -- '- %s\n' "${CREATED_PATHS[@]}"
+    local created_path
+    for created_path in "${CREATED_PATHS[@]}"; do
+      out "- $created_path"
+    done
   fi
 
-  echo
-  echo "Copied/generated paths:"
+  out
+  out "Copied/generated paths:"
   if [[ "${#COPIED_PATHS[@]}" -eq 0 ]]; then
-    echo "- (none)"
+    out "- (none)"
   else
-    printf -- '- %s\n' "${COPIED_PATHS[@]}"
+    local copied_path
+    for copied_path in "${COPIED_PATHS[@]}"; do
+      out "- $copied_path"
+    done
   fi
 
-  echo
-  echo "Warnings:"
+  out
+  out "Warnings:"
   if [[ "${#WARNINGS[@]}" -eq 0 ]]; then
-    echo "- (none)"
+    out "- (none)"
   else
-    printf -- '- %s\n' "${WARNINGS[@]}"
+    local warning
+    for warning in "${WARNINGS[@]}"; do
+      out "- $warning"
+    done
   fi
 }
 
@@ -2032,14 +2402,201 @@ print_missing_agent_binary_guides() {
     return
   fi
 
-  echo
-  echo "${COLOR_HEADER}=== Agent binary setup recommendations ===${COLOR_RESET}"
-  printf '%s\n' "${missing_lines[@]}"
+  out
+  out "=== Agent binary setup recommendations ===" "$COLOR_HEADER"
+  local missing_line
+  for missing_line in "${missing_lines[@]}"; do
+    out "$missing_line"
+  done
+}
+
+changelog_file_path() {
+  local candidate
+  for candidate in "$SCRIPT_DIR/CHANGELOG.md" "$REPO_ROOT/CHANGELOG.md" "$APP_REPO_DIR/CHANGELOG.md"; do
+    [[ -f "$candidate" ]] || continue
+    printf '%s\n' "$candidate"
+    return 0
+  done
+  return 1
+}
+
+print_current_changelog() {
+  local changelog version
+  changelog="$(changelog_file_path || true)"
+  version="$(app_version_label)"
+  if [[ -z "$changelog" ]]; then
+    warn "CHANGELOG.md not found; skipping changelog output"
+    return
+  fi
+
+  local section_file
+  section_file="$(mktemp "${TMPDIR:-/tmp}/agentic-changelog.XXXXXX")"
+  awk -v wanted="## $version" '
+    $0 == wanted { in_section = 1; print; next }
+    in_section && /^## / { exit }
+    in_section { print }
+  ' "$changelog" > "$section_file"
+
+  if [[ ! -s "$section_file" ]]; then
+    rm -f "$section_file"
+    warn "No changelog section found for $version"
+    return
+  fi
+
+  out
+  out "=== Changelog $version ===" "$COLOR_HEADER"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ "$line" == "## $version" ]]; then
+      continue
+    fi
+    out "$line"
+  done < "$section_file"
+  rm -f "$section_file"
+}
+
+doctor_agent_supported() {
+  case "$1" in
+    codex|opencode|claude|gemini) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+doctor_enabled() {
+  [[ "$DRY_RUN" != true ]] || return 1
+  [[ "${AGENTIC_DOCTOR:-1}" != "0" ]] || return 1
+  [[ "${AGENTIC_TEST_SOURCE_AGENTIC:-}" != "1" ]] || return 1
+  return 0
+}
+
+doctor_prompt() {
+  printf '%s\n' "/develop-feature напиши hello world python"
+}
+
+doctor_output_has_fatal_patterns() {
+  local output_file="$1"
+  grep -Eiq 'MCP.*(error|failed|failure|connection|connect|startup)|plugin.*(error|failed|failure)|auth.*(required|failed)|login required|permission.*(denied|required)|SyntaxError|Traceback|Invalid regular expression flags|An unexpected critical error occurred|FatalError|RuntimeError|EPERM|EACCES|panic:' "$output_file"
+}
+
+doctor_copy_project() {
+  local dest="$1"
+  mkdir -p "$dest"
+  if [[ -d "$PROJECT_DIR" ]]; then
+    cp -R "$PROJECT_DIR/." "$dest/"
+  fi
+}
+
+run_doctor_command() {
+  local agent_os="$1"
+  local work_dir="$2"
+  local output_file="$3"
+  local prompt
+  prompt="$(doctor_prompt)"
+
+  case "$agent_os" in
+    codex)
+      codex exec --skip-git-repo-check --full-auto -C "$work_dir" "$prompt" >"$output_file" 2>&1
+      ;;
+    opencode)
+      opencode run --dir "$work_dir" --dangerously-skip-permissions --format json --command develop-feature "напиши hello world python" >"$output_file" 2>&1
+      ;;
+    claude)
+      (cd "$work_dir" && claude -p --permission-mode bypassPermissions --output-format stream-json "$prompt") >"$output_file" 2>&1
+      ;;
+    gemini)
+      (cd "$work_dir" && gemini --prompt "$prompt") >"$output_file" 2>&1
+      ;;
+    *)
+      return 2
+      ;;
+  esac
+}
+
+run_doctor_for_agent() {
+  local agent_os="$1"
+  local doctor_root="$2"
+  local binary_name
+  binary_name="$(get_agent_binary_name "$agent_os")"
+
+  if [[ -z "$binary_name" ]] || ! command -v "$binary_name" >/dev/null 2>&1; then
+    out "❌ $agent_os: binary '$binary_name' is not installed"
+    return 1
+  fi
+
+  local work_dir output_file status
+  work_dir="$doctor_root/$agent_os"
+  output_file="$doctor_root/$agent_os.log"
+  doctor_copy_project "$work_dir"
+
+  set +e
+  run_doctor_command "$agent_os" "$work_dir" "$output_file"
+  status=$?
+  set -e
+
+  log_file_block "doctor $agent_os" "$output_file"
+
+  if [[ "$status" -ne 0 ]]; then
+    out "❌ $agent_os: /develop-feature smoke failed (exit $status, log: $output_file)"
+    return 1
+  fi
+
+  if doctor_output_has_fatal_patterns "$output_file"; then
+    out "❌ $agent_os: /develop-feature smoke reported integration errors (log: $output_file)"
+    return 1
+  fi
+
+  out "✅ $agent_os: /develop-feature smoke passed"
+  return 0
+}
+
+run_agentic_doctor() {
+  if ! doctor_enabled; then
+    log "Agentic doctor skipped"
+    return
+  fi
+
+  local selected_doctor_agents=()
+  local agent_os
+  for agent_os in "${SELECTED_AGENT_OS[@]}"; do
+    if doctor_agent_supported "$agent_os"; then
+      selected_doctor_agents+=("$agent_os")
+    fi
+  done
+
+  if [[ "${#selected_doctor_agents[@]}" -eq 0 ]]; then
+    log "Agentic doctor skipped: no supported real agentos selected"
+    return
+  fi
+
+  local doctor_root
+  doctor_root="$(mktemp -d "${TMPDIR:-/tmp}/agentic-doctor.XXXXXX")"
+  out
+  out "=== Agentic doctor ===" "$COLOR_HEADER"
+  out "Doctor temp root: $doctor_root"
+
+  local failures=0
+  for agent_os in "${selected_doctor_agents[@]}"; do
+    if ! run_doctor_for_agent "$agent_os" "$doctor_root"; then
+      failures=$((failures + 1))
+    fi
+  done
+
+  if [[ "$AGENTIC_DOCTOR_KEEP_TMP" == "1" || "$failures" -gt 0 ]]; then
+    out "Doctor temp root kept: $doctor_root"
+  else
+    rm -rf "$doctor_root"
+  fi
+
+  if [[ "$failures" -gt 0 ]]; then
+    warn "Agentic doctor completed with $failures failing check(s)"
+  else
+    log "Agentic doctor completed successfully"
+  fi
 }
 
 run_install() {
+  init_run_logging
   ensure_repo_layout
-  ensure_python_available
+  ensure_agentic_runtime_requirements
   normalize_selected_agent_os
   validate_inputs
 
@@ -2053,6 +2610,9 @@ run_install() {
   write_agentic_manifest "$PROJECT_DIR"
   print_report
   print_missing_agent_binary_guides
+  print_current_changelog
+  run_agentic_doctor
+  out "Agentic log file: $RUN_LOG_FILE"
 }
 
 ascii_banner() {
@@ -2423,11 +2983,13 @@ run_tui() {
     exit 1
   fi
 
+  ensure_agentic_runtime_requirements
+
   pick_theme_if_needed
   set_theme_colors
 
   ascii_banner
-  echo "${COLOR_HEADER}$APP_TUI_TITLE${COLOR_RESET}"
+  echo "${COLOR_HEADER}$APP_TUI_TITLE $(app_version_label)${COLOR_RESET}"
   echo "${COLOR_DIM}Theme: $THEME (resolved: $ACTIVE_THEME)${COLOR_RESET}"
   echo
 
@@ -2774,6 +3336,10 @@ case "$COMMAND" in
           DRY_RUN=true
           shift
           ;;
+        --no-doctor)
+          AGENTIC_DOCTOR=0
+          shift
+          ;;
         -h|--help)
           usage
           exit 0
@@ -2813,6 +3379,10 @@ case "$COMMAND" in
           ;;
         --dry-run)
           DRY_RUN=true
+          shift
+          ;;
+        --no-doctor)
+          AGENTIC_DOCTOR=0
           shift
           ;;
         -h|--help)
@@ -2899,6 +3469,10 @@ case "$COMMAND" in
 
   -h|--help)
     usage
+    ;;
+
+  -V|--version|version)
+    app_version_label
     ;;
 
   *)

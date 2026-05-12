@@ -4,10 +4,16 @@ set -euo pipefail
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 CLI="$ROOT_DIR/agentic"
 export AGENTIC_TEST_SOURCE_AGENTIC="$CLI"
+export AGENTIC_DOCTOR=0
 TMP_ROOT="$(mktemp -d /tmp/agentic-e2e.XXXXXX)"
 PYTHON_ONLY_BIN="$TMP_ROOT/python-bin"
 mkdir -p "$PYTHON_ONLY_BIN"
 ln -s "$(command -v python3)" "$PYTHON_ONLY_BIN/python3"
+cat > "$PYTHON_ONLY_BIN/pip" <<'EOS'
+#!/usr/bin/env bash
+exit 0
+EOS
+chmod +x "$PYTHON_ONLY_BIN/pip"
 cleanup() {
   if [[ "${AGENTIC_TEST_KEEP_TMP:-}" == "1" ]]; then
     echo "[e2e] Keeping temp root: $TMP_ROOT" >&2
@@ -172,6 +178,43 @@ set -e
 assert_file_contains "$OUT0" "Agentic Installer"
 assert_file_contains "$OUT0" "Usage:"
 
+echo "[e2e] Scenario 0a: install preflight reports missing Python and pip"
+REQ_BIN="$TMP_ROOT/requirements-bin"
+mkdir -p "$REQ_BIN"
+for tool in bash dirname pwd basename sed head date mktemp; do
+  ln -s "$(command -v "$tool")" "$REQ_BIN/$tool"
+done
+
+OUT0A="$TMP_ROOT/missing-python.log"
+set +e
+PATH="$REQ_BIN" HOME="$TMP_ROOT/home-missing-python" "$CLI" install \
+  --project-dir "$TMP_ROOT/project-missing-python" \
+  --areas software \
+  --specializations software.backend >"$OUT0A" 2>&1
+STATUS0A=$?
+set -e
+[[ "$STATUS0A" -eq 1 ]] || fail "Expected exit code 1 for missing python3, got $STATUS0A"
+assert_file_contains "$OUT0A" "python3 is required"
+
+cat > "$REQ_BIN/python3" <<'EOS'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" ]]; then
+  exit 1
+fi
+exit 0
+EOS
+chmod +x "$REQ_BIN/python3"
+OUT0B="$TMP_ROOT/missing-pip.log"
+set +e
+PATH="$REQ_BIN" HOME="$TMP_ROOT/home-missing-pip" "$CLI" install \
+  --project-dir "$TMP_ROOT/project-missing-pip" \
+  --areas software \
+  --specializations software.backend >"$OUT0B" 2>&1
+STATUS0B=$?
+set -e
+[[ "$STATUS0B" -eq 1 ]] || fail "Expected exit code 1 for missing pip, got $STATUS0B"
+assert_file_contains "$OUT0B" "pip is required to run agentic install/tui"
+
 echo "[e2e] Scenario 1: dev mode install from repository checkout persists --theme=<value> to config"
 P1="$TMP_ROOT/project-dev-install"
 HOME_DEV_INSTALL="$TMP_ROOT/home-dev-install"
@@ -221,7 +264,7 @@ env HOME="$HOME_MEM_OK" PATH="$FAKE_MEMPALACE_BIN:$PATH" AGENTIC_ENABLE_MEMPALAC
   --areas software \
   --specializations software.backend \
   --theme=light >"$OUT1AB_OK" 2>&1
-assert_file_contains "$OUT1AB_OK" "MemPalace MCP runtime check succeeded via 'mempalace-mcp'"
+assert_file_contains "$OUT1AB_OK" "MemPalace MCP binary found: mempalace-mcp"
 assert_file_contains "$P1_MEM_OK/.codex/config.toml" "[mcp_servers.mempalace]"
 assert_file_contains "$OUT1AB_OK" "MemPalace setup instructions for target project:"
 assert_file_contains "$OUT1AB_OK" "pip install mempalace"
@@ -230,7 +273,7 @@ echo "[e2e] Scenario 1ac: MemPalace runtime check warns and install continues wh
 P1_MEM_WARN="$TMP_ROOT/project-mempalace-warn"
 HOME_MEM_WARN="$TMP_ROOT/home-mempalace-warn"
 OUT1AB_WARN="$TMP_ROOT/project-mempalace-warn.log"
-env HOME="$HOME_MEM_WARN" AGENTIC_ENABLE_MEMPALACE=y "$CLI" install \
+env HOME="$HOME_MEM_WARN" PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_ENABLE_MEMPALACE=y "$CLI" install \
   --project-dir "$P1_MEM_WARN" \
   --agent-os codex \
   --areas software \

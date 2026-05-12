@@ -95,6 +95,11 @@ agent-guides/
 
 ## Quick start
 
+### Requirements
+
+- required commands: `bash`, `python3`, `pip`, `pip3`, or `python3 -m pip`, `git`
+- optional commands: `fzf`, `node`/`npm`, `curl`, agent binaries such as `codex`, `opencode`, `claude`, `gemini`
+
 ### Install
 
 ```bash
@@ -162,11 +167,8 @@ Each agent has a `vibe` (one-line personality), `Identity`, `Communication Style
 
 ## What gets installed where
 
-Running `agentic` in a target project installs shared guidance into the project's `.agent/` directory and copies any
-selected platform extensions into tool-specific directories such as `.claude/`, `.opencode/`, and `.codex/`.
-Generated operating guidance is written to `AGENTS.md` at the project root for most agents. OpenCode receives the same
-generated guidance at `.opencode/AGENTS.md`; multi-target installs that include OpenCode and another agent write both
-files.
+`agentic` installs shared guidance into `.agent/` and selected IDE files into directories like `.claude/`,
+`.opencode/`, and `.codex/`. Generated runtime guidance goes to `AGENTS.md`; OpenCode also gets `.opencode/AGENTS.md`.
 
 ```text
 project/.agent/
@@ -180,10 +182,17 @@ project/.agent/
 
 ## Agent IDE options (interactive install)
 
-| Option block | Choices | Applies to | Result |
-|:--|:--|:--|:--|
-| MCP selection | `context7`, `mempalace` (multi-select) | Supported Agent IDE targets | Writes optional MCP configuration for selected integrations. |
-| OpenCode plugins | `telegram-opencode-notifier`, `llm-quota-checker` (multi-select) | `opencode` target only | `telegram`: prompts for bot token/chat id; `model-checker`: enables plugin; no selection keeps both disabled. |
+### MCP
+
+- `context7`: adds a remote MCP server for up-to-date framework, library, SDK, and API documentation.
+- `mempalace`: adds a local memory MCP server for project context discovery and reuse.
+
+### OpenCode Plugins
+
+- `telegram-opencode-notifier`: sends Telegram notifications when an OpenCode session becomes idle, including the final
+  response or an attachment for long output.
+- `llm-quota-checker`: probes configured OpenCode models, reports available/failed models, and updates subagent model
+  settings to a working model.
 
 ---
 

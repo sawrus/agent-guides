@@ -111,4 +111,4 @@ When MemPalace MCP is enabled during interactive install, `agentic` now reports 
 3. `pip install mempalace`
 4. Project initialization (`mempalace init` and `mempalace mine`)
 
-After setup, runtime validation uses `mempalace-mcp --help` (the MCP entrypoint) instead of validating only the Python module import path. This avoids false warnings where the package is installed successfully but a pre-install runtime probe ran too early.
+After setup, install checks that `mempalace-mcp` is present and leaves runtime startup/tool validation to the post-install doctor smoke check. Generated MCP configs invoke `mempalace-mcp` without arguments for all supported agent targets.

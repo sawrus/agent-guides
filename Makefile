@@ -1,4 +1,4 @@
-.PHONY: help install dev test test-cli test-tui test-cross lint fmt clean build assess-areas
+.PHONY: help install dev test test-cli test-tui test-cross test-doctor test-markers test-real-agent-doctor lint fmt clean build assess-areas
 
 help:
 	@printf '%s\n' \
@@ -9,6 +9,9 @@ help:
 		"  test-cli      Run CLI end-to-end tests" \
 		"  test-tui      Run TUI end-to-end tests" \
 		"  test-cross    Run cross-mode end-to-end tests" \
+		"  test-doctor   Run deterministic doctor end-to-end tests" \
+		"  test-markers  Run generated marker and idempotency tests" \
+		"  test-real-agent-doctor  Run opt-in real agent doctor checks" \
 		"  lint          Run prompt and catalog validation" \
 		"  fmt           Check formatting hooks placeholder" \
 		"  clean         Remove generated reports" \
@@ -25,6 +28,8 @@ test:
 	bash tests/e2e/cli.e2e.sh
 	bash tests/e2e/tui.e2e.sh
 	bash tests/e2e/cross.e2e.sh
+	bash tests/e2e/doctor.e2e.sh
+	bash tests/e2e/markers.e2e.sh
 
 test-cli:
 	bash tests/e2e/cli.e2e.sh
@@ -34,6 +39,15 @@ test-tui:
 
 test-cross:
 	bash tests/e2e/cross.e2e.sh
+
+test-doctor:
+	bash tests/e2e/doctor.e2e.sh
+
+test-markers:
+	bash tests/e2e/markers.e2e.sh
+
+test-real-agent-doctor:
+	bash tests/e2e/real_agent_doctor.e2e.sh
 
 lint:
 	bash -n agentic

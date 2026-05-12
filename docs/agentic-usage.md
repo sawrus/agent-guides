@@ -30,6 +30,23 @@ Default behavior:
 - In non-interactive mode (CI/pipe): prints usage and exits with code `1`
 - For CI one-off execution, prefer `npx @jetrabbits/agentic@latest <command>`
 
+## Requirements
+
+`agentic install` and `agentic tui` fail fast when required local tools are missing:
+
+- Bash 3.2+.
+- Python 3 as `python3`.
+- pip as `pip3`, `pip`, or `python3 -m pip`.
+- `shasum` or `sha256sum` for managed-file hashes.
+- Git when installed mode needs to bootstrap or upgrade `~/.local/share/agentic/repo`.
+
+Optional tools:
+
+- `fzf` for interactive picker UI; index-based menus are used when it is unavailable.
+- Node.js/npm only for the `npx @jetrabbits/agentic@latest` entrypoint.
+- `curl` only for the bootstrap installer.
+- Real agent binaries only for selected target recommendations and doctor checks.
+
 Install the standalone binary:
 
 ```bash
@@ -74,6 +91,26 @@ agentic install \
 ```
 
 After install, `agentic` writes `.agentic.json` in the target project. It records copied/generated files and their hashes. A later install rerun updates only manifest-managed files and skips files changed by the user. Generated guidance is written to root `AGENTS.md` for most agents and to `.opencode/AGENTS.md` when OpenCode is selected; multi-target installs that include OpenCode and another agent write both files.
+
+After the project files are generated, `agentic` starts timestamped operational logging and mirrors install output to a temporary log file such as:
+
+```text
+/tmp/agentic-20260512-114203.ABC123
+```
+
+The final install line prints the exact path:
+
+```text
+Agentic log file: /tmp/agentic-20260512-114203.ABC123
+```
+
+`agentic` also runs a final doctor smoke check for selected real agent targets (`codex`, `opencode`, `claude`, `gemini`). The doctor runs `/develop-feature напиши hello world python` in a temporary copy of the project and prints one status row per selected agent. Doctor failures are reported but do not roll back or fail the install. Disable doctor for CI or cheap checks with:
+
+```bash
+AGENTIC_DOCTOR=0 agentic install ...
+# or
+agentic install ... --no-doctor
+```
 
 List available options:
 
@@ -148,9 +185,17 @@ For `opencode`, `codex`, `claude`, `cursor`, `gemini`, and `antigravity`, MemPal
 pip install mempalace
 ```
 
-Generated configs run `mempalace-mcp --palace .` (or equivalent `command`/`args` format per IDE) so each project uses its project root directory.
+Generated configs run `mempalace-mcp` without arguments for all supported agent targets. Runtime startup and MCP tool errors are checked by the post-install doctor stage.
 
-During install, if MemPalace is enabled, `agentic` also runs a runtime check using `python3 -m mempalace --help`. For OpenCode installs, `agentic` creates `<project>` and runs `mempalace init "<project>" --yes --auto-mine`. If checks fail (for example, package not installed yet), install continues and agents fall back to standard context discovery.
+During install, if MemPalace is enabled, `agentic` checks whether `mempalace-mcp` is available. For OpenCode installs, `agentic` creates `<project>` and runs `mempalace init "<project>" --yes --auto-mine`. If checks fail (for example, package not installed yet), install continues and agents fall back to standard context discovery.
+
+## Real agent doctor E2E
+
+The deterministic e2e suite uses fake agent binaries and does not call models. Real agent doctor checks are opt-in because they may use network access, credentials, and model credits:
+
+```bash
+AGENTIC_RUN_REAL_AGENT_E2E=1 make test-real-agent-doctor
+```
 
 ## Deprecated wrapper
 
