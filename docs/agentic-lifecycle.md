@@ -104,11 +104,11 @@ Every copied or generated file carries an internal marker. Markdown uses YAML fr
 
 ## MemPalace install and validation logs
 
-When MemPalace MCP is enabled during interactive install, `agentic` now reports setup progress in explicit steps so users can see what succeeded or failed:
+When MemPalace MCP is enabled during interactive install, TUI install, or through `AGENTIC_ENABLE_MEMPALACE=y`, `agentic` now reports setup progress in explicit steps so users can see what succeeded or failed:
 
 1. Python availability check
 2. pip availability check
 3. `pip install mempalace`
-4. Project initialization (`mempalace init` and `mempalace mine`)
+4. Project initialization for OpenCode installs (`mempalace init` and `mempalace mine`), or an explicit skip log for other selected targets
 
-After setup, install checks that `mempalace-mcp` is present and leaves runtime startup/tool validation to the post-install doctor smoke check. Generated MCP configs invoke `mempalace-mcp` without arguments for all supported agent targets.
+If auto-install or runtime checks fail, `agentic` prints manual setup instructions and continues. After setup, install checks that `mempalace-mcp` is present and leaves runtime startup/tool validation to the post-install doctor smoke check. Generated MCP configs invoke `mempalace-mcp` without arguments for all supported agent targets.

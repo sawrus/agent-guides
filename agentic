@@ -1760,13 +1760,15 @@ print_mempalace_project_setup_instructions() {
   out "Note: Ollama at localhost:11434 is optional; MemPalace can run heuristics-only without it."
 }
 
-setup_mempalace_for_agentic_opencode() {
+setup_mempalace_for_agentic() {
+  local initialize_project="${1:-false}"
   local step_prefix="MemPalace setup"
 
   log "$step_prefix [1/4] Checking Python availability"
   if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
     warn "Python is not installed. Install Python 3 first, then run: pip install mempalace"
     warn "Install help: https://www.python.org/downloads/"
+    print_mempalace_project_setup_instructions
     return 1
   fi
   log "$step_prefix [1/4] Python check passed"
@@ -1775,6 +1777,7 @@ setup_mempalace_for_agentic_opencode() {
   local pip_bin
   if ! pip_bin="$(pip_command)"; then
     warn "pip is not available. Install pip for Python 3, then run: pip install mempalace"
+    print_mempalace_project_setup_instructions
     return 1
   fi
   log "$step_prefix [2/4] pip check passed"
@@ -1786,6 +1789,11 @@ setup_mempalace_for_agentic_opencode() {
     warn "Unable to auto-install mempalace via pip; continuing with manual setup instructions"
     print_mempalace_project_setup_instructions
     return 1
+  fi
+
+  if [[ "$initialize_project" != "true" ]]; then
+    log "$step_prefix [4/4] Project memory initialization skipped for selected agent target(s)"
+    return 0
   fi
 
   log "$step_prefix [4/4] Initializing project memory at $PROJECT_DIR"
@@ -1832,16 +1840,20 @@ configure_mempalace_if_needed() {
     return
   fi
 
+  local initialize_mempalace_project="false"
   if selected_agent_os_contains "opencode"; then
-    setup_mempalace_for_agentic_opencode || true
-  else
-    print_mempalace_project_setup_instructions
+    initialize_mempalace_project="true"
   fi
+  local mempalace_setup_ok="true"
+  setup_mempalace_for_agentic "$initialize_mempalace_project" || mempalace_setup_ok="false"
 
   if command -v mempalace-mcp >/dev/null 2>&1; then
     log "MemPalace MCP binary found: mempalace-mcp"
   else
     warn "mempalace-mcp is unavailable; install/repair MemPalace and re-run setup"
+    if [[ "$mempalace_setup_ok" == "true" ]]; then
+      print_mempalace_project_setup_instructions
+    fi
   fi
 
   if selected_agent_os_contains "opencode"; then

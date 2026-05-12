@@ -179,15 +179,11 @@ Non-interactive installs skip Context7 unless `CONTEXT7_API_KEY` is set in the e
 
 ## MemPalace
 
-For `opencode`, `codex`, `claude`, `cursor`, `gemini`, and `antigravity`, MemPalace MCP is configured as a local Python module instead of a hosted MCP URL. Install it first:
-
-```bash
-pip install mempalace
-```
+For `opencode`, `codex`, `claude`, `cursor`, `gemini`, `kilocode`, and `antigravity`, MemPalace MCP is configured as a local Python module instead of a hosted MCP URL. When MemPalace is enabled, `agentic` attempts to install it automatically with `pip install mempalace`.
 
 Generated configs run `mempalace-mcp` without arguments for all supported agent targets. Runtime startup and MCP tool errors are checked by the post-install doctor stage.
 
-During install, if MemPalace is enabled, `agentic` checks whether `mempalace-mcp` is available. For OpenCode installs, `agentic` creates `<project>` and runs `mempalace init "<project>" --yes --auto-mine`. If checks fail (for example, package not installed yet), install continues and agents fall back to standard context discovery.
+During install, if MemPalace is enabled, `agentic` checks whether `mempalace-mcp` is available. For OpenCode installs, `agentic` creates `<project>` and runs `mempalace init "<project>" --yes --auto-mine`. If auto-install or runtime checks fail, install continues, manual setup instructions are printed, and agents fall back to standard context discovery.
 
 ## Real agent doctor E2E
 

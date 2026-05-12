@@ -251,23 +251,30 @@ P1_MEM_OK="$TMP_ROOT/project-mempalace-ok"
 HOME_MEM_OK="$TMP_ROOT/home-mempalace-ok"
 OUT1AB_OK="$TMP_ROOT/project-mempalace-ok.log"
 FAKE_MEMPALACE_BIN="$TMP_ROOT/fake-mempalace-bin"
+FAKE_MEMPALACE_PIP_LOG="$TMP_ROOT/fake-mempalace-pip.log"
 mkdir -p "$FAKE_MEMPALACE_BIN"
+cat > "$FAKE_MEMPALACE_BIN/pip" <<'EOS'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${FAKE_MEMPALACE_PIP_LOG:?missing FAKE_MEMPALACE_PIP_LOG}"
+exit 0
+EOS
 cat > "$FAKE_MEMPALACE_BIN/mempalace-mcp" <<'EOS'
 #!/usr/bin/env bash
 exit 0
 EOS
-chmod +x "$FAKE_MEMPALACE_BIN/mempalace-mcp"
+chmod +x "$FAKE_MEMPALACE_BIN"/*
 
-env HOME="$HOME_MEM_OK" PATH="$FAKE_MEMPALACE_BIN:$PATH" AGENTIC_ENABLE_MEMPALACE=y "$CLI" install \
+env HOME="$HOME_MEM_OK" PATH="$FAKE_MEMPALACE_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" FAKE_MEMPALACE_PIP_LOG="$FAKE_MEMPALACE_PIP_LOG" AGENTIC_ENABLE_MEMPALACE=y "$CLI" install \
   --project-dir "$P1_MEM_OK" \
   --agent-os codex \
   --areas software \
   --specializations software.backend \
   --theme=light >"$OUT1AB_OK" 2>&1
+assert_file_contains "$FAKE_MEMPALACE_PIP_LOG" "install mempalace"
+assert_file_contains "$OUT1AB_OK" "MemPalace package installed via 'pip install mempalace'"
 assert_file_contains "$OUT1AB_OK" "MemPalace MCP binary found: mempalace-mcp"
 assert_file_contains "$P1_MEM_OK/.codex/config.toml" "[mcp_servers.mempalace]"
-assert_file_contains "$OUT1AB_OK" "MemPalace setup instructions for target project:"
-assert_file_contains "$OUT1AB_OK" "pip install mempalace"
+assert_file_contains "$OUT1AB_OK" "Project memory initialization skipped for selected agent target(s)"
 
 echo "[e2e] Scenario 1ac: MemPalace runtime check warns and install continues when module is unavailable"
 P1_MEM_WARN="$TMP_ROOT/project-mempalace-warn"
@@ -547,6 +554,33 @@ assert_exists "$P5B/.agent/rules"
 assert_file_contains "$OUT5B" "Theme: light"
 assert_output_not_contains "$(cat "$OUT5B")" "Select interface theme:"
 
+echo "[e2e] Scenario 5c: TUI MCP MemPalace selection runs pip install"
+HOME_TUI_MEMPALACE="$TMP_ROOT/home-tui-mempalace"
+OUT5C="$TMP_ROOT/tui-mempalace.log"
+P5C="$TMP_ROOT/project-tui-mempalace"
+FAKE_TUI_MEMPALACE_BIN="$TMP_ROOT/fake-tui-mempalace-bin"
+FAKE_TUI_MEMPALACE_PIP_LOG="$TMP_ROOT/fake-tui-mempalace-pip.log"
+mkdir -p "$FAKE_TUI_MEMPALACE_BIN"
+cat > "$FAKE_TUI_MEMPALACE_BIN/pip" <<'EOS'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${FAKE_TUI_MEMPALACE_PIP_LOG:?missing FAKE_TUI_MEMPALACE_PIP_LOG}"
+exit 0
+EOS
+cat > "$FAKE_TUI_MEMPALACE_BIN/mempalace-mcp" <<'EOS'
+#!/usr/bin/env bash
+exit 0
+EOS
+chmod +x "$FAKE_TUI_MEMPALACE_BIN"/*
+
+printf '%s\n' "n" "$P5C" "2" "3" "1" "1" | \
+  env HOME="$HOME_TUI_MEMPALACE" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 PATH="$FAKE_TUI_MEMPALACE_BIN:$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+    AGENTIC_TEST_GIT_LOG="$GIT_LOG" FAKE_TUI_MEMPALACE_PIP_LOG="$FAKE_TUI_MEMPALACE_PIP_LOG" \
+    "$INSTALLED_BIN" tui --theme=light >"$OUT5C" 2>&1
+
+assert_file_contains "$FAKE_TUI_MEMPALACE_PIP_LOG" "install mempalace"
+assert_file_contains "$OUT5C" "MemPalace package installed via 'pip install mempalace'"
+assert_file_contains "$P5C/.codex/config.toml" "[mcp_servers.mempalace]"
+
 echo "[e2e] Scenario 6: TUI with available fzf uses dark fzf palette in --theme=dark mode"
 HOME_TUI_FZF="$TMP_ROOT/home-tui-fzf"
 OUT6="$TMP_ROOT/tui-fzf-dark.log"
@@ -569,7 +603,7 @@ case "$*" in
     printf '%s\n' "${AGENTIC_TEST_FZF_DIR_QUERY_RESULT:-}" "/tmp/agentic-project"
     ;;
   *"Select Agent OS target(s): "*)
-    printf '%s\n' "default"
+    printf '%s\n' "opencode"
     ;;
   *"Select area(s): "*)
     printf '%s\n' "software"
@@ -618,7 +652,7 @@ case "$*" in
     exec "$REAL_FZF" "$@" --filter "${AGENTIC_TEST_FZF_DIR_QUERY_RESULT:-}"
     ;;
   *"Select Agent OS target(s): "*)
-    exec "$REAL_FZF" "$@" --filter "default"
+    exec "$REAL_FZF" "$@" --filter "opencode"
     ;;
   *"Select area(s): "*)
     exec "$REAL_FZF" "$@" --filter "software"
