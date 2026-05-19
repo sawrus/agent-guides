@@ -70,18 +70,9 @@ Cross-cutting practices that apply to every project regardless of area.
 - Create or update the relevant `docs/` artifact in the same change set; do not leave behavior changes documented only in workflow outputs, tickets, or PR comments.
 - Apply the `product-owner` role to confirm that docs describe the user-facing behavior, acceptance criteria, and operational constraints of the change.
 
-### Context7 Knowledge Source
+### MCP Memory Providers
 
-- Use Context7 for framework, library, SDK, API, and setup documentation before relying on model memory.
-- Resolve the library or framework identity first, then request focused docs for the exact task and version when version matters.
-- If Context7 is unavailable, state that explicitly and fall back to local docs or official project documentation.
-
-### MemPalace + Context Strategy
-
-- If MemPalace MCP is enabled and available, load project business/domain context from MemPalace first.
-- If Context7 MCP is enabled and available, use it specifically for framework/library/API documentation.
-- If both are available, combine them: MemPalace for project/business knowledge, Context7 for framework-level references.
-- If MCP providers are unavailable, continue with standard local-repo discovery and context-building as fallback.
+See [MEMORY.md](MEMORY.md) for the full protocol: provider roles, Context7 usage, MemPalace session-start queries, fact-writing triggers, tool call examples, and fallback order.
 
 ### Code Style
 
