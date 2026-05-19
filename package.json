@@ -11,6 +11,7 @@
   },
   "files": [
     "AGENTS.md",
+    "MEMORY.md"
     "CHANGELOG.md",
     "UPGRADE.md",
     "LICENSE",
