@@ -2244,6 +2244,40 @@ generate_agents_md() {
   rm -f "$tmp"
 }
 
+copy_memory_md() {
+  local project_dir="$1"
+  local src="$REPO_ROOT/MEMORY.md"
+
+  if [[ ! -f "$src" ]]; then
+    warn "MEMORY.md not found in knowledge base at $src; skipping"
+    return
+  fi
+
+  local outputs=()
+
+  if selected_agent_os_contains "opencode"; then
+    unique_append "$project_dir/.opencode/MEMORY.md" outputs
+  fi
+
+  local needs_root=false
+  local agent_os
+  for agent_os in "${SELECTED_AGENT_OS[@]}"; do
+    if [[ "$agent_os" != "opencode" ]]; then
+      needs_root=true
+      break
+    fi
+  done
+
+  if [[ "$needs_root" == true ]] || ! selected_agent_os_contains "opencode"; then
+    unique_append "$project_dir/MEMORY.md" outputs
+  fi
+
+  local out
+  for out in "${outputs[@]}"; do
+    write_file_with_agentic_marker "$src" "$out" "generated:MEMORY.md"
+  done
+}
+
 validate_inputs() {
   local available_areas
   available_areas="$(list_areas || true)"
@@ -2617,6 +2651,7 @@ run_install() {
   copy_extensions "$PROJECT_DIR"
   copy_specialization_assets "$PROJECT_DIR"
   generate_agents_md "$PROJECT_DIR"
+  copy_memory_md "$PROJECT_DIR"
   configure_context7_if_needed
   configure_mempalace_if_needed
   write_agentic_manifest "$PROJECT_DIR"
@@ -3249,6 +3284,25 @@ sync_current_project_after_upgrade() {
   load_install_settings_from_manifest "$manifest"
   ensure_repo_layout
   run_install
+  upgrade_mempalace_graph
+}
+
+upgrade_mempalace_graph() {
+  if ! command -v mempalace >/dev/null 2>&1; then
+    return
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    log "DRY-RUN mempalace mine \"$PROJECT_DIR\""
+    return
+  fi
+
+  log "Refreshing MemPalace knowledge graph for $PROJECT_DIR"
+  if mempalace mine "$PROJECT_DIR" >/dev/null 2>&1; then
+    log "MemPalace graph updated"
+  else
+    warn "mempalace mine failed; graph may be stale — run manually: mempalace mine \"$PROJECT_DIR\""
+  fi
 }
 
 parse_theme_option() {
