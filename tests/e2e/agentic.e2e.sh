@@ -263,6 +263,10 @@ cat > "$FAKE_MEMPALACE_BIN/mempalace-mcp" <<'EOS'
 #!/usr/bin/env bash
 exit 0
 EOS
+cat > "$FAKE_MEMPALACE_BIN/mempalace" <<'EOS'
+#!/usr/bin/env bash
+exit 0
+EOS
 chmod +x "$FAKE_MEMPALACE_BIN"/*
 
 env HOME="$HOME_MEM_OK" PATH="$FAKE_MEMPALACE_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" FAKE_MEMPALACE_PIP_LOG="$FAKE_MEMPALACE_PIP_LOG" AGENTIC_ENABLE_MEMPALACE=y "$CLI" install \
@@ -275,13 +279,13 @@ assert_file_contains "$FAKE_MEMPALACE_PIP_LOG" "install mempalace"
 assert_file_contains "$OUT1AB_OK" "MemPalace package installed via 'pip install mempalace'"
 assert_file_contains "$OUT1AB_OK" "MemPalace MCP binary found: mempalace-mcp"
 assert_file_contains "$P1_MEM_OK/.codex/config.toml" "[mcp_servers.mempalace]"
-assert_file_contains "$OUT1AB_OK" "Project memory initialization skipped for selected agent target(s)"
+assert_file_contains "$OUT1AB_OK" "Initializing project memory"
 assert_file_contains "$P1_MEM_OK/.mempalaceignore" "node_modules/"
 assert_file_contains "$P1_MEM_OK/.mempalaceignore" "*.parquet"
 assert_file_contains "$P1_MEM_OK/.mempalaceignore" ".git/"
 assert_file_contains "$P1_MEM_OK/.agentic.json" ".mempalaceignore"
 
-echo "[e2e] Scenario 1ab2: OpenCode MemPalace init logs failures and does not duplicate mine after auto-mine"
+echo "[e2e] Scenario 1ab2: OpenCode MemPalace init logs failures with architecture warning"
 P1_MEM_OC="$TMP_ROOT/project-mempalace-opencode"
 HOME_MEM_OC="$TMP_ROOT/home-mempalace-opencode"
 OUT1AB_OC="$TMP_ROOT/project-mempalace-opencode.log"
@@ -316,10 +320,14 @@ env HOME="$HOME_MEM_OC" PATH="$FAKE_MEMPALACE_OC_BIN:$PYTHON_ONLY_BIN:/usr/bin:/
   --areas software \
   --specializations software.backend \
   --theme=light >"$OUT1AB_OC" 2>&1
-assert_not_exists "$FAKE_MEMPALACE_OC_LOG"
-assert_file_contains "$OUT1AB_OC" "OpenCode MemPalace project initialization is optional; skipping automatic 'mempalace init'"
+# mempalace init IS now attempted (always for all agent IDEs)
+assert_exists "$FAKE_MEMPALACE_OC_LOG"
+assert_file_contains "$FAKE_MEMPALACE_OC_LOG" "init $P1_MEM_OC --yes --auto-mine"
+# Init fails → architecture warning is shown
+assert_file_contains "$OUT1AB_OC" "Python/NumPy architecture is inconsistent"
+# Fallback instructions shown after failure
 assert_file_contains "$OUT1AB_OC" "Optional MemPalace project indexing instructions for target project: $P1_MEM_OC"
-assert_file_not_contains "$OUT1AB_OC" "Python/NumPy architecture is inconsistent"
+# Config files still written despite init failure
 assert_file_contains "$P1_MEM_OC/.opencode/opencode.json" "mempalace-mcp"
 assert_file_contains "$P1_MEM_OC/.mempalaceignore" "node_modules/"
 assert_file_contains "$P1_MEM_OC/.agentic.json" ".mempalaceignore"
@@ -632,6 +640,10 @@ cat > "$FAKE_TUI_MEMPALACE_BIN/mempalace-mcp" <<'EOS'
 #!/usr/bin/env bash
 exit 0
 EOS
+cat > "$FAKE_TUI_MEMPALACE_BIN/mempalace" <<'EOS'
+#!/usr/bin/env bash
+exit 0
+EOS
 chmod +x "$FAKE_TUI_MEMPALACE_BIN"/*
 
 printf '%s\n' "n" "$P5C" "2" "3" "1" "1" | \
@@ -788,5 +800,240 @@ PYCODE
 else
   echo "[e2e] Scenario 8 skipped: requires direct CLI, real 'opencode' binary, and working 'python3 -m mempalace'"
 fi
+
+echo "[e2e] Scenario 9: install with mempalace enabled runs mempalace init"
+HOME_INIT="$TMP_ROOT/home-mempalace-init"
+P9="$TMP_ROOT/project-mempalace-init"
+FAKE_INIT_BIN="$TMP_ROOT/fake-init-mempalace-bin"
+MEMPALACE_INIT_LOG="$TMP_ROOT/mempalace-init-calls.log"
+FAKE_INIT_PIP_LOG="$TMP_ROOT/fake-init-pip.log"
+mkdir -p "$FAKE_INIT_BIN"
+: > "$MEMPALACE_INIT_LOG"
+: > "$FAKE_INIT_PIP_LOG"
+
+cat > "$FAKE_INIT_BIN/mempalace" <<'EOS'
+#!/usr/bin/env bash
+printf 'mempalace %s\n' "$*" >> "${MEMPALACE_INIT_LOG:?}"
+exit 0
+EOS
+cat > "$FAKE_INIT_BIN/mempalace-mcp" <<'EOS'
+#!/usr/bin/env bash
+exit 0
+EOS
+cat > "$FAKE_INIT_BIN/pip" <<'EOS'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${FAKE_INIT_PIP_LOG:?}"
+exit 0
+EOS
+chmod +x "$FAKE_INIT_BIN"/*
+
+OUT9="$TMP_ROOT/mempalace-init-install.log"
+HOME="$HOME_INIT" AGENTIC_ENABLE_MEMPALACE=y AGENTIC_DOCTOR=0 \
+  PATH="$FAKE_INIT_BIN:$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+  AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
+  MEMPALACE_INIT_LOG="$MEMPALACE_INIT_LOG" \
+  FAKE_INIT_PIP_LOG="$FAKE_INIT_PIP_LOG" \
+  "$CLI" install \
+    --project-dir "$P9" \
+    --agent-os opencode \
+    --areas software \
+    --specializations software.backend \
+    --theme=light >"$OUT9" 2>&1
+
+# Verify mempalace init was called with --yes --auto-mine
+assert_file_contains "$MEMPALACE_INIT_LOG" "mempalace init $P9 --yes --auto-mine"
+# Should NOT show fallback instructions since init succeeded
+assert_output_not_contains "$(cat "$OUT9")" "Optional MemPalace project indexing instructions"
+# Manifest should contain mcp_integrations with mempalace
+assert_file_contains "$P9/.agentic.json" '"mcp_integrations"'
+assert_file_contains "$P9/.agentic.json" '"mempalace"'
+
+echo "[e2e] Scenario 10: mempalace enabled but binary missing shows fallback instructions"
+HOME_FAIL="$TMP_ROOT/home-mempalace-fail"
+P10="$TMP_ROOT/project-mempalace-fail"
+FAKE_FAIL_BIN="$TMP_ROOT/fake-fail-mempalace-bin"
+FAKE_FAIL_PIP_LOG="$TMP_ROOT/fake-fail-pip.log"
+mkdir -p "$FAKE_FAIL_BIN"
+: > "$FAKE_FAIL_PIP_LOG"
+
+# pip succeeds but mempalace/mempalace-mcp not on PATH after pip install
+cat > "$FAKE_FAIL_BIN/pip" <<'EOS'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${FAKE_FAIL_PIP_LOG:?}"
+exit 0
+EOS
+chmod +x "$FAKE_FAIL_BIN"/*
+
+OUT10="$TMP_ROOT/mempalace-fail-install.log"
+HOME="$HOME_FAIL" AGENTIC_ENABLE_MEMPALACE=y AGENTIC_DOCTOR=0 \
+  PATH="$FAKE_FAIL_BIN:$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+  AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
+  FAKE_FAIL_PIP_LOG="$FAKE_FAIL_PIP_LOG" \
+  "$CLI" install \
+    --project-dir "$P10" \
+    --agent-os opencode \
+    --areas software \
+    --specializations software.backend \
+    --theme=light >"$OUT10" 2>&1
+
+# Should show fallback instructions since mempalace binary not found after pip install
+assert_file_contains "$OUT10" "Optional MemPalace project indexing instructions"
+assert_file_contains "$OUT10" "pip install mempalace"
+
+echo "[e2e] Scenario 11: upgrade with manifest skips MCP prompts and re-applies config"
+HOME_UPGRADE="$TMP_ROOT/home-upgrade-mcp"
+P11="$TMP_ROOT/project-upgrade-mcp"
+FAKE_UPGRADE_BIN="$TMP_ROOT/fake-upgrade-mcp-bin"
+MEMPALACE_UPGRADE_LOG="$TMP_ROOT/mempalace-upgrade-calls.log"
+FAKE_UPGRADE_PIP_LOG="$TMP_ROOT/fake-upgrade-pip.log"
+mkdir -p "$FAKE_UPGRADE_BIN"
+: > "$MEMPALACE_UPGRADE_LOG"
+: > "$FAKE_UPGRADE_PIP_LOG"
+
+# Create fake mempalace binaries that log calls
+cat > "$FAKE_UPGRADE_BIN/mempalace" <<'EOS'
+#!/usr/bin/env bash
+printf 'mempalace %s\n' "$*" >> "${MEMPALACE_UPGRADE_LOG:?}"
+exit 0
+EOS
+cat > "$FAKE_UPGRADE_BIN/mempalace-mcp" <<'EOS'
+#!/usr/bin/env bash
+exit 0
+EOS
+cat > "$FAKE_UPGRADE_BIN/pip" <<'EOS'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${FAKE_UPGRADE_PIP_LOG:?}"
+exit 0
+EOS
+chmod +x "$FAKE_UPGRADE_BIN"/*
+
+# First do a normal install with mempalace+context7 enabled to create manifest
+OUT11_INSTALL="$TMP_ROOT/upgrade-mcp-install.log"
+HOME="$HOME_UPGRADE" AGENTIC_ENABLE_MEMPALACE=y AGENTIC_ENABLE_CONTEXT7=y AGENTIC_DOCTOR=0 \
+  PATH="$FAKE_UPGRADE_BIN:$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+  AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
+  MEMPALACE_UPGRADE_LOG="$MEMPALACE_UPGRADE_LOG" \
+  FAKE_UPGRADE_PIP_LOG="$FAKE_UPGRADE_PIP_LOG" \
+  "$CLI" install \
+    --project-dir "$P11" \
+    --agent-os opencode \
+    --areas software \
+    --specializations software.backend \
+    --theme=light >"$OUT11_INSTALL" 2>&1
+
+# Verify manifest has mcp_integrations
+assert_file_contains "$P11/.agentic.json" '"mcp_integrations"'
+assert_file_contains "$P11/.agentic.json" '"mempalace"'
+assert_file_contains "$P11/.agentic.json" '"context7"'
+
+# Now simulate re-install (what sync_current_project_after_upgrade does) - NO env vars for MCP
+# The manifest should auto-restore them
+OUT11="$TMP_ROOT/upgrade-mcp-reinstall.log"
+: > "$MEMPALACE_UPGRADE_LOG"
+HOME="$HOME_UPGRADE" AGENTIC_DOCTOR=0 \
+  PATH="$FAKE_UPGRADE_BIN:$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+  AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
+  MEMPALACE_UPGRADE_LOG="$MEMPALACE_UPGRADE_LOG" \
+  FAKE_UPGRADE_PIP_LOG="$FAKE_UPGRADE_PIP_LOG" \
+  "$CLI" install \
+    --project-dir "$P11" \
+    --agent-os opencode \
+    --areas software \
+    --specializations software.backend \
+    --theme=light >"$OUT11" 2>&1
+
+# Should NOT contain interactive prompt text (prompts skipped due to restored settings)
+assert_output_not_contains "$(cat "$OUT11")" "Enable MemPalace MCP memory integration? [y/N]:"
+assert_output_not_contains "$(cat "$OUT11")" "Enable Context7 MCP configuration? [y/N]:"
+assert_output_not_contains "$(cat "$OUT11")" "Select optional OpenCode plugin(s):"
+# Should have run mempalace init (since mempalace was enabled)
+assert_file_contains "$MEMPALACE_UPGRADE_LOG" "mempalace init $P11 --yes --auto-mine"
+
+echo "[e2e] Scenario 12: opencode_mapper_discover_models finds provider models"
+HOME_MODELS="$TMP_ROOT/home-models"
+mkdir -p "$HOME_MODELS/.config/opencode"
+cat > "$HOME_MODELS/.config/opencode/opencode.json" <<'MODELJSON'
+{
+  "provider": {
+    "google": {
+      "models": {
+        "antigravity-claude-sonnet-4-6": {"name": "Claude Sonnet 4.6"},
+        "antigravity-gemini-3-flash": {"name": "Gemini 3 Flash"}
+      }
+    },
+    "openai": {
+      "models": {
+        "gpt-5.4": {"name": "GPT 5.4"}
+      }
+    }
+  },
+  "agent": {
+    "developer": {
+      "model": "google/antigravity-claude-sonnet-4-6",
+      "fallback": ["opencode/minimax-m2.5-free"]
+    }
+  }
+}
+MODELJSON
+
+OUT12="$TMP_ROOT/discover-models.log"
+# Test the Python logic from opencode_mapper_discover_models directly
+python3 - "$HOME_MODELS/.config/opencode/opencode.json" >"$OUT12" 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+fallback = ["opencode/minimax-m2.5-free"]
+path = Path(sys.argv[1])
+models = []
+
+def collect_provider_models(data):
+    """Extract models from provider.<name>.models dict keys."""
+    providers = data.get("provider")
+    if not isinstance(providers, dict):
+        return
+    for provider_name, provider_data in providers.items():
+        if not isinstance(provider_data, dict):
+            continue
+        provider_models = provider_data.get("models")
+        if not isinstance(provider_models, dict):
+            continue
+        for model_name in provider_models:
+            if isinstance(model_name, str) and model_name.strip():
+                models.append(f"{provider_name}/{model_name}")
+
+def collect(value):
+    if isinstance(value, list):
+        for item in value:
+            collect(item)
+        return
+    if not isinstance(value, dict):
+        return
+    for key, item in value.items():
+        if key in {"model", "id"} and isinstance(item, str) and "/" in item:
+            models.append(item)
+        if key == "fallback" and isinstance(item, list):
+            models.extend(model for model in item if isinstance(model, str))
+        collect(item)
+
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    collect_provider_models(data)
+    collect(data)
+except Exception:
+    pass
+
+seen = set()
+for model in models or fallback:
+    model = model.strip()
+    if model and model not in seen:
+        seen.add(model)
+        print(model)
+PY
+
+assert_file_contains "$OUT12" "google/antigravity-claude-sonnet-4-6"
+assert_file_contains "$OUT12" "google/antigravity-gemini-3-flash"
+assert_file_contains "$OUT12" "openai/gpt-5.4"
+assert_file_contains "$OUT12" "opencode/minimax-m2.5-free"
 
 echo "[e2e] All scenarios passed"

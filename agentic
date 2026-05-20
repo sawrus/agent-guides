@@ -973,7 +973,7 @@ write_agentic_manifest() {
     : > "$skipped_file"
   fi
 
-  local agent_os_csv areas_csv specs_csv
+  local agent_os_csv areas_csv specs_csv mcp_integrations_csv
   local old_ifs="$IFS"
   IFS=,
   agent_os_csv="${SELECTED_AGENT_OS[*]}"
@@ -981,8 +981,21 @@ write_agentic_manifest() {
   specs_csv="${SELECTED_SPECS[*]}"
   IFS="$old_ifs"
 
+  # Build mcp_integrations list from current env selections
+  local mcp_integrations=()
+  if [[ "${AGENTIC_ENABLE_CONTEXT7:-}" =~ ^[Yy](es)?$ ]]; then
+    mcp_integrations+=("context7")
+  fi
+  if [[ "${AGENTIC_ENABLE_MEMPALACE:-}" =~ ^[Yy](es)?$ ]]; then
+    mcp_integrations+=("mempalace")
+  fi
+  old_ifs="$IFS"
+  IFS=,
+  mcp_integrations_csv="${mcp_integrations[*]:-}"
+  IFS="$old_ifs"
+
   local manifest_status
-  manifest_status="$(python3 - "$manifest" "$records_file" "$skipped_file" "$APP_REPO_LINK" "$REPO_ROOT" "$agent_os_csv" "$areas_csv" "$specs_csv" "$(app_version_label)" <<'PY'
+  manifest_status="$(python3 - "$manifest" "$records_file" "$skipped_file" "$APP_REPO_LINK" "$REPO_ROOT" "$agent_os_csv" "$areas_csv" "$specs_csv" "$(app_version_label)" "$mcp_integrations_csv" <<'PY'
 import json
 import sys
 from datetime import datetime, timezone
@@ -997,6 +1010,7 @@ agent_os = [x for x in sys.argv[6].split(",") if x]
 areas = [x for x in sys.argv[7].split(",") if x]
 specs = [x for x in sys.argv[8].split(",") if x]
 app_version = sys.argv[9]
+mcp_integrations = [x for x in sys.argv[10].split(",") if x] if len(sys.argv) > 10 else []
 now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 existing = {}
@@ -1053,6 +1067,7 @@ data = {
         "agent_os": agent_os,
         "areas": areas,
         "specializations": specs,
+        "mcp_integrations": mcp_integrations,
         "source_repo": repo_link,
         "source_checkout": repo_root,
     },
@@ -1095,7 +1110,7 @@ from pathlib import Path
 
 data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 settings = data.get("settings", {})
-for key in ("agent_os", "areas", "specializations"):
+for key in ("agent_os", "areas", "specializations", "mcp_integrations"):
     print("::" + key)
     for value in settings.get(key, []):
         print(value)
@@ -1106,17 +1121,20 @@ PY
   local loaded_agent_os=()
   local loaded_areas=()
   local loaded_specs=()
+  local loaded_mcp_integrations=()
   local value
   for value in "${values[@]}"; do
     case "$value" in
       "::agent_os") section="agent_os" ;;
       "::areas") section="areas" ;;
       "::specializations") section="specializations" ;;
+      "::mcp_integrations") section="mcp_integrations" ;;
       *)
         case "$section" in
           agent_os) loaded_agent_os+=("$value") ;;
           areas) loaded_areas+=("$value") ;;
           specializations) loaded_specs+=("$value") ;;
+          mcp_integrations) loaded_mcp_integrations+=("$value") ;;
         esac
         ;;
     esac
@@ -1131,6 +1149,23 @@ PY
   if [[ "${#SELECTED_SPECS[@]}" -eq 0 && "${#loaded_specs[@]}" -gt 0 ]]; then
     SELECTED_SPECS=("${loaded_specs[@]}")
   fi
+
+  # Restore MCP integration selections so configure_*_if_needed skip interactive prompts
+  local mcp_item
+  for mcp_item in "${loaded_mcp_integrations[@]}"; do
+    case "$mcp_item" in
+      context7)
+        if [[ -z "${AGENTIC_ENABLE_CONTEXT7:-}" ]]; then
+          AGENTIC_ENABLE_CONTEXT7="y"
+        fi
+        ;;
+      mempalace)
+        if [[ -z "${AGENTIC_ENABLE_MEMPALACE:-}" ]]; then
+          AGENTIC_ENABLE_MEMPALACE="y"
+        fi
+        ;;
+    esac
+  done
 }
 
 path_ref_for_shell_export() {
@@ -1869,7 +1904,10 @@ initialize_mempalace_project() {
     return 1
   fi
 
-  run_mempalace_command "MemPalace init" mempalace init "$PROJECT_DIR" --yes --auto-mine || return 1
+  if ! run_mempalace_command "MemPalace init" mempalace init "$PROJECT_DIR" --yes --auto-mine; then
+    print_mempalace_project_setup_instructions
+    return 1
+  fi
   log "$step_prefix [4/4] Initialization step finished"
 }
 
@@ -1950,21 +1988,16 @@ configure_mempalace_if_needed() {
 
   write_mempalace_ignore_file
 
-  local initialize_mempalace_project="false"
+  local initialize_mempalace_project="true"
   local mempalace_setup_ok="true"
   setup_mempalace_for_agentic "$initialize_mempalace_project" || mempalace_setup_ok="false"
 
-  if command -v mempalace-mcp >/dev/null 2>&1; then
-    log "MemPalace MCP binary found: mempalace-mcp"
-    if selected_agent_os_contains "opencode"; then
-      log "OpenCode MemPalace project initialization is optional; skipping automatic 'mempalace init'"
-      print_mempalace_project_setup_instructions
+  if [[ "$mempalace_setup_ok" != "true" ]]; then
+    if ! command -v mempalace-mcp >/dev/null 2>&1; then
+      warn "mempalace-mcp is unavailable; install/repair MemPalace and re-run setup"
     fi
   else
-    warn "mempalace-mcp is unavailable; install/repair MemPalace and re-run setup"
-    if [[ "$mempalace_setup_ok" == "true" ]]; then
-      print_mempalace_project_setup_instructions
-    fi
+    log "MemPalace MCP binary found: mempalace-mcp"
   fi
 
   if selected_agent_os_contains "opencode"; then
@@ -2087,6 +2120,12 @@ configure_opencode_plugins_if_needed() {
   ensure_python_available
   ensure_dir "$APP_CONFIG_DIR"
 
+  # During upgrade/re-install with existing plugin config, keep current settings
+  if [[ -f "$OPENCODE_PLUGIN_CONFIG_FILE" && ( -n "${AGENTIC_ENABLE_MEMPALACE:-}" || -n "${AGENTIC_ENABLE_CONTEXT7:-}" ) ]]; then
+    log "OpenCode plugin config already exists; keeping current settings"
+    return
+  fi
+
   if ! is_interactive_terminal; then
     if [[ ! -f "$OPENCODE_PLUGIN_CONFIG_FILE" ]]; then
       write_default_opencode_plugin_config
@@ -2205,6 +2244,21 @@ fallback = ["opencode/minimax-m2.5-free"]
 path = Path(sys.argv[1])
 models = []
 
+def collect_provider_models(data):
+    """Extract models from provider.<name>.models dict keys."""
+    providers = data.get("provider")
+    if not isinstance(providers, dict):
+        return
+    for provider_name, provider_data in providers.items():
+        if not isinstance(provider_data, dict):
+            continue
+        provider_models = provider_data.get("models")
+        if not isinstance(provider_models, dict):
+            continue
+        for model_name in provider_models:
+            if isinstance(model_name, str) and model_name.strip():
+                models.append(f"{provider_name}/{model_name}")
+
 def collect(value):
     if isinstance(value, list):
         for item in value:
@@ -2220,7 +2274,9 @@ def collect(value):
         collect(item)
 
 try:
-    collect(json.loads(path.read_text(encoding="utf-8")))
+    data = json.loads(path.read_text(encoding="utf-8"))
+    collect_provider_models(data)
+    collect(data)
 except Exception:
     pass
 
@@ -3769,6 +3825,11 @@ sync_current_project_after_upgrade() {
 }
 
 upgrade_mempalace_graph() {
+  # Only run if mempalace was enabled for this project
+  if [[ ! "${AGENTIC_ENABLE_MEMPALACE:-}" =~ ^[Yy] ]]; then
+    return
+  fi
+
   if ! command -v mempalace >/dev/null 2>&1; then
     return
   fi
