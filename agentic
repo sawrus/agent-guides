@@ -1895,6 +1895,58 @@ run_mempalace_command() {
   return 1
 }
 
+mempalace_venv_dir() {
+  printf '%s\n' "${AGENTIC_MEMPALACE_VENV:-$HOME/.venvs/mempalace}"
+}
+
+mempalace_bin_dir() {
+  printf '%s\n' "${AGENTIC_MEMPALACE_BIN_DIR:-$HOME/.local/bin}"
+}
+
+python3_command() {
+  if command -v python3 >/dev/null 2>&1; then
+    printf '%s\n' "python3"
+    return 0
+  fi
+  if command -v python >/dev/null 2>&1; then
+    printf '%s\n' "python"
+    return 0
+  fi
+  return 1
+}
+
+install_mempalace_managed() {
+  local py_bin venv_dir bin_dir venv_python venv_mempalace
+
+  py_bin="$(python3_command)" || return 1
+  venv_dir="$(mempalace_venv_dir)"
+  bin_dir="$(mempalace_bin_dir)"
+
+  mkdir -p "$(dirname "$venv_dir")" "$bin_dir"
+
+  if [[ ! -x "$venv_dir/bin/python" ]]; then
+    "$py_bin" -m venv "$venv_dir" || return 1
+  fi
+
+  venv_python="$venv_dir/bin/python"
+  venv_mempalace="$venv_dir/bin/mempalace"
+
+  "$venv_python" -m pip install --upgrade pip setuptools wheel >/dev/null 2>&1 || return 1
+  "$venv_python" -m pip install --upgrade --no-cache-dir mempalace >/dev/null 2>&1 || return 1
+
+  [[ -x "$venv_mempalace" ]] || return 1
+
+  ln -sf "$venv_mempalace" "$bin_dir/mempalace"
+
+  if [[ -x "$venv_dir/bin/mempalace-mcp" ]]; then
+    ln -sf "$venv_dir/bin/mempalace-mcp" "$bin_dir/mempalace-mcp"
+  fi
+
+  export PATH="$bin_dir:$PATH"
+
+  command -v mempalace >/dev/null 2>&1
+}
+
 initialize_mempalace_project() {
   local step_prefix="$1"
   log "$step_prefix [4/4] Initializing project memory at $PROJECT_DIR"
