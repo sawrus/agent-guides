@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
-CLI="$ROOT_DIR/agentic"
+CLI="${AGENTIC_TEST_CLI:-$ROOT_DIR/agentic}"
 export AGENTIC_DOCTOR=0
 VERSION="$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$ROOT_DIR/package.json" | head -n 1)"
 TMP_ROOT="$(mktemp -d /tmp/agentic-cli-e2e.XXXXXX)"

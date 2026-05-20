@@ -191,8 +191,8 @@ project/.agent/
 
 - `telegram-opencode-notifier`: sends Telegram notifications when an OpenCode session becomes idle, including the final
   response or an attachment for long output.
-- `llm-quota-checker`: probes configured OpenCode models, reports available/failed models, and updates subagent model
-  settings to a working model.
+- `agent-model-mapper`: maps `.opencode/agents/*.md` roles to main and fallback OpenCode models during interactive
+  `agentic install`/`agentic tui`. OpenCode startup never prompts or writes project files.
 
 ---
 

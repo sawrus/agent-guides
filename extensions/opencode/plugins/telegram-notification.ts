@@ -5,9 +5,22 @@ import { join } from "node:path"
 type AgenticPluginConfig = {
   telegram?: {
     enabled?: boolean
-    botToken?: string
-    chatId?: string
   }
+}
+
+function telegramApiBaseUrl(): string {
+  return process.env.OPENCODE_TELEGRAM_API_BASE_URL || "https://api.telegram.org"
+}
+
+function telegramUrl(botToken: string, method: string): string {
+  return `${telegramApiBaseUrl()}/bot${botToken}/${method}`
+}
+
+function redactSecret(value: unknown): string {
+  const text = String(value)
+  const token = process.env.OPENCODE_TELEGRAM_BOT_TOKEN
+  const chatId = process.env.OPENCODE_TELEGRAM_CHAT_ID
+  return [token, chatId].filter(Boolean).reduce((output, secret) => output.split(secret as string).join("[redacted]"), text)
 }
 
 function readAgenticConfig(): AgenticPluginConfig {
@@ -24,15 +37,12 @@ function readAgenticConfig(): AgenticPluginConfig {
 export const TelegramNotificationPlugin: Plugin = async ({ $, client, directory }) => {
   const config = readAgenticConfig()
   const telegram = config.telegram
-  const botToken = process.env.OPENCODE_TELEGRAM_BOT_TOKEN || telegram?.botToken
-  const chatId = process.env.OPENCODE_TELEGRAM_CHAT_ID || telegram?.chatId
+  const botToken = process.env.OPENCODE_TELEGRAM_BOT_TOKEN
+  const chatId = process.env.OPENCODE_TELEGRAM_CHAT_ID
 
   if (!telegram?.enabled || !botToken || !chatId) {
     return {}
   }
-
-  process.env.OPENCODE_TELEGRAM_BOT_TOKEN = botToken
-  process.env.OPENCODE_TELEGRAM_CHAT_ID = chatId
 
   return {
     event: async ({ event }) => {
@@ -60,7 +70,7 @@ export const TelegramNotificationPlugin: Plugin = async ({ $, client, directory 
             }
           }
         } catch (e) {
-          await $`echo "Error: ${e}" >> ${directory}/.opencode/telegram-debug.log`
+          await $`echo "Error: ${redactSecret(e)}" >> ${directory}/.opencode/telegram-debug.log`
         }
 
         try {
@@ -74,13 +84,13 @@ export const TelegramNotificationPlugin: Plugin = async ({ $, client, directory 
             )
 
             await fetch(
-              `https://api.telegram.org/bot${botToken}/sendDocument`,
+              telegramUrl(botToken, "sendDocument"),
               { method: "POST", body: formData }
             )
 
             const shortText = fullText.slice(0, 3000)
             await fetch(
-              `https://api.telegram.org/bot${botToken}/sendMessage`,
+              telegramUrl(botToken, "sendMessage"),
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -96,7 +106,7 @@ export const TelegramNotificationPlugin: Plugin = async ({ $, client, directory 
               : messageText
 
             await fetch(
-              `https://api.telegram.org/bot${botToken}/sendMessage`,
+              telegramUrl(botToken, "sendMessage"),
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

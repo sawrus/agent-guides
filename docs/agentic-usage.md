@@ -104,7 +104,7 @@ The final install line prints the exact path:
 Agentic log file: /tmp/agentic-20260512-114203.ABC123
 ```
 
-`agentic` also runs a final doctor smoke check for selected real agent targets (`codex`, `opencode`, `claude`, `gemini`). The doctor runs `/develop-feature напиши hello world python` in a temporary copy of the project and prints one status row per selected agent. Doctor failures are reported but do not roll back or fail the install. Disable doctor for CI or cheap checks with:
+`agentic` also runs a final doctor smoke check for selected real agent targets (`codex`, `opencode`, `claude`, `gemini`). The doctor runs in a temporary copy of the project and prints one status row per selected agent. OpenCode uses a lightweight pure smoke prompt instead of the full `develop-feature` command, so install-time doctor checks do not start a long SDLC workflow. Each agent has an independent timeout controlled by `AGENTIC_DOCTOR_TIMEOUT_SECONDS` and defaults to `10` seconds. Doctor failures and timeouts are reported but do not roll back or fail the install. Disable doctor for cheap checks with:
 
 ```bash
 AGENTIC_DOCTOR=0 agentic install ...
@@ -163,19 +163,19 @@ scoop install fzf
 
 ## OpenCode optional plugins
 
-When `opencode` is selected, interactive installs ask whether to enable Telegram notifications and the model checker. The answer is stored globally in:
+When `opencode` is selected, interactive installs ask whether to enable Telegram notifications and `agent-model-mapper`. The answer is stored globally in:
 
 ```text
 ~/.config/agentic/opencode-plugins.json
 ```
 
-Non-interactive installs create a disabled config when no config exists. Telegram can also read `OPENCODE_TELEGRAM_BOT_TOKEN` and `OPENCODE_TELEGRAM_CHAT_ID`.
+Non-interactive installs create a disabled config when no config exists. Telegram reads `OPENCODE_TELEGRAM_BOT_TOKEN` and `OPENCODE_TELEGRAM_CHAT_ID` from the environment only; tokens are not written to `~/.config/agentic/opencode-plugins.json`. When enabled, `agent-model-mapper` runs during interactive `agentic install`/`agentic tui`, uses `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after confirmation. OpenCode startup never prompts for model mapping; the runtime plugin only reports whether install-time mapping is already complete.
 
 ## Context7
 
-For `opencode`, `codex`, `claude`, `cursor`, `gemini`, `kilocode`, and `antigravity`, interactive installs ask whether to add Context7 MCP configuration. If enabled, the Context7 API key prompt is optional; leave it empty to configure Context7 without a key. Most targets use project-level files, while `antigravity` is written to the global user path `~/.gemini/antigravity/mcp_config.json`.
+For `opencode`, `codex`, `claude`, `cursor`, `gemini`, `kilocode`, and `antigravity`, interactive installs ask whether to add Context7 MCP configuration. If enabled, Context7 is configured without a key unless `CONTEXT7_API_KEY` is already set in the environment. The install output prints the generated config path(s) and an example showing where to add the key later. Most targets use project-level files, while `antigravity` is written to the global user path `~/.gemini/antigravity/mcp_config.json`.
 
-Non-interactive installs skip Context7 unless `CONTEXT7_API_KEY` is set in the environment. Agents are instructed to use Context7 for framework, library, SDK, API, and setup documentation when the project config is present.
+Non-interactive installs enable Context7 when either `AGENTIC_ENABLE_CONTEXT7=y` or `CONTEXT7_API_KEY` is set. Agents are instructed to use Context7 for framework, library, SDK, API, and setup documentation when the project config is present.
 
 ## MemPalace
 
@@ -183,14 +183,14 @@ For `opencode`, `codex`, `claude`, `cursor`, `gemini`, `kilocode`, and `antigrav
 
 Generated configs run `mempalace-mcp` without arguments for all supported agent targets. Runtime startup and MCP tool errors are checked by the post-install doctor stage.
 
-During install, if MemPalace is enabled, `agentic` checks whether `mempalace-mcp` is available. For OpenCode installs, `agentic` creates `<project>` and runs `mempalace init "<project>" --yes --auto-mine`. If auto-install or runtime checks fail, install continues, manual setup instructions are printed, and agents fall back to standard context discovery.
+During install, if MemPalace is enabled, `agentic` writes a managed `.mempalaceignore` when the target project does not already have one. OpenCode installs do not run `mempalace init` automatically; project indexing is optional and printed as a manual follow-up. If auto-install or runtime checks fail, install continues, manual setup instructions are printed, and agents fall back to standard context discovery.
 
-## Real agent doctor E2E
+## Real agent blackbox E2E
 
-The deterministic e2e suite uses fake agent binaries and does not call models. Real agent doctor checks are opt-in because they may use network access, credentials, and model credits:
+`make test` includes real Codex, OpenCode, and Telegram blackbox scenarios. The local environment must provide working `codex`, `opencode`, Context7/MemPalace access, network access, valid auth, and Telegram credentials in `OPENCODE_TELEGRAM_BOT_TOKEN` and `OPENCODE_TELEGRAM_CHAT_ID`. Secrets are redacted from test output.
 
 ```bash
-AGENTIC_RUN_REAL_AGENT_E2E=1 make test-real-agent-doctor
+make test-real-blackbox
 ```
 
 ## Deprecated wrapper

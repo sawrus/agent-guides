@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
-CLI="$ROOT_DIR/agentic"
+CLI="${AGENTIC_TEST_CLI:-$ROOT_DIR/agentic}"
 TMP_ROOT="$(mktemp -d /tmp/agentic-doctor-e2e.XXXXXX)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
@@ -23,6 +23,12 @@ assert_file_not_contains() {
   if grep -Fq -- "$needle" "$path"; then
     fail "Did not expect '$needle' in $path"
   fi
+}
+
+assert_file_matches() {
+  local path="$1"
+  local pattern="$2"
+  grep -Eq -- "$pattern" "$path" || fail "Expected pattern '$pattern' in $path"
 }
 
 assert_exists() {
@@ -56,6 +62,7 @@ EOS
 cat > "$FAKE_BIN/opencode" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
+printf 'opencode args: %s\n' "$*"
 work_dir=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -126,21 +133,27 @@ PATH="$FAKE_BIN:/usr/bin:/bin" \
     --specializations software.backend,software.general >"$OUT1" 2>&1
 
 assert_file_contains "$OUT1" "=== Agentic doctor ==="
+assert_file_contains "$OUT1" "Doctor timeout: 10s per agent"
 assert_file_contains "$OUT1" "✅ codex: /develop-feature smoke passed"
-assert_file_contains "$OUT1" "✅ opencode: /develop-feature smoke passed"
+assert_file_contains "$OUT1" "✅ opencode: lightweight smoke passed"
+assert_file_matches "$OUT1" "codex doctor finished: timeout=10s exit=0 elapsed=[0-9]+s"
+assert_file_matches "$OUT1" "opencode doctor finished: timeout=10s exit=0 elapsed=[0-9]+s"
 if grep -Fq "claude:" "$OUT1" || grep -Fq "gemini:" "$OUT1"; then
   fail "Doctor ran unselected agentos"
 fi
-if [[ "$(grep -Ec ' (✅|❌) ' "$OUT1")" -ne 2 ]]; then
+if [[ "$(grep -Ec '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} (✅|❌) (codex|opencode|claude|gemini):|^(✅|❌) (codex|opencode|claude|gemini):' "$OUT1")" -ne 2 ]]; then
   fail "Expected exactly two doctor rows"
 fi
 grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} .*Agentic doctor' "$OUT1" || fail "Expected timestamped doctor output"
 
-LOG1="$(sed -n 's/^.*Agentic log file: //p' "$OUT1" | tail -1)"
+LOG1="$(sed -n 's/^.*Agentic log file: //p' "$OUT1" | tail -1 | tr -d "'")"
 assert_exists "$LOG1"
 assert_file_contains "$LOG1" "=== Agentic doctor ==="
 assert_file_contains "$LOG1" "codex ok"
 assert_file_contains "$LOG1" "opencode ok"
+assert_file_contains "$LOG1" "opencode args: run --pure --dir"
+assert_file_contains "$LOG1" "--log-level ERROR Reply with exactly: AGENTIC_DOCTOR_OK"
+assert_file_not_contains "$LOG1" "--command develop-feature"
 
 assert_file_not_contains "$P1/.codex/config.toml" "args ="
 assert_file_contains "$P1/.codex/config.toml" 'command = "mempalace-mcp"'
@@ -202,5 +215,31 @@ assert_file_contains "$OUT3" "Agentic doctor skipped"
 if grep -Fq "✅ codex" "$OUT3"; then
   fail "Doctor ran while disabled"
 fi
+
+echo "[doctor-e2e] Scenario 4: hung codex times out and opencode still runs"
+cat > "$FAKE_BIN/codex" <<'EOS'
+#!/usr/bin/env bash
+sleep 30
+EOS
+chmod +x "$FAKE_BIN/codex"
+P4="$TMP_ROOT/project-timeout-continuation"
+OUT4="$TMP_ROOT/timeout-continuation.log"
+HOME4="$TMP_ROOT/home-4"
+PATH="$FAKE_BIN:/usr/bin:/bin" \
+  HOME="$HOME4" \
+  TMPDIR="$TMP_ROOT" \
+  AGENTIC_ENABLE_CONTEXT7=n \
+  AGENTIC_ENABLE_MEMPALACE=n \
+  AGENTIC_DOCTOR_TIMEOUT_SECONDS=1 \
+  "$CLI" install \
+    --project-dir "$P4" \
+    --agent-os codex,opencode \
+    --areas software \
+    --specializations software.backend >"$OUT4" 2>&1
+
+assert_file_contains "$OUT4" "Doctor timeout: 1s per agent"
+assert_file_contains "$OUT4" "❌ codex: /develop-feature smoke timed out after 1s"
+assert_file_contains "$OUT4" "✅ opencode: lightweight smoke passed"
+assert_file_contains "$OUT4" "Agentic doctor completed with 1 failing check(s)"
 
 echo 'doctor e2e ok'
