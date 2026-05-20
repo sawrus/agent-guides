@@ -2,12 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
-CLI="$ROOT_DIR/agentic"
-
-if [[ "${AGENTIC_RUN_REAL_AGENT_E2E:-}" != "1" ]]; then
-  echo "[real-agent-doctor] skipped: set AGENTIC_RUN_REAL_AGENT_E2E=1 to run real agent doctor checks"
-  exit 0
-fi
+CLI="${AGENTIC_TEST_CLI:-$ROOT_DIR/agentic}"
 
 TMP_ROOT="$(mktemp -d /tmp/agentic-real-agent-doctor.XXXXXX)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
@@ -17,13 +12,14 @@ for agent in codex opencode claude gemini; do
   if command -v "$agent" >/dev/null 2>&1; then
     agents+=("$agent")
   else
-    echo "[real-agent-doctor] skipped missing binary: $agent"
+    echo "[real-agent-doctor][FAIL] missing binary: $agent" >&2
+    exit 1
   fi
 done
 
 if [[ "${#agents[@]}" -eq 0 ]]; then
-  echo "[real-agent-doctor] skipped: no supported real agent binaries installed"
-  exit 0
+  echo "[real-agent-doctor][FAIL] no supported real agent binaries installed" >&2
+  exit 1
 fi
 
 agent_csv="$(IFS=,; printf '%s' "${agents[*]}")"

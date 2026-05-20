@@ -109,6 +109,6 @@ When MemPalace MCP is enabled during interactive install, TUI install, or throug
 1. Python availability check
 2. pip availability check
 3. `pip install mempalace`
-4. Project initialization for OpenCode installs (`mempalace init` and `mempalace mine`), or an explicit skip log for other selected targets
+4. Explicit skip log for automatic project initialization, plus optional manual `mempalace init`/`mempalace mine` instructions
 
 If auto-install or runtime checks fail, `agentic` prints manual setup instructions and continues. After setup, install checks that `mempalace-mcp` is present and leaves runtime startup/tool validation to the post-install doctor smoke check. Generated MCP configs invoke `mempalace-mcp` without arguments for all supported agent targets.

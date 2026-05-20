@@ -2,8 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
-CLI="$ROOT_DIR/agentic"
-export AGENTIC_TEST_SOURCE_AGENTIC="$CLI"
+CLI="${AGENTIC_TEST_CLI:-$ROOT_DIR/agentic}"
+SOURCE_CLI="$ROOT_DIR/agentic"
+export AGENTIC_TEST_SOURCE_AGENTIC="$SOURCE_CLI"
 export AGENTIC_DOCTOR=0
 TMP_ROOT="$(mktemp -d /tmp/agentic-e2e.XXXXXX)"
 PYTHON_ONLY_BIN="$TMP_ROOT/python-bin"
@@ -116,7 +117,7 @@ EOT
   echo '{}' > "$dest/extensions/opencode/opencode.json"
   echo '{}' > "$dest/extensions/codex/config.json"
   echo '{}' > "$dest/extensions/claude/config.json"
-  cp "$AGENTIC_TEST_SOURCE_AGENTIC" "$dest/agentic"
+          cp "${AGENTIC_TEST_SOURCE_AGENTIC:-$SOURCE_CLI}" "$dest/agentic"
 }
 
 if [[ "${1:-}" == "clone" ]]; then
@@ -275,6 +276,53 @@ assert_file_contains "$OUT1AB_OK" "MemPalace package installed via 'pip install 
 assert_file_contains "$OUT1AB_OK" "MemPalace MCP binary found: mempalace-mcp"
 assert_file_contains "$P1_MEM_OK/.codex/config.toml" "[mcp_servers.mempalace]"
 assert_file_contains "$OUT1AB_OK" "Project memory initialization skipped for selected agent target(s)"
+assert_file_contains "$P1_MEM_OK/.mempalaceignore" "node_modules/"
+assert_file_contains "$P1_MEM_OK/.mempalaceignore" "*.parquet"
+assert_file_contains "$P1_MEM_OK/.mempalaceignore" ".git/"
+assert_file_contains "$P1_MEM_OK/.agentic.json" ".mempalaceignore"
+
+echo "[e2e] Scenario 1ab2: OpenCode MemPalace init logs failures and does not duplicate mine after auto-mine"
+P1_MEM_OC="$TMP_ROOT/project-mempalace-opencode"
+HOME_MEM_OC="$TMP_ROOT/home-mempalace-opencode"
+OUT1AB_OC="$TMP_ROOT/project-mempalace-opencode.log"
+FAKE_MEMPALACE_OC_BIN="$TMP_ROOT/fake-mempalace-opencode-bin"
+FAKE_MEMPALACE_OC_LOG="$TMP_ROOT/fake-mempalace-opencode.log"
+mkdir -p "$FAKE_MEMPALACE_OC_BIN"
+cat > "$FAKE_MEMPALACE_OC_BIN/pip" <<'EOS'
+#!/usr/bin/env bash
+exit 0
+EOS
+cat > "$FAKE_MEMPALACE_OC_BIN/mempalace-mcp" <<'EOS'
+#!/usr/bin/env bash
+exit 0
+EOS
+cat > "$FAKE_MEMPALACE_OC_BIN/mempalace" <<'EOS'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${FAKE_MEMPALACE_OC_LOG:?missing FAKE_MEMPALACE_OC_LOG}"
+if [[ "${1:-}" == "init" ]]; then
+  printf '%s\n' "fake init stderr" >&2
+  printf '%s\n' "ImportError: numpy incompatible architecture" >&2
+  exit 7
+fi
+if [[ "${1:-}" == "mine" ]]; then
+  exit 9
+fi
+exit 0
+EOS
+chmod +x "$FAKE_MEMPALACE_OC_BIN"/*
+env HOME="$HOME_MEM_OC" PATH="$FAKE_MEMPALACE_OC_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" FAKE_MEMPALACE_OC_LOG="$FAKE_MEMPALACE_OC_LOG" AGENTIC_ENABLE_MEMPALACE=y "$CLI" install \
+  --project-dir "$P1_MEM_OC" \
+  --agent-os opencode \
+  --areas software \
+  --specializations software.backend \
+  --theme=light >"$OUT1AB_OC" 2>&1
+assert_not_exists "$FAKE_MEMPALACE_OC_LOG"
+assert_file_contains "$OUT1AB_OC" "OpenCode MemPalace project initialization is optional; skipping automatic 'mempalace init'"
+assert_file_contains "$OUT1AB_OC" "Optional MemPalace project indexing instructions for target project: $P1_MEM_OC"
+assert_file_not_contains "$OUT1AB_OC" "Python/NumPy architecture is inconsistent"
+assert_file_contains "$P1_MEM_OC/.opencode/opencode.json" "mempalace-mcp"
+assert_file_contains "$P1_MEM_OC/.mempalaceignore" "node_modules/"
+assert_file_contains "$P1_MEM_OC/.agentic.json" ".mempalaceignore"
 
 echo "[e2e] Scenario 1ac: MemPalace runtime check warns and install continues when module is unavailable"
 P1_MEM_WARN="$TMP_ROOT/project-mempalace-warn"
@@ -288,7 +336,7 @@ env HOME="$HOME_MEM_WARN" PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_ENABLE_M
   --theme=light >"$OUT1AB_WARN" 2>&1
 assert_file_contains "$OUT1AB_WARN" "mempalace-mcp is unavailable; install/repair MemPalace and re-run setup"
 assert_file_contains "$P1_MEM_WARN/.codex/config.toml" "[mcp_servers.mempalace]"
-assert_file_contains "$OUT1AB_WARN" "MemPalace setup instructions for target project:"
+assert_file_contains "$OUT1AB_WARN" "Optional MemPalace project indexing instructions for target project:"
 
 echo "[e2e] Scenario 1a: multi-target opencode,codex writes OpenCode and root AGENTS.md"
 P1_MULTI="$TMP_ROOT/project-multi-target"
@@ -327,8 +375,8 @@ echo "[e2e] Scenario 1b: interactive install asks before enabling Context7"
 P1_CTX="$TMP_ROOT/project-context7"
 HOME_CTX="$TMP_ROOT/home-context7"
 OUT1A="$TMP_ROOT/project-context7.log"
-printf '%s\n' "y" "test-context7-key" | \
-  env HOME="$HOME_CTX" AGENTIC_FORCE_INTERACTIVE=1 "$CLI" install \
+printf '%s\n' "y" | \
+  env HOME="$HOME_CTX" AGENTIC_FORCE_INTERACTIVE=1 CONTEXT7_API_KEY="test-context7-key" "$CLI" install \
     --project-dir "$P1_CTX" \
     --agent-os codex \
     --areas software \
@@ -336,10 +384,11 @@ printf '%s\n' "y" "test-context7-key" | \
     --theme=light >"$OUT1A" 2>&1
 assert_file_contains "$P1_CTX/.codex/config.toml" "[mcp_servers.context7]"
 assert_file_contains "$P1_CTX/.codex/config.toml" "test-context7-key"
+assert_file_not_contains "$OUT1A" "Context7 API key (optional, empty = no key):"
 
 P1_CTX_EMPTY="$TMP_ROOT/project-context7-empty-key"
 OUT1A_EMPTY="$TMP_ROOT/project-context7-empty-key.log"
-printf '%s\n' "y" "" | \
+printf '%s\n' "y" | \
   env HOME="$HOME_CTX" AGENTIC_FORCE_INTERACTIVE=1 "$CLI" install \
     --project-dir "$P1_CTX_EMPTY" \
     --agent-os codex \
@@ -348,11 +397,14 @@ printf '%s\n' "y" "" | \
     --theme=light >"$OUT1A_EMPTY" 2>&1
 assert_file_contains "$P1_CTX_EMPTY/.codex/config.toml" "[mcp_servers.context7]"
 assert_file_not_contains "$P1_CTX_EMPTY/.codex/config.toml" "CONTEXT7_API_KEY"
+assert_file_contains "$OUT1A_EMPTY" "Context7 MCP configured without an API key."
+assert_file_contains "$OUT1A_EMPTY" "$P1_CTX_EMPTY/.codex/config.toml"
+assert_file_not_contains "$OUT1A_EMPTY" "Context7 API key (optional, empty = no key):"
 
 echo "[e2e] Scenario 1b1: Context7 writes antigravity-specific path"
 P1_CTX_MULTI="$TMP_ROOT/project-context7-antigravity"
 OUT1A_MULTI="$TMP_ROOT/project-context7-antigravity.log"
-printf '%s\n' "y" "" | \
+printf '%s\n' "y" | \
   env HOME="$HOME_CTX" AGENTIC_FORCE_INTERACTIVE=1 "$CLI" install \
     --project-dir "$P1_CTX_MULTI" \
     --agent-os antigravity \
@@ -360,6 +412,7 @@ printf '%s\n' "y" "" | \
     --specializations software.backend \
     --theme=light >"$OUT1A_MULTI" 2>&1
 assert_file_contains "$HOME_CTX/.gemini/antigravity/mcp_config.json" "\"context7\""
+assert_file_contains "$OUT1A_MULTI" "$HOME_CTX/.gemini/antigravity/mcp_config.json"
 assert_not_exists "$P1_CTX_MULTI/.antigravity/mcp.json"
 assert_not_exists "$P1_CTX_MULTI/.kilocode/mcp.json"
 
@@ -375,12 +428,12 @@ env HOME="$HOME_CTX" AGENTIC_ENABLE_CONTEXT7=y CONTEXT7_API_KEY=env-context7-key
 assert_file_contains "$P1_CTX_ENV/.codex/config.toml" "[mcp_servers.context7]"
 assert_file_contains "$P1_CTX_ENV/.codex/config.toml" "env-context7-key"
 
-echo "[e2e] Scenario 1b3: interactive OpenCode plugin multi-select enables model-checker only"
+echo "[e2e] Scenario 1b3: interactive OpenCode plugin multi-select enables agent-model-mapper only"
 P1_OC_PLUGINS="$TMP_ROOT/project-opencode-plugins"
 HOME_OC_PLUGINS="$TMP_ROOT/home-opencode-plugins"
 OUT1A_OC_PLUGINS="$TMP_ROOT/project-opencode-plugins.log"
-printf '%s\n' "n" "2" "n" "n" | \
-  env HOME="$HOME_OC_PLUGINS" AGENTIC_FORCE_INTERACTIVE=1 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
+printf '%s\n' "n" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "y" "n" "n" | \
+  env HOME="$HOME_OC_PLUGINS" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
     --project-dir "$P1_OC_PLUGINS" \
     --agent-os opencode \
     --areas software \
@@ -388,10 +441,13 @@ printf '%s\n' "n" "2" "n" "n" | \
     --theme=light >"$OUT1A_OC_PLUGINS" 2>&1
 assert_exists "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json"
 assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"enabled\": true"
-assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"modelChecker\""
+assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"agentModelMapper\""
 assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"telegram\""
-assert_file_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"botToken\": \"\""
+assert_file_not_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "botToken"
+assert_file_not_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json" "chatId"
 assert_file_not_contains "$OUT1A_OC_PLUGINS" "Telegram bot token (empty disables plugin):"
+assert_file_contains "$OUT1A_OC_PLUGINS" "agent-model-mapper: updated .opencode/opencode.json"
+assert_exists "$P1_OC_PLUGINS/.opencode/agent-model-mapper.state.json"
 
 echo "[e2e] Scenario 1b4: interactive OpenCode plugin multi-select with no selection does not request Telegram credentials"
 P1_OC_NO_PLUGINS="$TMP_ROOT/project-opencode-no-plugins"
@@ -407,7 +463,13 @@ printf '%s\n' "n" "" "n" "n" | \
 assert_exists "$HOME_OC_NO_PLUGINS/.config/agentic/opencode-plugins.json"
 assert_file_contains "$HOME_OC_NO_PLUGINS/.config/agentic/opencode-plugins.json" "\"telegram\""
 assert_file_contains "$HOME_OC_NO_PLUGINS/.config/agentic/opencode-plugins.json" "\"enabled\": false"
+assert_file_contains "$HOME_OC_NO_PLUGINS/.config/agentic/opencode-plugins.json" "\"agentModelMapper\""
 assert_file_not_contains "$OUT1A_OC_NO_PLUGINS" "Telegram bot token (empty disables plugin):"
+assert_not_exists "$P1_OC_NO_PLUGINS/.opencode/plugins/model-checker.ts"
+assert_not_exists "$P1_OC_NO_PLUGINS/.opencode/plugins/model-checker.json"
+assert_exists "$P1_OC_NO_PLUGINS/.opencode/plugins/agent-model-mapper.ts"
+assert_file_contains "$P1_OC_NO_PLUGINS/.opencode/opencode.json" "agent-model-mapper"
+assert_file_not_contains "$P1_OC_NO_PLUGINS/.opencode/opencode.json" "model-checker"
 
 echo "[e2e] Scenario 1c: rerun skips user-modified managed files"
 P1_RULE="$P1/.agent/rules/architecture.md"
@@ -679,21 +741,21 @@ fi
 
 echo "[e2e] Scenario 8: real opencode blackbox MemPalace verification"
 REAL_OPENCODE_BIN="$(command -v opencode || true)"
-if [[ -n "$REAL_OPENCODE_BIN" ]] && python3 -m mempalace --help >/dev/null 2>&1; then
+if [[ -z "${AGENTIC_TEST_CLI:-}" && -n "$REAL_OPENCODE_BIN" ]] && python3 -m mempalace --help >/dev/null 2>&1; then
   P8_NEG="$TMP_ROOT/project-opencode-mempalace-negative"
   P8_POS="$TMP_ROOT/project-opencode-mempalace-positive"
   OUT8_NEG="$TMP_ROOT/opencode-mempalace-negative.log"
   OUT8_POS="$TMP_ROOT/opencode-mempalace-positive.log"
 
   # Install for opencode with backend + general specs.
-  HOME="$TMP_ROOT/home-opencode-bb" "$CLI" install \
+  HOME="$TMP_ROOT/home-opencode-bb" AGENTIC_ENABLE_MEMPALACE=y AGENTIC_DOCTOR=0 "$CLI" install \
     --project-dir "$P8_NEG" \
     --agent-os opencode \
     --areas software \
     --specializations software.backend,software.general \
     --theme=light >/dev/null 2>&1
 
-  HOME="$TMP_ROOT/home-opencode-bb" "$CLI" install \
+  HOME="$TMP_ROOT/home-opencode-bb" AGENTIC_ENABLE_MEMPALACE=y AGENTIC_DOCTOR=0 "$CLI" install \
     --project-dir "$P8_POS" \
     --agent-os opencode \
     --areas software \
@@ -713,7 +775,7 @@ PYCODE
   # Run real opencode binary in both projects.
   # Override command can be supplied to adapt to local opencode versions:
   #   AGENTIC_TEST_OPENCODE_VERIFY_CMD='opencode "<prompt text>"'
-  OPENCODE_VERIFY_CMD="${AGENTIC_TEST_OPENCODE_VERIFY_CMD:-opencode \"List connected MCP servers and identify mempalace usage.\"}"
+  OPENCODE_VERIFY_CMD="${AGENTIC_TEST_OPENCODE_VERIFY_CMD:-opencode \"List connected MCP servers by configured server name.\"}"
   (cd "$P8_NEG" && eval "$OPENCODE_VERIFY_CMD") >"$OUT8_NEG" 2>&1 || true
   (cd "$P8_POS" && eval "$OPENCODE_VERIFY_CMD") >"$OUT8_POS" 2>&1 || true
 
@@ -724,7 +786,7 @@ PYCODE
   assert_file_not_contains "$OUT8_NEG" "$NEG_PATTERN"
   assert_file_contains "$OUT8_POS" "$POS_PATTERN"
 else
-  echo "[e2e] Scenario 8 skipped: requires real 'opencode' binary and working 'python3 -m mempalace'"
+  echo "[e2e] Scenario 8 skipped: requires direct CLI, real 'opencode' binary, and working 'python3 -m mempalace'"
 fi
 
 echo "[e2e] All scenarios passed"

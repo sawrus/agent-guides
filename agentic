@@ -58,6 +58,7 @@ CONTEXT7_API_KEY="${CONTEXT7_API_KEY:-}"
 AGENTIC_ENABLE_CONTEXT7="${AGENTIC_ENABLE_CONTEXT7:-}"
 AGENTIC_DOCTOR="${AGENTIC_DOCTOR:-1}"
 AGENTIC_DOCTOR_KEEP_TMP="${AGENTIC_DOCTOR_KEEP_TMP:-0}"
+AGENTIC_DOCTOR_TIMEOUT_SECONDS="${AGENTIC_DOCTOR_TIMEOUT_SECONDS:-10}"
 
 RUN_LOG_ACTIVE=false
 RUN_LOG_FILE=""
@@ -1704,6 +1705,43 @@ mcp_servers["context7"] = context7
   write_json_config_file "$dest" "generated:context7-gemini-config" "$body"
 }
 
+print_context7_key_recommendation() {
+  [[ -z "$CONTEXT7_API_KEY" ]] || return 0
+
+  out "Context7 MCP configured without an API key."
+  out "To add a Context7 API key later, set CONTEXT7_API_KEY before rerunning agentic or edit the generated config:"
+
+  if selected_agent_os_contains "opencode"; then
+    out "  - $PROJECT_DIR/opencode.json"
+    out "  - $PROJECT_DIR/.opencode/opencode.json"
+    out '    Example: "headers": {"CONTEXT7_API_KEY": "ctx7_your_api_key_here"}'
+  fi
+  if selected_agent_os_contains "codex"; then
+    out "  - $PROJECT_DIR/.codex/config.toml"
+    out '    Example: http_headers = { "CONTEXT7_API_KEY" = "ctx7_your_api_key_here" }'
+  fi
+  if selected_agent_os_contains "claude"; then
+    out "  - $PROJECT_DIR/.mcp.json"
+    out '    Example: "headers": {"CONTEXT7_API_KEY": "ctx7_your_api_key_here"}'
+  fi
+  if selected_agent_os_contains "cursor"; then
+    out "  - $PROJECT_DIR/.cursor/mcp.json"
+    out '    Example: "headers": {"CONTEXT7_API_KEY": "ctx7_your_api_key_here"}'
+  fi
+  if selected_agent_os_contains "gemini"; then
+    out "  - $PROJECT_DIR/.gemini/settings.json"
+    out '    Example: "headers": {"CONTEXT7_API_KEY": "ctx7_your_api_key_here"}'
+  fi
+  if selected_agent_os_contains "kilocode"; then
+    out "  - $PROJECT_DIR/.kilocode/mcp.json"
+    out '    Example: "headers": {"CONTEXT7_API_KEY": "ctx7_your_api_key_here"}'
+  fi
+  if selected_agent_os_contains "antigravity"; then
+    out "  - $HOME/.gemini/antigravity/mcp_config.json"
+    out '    Example: "headers": {"CONTEXT7_API_KEY": "ctx7_your_api_key_here"}'
+  fi
+}
+
 write_mempalace_opencode_config() {
   local dest="$1"
   local body
@@ -1747,17 +1785,92 @@ servers["mempalace"] = {"command": "mempalace-mcp"}
 }
 
 print_mempalace_project_setup_instructions() {
-  log "MemPalace setup instructions for target project: $PROJECT_DIR"
+  log "Optional MemPalace project indexing instructions for target project: $PROJECT_DIR"
   out "1) Ensure Python is installed and available in PATH."
   out "2) Install MemPalace:"
   out "   pip install mempalace"
-  out "3) Initialize project-local MemPalace cache:"
+  out "3) Optionally initialize project-local MemPalace cache:"
   out "   mempalace init \"$PROJECT_DIR\" --yes --auto-mine"
-  out "4) Index existing project memory:"
+  out "4) Optionally index existing project memory:"
   out "   # optional if --auto-mine was skipped"
   out "   mempalace mine \"$PROJECT_DIR\""
   out "5) Verify in your IDE/agent that MemPalace MCP tools are connected."
   out "Note: Ollama at localhost:11434 is optional; MemPalace can run heuristics-only without it."
+}
+
+write_mempalace_ignore_file() {
+  local dest="$PROJECT_DIR/.mempalaceignore"
+  local content
+  content='node_modules/
+.venv/
+venv/
+dist/
+build/
+target/
+coverage/
+.git/
+
+*.csv
+*.parquet
+*.log
+*.jsonl
+
+data/
+tmp/
+'
+
+  if [[ -e "$dest" ]]; then
+    log "MemPalace ignore file already exists: $dest"
+    return 0
+  fi
+
+  write_text_config_file "$dest" "generated:mempalace-ignore" "$content"
+}
+
+warn_mempalace_failure_reason() {
+  local output_file="$1"
+  [[ -f "$output_file" ]] || return 0
+
+  if grep -Fq "incompatible architecture" "$output_file" && grep -Fq "numpy" "$output_file"; then
+    warn "MemPalace failed because Python/NumPy architecture is inconsistent. Reinstall MemPalace dependencies with the same architecture as the Python running 'mempalace'."
+    warn "Typical fix: reinstall numpy/chromadb/mempalace in the active Python environment, or use a matching arm64/x86_64 Python. See the MemPalace log above for the exact Python path."
+    return 0
+  fi
+
+  if grep -Fq "No LLM provider reachable" "$output_file"; then
+    warn "MemPalace could not reach an LLM provider and continued heuristics-only; this is non-fatal unless a later dependency error appears."
+  fi
+}
+
+run_mempalace_command() {
+  local label="$1"
+  shift
+  local output_file
+  output_file="$(mktemp "${TMPDIR:-/tmp}/agentic-mempalace.XXXXXX")"
+  if "$@" >"$output_file" 2>&1; then
+    log "$label completed"
+    log_file_block "$label" "$output_file"
+    rm -f "$output_file"
+    return 0
+  fi
+
+  warn "Failed: $* (log: $output_file)"
+  log_file_block "$label" "$output_file"
+  warn_mempalace_failure_reason "$output_file"
+  return 1
+}
+
+initialize_mempalace_project() {
+  local step_prefix="$1"
+  log "$step_prefix [4/4] Initializing project memory at $PROJECT_DIR"
+  if ! command -v mempalace >/dev/null 2>&1; then
+    warn "mempalace command is unavailable after install; please run setup manually"
+    print_mempalace_project_setup_instructions
+    return 1
+  fi
+
+  run_mempalace_command "MemPalace init" mempalace init "$PROJECT_DIR" --yes --auto-mine || return 1
+  log "$step_prefix [4/4] Initialization step finished"
 }
 
 setup_mempalace_for_agentic() {
@@ -1772,6 +1885,18 @@ setup_mempalace_for_agentic() {
     return 1
   fi
   log "$step_prefix [1/4] Python check passed"
+
+  if [[ -z "${AGENTIC_TEST_SOURCE_AGENTIC:-}" ]] && command -v mempalace-mcp >/dev/null 2>&1; then
+    if [[ "$initialize_project" != "true" ]] || command -v mempalace >/dev/null 2>&1; then
+      log "$step_prefix [2/4] MemPalace binaries already available; skipping pip install"
+      if [[ "$initialize_project" != "true" ]]; then
+        log "$step_prefix [4/4] Project memory initialization skipped for selected agent target(s)"
+        return 0
+      fi
+      initialize_mempalace_project "$step_prefix"
+      return $?
+    fi
+  fi
 
   log "$step_prefix [2/4] Checking pip availability"
   local pip_bin
@@ -1796,24 +1921,7 @@ setup_mempalace_for_agentic() {
     return 0
   fi
 
-  log "$step_prefix [4/4] Initializing project memory at $PROJECT_DIR"
-  if command -v mempalace >/dev/null 2>&1; then
-    if mempalace init "$PROJECT_DIR" --yes --auto-mine >/dev/null 2>&1; then
-      log "MemPalace init completed"
-    else
-      warn "Failed: mempalace init \"$PROJECT_DIR\" --yes --auto-mine"
-    fi
-    if mempalace mine "$PROJECT_DIR" >/dev/null 2>&1; then
-      log "MemPalace mine completed"
-    else
-      warn "Failed: mempalace mine \"$PROJECT_DIR\""
-    fi
-    log "$step_prefix [4/4] Initialization step finished"
-  else
-    warn "mempalace command is unavailable after install; please run setup manually"
-    print_mempalace_project_setup_instructions
-    return 1
-  fi
+  initialize_mempalace_project "$step_prefix"
 }
 
 configure_mempalace_if_needed() {
@@ -1840,15 +1948,18 @@ configure_mempalace_if_needed() {
     return
   fi
 
+  write_mempalace_ignore_file
+
   local initialize_mempalace_project="false"
-  if selected_agent_os_contains "opencode"; then
-    initialize_mempalace_project="true"
-  fi
   local mempalace_setup_ok="true"
   setup_mempalace_for_agentic "$initialize_mempalace_project" || mempalace_setup_ok="false"
 
   if command -v mempalace-mcp >/dev/null 2>&1; then
     log "MemPalace MCP binary found: mempalace-mcp"
+    if selected_agent_os_contains "opencode"; then
+      log "OpenCode MemPalace project initialization is optional; skipping automatic 'mempalace init'"
+      print_mempalace_project_setup_instructions
+    fi
   else
     warn "mempalace-mcp is unavailable; install/repair MemPalace and re-run setup"
     if [[ "$mempalace_setup_ok" == "true" ]]; then
@@ -1895,7 +2006,6 @@ configure_context7_if_needed() {
   fi
 
   if is_interactive_terminal; then
-    local answer
     if [[ -z "$enable_context7" ]]; then
       read -r -p "Enable Context7 MCP configuration? [y/N]: " enable_context7
       enable_context7="$(trim "$enable_context7")"
@@ -1905,9 +2015,10 @@ configure_context7_if_needed() {
       return
     fi
 
-    if [[ -z "$CONTEXT7_API_KEY" ]]; then
-      read -r -p "Context7 API key (optional, empty = no key): " answer
-      CONTEXT7_API_KEY="$(trim "$answer")"
+  elif [[ -n "$enable_context7" ]]; then
+    if [[ ! "$enable_context7" =~ ^[Yy]$ ]]; then
+      log "Context7 MCP configuration disabled"
+      return
     fi
   elif [[ -z "$CONTEXT7_API_KEY" ]]; then
     log "Context7 MCP configuration skipped; set CONTEXT7_API_KEY or use an interactive install to enable it"
@@ -1942,6 +2053,8 @@ configure_context7_if_needed() {
   if selected_agent_os_contains "antigravity"; then
     write_context7_antigravity_config
   fi
+
+  print_context7_key_recommendation
 }
 
 write_default_opencode_plugin_config() {
@@ -1956,8 +2069,8 @@ from pathlib import Path
 
 path = Path(sys.argv[1])
 path.write_text(json.dumps({
-    "telegram": {"enabled": False, "botToken": "", "chatId": ""},
-    "modelChecker": {"enabled": False},
+    "telegram": {"enabled": False},
+    "agentModelMapper": {"enabled": False},
 }, indent=2) + "\n", encoding="utf-8")
 PY
   fi
@@ -1981,7 +2094,7 @@ configure_opencode_plugins_if_needed() {
     return
   fi
 
-  local plugin_options=("telegram-opencode-notifier" "llm-quota-checker")
+  local plugin_options=("telegram-opencode-notifier" "agent-model-mapper")
   local selected_plugins=()
   local use_fzf_plugins=false
   if fzf_available; then
@@ -1998,47 +2111,344 @@ configure_opencode_plugins_if_needed() {
     readlines selected_plugins <<< "$selected_plugins_output"
   fi
 
-  local enable_telegram="n" telegram_token telegram_chat enable_model_checker="n"
+  local enable_telegram="n" enable_agent_model_mapper="n"
   local selected_plugin
   for selected_plugin in "${selected_plugins[@]}"; do
     selected_plugin="$(trim "$selected_plugin")"
     [[ -z "$selected_plugin" ]] && continue
     case "$selected_plugin" in
       telegram-opencode-notifier) enable_telegram="y" ;;
-      llm-quota-checker) enable_model_checker="y" ;;
+      agent-model-mapper) enable_agent_model_mapper="y" ;;
     esac
   done
 
-  telegram_token=""
-  telegram_chat=""
   if [[ "$enable_telegram" =~ ^[Yy]$ ]]; then
-    read -r -p "Telegram bot token (empty disables plugin): " telegram_token
-    read -r -p "Telegram chat id (empty disables plugin): " telegram_chat
-    telegram_token="$(trim "$telegram_token")"
-    telegram_chat="$(trim "$telegram_chat")"
+    log "Telegram plugin enabled; credentials are read only from OPENCODE_TELEGRAM_BOT_TOKEN and OPENCODE_TELEGRAM_CHAT_ID"
   fi
 
-  python3 - "$OPENCODE_PLUGIN_CONFIG_FILE" "$telegram_token" "$telegram_chat" "$enable_model_checker" <<'PY'
+  python3 - "$OPENCODE_PLUGIN_CONFIG_FILE" "$enable_telegram" "$enable_agent_model_mapper" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
-token = sys.argv[2]
-chat = sys.argv[3]
-enable_model = sys.argv[4].lower() == "y"
+enable_telegram = sys.argv[2].lower() == "y"
+enable_mapper = sys.argv[3].lower() == "y"
 data = {
     "telegram": {
-        "enabled": bool(token and chat),
-        "botToken": token,
-        "chatId": chat,
+        "enabled": enable_telegram,
     },
-    "modelChecker": {
-        "enabled": enable_model,
+    "agentModelMapper": {
+        "enabled": enable_mapper,
     },
 }
 path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 PY
+
+}
+
+opencode_agent_model_mapper_config_enabled() {
+  [[ -f "$OPENCODE_PLUGIN_CONFIG_FILE" ]] || return 1
+  python3 - "$OPENCODE_PLUGIN_CONFIG_FILE" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+raise SystemExit(0 if data.get("agentModelMapper", {}).get("enabled") is True else 1)
+PY
+}
+
+opencode_mapper_read_roles() {
+  local agents_dir="$PROJECT_DIR/.opencode/agents"
+  [[ -d "$agents_dir" ]] || return 0
+  python3 - "$agents_dir" <<'PY'
+import sys
+from pathlib import Path
+
+agents_dir = Path(sys.argv[1])
+
+def parse_frontmatter(text):
+    if not text.startswith("---\n"):
+        return {}
+    end = text.find("\n---", 4)
+    if end == -1:
+        return {}
+    result = {}
+    for line in text[4:end].splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        result[key.strip()] = value.strip().strip("'\"")
+    return result
+
+for path in sorted(agents_dir.glob("*.md")):
+    frontmatter = parse_frontmatter(path.read_text(encoding="utf-8"))
+    name = path.stem.replace("\t", " ")
+    mode = (frontmatter.get("mode") or "subagent").replace("\t", " ")
+    description = (frontmatter.get("description") or "OpenCode agent").replace("\t", " ")
+    print(f"{name}\t{mode}\t{description}")
+PY
+}
+
+opencode_mapper_discover_models() {
+  local config_path="$HOME/.config/opencode/opencode.json"
+  python3 - "$config_path" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+fallback = ["opencode/minimax-m2.5-free"]
+path = Path(sys.argv[1])
+models = []
+
+def collect(value):
+    if isinstance(value, list):
+        for item in value:
+            collect(item)
+        return
+    if not isinstance(value, dict):
+        return
+    for key, item in value.items():
+        if key in {"model", "id"} and isinstance(item, str) and "/" in item:
+            models.append(item)
+        if key == "fallback" and isinstance(item, list):
+            models.extend(model for model in item if isinstance(model, str))
+        collect(item)
+
+try:
+    collect(json.loads(path.read_text(encoding="utf-8")))
+except Exception:
+    pass
+
+seen = set()
+for model in models or fallback:
+    model = model.strip()
+    if model and model not in seen:
+        seen.add(model)
+        print(model)
+PY
+}
+
+opencode_mapper_has_complete_mapping() {
+  local roles_file="$1"
+  local config_path="$PROJECT_DIR/.opencode/opencode.json"
+  local state_path="$PROJECT_DIR/.opencode/agent-model-mapper.state.json"
+  python3 - "$roles_file" "$config_path" "$state_path" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+roles_file, config_path, state_path = map(Path, sys.argv[1:])
+try:
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+if not state.get("configured"):
+    raise SystemExit(1)
+agents = config.get("agent")
+if not isinstance(agents, dict):
+    raise SystemExit(1)
+roles = [line.split("\t", 1)[0] for line in roles_file.read_text(encoding="utf-8").splitlines() if line]
+for role in roles:
+    agent = agents.get(role)
+    if not isinstance(agent, dict) or not str(agent.get("model", "")).strip():
+        raise SystemExit(1)
+raise SystemExit(0)
+PY
+}
+
+choose_opencode_mapper_model() {
+  local role_name="$1"
+  local role_mode="$2"
+  local role_description="$3"
+  local kind="$4"
+  shift 4
+  local models=("$@")
+
+  if [[ "${AGENTIC_AGENT_MODEL_MAPPER_NO_FZF:-}" != "1" ]] && fzf_available; then
+    local selected selected_model fzf_status
+    set +e
+    selected="$(for i in "${!models[@]}"; do printf '%s\t%s\n' "$((i + 1))" "${models[$i]}"; done | fzf \
+      --ansi \
+      --border \
+      --height=70% \
+      --layout=reverse \
+      --no-sort \
+      --prompt "$role_name $kind> " \
+      --header "Select $kind model for $role_name" \
+      --with-nth=2..)"
+    fzf_status=$?
+    set -e
+    if [[ "$fzf_status" -eq 0 && -n "$(trim "$selected")" ]]; then
+      selected_model="${selected#*	}"
+      local model
+      for model in "${models[@]}"; do
+        if [[ "$model" == "$selected_model" ]]; then
+          printf '%s\n' "$selected_model"
+          return 0
+        fi
+      done
+    fi
+  fi
+
+  echo >&2
+  echo "$role_name ($role_mode) - $role_description" >&2
+  local i
+  for i in "${!models[@]}"; do
+    echo "  $((i + 1))) ${models[$i]}" >&2
+  done
+  local answer
+  read -r -p "Select $kind model for $role_name [1]: " answer
+  answer="$(trim "$answer")"
+  if [[ -z "$answer" ]]; then
+    printf '%s\n' "${models[0]}"
+    return 0
+  fi
+  if [[ "$answer" =~ ^[0-9]+$ ]] && (( answer >= 1 && answer <= ${#models[@]} )); then
+    printf '%s\n' "${models[$((answer - 1))]}"
+    return 0
+  fi
+  local model
+  for model in "${models[@]}"; do
+    if [[ "$model" == "$answer" ]]; then
+      printf '%s\n' "$answer"
+      return 0
+    fi
+  done
+  warn "Unknown model '$answer', using ${models[0]}"
+  printf '%s\n' "${models[0]}"
+}
+
+write_opencode_agent_model_mapping() {
+  local roles_file="$1"
+  local mapping_file="$2"
+  local config_path="$PROJECT_DIR/.opencode/opencode.json"
+  local state_path="$PROJECT_DIR/.opencode/agent-model-mapper.state.json"
+
+  python3 - "$roles_file" "$mapping_file" "$config_path" "$state_path" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+roles_file, mapping_file, config_path, state_path = map(Path, sys.argv[1:])
+roles = []
+for line in roles_file.read_text(encoding="utf-8").splitlines():
+    if not line:
+        continue
+    name, mode, description = (line.split("\t") + ["", "", ""])[:3]
+    roles.append({"name": name, "mode": mode, "description": description})
+
+mapping = {}
+for line in mapping_file.read_text(encoding="utf-8").splitlines():
+    if not line:
+        continue
+    name, model, fallback = (line.split("\t") + ["", "", ""])[:3]
+    mapping[name] = {"model": model, "fallback": [fallback] if fallback and fallback != model else []}
+
+try:
+    data = json.loads(config_path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+if not isinstance(data, dict):
+    data = {}
+agents = data.setdefault("agent", {})
+for role in roles:
+    selected = mapping.get(role["name"])
+    if not selected:
+        continue
+    current = agents.get(role["name"])
+    if not isinstance(current, dict):
+        current = {}
+    current.update({
+        "mode": current.get("mode") or role["mode"],
+        "description": current.get("description") or role["description"],
+        "model": selected["model"],
+        "fallback": selected["fallback"],
+    })
+    agents[role["name"]] = current
+
+config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+state_path.write_text(json.dumps({
+    "configured": True,
+    "roles": [role["name"] for role in roles],
+}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+PY
+
+  register_managed_file "$config_path" "generated:opencode-agent-model-mapper-config" "config"
+  register_managed_file "$state_path" "generated:opencode-agent-model-mapper-state" "config"
+}
+
+configure_opencode_agent_model_mapper_if_needed() {
+  selected_agent_os_contains "opencode" || return 0
+  opencode_agent_model_mapper_config_enabled || return 0
+
+  if ! is_interactive_terminal; then
+    log "agent-model-mapper install-time setup skipped because no interactive terminal is available"
+    return 0
+  fi
+
+  local config_path="$PROJECT_DIR/.opencode/opencode.json"
+  local state_path="$PROJECT_DIR/.opencode/agent-model-mapper.state.json"
+  can_write_managed_file "$config_path" || return 0
+  if [[ -e "$state_path" ]]; then
+    can_write_managed_file "$state_path" || return 0
+  fi
+
+  local roles_file models_file mapping_file
+  roles_file="$(mktemp "${TMPDIR:-/tmp}/agentic-opencode-roles.XXXXXX")"
+  models_file="$(mktemp "${TMPDIR:-/tmp}/agentic-opencode-models.XXXXXX")"
+  mapping_file="$(mktemp "${TMPDIR:-/tmp}/agentic-opencode-mapping.XXXXXX")"
+  opencode_mapper_read_roles > "$roles_file"
+
+  if [[ ! -s "$roles_file" ]]; then
+    log "agent-model-mapper: skipped because .opencode/agents/*.md was not found"
+    rm -f "$roles_file" "$models_file" "$mapping_file"
+    return 0
+  fi
+
+  if opencode_mapper_has_complete_mapping "$roles_file"; then
+    log "agent-model-mapper: skipped because all Agentic roles already have model mappings"
+    rm -f "$roles_file" "$models_file" "$mapping_file"
+    return 0
+  fi
+
+  opencode_mapper_discover_models > "$models_file"
+  local models=()
+  readlines models < "$models_file"
+  if [[ "${#models[@]}" -eq 0 ]]; then
+    models=("opencode/minimax-m2.5-free")
+  fi
+
+  out "agent-model-mapper: choose OpenCode models for Agentic roles"
+  local role_name role_mode role_description model fallback
+  exec 3<&0
+  while IFS=$'\t' read -r role_name role_mode role_description || [[ -n "${role_name:-}" ]]; do
+    [[ -n "$role_name" ]] || continue
+    model="$(choose_opencode_mapper_model "$role_name" "$role_mode" "$role_description" "main" "${models[@]}" <&3)"
+    fallback="$(choose_opencode_mapper_model "$role_name" "$role_mode" "$role_description" "fallback" "${models[@]}" <&3)"
+    printf '%s\t%s\t%s\n' "$role_name" "$model" "$fallback" >> "$mapping_file"
+  done < "$roles_file"
+
+  local confirm
+  if ! read -r -p "Write .opencode/opencode.json agent model mapping? [y/N]: " confirm <&3; then
+    confirm=""
+  fi
+  exec 3<&-
+  confirm="$(trim "$confirm")"
+  if [[ ! "$confirm" =~ ^[Yy]([Ee][Ss])?$ ]]; then
+    log "agent-model-mapper: skipped by user; no files changed"
+    rm -f "$roles_file" "$models_file" "$mapping_file"
+    return 0
+  fi
+
+  write_opencode_agent_model_mapping "$roles_file" "$mapping_file"
+  log "agent-model-mapper: updated .opencode/opencode.json"
+  rm -f "$roles_file" "$models_file" "$mapping_file"
 }
 
 normalize_selected_agent_os() {
@@ -2518,9 +2928,67 @@ doctor_prompt() {
   printf '%s\n' "/develop-feature напиши hello world python"
 }
 
+doctor_prompt_for_agent() {
+  local agent_os="$1"
+  case "$agent_os" in
+    opencode)
+      printf '%s\n' "Reply with exactly: AGENTIC_DOCTOR_OK"
+      ;;
+    *)
+      doctor_prompt
+      ;;
+  esac
+}
+
+doctor_smoke_label() {
+  local agent_os="$1"
+  case "$agent_os" in
+    opencode)
+      printf '%s\n' "lightweight smoke"
+      ;;
+    *)
+      printf '%s\n' "/develop-feature smoke"
+      ;;
+  esac
+}
+
 doctor_output_has_fatal_patterns() {
   local output_file="$1"
   grep -Eiq 'MCP.*(error|failed|failure|connection|connect|startup)|plugin.*(error|failed|failure)|auth.*(required|failed)|login required|permission.*(denied|required)|SyntaxError|Traceback|Invalid regular expression flags|An unexpected critical error occurred|FatalError|RuntimeError|EPERM|EACCES|panic:' "$output_file"
+}
+
+doctor_timeout_seconds() {
+  local value="${AGENTIC_DOCTOR_TIMEOUT_SECONDS:-10}"
+  if [[ ! "$value" =~ ^[0-9]+$ ]] || (( value < 1 )); then
+    value=10
+  fi
+  printf '%s\n' "$value"
+}
+
+run_with_doctor_timeout() {
+  local timeout_seconds="$1"
+  shift
+
+  "$@" &
+  local child_pid=$!
+  local elapsed=0
+  local status=0
+  while kill -0 "$child_pid" 2>/dev/null; do
+    if (( elapsed >= timeout_seconds )); then
+      pkill -TERM -P "$child_pid" 2>/dev/null || true
+      kill "$child_pid" 2>/dev/null || true
+      sleep 1
+      pkill -KILL -P "$child_pid" 2>/dev/null || true
+      kill -9 "$child_pid" 2>/dev/null || true
+      wait "$child_pid" 2>/dev/null || true
+      return 124
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  wait "$child_pid"
+  status=$?
+  return "$status"
 }
 
 doctor_copy_project() {
@@ -2536,14 +3004,14 @@ run_doctor_command() {
   local work_dir="$2"
   local output_file="$3"
   local prompt
-  prompt="$(doctor_prompt)"
+  prompt="$(doctor_prompt_for_agent "$agent_os")"
 
   case "$agent_os" in
     codex)
-      codex exec --skip-git-repo-check --full-auto -C "$work_dir" "$prompt" >"$output_file" 2>&1
+      codex exec --skip-git-repo-check --ephemeral --sandbox workspace-write -C "$work_dir" "$prompt" </dev/null >"$output_file" 2>&1
       ;;
     opencode)
-      opencode run --dir "$work_dir" --dangerously-skip-permissions --format json --command develop-feature "напиши hello world python" >"$output_file" 2>&1
+      OPENCODE_DISABLE_AUTOUPDATE=1 opencode run --pure --dir "$work_dir" --dangerously-skip-permissions --format json --log-level ERROR "$prompt" >"$output_file" 2>&1
       ;;
     claude)
       (cd "$work_dir" && claude -p --permission-mode bypassPermissions --output-format stream-json "$prompt") >"$output_file" 2>&1
@@ -2568,29 +3036,40 @@ run_doctor_for_agent() {
     return 1
   fi
 
-  local work_dir output_file status
+  local work_dir output_file status timeout_seconds started_at elapsed smoke_label
   work_dir="$doctor_root/$agent_os"
   output_file="$doctor_root/$agent_os.log"
+  timeout_seconds="$(doctor_timeout_seconds)"
+  smoke_label="$(doctor_smoke_label "$agent_os")"
   doctor_copy_project "$work_dir"
 
   set +e
-  run_doctor_command "$agent_os" "$work_dir" "$output_file"
+  started_at="$(date +%s)"
+  run_with_doctor_timeout "$timeout_seconds" run_doctor_command "$agent_os" "$work_dir" "$output_file"
   status=$?
+  elapsed=$(( $(date +%s) - started_at ))
   set -e
+
+  log "$agent_os doctor finished: timeout=${timeout_seconds}s exit=$status elapsed=${elapsed}s"
 
   log_file_block "doctor $agent_os" "$output_file"
 
+  if [[ "$status" -eq 124 || "$status" -eq 137 ]]; then
+    out "❌ $agent_os: $smoke_label timed out after ${timeout_seconds}s (exit $status, elapsed ${elapsed}s, log: $output_file)"
+    return 1
+  fi
+
   if [[ "$status" -ne 0 ]]; then
-    out "❌ $agent_os: /develop-feature smoke failed (exit $status, log: $output_file)"
+    out "❌ $agent_os: $smoke_label failed (exit $status, elapsed ${elapsed}s, log: $output_file)"
     return 1
   fi
 
   if doctor_output_has_fatal_patterns "$output_file"; then
-    out "❌ $agent_os: /develop-feature smoke reported integration errors (log: $output_file)"
+    out "❌ $agent_os: $smoke_label reported integration errors (exit $status, elapsed ${elapsed}s, log: $output_file)"
     return 1
   fi
 
-  out "✅ $agent_os: /develop-feature smoke passed"
+  out "✅ $agent_os: $smoke_label passed (exit $status, elapsed ${elapsed}s)"
   return 0
 }
 
@@ -2618,6 +3097,7 @@ run_agentic_doctor() {
   out
   out "=== Agentic doctor ===" "$COLOR_HEADER"
   out "Doctor temp root: $doctor_root"
+  out "Doctor timeout: $(doctor_timeout_seconds)s per agent"
 
   local failures=0
   for agent_os in "${selected_doctor_agents[@]}"; do
@@ -2649,6 +3129,7 @@ run_install() {
   ensure_dir "$PROJECT_DIR"
   configure_opencode_plugins_if_needed
   copy_extensions "$PROJECT_DIR"
+  configure_opencode_agent_model_mapper_if_needed
   copy_specialization_assets "$PROJECT_DIR"
   generate_agents_md "$PROJECT_DIR"
   copy_memory_md "$PROJECT_DIR"
