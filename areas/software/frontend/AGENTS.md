@@ -7,10 +7,10 @@ UI and component development: component architecture, accessibility (WCAG AA), p
 ## Guidance chain
 
 1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `software/general/rules/*` — always active
-3. `frontend/rules/*` — load all for this spec
-4. `frontend/skills/*/SKILL.md` — load only the skill matching the current task
-5. `frontend/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — always active
+3. `.agent/rules/*` — load all for this spec
+4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+5. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Inherited from general
 
@@ -27,7 +27,7 @@ UI and component development: component architecture, accessibility (WCAG AA), p
 ## Spec map
 
 ```text
-frontend/
+.agent/
 ├── rules/
 │   ├── accessibility.md    ← WCAG AA requirements, ARIA patterns, keyboard navigation
 │   ├── architecture.md     ← component hierarchy, coupling, folder structure
@@ -54,7 +54,7 @@ frontend/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

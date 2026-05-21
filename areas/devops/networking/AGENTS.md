@@ -7,9 +7,9 @@ Platform networking: Kubernetes ingress design, TLS termination, service mesh on
 ## Guidance chain
 
 1. Project `.agent/` baseline
-2. `networking/rules/*` — load all
-3. `networking/skills/*/SKILL.md` — load only the skill matching the current task
-4. `networking/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — load all
+3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+4. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Cross-cutting constraints
 
@@ -21,7 +21,7 @@ Platform networking: Kubernetes ingress design, TLS termination, service mesh on
 ## Spec map
 
 ```text
-networking/
+.agent/
 ├── rules/
 │   ├── tls-policy.md               ← minimum TLS version, cert rotation, mTLS requirements
 │   ├── ingress-standards.md        ← ingress class, annotations, rate limiting, WAF baseline
@@ -41,7 +41,7 @@ networking/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

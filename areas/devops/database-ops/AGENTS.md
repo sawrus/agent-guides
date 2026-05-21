@@ -7,9 +7,9 @@ Operational database management: backup verification, performance tuning, migrat
 ## Guidance chain
 
 1. Project `.agent/` baseline
-2. `database-ops/rules/*` — load all
-3. `database-ops/skills/*/SKILL.md` — load only the skill matching the current task
-4. `database-ops/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — load all
+3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+4. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Cross-cutting constraints
 
@@ -21,7 +21,7 @@ Operational database management: backup verification, performance tuning, migrat
 ## Spec map
 
 ```text
-database-ops/
+.agent/
 ├── rules/
 │   ├── backup-policy.md         ← frequency, retention, offsite requirements
 │   ├── access-control.md        ← least-privilege roles, audit logging, break-glass
@@ -41,7 +41,7 @@ database-ops/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

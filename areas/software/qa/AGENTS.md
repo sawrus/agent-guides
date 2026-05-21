@@ -7,10 +7,10 @@ Test strategy, risk-based verification, and release confidence: test pyramid des
 ## Guidance chain
 
 1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `software/general/rules/*` — always active
-3. `qa/rules/*` — load all for this spec
-4. `qa/skills/*/SKILL.md` — load only the skill matching the current task
-5. `qa/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — always active
+3. `.agent/rules/*` — load all for this spec
+4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+5. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Inherited from general
 
@@ -27,7 +27,7 @@ Test strategy, risk-based verification, and release confidence: test pyramid des
 ## Spec map
 
 ```text
-qa/
+.agent/
 ├── rules/
 │   ├── test-strategy.md       ← pyramid ratios, coverage targets, risk classification
 │   ├── quality-gates.md       ← blocking vs advisory criteria, merge conditions
@@ -52,7 +52,7 @@ qa/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

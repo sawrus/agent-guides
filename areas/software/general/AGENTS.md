@@ -63,6 +63,6 @@ general/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
