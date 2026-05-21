@@ -1969,6 +1969,14 @@ setup_mempalace_for_agentic() {
   local initialize_project="${1:-false}"
   local step_prefix="MemPalace setup"
 
+  if [[ "${AGENTIC_MEMPALACE_SETUP:-}" == "skip" ]]; then
+    log "$step_prefix skipped by AGENTIC_MEMPALACE_SETUP=skip"
+    if command -v mempalace-mcp >/dev/null 2>&1; then
+      return 0
+    fi
+    return 1
+  fi
+
   log "$step_prefix [1/4] Checking Python availability"
   if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
     warn "Python is not installed. Install Python 3 first, then run: pip install mempalace"

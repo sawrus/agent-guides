@@ -13,7 +13,10 @@
 - OpenCode MemPalace setup writes `mempalace-mcp` config without running `mempalace init` automatically.
 - Telegram notification credentials are read only from `OPENCODE_TELEGRAM_BOT_TOKEN` and `OPENCODE_TELEGRAM_CHAT_ID`.
 - MemPalace-enabled installs create a managed `.mempalaceignore` unless the target project already has one.
-- Real Codex, OpenCode, and Telegram blackbox scenarios are part of `make test`.
+- `make test` runs the fast deterministic e2e suite; longer deterministic checks, real blackbox, and coverage checks are explicit targets.
+- `make test-all` runs the full local suite including longer deterministic checks, install/evidence blackbox, and coverage.
+- Real Codex, OpenCode, and Telegram blackbox install/evidence scenarios run through `make test-real-blackbox`.
+- Live Codex/OpenCode/Telegram blackbox sessions require `AGENTIC_REAL_BLACKBOX_LIVE=1`.
 - `make test-coverage` traces `agentic` through e2e runs and fails below 90% line coverage.
 
 ## Acceptance Criteria
@@ -24,10 +27,11 @@
 - `extensions/opencode/opencode.json` lists `agent-model-mapper`.
 - Runtime model mapper execution does not prompt or modify project files.
 - Telegram plugin tests prove environment-only credentials and no secret output.
-- Real blackbox tests print created files, instruction evidence, MCP usage prompts, and MemPalace fact prompts without printing Telegram secrets.
+- Real blackbox tests print created files, managed guidance sources, and MCP config evidence, then save instruction evidence to a temp file without printing Telegram secrets.
 
 ## Operational Constraints
 
-- `make test` now requires real `codex` and `opencode` binaries, working model auth, network access, Context7/MemPalace access, and Telegram credentials.
+- `make test` is deterministic, designed for a sub-minute local loop, and does not require real agent binaries, model auth, network access, Context7/MemPalace access, or Telegram credentials.
+- `AGENTIC_REAL_BLACKBOX_LIVE=1 make test-real-blackbox` requires real `codex` and `opencode` binaries, working model auth, network access, Context7/MemPalace access, and Telegram credentials for the Telegram case.
 - Telegram credentials must never be committed or written to Agentic config.
 - Coverage is line-based Bash trace coverage for the `agentic` script, not branch coverage.
