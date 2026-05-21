@@ -63,6 +63,7 @@ AGENTIC_DOCTOR_TIMEOUT_SECONDS="${AGENTIC_DOCTOR_TIMEOUT_SECONDS:-10}"
 
 RUN_LOG_ACTIVE=false
 RUN_LOG_FILE=""
+CHANGED_PATHS_REPORT_FILE=""
 
 COLOR_RESET=""
 COLOR_HEADER=""
@@ -278,6 +279,7 @@ init_run_logging() {
   local stamp
   stamp="$(date '+%Y%m%d-%H%M%S')"
   RUN_LOG_FILE="$(mktemp "$base_dir/agentic-$stamp.XXXXXX")"
+  CHANGED_PATHS_REPORT_FILE="$RUN_LOG_FILE.changes"
   RUN_LOG_ACTIVE=true
   log "Run log initialized: $RUN_LOG_FILE"
 }
@@ -363,6 +365,55 @@ log_file_block() {
     write_run_log_line "$(timestamp_now) $line"
   done < "$path"
   write_run_log_line "$(timestamp_now) --- $label output end ---"
+}
+
+write_changed_paths_report() {
+  if [[ -z "$CHANGED_PATHS_REPORT_FILE" ]]; then
+    local base_dir="${TMPDIR:-/tmp}"
+    local stamp
+    stamp="$(date '+%Y%m%d-%H%M%S')"
+    CHANGED_PATHS_REPORT_FILE="$(mktemp "$base_dir/agentic-changed-paths-$stamp.XXXXXX")"
+  fi
+
+  {
+    printf 'Agentic changed paths report\n'
+    printf 'Generated at: %s\n' "$(timestamp_now)"
+    printf 'Project dir: %s\n' "$PROJECT_DIR"
+    printf 'Knowledge base repo: %s\n' "$REPO_ROOT"
+    printf '\n'
+
+    printf 'Created directories (%s)\n' "${#CREATED_PATHS[@]}"
+    if [[ "${#CREATED_PATHS[@]}" -eq 0 ]]; then
+      printf -- '- (none)\n'
+    else
+      local created_path
+      for created_path in "${CREATED_PATHS[@]}"; do
+        printf -- '- %s\n' "$created_path"
+      done
+    fi
+    printf '\n'
+
+    printf 'Copied/generated paths (%s)\n' "${#COPIED_PATHS[@]}"
+    if [[ "${#COPIED_PATHS[@]}" -eq 0 ]]; then
+      printf -- '- (none)\n'
+    else
+      local copied_path
+      for copied_path in "${COPIED_PATHS[@]}"; do
+        printf -- '- %s\n' "$copied_path"
+      done
+    fi
+    printf '\n'
+
+    printf 'Warnings (%s)\n' "${#WARNINGS[@]}"
+    if [[ "${#WARNINGS[@]}" -eq 0 ]]; then
+      printf -- '- (none)\n'
+    else
+      local warning
+      for warning in "${WARNINGS[@]}"; do
+        printf -- '- %s\n' "$warning"
+      done
+    fi
+  } > "$CHANGED_PATHS_REPORT_FILE"
 }
 
 unique_append() {
@@ -2601,7 +2652,6 @@ copy_extension_for_agent() {
   local project_dir="$2"
 
   if [[ "$agent_os" == "$DEFAULT_AGENT_OS" ]] || [[ "$agent_os" == "agents" ]]; then
-    log "Agent OS '$agent_os': skipping extension copy"
     return
   fi
 
@@ -2613,7 +2663,6 @@ copy_extension_for_agent() {
     return
   fi
 
-  log "Copy extension: $src -> $dest"
   copy_dir_contents "$src" "$dest"
 }
 
@@ -2658,7 +2707,6 @@ copy_specialization_assets() {
         local dest_dir
         dest_dir="$(get_dest_dir "$target" "$bucket")"
         if [[ "$dest_dir" == "-" ]]; then
-          log "Skip $spec_key/$bucket (not supported by '$target')"
           continue
         fi
         unique_append "$dest_dir" dest_dirs
@@ -2667,7 +2715,6 @@ copy_specialization_assets() {
       local resolved_dir
       for resolved_dir in "${dest_dirs[@]}"; do
         local dest="$project_dir/$resolved_dir"
-        log "Copy $spec_key/$bucket -> $dest"
         copy_dir_contents "$src" "$dest"
       done
     done
@@ -2882,6 +2929,8 @@ validate_inputs() {
 }
 
 print_report() {
+  write_changed_paths_report
+
   out
   out "=== Installation report ===" "$COLOR_HEADER"
   out "Agentic version: $(app_version_label)"
@@ -2893,26 +2942,9 @@ print_report() {
   out "Specializations: ${SELECTED_SPECS[*]}"
 
   out
-  out "Created directories:"
-  if [[ "${#CREATED_PATHS[@]}" -eq 0 ]]; then
-    out "- (none)"
-  else
-    local created_path
-    for created_path in "${CREATED_PATHS[@]}"; do
-      out "- $created_path"
-    done
-  fi
-
-  out
-  out "Copied/generated paths:"
-  if [[ "${#COPIED_PATHS[@]}" -eq 0 ]]; then
-    out "- (none)"
-  else
-    local copied_path
-    for copied_path in "${COPIED_PATHS[@]}"; do
-      out "- $copied_path"
-    done
-  fi
+  out "Created directories: ${#CREATED_PATHS[@]}"
+  out "Copied/generated paths: ${#COPIED_PATHS[@]}"
+  out "Changed paths report: $CHANGED_PATHS_REPORT_FILE"
 
   out
   out "Warnings:"

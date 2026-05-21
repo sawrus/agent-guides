@@ -72,6 +72,11 @@ assert_output_not_contains() {
   fi
 }
 
+changed_paths_report_from_output() {
+  local path="$1"
+  sed -n 's/^.*Changed paths report: //p' "$path" | tail -1 | tr -d "'"
+}
+
 FAKE_GIT_BIN="$TMP_ROOT/fake-git-bin"
 mkdir -p "$FAKE_GIT_BIN"
 GIT_LOG="$TMP_ROOT/git.log"
@@ -219,12 +224,13 @@ assert_file_contains "$OUT0B" "pip is required to run agentic install/tui"
 echo "[e2e] Scenario 1: dev mode install from repository checkout persists --theme=<value> to config"
 P1="$TMP_ROOT/project-dev-install"
 HOME_DEV_INSTALL="$TMP_ROOT/home-dev-install"
+OUT1="$TMP_ROOT/project-dev-install.log"
 HOME="$HOME_DEV_INSTALL" "$CLI" install \
   --project-dir "$P1" \
   --agent-os opencode \
   --areas software \
   --specializations software.backend \
-  --theme=light
+  --theme=light >"$OUT1" 2>&1
 
 assert_exists "$P1/.opencode"
 assert_exists "$P1/.agent/rules"
@@ -246,6 +252,20 @@ assert_exists "$HOME_DEV_INSTALL/.config/agentic/opencode-plugins.json"
 assert_file_contains "$HOME_DEV_INSTALL/.config/agentic/opencode-plugins.json" "\"enabled\": false"
 assert_exists "$HOME_DEV_INSTALL/.config/agentic/config"
 assert_file_contains "$HOME_DEV_INSTALL/.config/agentic/config" "theme=light"
+assert_file_contains "$OUT1" "Created directories:"
+assert_file_contains "$OUT1" "Copied/generated paths:"
+assert_file_contains "$OUT1" "Changed paths report:"
+assert_file_not_contains "$OUT1" "$P1/.opencode/AGENTS.md"
+assert_file_not_contains "$OUT1" "$P1/.agent/rules/architecture.md"
+assert_file_not_contains "$OUT1" "Copy extension"
+assert_file_not_contains "$OUT1" "Copy software.backend/"
+assert_file_not_contains "$OUT1" "Skip software.backend/"
+REPORT1="$(changed_paths_report_from_output "$OUT1")"
+assert_exists "$REPORT1"
+assert_file_contains "$REPORT1" "Created directories ("
+assert_file_contains "$REPORT1" "Copied/generated paths ("
+assert_file_contains "$REPORT1" "$P1/.opencode/AGENTS.md"
+assert_file_contains "$REPORT1" "$P1/.agent/rules/architecture.md"
 
 echo "[e2e] Scenario 1ab: MemPalace runtime check passes when mempalace-mcp is available"
 P1_MEM_OK="$TMP_ROOT/project-mempalace-ok"
@@ -596,6 +616,34 @@ assert_file_contains "$GIT_LOG" "git -C $HOME_INSTALLED/.local/share/agentic/rep
 assert_exists "$HOME_INSTALLED/.local/share/agentic/repo/.last-pull"
 assert_file_contains "$OUT4" "Updated installed binary: $INSTALLED_BIN"
 assert_file_contains "$INSTALLED_BIN" "# upgraded agentic marker"
+
+echo "[e2e] Scenario 4b: managed project upgrade writes detailed changed paths to report"
+P4_MANAGED="$TMP_ROOT/project-upgrade-managed"
+OUT4_INSTALL="$TMP_ROOT/upgrade-managed-install.log"
+OUT4_MANAGED="$TMP_ROOT/upgrade-managed.log"
+HOME="$HOME_INSTALLED" AGENTIC_DOCTOR=0 "$INSTALLED_BIN" install \
+  --project-dir "$P4_MANAGED" \
+  --agent-os opencode \
+  --areas software \
+  --specializations software.backend \
+  --theme=light >"$OUT4_INSTALL" 2>&1
+printf '\nmanaged upgrade content\n' >> "$HOME_INSTALLED/.local/share/agentic/repo/areas/software/backend/AGENTS.md"
+(
+  cd "$P4_MANAGED"
+  HOME="$HOME_INSTALLED" PATH="$FAKE_GIT_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" AGENTIC_TEST_PULL_AGENTIC_MARKER="managed upgrade marker" AGENTIC_DOCTOR=0 "$INSTALLED_BIN" upgrade
+) >"$OUT4_MANAGED" 2>&1
+assert_file_contains "$OUT4_MANAGED" "Detected managed project in $P4_MANAGED; syncing from upgraded knowledge base"
+assert_file_contains "$OUT4_MANAGED" "Copied/generated paths:"
+assert_file_contains "$OUT4_MANAGED" "Changed paths report:"
+assert_file_not_contains "$OUT4_MANAGED" "$P4_MANAGED/.opencode/AGENTS.md"
+assert_file_not_contains "$OUT4_MANAGED" "$P4_MANAGED/.agent/rules/architecture.md"
+assert_file_not_contains "$OUT4_MANAGED" "Copy extension"
+assert_file_not_contains "$OUT4_MANAGED" "Copy software.backend/"
+assert_file_not_contains "$OUT4_MANAGED" "Skip software.backend/"
+REPORT4="$(changed_paths_report_from_output "$OUT4_MANAGED")"
+assert_exists "$REPORT4"
+assert_file_contains "$REPORT4" "Copied/generated paths ("
+assert_file_contains "$REPORT4" "$P4_MANAGED/.opencode/AGENTS.md"
 
 echo "[e2e] Scenario 5: TUI stores theme config and reuses it"
 HOME_TUI="$TMP_ROOT/home-tui"
