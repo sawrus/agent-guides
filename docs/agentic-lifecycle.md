@@ -109,6 +109,10 @@ When MemPalace MCP is enabled during interactive install, TUI install, or throug
 1. Python availability check
 2. pip availability check
 3. `pip install mempalace`
-4. Explicit skip log for automatic project initialization, plus optional manual `mempalace init`/`mempalace mine` instructions
+4. Project memory initialization with `mempalace init --yes --no-llm`
+5. Project mining with `mempalace mine <project> --wing <project-basename>`
+6. Optional shared docs mining with `mempalace mine <project>/docs --wing shared_docs`
 
-If auto-install or runtime checks fail, `agentic` prints manual setup instructions and continues. After setup, install checks that `mempalace-mcp` is present and leaves runtime startup/tool validation to the post-install doctor smoke check. Generated MCP configs invoke `mempalace-mcp` without arguments for all supported agent targets.
+If auto-install, initialization, mining, or runtime checks fail, `agentic` prints manual setup instructions and continues. After setup, install checks that `mempalace-mcp` is present and leaves runtime startup/tool validation to the post-install doctor smoke check. Generated MCP configs invoke `mempalace-mcp` without arguments for all supported agent targets.
+
+Each MemPalace init/mine command has a timeout controlled by `AGENTIC_MEMPALACE_TIMEOUT_SECONDS` and defaults to `60` seconds. Timeouts are reported as warnings and do not block MCP config generation.

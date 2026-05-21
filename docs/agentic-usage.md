@@ -183,7 +183,7 @@ For `opencode`, `codex`, `claude`, `cursor`, `gemini`, `kilocode`, and `antigrav
 
 Generated configs run `mempalace-mcp` without arguments for all supported agent targets. Runtime startup and MCP tool errors are checked by the post-install doctor stage.
 
-During install, if MemPalace is enabled, `agentic` writes a managed `.mempalaceignore` when the target project does not already have one. OpenCode installs do not run `mempalace init` automatically; project indexing is optional and printed as a manual follow-up. If auto-install or runtime checks fail, install continues, manual setup instructions are printed, and agents fall back to standard context discovery.
+During install, if MemPalace is enabled, `agentic` writes a managed `.mempalaceignore` when the target project does not already have one. It initializes the project with `mempalace init --yes --no-llm`, then mines project knowledge into a wing named from the target project basename. If `docs/` exists, those files are also mined into the shared `shared_docs` wing for cross-project Markdown knowledge. MemPalace commands time out after `60` seconds by default; override with `AGENTIC_MEMPALACE_TIMEOUT_SECONDS`. If auto-install, initialization, mining, timeout, or runtime checks fail, install continues, manual setup instructions are printed, and agents fall back to standard context discovery.
 
 For environments that already provide `mempalace-mcp` and need a fast install path, set `AGENTIC_MEMPALACE_SETUP=skip`. This writes the same MCP configuration and `.mempalaceignore` but skips Python package installation and project indexing.
 

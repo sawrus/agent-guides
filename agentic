@@ -60,6 +60,7 @@ AGENTIC_ENABLE_CONTEXT7="${AGENTIC_ENABLE_CONTEXT7:-}"
 AGENTIC_DOCTOR="${AGENTIC_DOCTOR:-1}"
 AGENTIC_DOCTOR_KEEP_TMP="${AGENTIC_DOCTOR_KEEP_TMP:-0}"
 AGENTIC_DOCTOR_TIMEOUT_SECONDS="${AGENTIC_DOCTOR_TIMEOUT_SECONDS:-10}"
+AGENTIC_MEMPALACE_TIMEOUT_SECONDS="${AGENTIC_MEMPALACE_TIMEOUT_SECONDS:-60}"
 
 RUN_LOG_ACTIVE=false
 RUN_LOG_FILE=""
@@ -1205,20 +1206,22 @@ PY
 
   # Restore MCP integration selections so configure_*_if_needed skip interactive prompts
   local mcp_item
-  for mcp_item in "${loaded_mcp_integrations[@]}"; do
-    case "$mcp_item" in
-      context7)
-        if [[ -z "${AGENTIC_ENABLE_CONTEXT7:-}" ]]; then
-          AGENTIC_ENABLE_CONTEXT7="y"
-        fi
-        ;;
-      mempalace)
-        if [[ -z "${AGENTIC_ENABLE_MEMPALACE:-}" ]]; then
-          AGENTIC_ENABLE_MEMPALACE="y"
-        fi
-        ;;
-    esac
-  done
+  if [[ "${#loaded_mcp_integrations[@]}" -gt 0 ]]; then
+    for mcp_item in "${loaded_mcp_integrations[@]}"; do
+      case "$mcp_item" in
+        context7)
+          if [[ -z "${AGENTIC_ENABLE_CONTEXT7:-}" ]]; then
+            AGENTIC_ENABLE_CONTEXT7="y"
+          fi
+          ;;
+        mempalace)
+          if [[ -z "${AGENTIC_ENABLE_MEMPALACE:-}" ]]; then
+            AGENTIC_ENABLE_MEMPALACE="y"
+          fi
+          ;;
+      esac
+    done
+  fi
 }
 
 path_ref_for_shell_export() {
@@ -1873,17 +1876,42 @@ servers["mempalace"] = {"command": "mempalace-mcp"}
 }
 
 print_mempalace_project_setup_instructions() {
+  local project_wing
+  project_wing="$(mempalace_project_wing)"
   log "Optional MemPalace project indexing instructions for target project: $PROJECT_DIR"
   out "1) Ensure Python is installed and available in PATH."
   out "2) Install MemPalace:"
   out "   pip install mempalace"
-  out "3) Optionally initialize project-local MemPalace cache:"
-  out "   mempalace init \"$PROJECT_DIR\" --yes --auto-mine"
-  out "4) Optionally index existing project memory:"
-  out "   # optional if --auto-mine was skipped"
-  out "   mempalace mine \"$PROJECT_DIR\""
-  out "5) Verify in your IDE/agent that MemPalace MCP tools are connected."
-  out "Note: Ollama at localhost:11434 is optional; MemPalace can run heuristics-only without it."
+  out "3) Initialize the project memory taxonomy without LLM calls:"
+  out "   mempalace init \"$PROJECT_DIR\" --yes --no-llm"
+  out "4) Mine project knowledge into its isolated wing:"
+  out "   mempalace mine \"$PROJECT_DIR\" --wing \"$project_wing\""
+  if [[ -d "$PROJECT_DIR/docs" ]]; then
+    out "5) Mine shared project docs into the cross-project docs wing:"
+    out "   mempalace mine \"$PROJECT_DIR/docs\" --wing shared_docs"
+    out "6) Verify in your IDE/agent that MemPalace MCP tools are connected."
+  else
+    out "5) Verify in your IDE/agent that MemPalace MCP tools are connected."
+  fi
+  out "Note: agentic uses --no-llm by default to keep MemPalace setup low-cost."
+}
+
+mempalace_sanitize_wing_name() {
+  local raw="$1"
+  local sanitized
+  sanitized="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/_/g; s/^_+//; s/_+$//; s/_+/_/g')"
+  if [[ -z "$sanitized" ]]; then
+    sanitized="project"
+  fi
+  printf '%s\n' "$sanitized"
+}
+
+mempalace_project_wing() {
+  mempalace_sanitize_wing_name "$(basename "$PROJECT_DIR")"
+}
+
+mempalace_shared_docs_wing() {
+  printf '%s\n' "shared_docs"
 }
 
 write_mempalace_ignore_file() {
@@ -1939,19 +1967,51 @@ warn_mempalace_failure_reason() {
   fi
 }
 
+mempalace_timeout_seconds() {
+  local value="${AGENTIC_MEMPALACE_TIMEOUT_SECONDS:-60}"
+  if [[ "$value" =~ ^[0-9]+$ ]] && (( value > 0 )); then
+    printf '%s\n' "$value"
+    return
+  fi
+  printf '%s\n' "60"
+}
+
 run_mempalace_command() {
   local label="$1"
   shift
-  local output_file
+  local output_file timeout_seconds child_pid elapsed status
   output_file="$(mktemp "${TMPDIR:-/tmp}/agentic-mempalace.XXXXXX")"
-  if "$@" >"$output_file" 2>&1; then
+  timeout_seconds="$(mempalace_timeout_seconds)"
+
+  "$@" >"$output_file" 2>&1 &
+  child_pid=$!
+  elapsed=0
+  status=0
+  while kill -0 "$child_pid" 2>/dev/null; do
+    if (( elapsed >= timeout_seconds )); then
+      pkill -TERM -P "$child_pid" 2>/dev/null || true
+      kill "$child_pid" 2>/dev/null || true
+      sleep 1
+      pkill -KILL -P "$child_pid" 2>/dev/null || true
+      kill -9 "$child_pid" 2>/dev/null || true
+      wait "$child_pid" 2>/dev/null || true
+      warn "Timed out after ${timeout_seconds}s: $* (log: $output_file)"
+      log_file_block "$label" "$output_file"
+      return 1
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+
+  if wait "$child_pid"; then
     log "$label completed"
     log_file_block "$label" "$output_file"
     rm -f "$output_file"
     return 0
   fi
+  status=$?
 
-  warn "Failed: $* (log: $output_file)"
+  warn "Failed: $* (exit $status, log: $output_file)"
   log_file_block "$label" "$output_file"
   warn_mempalace_failure_reason "$output_file"
   return 1
@@ -2011,16 +2071,29 @@ install_mempalace_managed() {
 
 initialize_mempalace_project() {
   local step_prefix="$1"
-  log "$step_prefix [4/4] Initializing project memory at $PROJECT_DIR"
+  local project_wing shared_docs_wing
+  project_wing="$(mempalace_project_wing)"
+  shared_docs_wing="$(mempalace_shared_docs_wing)"
+  log "$step_prefix [4/4] Initializing project memory at $PROJECT_DIR (wing: $project_wing)"
   if ! command -v mempalace >/dev/null 2>&1; then
     warn "mempalace command is unavailable after install; please run setup manually"
     print_mempalace_project_setup_instructions
     return 1
   fi
 
-  if ! run_mempalace_command "MemPalace init" mempalace init "$PROJECT_DIR" --yes --auto-mine; then
+  if ! run_mempalace_command "MemPalace init" mempalace init "$PROJECT_DIR" --yes --no-llm; then
     print_mempalace_project_setup_instructions
     return 1
+  fi
+  if ! run_mempalace_command "MemPalace mine project wing" mempalace mine "$PROJECT_DIR" --wing "$project_wing"; then
+    print_mempalace_project_setup_instructions
+    return 1
+  fi
+  if [[ -d "$PROJECT_DIR/docs" ]]; then
+    if ! run_mempalace_command "MemPalace mine shared docs wing" mempalace mine "$PROJECT_DIR/docs" --wing "$shared_docs_wing"; then
+      print_mempalace_project_setup_instructions
+      return 1
+    fi
   fi
   log "$step_prefix [4/4] Initialization step finished"
 }
@@ -3912,6 +3985,7 @@ sync_current_project_after_upgrade() {
 }
 
 upgrade_mempalace_graph() {
+  local project_wing shared_docs_wing
   # Only run if mempalace was enabled for this project
   if [[ ! "${AGENTIC_ENABLE_MEMPALACE:-}" =~ ^[Yy] ]]; then
     return
@@ -3921,16 +3995,30 @@ upgrade_mempalace_graph() {
     return
   fi
 
+  project_wing="$(mempalace_project_wing)"
+  shared_docs_wing="$(mempalace_shared_docs_wing)"
   if [[ "$DRY_RUN" == true ]]; then
-    log "DRY-RUN mempalace mine \"$PROJECT_DIR\""
+    log "DRY-RUN mempalace mine \"$PROJECT_DIR\" --wing \"$project_wing\""
+    if [[ -d "$PROJECT_DIR/docs" ]]; then
+      log "DRY-RUN mempalace mine \"$PROJECT_DIR/docs\" --wing \"$shared_docs_wing\""
+    fi
     return
   fi
 
-  log "Refreshing MemPalace knowledge graph for $PROJECT_DIR"
-  if mempalace mine "$PROJECT_DIR" >/dev/null 2>&1; then
+  log "Refreshing MemPalace knowledge graph for $PROJECT_DIR (wing: $project_wing)"
+  if mempalace mine "$PROJECT_DIR" --wing "$project_wing" >/dev/null 2>&1; then
     log "MemPalace graph updated"
   else
-    warn "mempalace mine failed; graph may be stale — run manually: mempalace mine \"$PROJECT_DIR\""
+    warn "mempalace mine failed; graph may be stale — run manually: mempalace mine \"$PROJECT_DIR\" --wing \"$project_wing\""
+  fi
+
+  if [[ -d "$PROJECT_DIR/docs" ]]; then
+    log "Refreshing shared MemPalace docs wing from $PROJECT_DIR/docs"
+    if mempalace mine "$PROJECT_DIR/docs" --wing "$shared_docs_wing" >/dev/null 2>&1; then
+      log "MemPalace shared docs wing updated"
+    else
+      warn "mempalace docs mine failed; shared docs may be stale — run manually: mempalace mine \"$PROJECT_DIR/docs\" --wing \"$shared_docs_wing\""
+    fi
   fi
 }
 

@@ -342,7 +342,7 @@ env HOME="$HOME_MEM_OC" PATH="$FAKE_MEMPALACE_OC_BIN:$PYTHON_ONLY_BIN:/usr/bin:/
   --theme=light >"$OUT1AB_OC" 2>&1
 # mempalace init IS now attempted (always for all agent IDEs)
 assert_exists "$FAKE_MEMPALACE_OC_LOG"
-assert_file_contains "$FAKE_MEMPALACE_OC_LOG" "init $P1_MEM_OC --yes --auto-mine"
+assert_file_contains "$FAKE_MEMPALACE_OC_LOG" "init $P1_MEM_OC --yes --no-llm"
 # Init fails → architecture warning is shown
 assert_file_contains "$OUT1AB_OC" "Python/NumPy architecture is inconsistent"
 # Fallback instructions shown after failure
@@ -930,6 +930,8 @@ printf '%s\n' "$*" >> "${FAKE_INIT_PIP_LOG:?}"
 exit 0
 EOS
 chmod +x "$FAKE_INIT_BIN"/*
+mkdir -p "$P9/docs"
+printf '%s\n' "# Shared Docs" > "$P9/docs/README.md"
 
 OUT9="$TMP_ROOT/mempalace-init-install.log"
 HOME="$HOME_INIT" AGENTIC_ENABLE_MEMPALACE=y AGENTIC_DOCTOR=0 \
@@ -944,13 +946,62 @@ HOME="$HOME_INIT" AGENTIC_ENABLE_MEMPALACE=y AGENTIC_DOCTOR=0 \
     --specializations software.backend \
     --theme=light >"$OUT9" 2>&1
 
-# Verify mempalace init was called with --yes --auto-mine
-assert_file_contains "$MEMPALACE_INIT_LOG" "mempalace init $P9 --yes --auto-mine"
+# Verify mempalace init/mining uses low-budget, wing-aware commands
+assert_file_contains "$MEMPALACE_INIT_LOG" "mempalace init $P9 --yes --no-llm"
+assert_file_contains "$MEMPALACE_INIT_LOG" "mempalace mine $P9 --wing project_mempalace_init"
+assert_file_contains "$MEMPALACE_INIT_LOG" "mempalace mine $P9/docs --wing shared_docs"
 # Should NOT show fallback instructions since init succeeded
 assert_output_not_contains "$(cat "$OUT9")" "Optional MemPalace project indexing instructions"
 # Manifest should contain mcp_integrations with mempalace
 assert_file_contains "$P9/.agentic.json" '"mcp_integrations"'
 assert_file_contains "$P9/.agentic.json" '"mempalace"'
+
+echo "[e2e] Scenario 9b: mempalace init timeout does not hang install"
+HOME_TIMEOUT="$TMP_ROOT/home-mempalace-timeout"
+P9_TIMEOUT="$TMP_ROOT/project-mempalace-timeout"
+FAKE_TIMEOUT_BIN="$TMP_ROOT/fake-timeout-mempalace-bin"
+MEMPALACE_TIMEOUT_LOG="$TMP_ROOT/mempalace-timeout-calls.log"
+FAKE_TIMEOUT_PIP_LOG="$TMP_ROOT/fake-timeout-pip.log"
+mkdir -p "$FAKE_TIMEOUT_BIN"
+: > "$MEMPALACE_TIMEOUT_LOG"
+: > "$FAKE_TIMEOUT_PIP_LOG"
+
+cat > "$FAKE_TIMEOUT_BIN/mempalace" <<'EOS'
+#!/usr/bin/env bash
+printf 'mempalace %s\n' "$*" >> "${MEMPALACE_TIMEOUT_LOG:?}"
+if [[ "${1:-}" == "init" ]]; then
+  sleep 5
+fi
+exit 0
+EOS
+cat > "$FAKE_TIMEOUT_BIN/mempalace-mcp" <<'EOS'
+#!/usr/bin/env bash
+exit 0
+EOS
+cat > "$FAKE_TIMEOUT_BIN/pip" <<'EOS'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${FAKE_TIMEOUT_PIP_LOG:?}"
+exit 0
+EOS
+chmod +x "$FAKE_TIMEOUT_BIN"/*
+
+OUT9_TIMEOUT="$TMP_ROOT/mempalace-timeout-install.log"
+HOME="$HOME_TIMEOUT" AGENTIC_ENABLE_MEMPALACE=y AGENTIC_DOCTOR=0 AGENTIC_MEMPALACE_TIMEOUT_SECONDS=1 \
+  PATH="$FAKE_TIMEOUT_BIN:$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+  AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
+  MEMPALACE_TIMEOUT_LOG="$MEMPALACE_TIMEOUT_LOG" \
+  FAKE_TIMEOUT_PIP_LOG="$FAKE_TIMEOUT_PIP_LOG" \
+  "$CLI" install \
+    --project-dir "$P9_TIMEOUT" \
+    --agent-os codex \
+    --areas software \
+    --specializations software.backend \
+    --theme=light >"$OUT9_TIMEOUT" 2>&1
+
+assert_file_contains "$MEMPALACE_TIMEOUT_LOG" "mempalace init $P9_TIMEOUT --yes --no-llm"
+assert_file_contains "$OUT9_TIMEOUT" "Timed out after 1s: mempalace init $P9_TIMEOUT --yes --no-llm"
+assert_file_contains "$OUT9_TIMEOUT" "Optional MemPalace project indexing instructions for target project: $P9_TIMEOUT"
+assert_file_contains "$P9_TIMEOUT/.codex/config.toml" "[mcp_servers.mempalace]"
 
 echo "[e2e] Scenario 10: mempalace enabled but binary missing shows fallback instructions"
 HOME_FAIL="$TMP_ROOT/home-mempalace-fail"
@@ -1010,6 +1061,8 @@ printf '%s\n' "$*" >> "${FAKE_UPGRADE_PIP_LOG:?}"
 exit 0
 EOS
 chmod +x "$FAKE_UPGRADE_BIN"/*
+mkdir -p "$P11/docs"
+printf '%s\n' "# Upgrade Docs" > "$P11/docs/README.md"
 
 # First do a normal install with mempalace+context7 enabled to create manifest
 OUT11_INSTALL="$TMP_ROOT/upgrade-mcp-install.log"
@@ -1050,8 +1103,10 @@ HOME="$HOME_UPGRADE" AGENTIC_DOCTOR=0 \
 assert_output_not_contains "$(cat "$OUT11")" "Enable MemPalace MCP memory integration? [y/N]:"
 assert_output_not_contains "$(cat "$OUT11")" "Enable Context7 MCP configuration? [y/N]:"
 assert_output_not_contains "$(cat "$OUT11")" "Select optional OpenCode plugin(s):"
-# Should have run mempalace init (since mempalace was enabled)
-assert_file_contains "$MEMPALACE_UPGRADE_LOG" "mempalace init $P11 --yes --auto-mine"
+# Should have run mempalace init/mining (since mempalace was enabled)
+assert_file_contains "$MEMPALACE_UPGRADE_LOG" "mempalace init $P11 --yes --no-llm"
+assert_file_contains "$MEMPALACE_UPGRADE_LOG" "mempalace mine $P11 --wing project_upgrade_mcp"
+assert_file_contains "$MEMPALACE_UPGRADE_LOG" "mempalace mine $P11/docs --wing shared_docs"
 
 echo "[e2e] Scenario 12: opencode_mapper_discover_models finds provider models"
 HOME_MODELS="$TMP_ROOT/home-models"

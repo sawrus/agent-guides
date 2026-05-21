@@ -10,7 +10,7 @@
 - `agent-model-mapper` uses `fzf` for install-time model dropdowns when available and OpenCode startup skips once all roles are mapped.
 - The runtime OpenCode plugin never opens `fzf`, asks questions, or writes project files.
 - Context7 no longer asks for an API key; it uses `CONTEXT7_API_KEY` when set and otherwise prints config-path guidance for adding one later.
-- OpenCode MemPalace setup writes `mempalace-mcp` config without running `mempalace init` automatically.
+- OpenCode MemPalace setup writes `mempalace-mcp` config and initializes/mines project memory into a project-specific wing without LLM calls.
 - Telegram notification credentials are read only from `OPENCODE_TELEGRAM_BOT_TOKEN` and `OPENCODE_TELEGRAM_CHAT_ID`.
 - MemPalace-enabled installs create a managed `.mempalaceignore` unless the target project already has one.
 - `make test` runs the fast deterministic e2e suite; longer deterministic checks, real blackbox, and coverage checks are explicit targets.
