@@ -624,6 +624,62 @@ assert_exists "$P5B/.agent/rules"
 assert_file_contains "$OUT5B" "Theme: light"
 assert_output_not_contains "$(cat "$OUT5B")" "Select interface theme:"
 
+echo "[e2e] Scenario 5b: TUI asks OpenCode plugins when MCP selection is none"
+HOME_TUI_OC_PLUGINS="$TMP_ROOT/home-tui-opencode-plugins"
+OUT5B_OC="$TMP_ROOT/tui-opencode-plugins-none.log"
+P5B_OC="$TMP_ROOT/project-tui-opencode-plugins-none"
+
+printf '%s\n' "n" "$P5B_OC" "1,2" "1" "1" "1" "n" "" | \
+  env HOME="$HOME_TUI_OC_PLUGINS" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 PATH="$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
+  "$INSTALLED_BIN" tui --theme=light >"$OUT5B_OC" 2>&1
+
+assert_exists "$HOME_TUI_OC_PLUGINS/.config/agentic/opencode-plugins.json"
+assert_file_contains "$OUT5B_OC" "Select optional OpenCode plugin(s):"
+assert_file_not_contains "$OUT5B_OC" "agent-model-mapper: choose OpenCode models for Agentic roles"
+assert_file_contains "$HOME_TUI_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"telegram\""
+assert_file_contains "$HOME_TUI_OC_PLUGINS/.config/agentic/opencode-plugins.json" "\"agentModelMapper\""
+python3 - "$HOME_TUI_OC_PLUGINS/.config/agentic/opencode-plugins.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+if data.get("agentModelMapper", {}).get("enabled") is not False:
+    raise SystemExit("agentModelMapper should be disabled")
+if data.get("telegram", {}).get("enabled") is not False:
+    raise SystemExit("telegram should be disabled")
+PY
+
+echo "[e2e] Scenario 5b2: TUI can disable existing OpenCode mapper config"
+HOME_TUI_OC_EXISTING="$TMP_ROOT/home-tui-opencode-existing"
+OUT5B_EXISTING="$TMP_ROOT/tui-opencode-existing-none.log"
+P5B_EXISTING="$TMP_ROOT/project-tui-opencode-existing-none"
+mkdir -p "$HOME_TUI_OC_EXISTING/.config/agentic"
+cat > "$HOME_TUI_OC_EXISTING/.config/agentic/opencode-plugins.json" <<'JSON'
+{
+  "telegram": {
+    "enabled": false
+  },
+  "agentModelMapper": {
+    "enabled": true
+  }
+}
+JSON
+
+printf '%s\n' "n" "$P5B_EXISTING" "1,2" "1" "1" "1" "n" "" | \
+  env HOME="$HOME_TUI_OC_EXISTING" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 PATH="$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
+  "$INSTALLED_BIN" tui --theme=light >"$OUT5B_EXISTING" 2>&1
+
+assert_file_contains "$OUT5B_EXISTING" "Select optional OpenCode plugin(s):"
+assert_file_not_contains "$OUT5B_EXISTING" "OpenCode plugin config already exists; keeping current settings"
+assert_file_not_contains "$OUT5B_EXISTING" "agent-model-mapper: choose OpenCode models for Agentic roles"
+assert_file_contains "$HOME_TUI_OC_EXISTING/.config/agentic/opencode-plugins.json" "\"agentModelMapper\""
+python3 - "$HOME_TUI_OC_EXISTING/.config/agentic/opencode-plugins.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+if data.get("agentModelMapper", {}).get("enabled") is not False:
+    raise SystemExit("agentModelMapper should be disabled")
+if data.get("telegram", {}).get("enabled") is not False:
+    raise SystemExit("telegram should be disabled")
+PY
+
 echo "[e2e] Scenario 5c: TUI MCP MemPalace selection runs pip install"
 HOME_TUI_MEMPALACE="$TMP_ROOT/home-tui-mempalace"
 OUT5C="$TMP_ROOT/tui-mempalace.log"

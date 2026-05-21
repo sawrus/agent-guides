@@ -42,6 +42,7 @@ ACTIVE_THEME="dark"
 SELECTED_AGENT_OS=("$DEFAULT_AGENT_OS")
 SELECTED_AREAS=()
 SELECTED_SPECS=()
+INSTALL_SETTINGS_REPLAY=false
 
 SELF_INSTALL_FORCE=false
 SELF_INSTALL_BIN_DIR="${HOME}/.local/bin"
@@ -1101,6 +1102,7 @@ load_install_settings_from_manifest() {
   local manifest="$1"
   [[ -f "$manifest" ]] || return 1
   ensure_python_available
+  INSTALL_SETTINGS_REPLAY=true
 
   local values=()
   readlines values < <(python3 - "$manifest" <<'PY'
@@ -2172,8 +2174,8 @@ configure_opencode_plugins_if_needed() {
   ensure_python_available
   ensure_dir "$APP_CONFIG_DIR"
 
-  # During upgrade/re-install with existing plugin config, keep current settings
-  if [[ -f "$OPENCODE_PLUGIN_CONFIG_FILE" && ( -n "${AGENTIC_ENABLE_MEMPALACE:-}" || -n "${AGENTIC_ENABLE_CONTEXT7:-}" ) ]]; then
+  # During manifest replay/re-install, keep current global plugin settings and avoid prompts.
+  if [[ "$INSTALL_SETTINGS_REPLAY" == true && -f "$OPENCODE_PLUGIN_CONFIG_FILE" ]]; then
     log "OpenCode plugin config already exists; keeping current settings"
     return
   fi
@@ -3033,31 +3035,15 @@ doctor_enabled() {
 }
 
 doctor_prompt() {
-  printf '%s\n' "/develop-feature напиши hello world python"
+  printf '%s\n' "Reply with exactly: AGENTIC_DOCTOR_OK"
 }
 
 doctor_prompt_for_agent() {
-  local agent_os="$1"
-  case "$agent_os" in
-    opencode)
-      printf '%s\n' "Reply with exactly: AGENTIC_DOCTOR_OK"
-      ;;
-    *)
-      doctor_prompt
-      ;;
-  esac
+  doctor_prompt
 }
 
 doctor_smoke_label() {
-  local agent_os="$1"
-  case "$agent_os" in
-    opencode)
-      printf '%s\n' "lightweight smoke"
-      ;;
-    *)
-      printf '%s\n' "/develop-feature smoke"
-      ;;
-  esac
+  printf '%s\n' "lightweight smoke"
 }
 
 doctor_output_has_fatal_patterns() {

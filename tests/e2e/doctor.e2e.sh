@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+shopt -s inherit_errexit 2>/dev/null || true
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 CLI="${AGENTIC_TEST_CLI:-$ROOT_DIR/agentic}"
@@ -43,6 +44,7 @@ cat > "$FAKE_BIN/codex" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
 work_dir=""
+args=("$@")
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -C)
@@ -54,8 +56,18 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+joined="${args[*]}"
+if [[ "$joined" != *"Reply with exactly: AGENTIC_DOCTOR_OK"* ]]; then
+  echo "unexpected codex prompt: $joined" >&2
+  exit 9
+fi
+if [[ "$joined" == *"develop-feature"* ]]; then
+  echo "codex prompt should use lightweight smoke only: $joined" >&2
+  exit 9
+fi
 mkdir -p "$work_dir/src"
 echo "codex doctor touched" > "$work_dir/src/doctor-touched.txt"
+printf 'codex args: %s\n' "${args[*]}"
 echo "codex ok"
 EOS
 
@@ -83,6 +95,15 @@ EOS
 cat > "$FAKE_BIN/claude" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
+joined="$*"
+if [[ "$joined" != *"Reply with exactly: AGENTIC_DOCTOR_OK"* ]]; then
+  echo "unexpected claude prompt: $joined" >&2
+  exit 9
+fi
+if [[ "$joined" == *"develop-feature"* ]]; then
+  echo "claude prompt should use lightweight smoke only: $joined" >&2
+  exit 9
+fi
 mkdir -p src
 echo "claude doctor touched" > src/doctor-touched.txt
 echo '{"type":"result","result":"claude ok"}'
@@ -91,6 +112,15 @@ EOS
 cat > "$FAKE_BIN/gemini" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
+joined="$*"
+if [[ "$joined" != *"Reply with exactly: AGENTIC_DOCTOR_OK"* ]]; then
+  echo "unexpected gemini prompt: $joined" >&2
+  exit 9
+fi
+if [[ "$joined" == *"develop-feature"* ]]; then
+  echo "gemini prompt should use lightweight smoke only: $joined" >&2
+  exit 9
+fi
 if [[ "${AGENTIC_FAKE_FAIL_GEMINI:-}" == "1" ]]; then
   echo "SyntaxError: Invalid regular expression flags" >&2
   exit 7
@@ -134,7 +164,7 @@ PATH="$FAKE_BIN:/usr/bin:/bin" \
 
 assert_file_contains "$OUT1" "=== Agentic doctor ==="
 assert_file_contains "$OUT1" "Doctor timeout: 10s per agent"
-assert_file_contains "$OUT1" "✅ codex: /develop-feature smoke passed"
+assert_file_contains "$OUT1" "✅ codex: lightweight smoke passed"
 assert_file_contains "$OUT1" "✅ opencode: lightweight smoke passed"
 assert_file_matches "$OUT1" "codex doctor finished: timeout=10s exit=0 elapsed=[0-9]+s"
 assert_file_matches "$OUT1" "opencode doctor finished: timeout=10s exit=0 elapsed=[0-9]+s"
@@ -151,6 +181,8 @@ assert_exists "$LOG1"
 assert_file_contains "$LOG1" "=== Agentic doctor ==="
 assert_file_contains "$LOG1" "codex ok"
 assert_file_contains "$LOG1" "opencode ok"
+assert_file_contains "$LOG1" "Reply with exactly: AGENTIC_DOCTOR_OK"
+assert_file_contains "$LOG1" "codex args: exec --skip-git-repo-check --ephemeral --sandbox workspace-write"
 assert_file_contains "$LOG1" "opencode args: run --pure --dir"
 assert_file_contains "$LOG1" "--log-level ERROR Reply with exactly: AGENTIC_DOCTOR_OK"
 assert_file_not_contains "$LOG1" "--command develop-feature"
@@ -188,8 +220,8 @@ PATH="$FAKE_BIN:/usr/bin:/bin" \
     --areas software \
     --specializations software.backend >"$OUT2" 2>&1
 
-assert_file_contains "$OUT2" "✅ claude: /develop-feature smoke passed"
-assert_file_contains "$OUT2" "❌ gemini: /develop-feature smoke failed"
+assert_file_contains "$OUT2" "✅ claude: lightweight smoke passed"
+assert_file_contains "$OUT2" "❌ gemini: lightweight smoke failed"
 assert_file_contains "$OUT2" "Agentic doctor completed with 1 failing check(s)"
 if [[ -e "$P2/src/doctor-touched.txt" ]]; then
   fail "Doctor wrote into the second target project"
@@ -238,7 +270,7 @@ PATH="$FAKE_BIN:/usr/bin:/bin" \
     --specializations software.backend >"$OUT4" 2>&1
 
 assert_file_contains "$OUT4" "Doctor timeout: 1s per agent"
-assert_file_contains "$OUT4" "❌ codex: /develop-feature smoke timed out after 1s"
+assert_file_contains "$OUT4" "❌ codex: lightweight smoke timed out after 1s"
 assert_file_contains "$OUT4" "✅ opencode: lightweight smoke passed"
 assert_file_contains "$OUT4" "Agentic doctor completed with 1 failing check(s)"
 

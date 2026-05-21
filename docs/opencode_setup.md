@@ -33,7 +33,7 @@ When `agentic` installs the OpenCode extension, it configures optional plugins i
 ~/.config/agentic/opencode-plugins.json
 ```
 
-Telegram notifications and agent model mapping are opt-in. If the config is absent or a plugin is disabled, the plugin returns no hooks and OpenCode continues without that behavior.
+Telegram notifications and agent model mapping are opt-in. Interactive `agentic install` and `agentic tui` ask for OpenCode plugin selection whenever `opencode` is selected; the answer rewrites this config. During manifest-based upgrade/re-install sync, existing plugin settings are kept so automated refreshes do not open prompts. If the config is absent or a plugin is disabled, the plugin returns no hooks and OpenCode continues without that behavior.
 
 Telegram notifications read credentials from environment variables only:
 
