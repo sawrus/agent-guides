@@ -7,10 +7,10 @@ Application and infrastructure security: secure coding standards, dependency aud
 ## Guidance chain
 
 1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `software/general/rules/*` — always active
-3. `security/rules/*` — load all for this spec
-4. `security/skills/*/SKILL.md` — load only the skill matching the current task
-5. `security/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — always active
+3. `.agent/rules/*` — load all for this spec
+4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+5. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Inherited from general
 
@@ -27,7 +27,7 @@ Application and infrastructure security: secure coding standards, dependency aud
 ## Spec map
 
 ```text
-security/
+.agent/
 ├── rules/
 │   ├── secure-coding.md          ← OWASP Top 10 mitigations, input validation, output encoding
 │   ├── secrets-policy.md         ← storage, rotation, access audit, emergency rotation
@@ -52,7 +52,7 @@ security/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

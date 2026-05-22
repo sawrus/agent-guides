@@ -7,10 +7,10 @@ iOS, Android, and cross-platform mobile development (React Native, Flutter): off
 ## Guidance chain
 
 1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `software/general/rules/*` — always active
-3. `mobile/rules/*` — load all for this spec
-4. `mobile/skills/*/SKILL.md` — load only the skill matching the current task
-5. `mobile/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — always active
+3. `.agent/rules/*` — load all for this spec
+4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+5. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Inherited from general
 
@@ -27,7 +27,7 @@ iOS, Android, and cross-platform mobile development (React Native, Flutter): off
 ## Spec map
 
 ```text
-mobile/
+.agent/
 ├── rules/
 │   ├── offline-first.md          ← local state, sync strategy, conflict resolution
 │   ├── performance-budget.md     ← frame rate, TTI, memory, crash rate thresholds
@@ -52,7 +52,7 @@ mobile/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

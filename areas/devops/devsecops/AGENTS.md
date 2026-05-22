@@ -7,9 +7,9 @@ Shift-left security integration: container hardening, SBOM and supply-chain atte
 ## Guidance chain
 
 1. Project `.agent/` baseline
-2. `devsecops/rules/*` — load all
-3. `devsecops/skills/*/SKILL.md` — load only the skill matching the current task
-4. `devsecops/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — load all
+3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+4. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Cross-cutting constraints
 
@@ -21,7 +21,7 @@ Shift-left security integration: container hardening, SBOM and supply-chain atte
 ## Spec map
 
 ```text
-devsecops/
+.agent/
 ├── rules/
 │   ├── shift-left-policy.md       ← required CI checks, fail-fast thresholds
 │   ├── container-security.md      ← base image standards, rootless, read-only FS
@@ -41,7 +41,7 @@ devsecops/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

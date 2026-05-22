@@ -7,9 +7,9 @@ Self-hosted and managed Kubernetes cluster operations: cluster bootstrap, worklo
 ## Guidance chain
 
 1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `kubernetes/rules/*` — load all
-3. `kubernetes/skills/*/SKILL.md` — load only the skill matching the current task
-4. `kubernetes/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — load all
+3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+4. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Inherited from devops area
 
@@ -27,7 +27,7 @@ Self-hosted and managed Kubernetes cluster operations: cluster bootstrap, worklo
 ## Spec map
 
 ```text
-kubernetes/
+.agent/
 ├── rules/
 │   ├── cluster-standards.md      ← node sizing, OS, CRI, CNI constraints
 │   ├── workload-security.md      ← PSA levels, RBAC defaults, network policy baselines
@@ -51,7 +51,7 @@ kubernetes/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

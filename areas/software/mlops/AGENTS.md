@@ -7,10 +7,10 @@ Machine learning operations: experiment tracking, model training pipelines, feat
 ## Guidance chain
 
 1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `software/general/rules/*` — always active
-3. `mlops/rules/*` — load all for this spec
-4. `mlops/skills/*/SKILL.md` — load only the skill matching the current task
-5. `mlops/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — always active
+3. `.agent/rules/*` — load all for this spec
+4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+5. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Inherited from general
 
@@ -27,7 +27,7 @@ Machine learning operations: experiment tracking, model training pipelines, feat
 ## Spec map
 
 ```text
-mlops/
+.agent/
 ├── rules/
 │   ├── reproducibility.md      ← seed pinning, dependency locking, artifact versioning
 │   ├── data-integrity.md       ← training data lineage, validation, split discipline
@@ -51,7 +51,7 @@ mlops/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

@@ -7,10 +7,10 @@ End-to-end product feature development spanning backend services and frontend in
 ## Guidance chain
 
 1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `software/general/rules/*` — always active
-3. `full-stack/rules/*` — load all for this spec
-4. `full-stack/skills/*/SKILL.md` — load only the skill matching the current task
-5. `full-stack/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — always active
+3. `.agent/rules/*` — load all for this spec
+4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+5. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Inherited from general
 
@@ -27,7 +27,7 @@ End-to-end product feature development spanning backend services and frontend in
 ## Spec map
 
 ```text
-full-stack/
+.agent/
 ├── rules/
 │   ├── api-design-guide.md            ← REST/GraphQL/tRPC conventions, versioning
 │   ├── backend-architecture-rule.md   ← layering, module boundaries, DI
@@ -63,7 +63,7 @@ full-stack/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

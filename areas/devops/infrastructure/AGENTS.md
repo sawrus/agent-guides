@@ -7,9 +7,9 @@ Infrastructure-as-Code lifecycle: Terraform module authoring, environment provis
 ## Guidance chain
 
 1. Project `.agent/` baseline
-2. `infrastructure/rules/*` — load all
-3. `infrastructure/skills/*/SKILL.md` — load only the skill matching the current task
-4. `infrastructure/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — load all
+3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+4. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Cross-cutting constraints
 
@@ -21,7 +21,7 @@ Infrastructure-as-Code lifecycle: Terraform module authoring, environment provis
 ## Spec map
 
 ```text
-infrastructure/
+.agent/
 ├── rules/
 │   ├── iac-standards.md       ← module structure, naming, provider pinning
 │   ├── immutability.md        ← replace-before-destroy, no in-place secret mutations
@@ -44,7 +44,7 @@ infrastructure/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

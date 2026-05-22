@@ -7,9 +7,9 @@ Site reliability engineering: SLO/SLI design, error budget policy, chaos enginee
 ## Guidance chain
 
 1. Project `.agent/` baseline
-2. `sre/rules/*` — load all
-3. `sre/skills/*/SKILL.md` — load matching skill only
-4. `sre/workflows/*` — load matching workflow
+2. `.agent/rules/*` — load all
+3. `.agent/skills/*/SKILL.md` — load matching skill only
+4. `.agent/workflows/*` — load matching workflow
 
 ## Cross-cutting constraints
 
@@ -21,7 +21,7 @@ Site reliability engineering: SLO/SLI design, error budget policy, chaos enginee
 ## Spec map
 
 ```text
-sre/
+.agent/
 ├── rules/
 │   ├── slo-policy.md             ← SLO definition standards, window sizes, target tiers
 │   ├── error-budget-policy.md    ← budget consumption thresholds, freeze triggers
@@ -42,7 +42,7 @@ sre/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

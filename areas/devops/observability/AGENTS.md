@@ -7,9 +7,9 @@ Platform observability: Prometheus metrics and Alertmanager rules, Loki log aggr
 ## Guidance chain
 
 1. Project `.agent/` baseline
-2. `observability/rules/*` — load all
-3. `observability/skills/*/SKILL.md` — load only the skill matching the current task
-4. `observability/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — load all
+3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+4. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Cross-cutting constraints
 
@@ -21,7 +21,7 @@ Platform observability: Prometheus metrics and Alertmanager rules, Loki log aggr
 ## Spec map
 
 ```text
-observability/
+.agent/
 ├── rules/
 │   ├── golden-signals.md        ← required metrics per service, naming conventions
 │   ├── alerting-standards.md    ← severity levels, routing, inhibition, runbook requirement
@@ -42,7 +42,7 @@ observability/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

@@ -7,9 +7,9 @@ Continuous integration and delivery pipelines: GitHub Actions, GitLab CI, qualit
 ## Guidance chain
 
 1. Project `.agent/` baseline
-2. `ci-cd/rules/*` — load all
-3. `ci-cd/skills/*/SKILL.md` — load only the skill matching the current task
-4. `ci-cd/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — load all
+3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+4. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Cross-cutting constraints
 
@@ -21,7 +21,7 @@ Continuous integration and delivery pipelines: GitHub Actions, GitLab CI, qualit
 ## Spec map
 
 ```text
-ci-cd/
+.agent/
 ├── rules/
 │   ├── pipeline-standards.md         ← stage order, naming, timeout policies
 │   ├── quality-gates.md              ← required checks, merge block conditions
@@ -42,7 +42,7 @@ ci-cd/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

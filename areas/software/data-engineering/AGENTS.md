@@ -7,10 +7,10 @@ Data pipeline engineering: dbt model development, data warehouse schema manageme
 ## Guidance chain
 
 1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `software/general/rules/*` — always active
-3. `data-engineering/rules/*` — load all for this spec
-4. `data-engineering/skills/*/SKILL.md` — load only the skill matching the current task
-5. `data-engineering/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — always active
+3. `.agent/rules/*` — load all for this spec
+4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+5. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Inherited from general
 
@@ -27,7 +27,7 @@ Data pipeline engineering: dbt model development, data warehouse schema manageme
 ## Spec map
 
 ```text
-data-engineering/
+.agent/
 ├── rules/
 │   ├── data-governance.md      ← data ownership, access tiers, retention policy
 │   ├── pii-handling.md         ← classification, masking, pseudonymization requirements
@@ -53,7 +53,7 @@ data-engineering/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

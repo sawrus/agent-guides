@@ -7,10 +7,10 @@ Internal platform engineering for software teams: Kubernetes manifests, Terrafor
 ## Guidance chain
 
 1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `software/general/rules/*` — always active
-3. `platform/rules/*` — load all for this spec
-4. `platform/skills/*/SKILL.md` — load only the skill matching the current task
-5. `platform/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — always active
+3. `.agent/rules/*` — load all for this spec
+4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+5. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Spec selection
 
@@ -35,7 +35,7 @@ For deep platform specialization, prefer the dedicated DevOps area specs:
 ## Spec map
 
 ```text
-platform/
+.agent/
 ├── rules/
 │   ├── immutability.md        ← no manual infra changes; IaC-first discipline
 │   ├── reliability.md         ← SLO targets, incident severity, on-call expectations
@@ -61,7 +61,7 @@ platform/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

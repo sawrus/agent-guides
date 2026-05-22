@@ -17,9 +17,9 @@ Delete all AGENT INSTRUCTIONS comments before finalising.
 Load in this order:
 
 1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `{{domain}}/{{spec}}/rules/*` — load all rules for this spec
-3. `{{domain}}/{{spec}}/skills/*/SKILL.md` — load only the skill matching the current task (see "When to load" in each skill)
-4. `{{domain}}/{{spec}}/workflows/*` — load the workflow matching the triggered slash command
+2. `.agent/rules/*` — load all rules for this spec
+3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task (see "When to load" in each skill)
+4. `.agent/workflows/*` — load the workflow matching the triggered slash command
 
 ## Inherited from {{DOMAIN_NAME}} area
 
@@ -45,7 +45,7 @@ Avoid advice-language: "consider", "try to", "ideally".
 ## Spec map
 
 ```text
-{{spec-name}}/
+.agent/
 ├── rules/
 │   ├── {{filename}}.md     ← {{one_line_description}}
 │   └── {{filename}}.md     ← {{one_line_description}}
@@ -61,7 +61,7 @@ Avoid advice-language: "consider", "try to", "ideally".
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`

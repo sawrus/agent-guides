@@ -7,10 +7,10 @@ Server-side service development: REST / GraphQL API design, domain modeling, dat
 ## Guidance chain
 
 1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `software/general/rules/*` — always active
-3. `backend/rules/*` — load all for this spec
-4. `backend/skills/*/SKILL.md` — load only the skill matching the current task
-5. `backend/workflows/*` — load the workflow matching the triggered command
+2. `.agent/rules/*` — always active
+3. `.agent/rules/*` — load all for this spec
+4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+5. `.agent/workflows/*` — load the workflow matching the triggered command
 
 ## Inherited from general
 
@@ -27,7 +27,7 @@ Server-side service development: REST / GraphQL API design, domain modeling, dat
 ## Spec map
 
 ```text
-backend/
+.agent/
 ├── rules/
 │   ├── architecture.md       ← layering, module boundaries, dependency direction
 │   ├── data_access.md        ← ORM usage, query patterns, N+1 prevention
@@ -53,7 +53,7 @@ backend/
 
 ## Discovery patterns
 
-- `rules/*.md`
-- `skills/*/SKILL.md`
-- `workflows/*.md`
-- `prompts/*.md`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`
