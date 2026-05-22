@@ -6,8 +6,11 @@ VERSION="$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".
 TMP_ROOT="$(mktemp -d /tmp/agentic-tui-e2e.XXXXXX)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 OUT="$TMP_ROOT/out.log"
+TEST_HOME="$TMP_ROOT/home"
+TEST_XDG_CONFIG_HOME="$TMP_ROOT/xdg-config"
+TEST_XDG_DATA_HOME="$TMP_ROOT/xdg-data"
 set +e
-"$CLI" tui >"$OUT" 2>&1
+HOME="$TEST_HOME" XDG_CONFIG_HOME="$TEST_XDG_CONFIG_HOME" XDG_DATA_HOME="$TEST_XDG_DATA_HOME" "$CLI" tui >"$OUT" 2>&1
 code=$?
 set -e
 [ "$code" -eq 1 ]
@@ -24,7 +27,7 @@ chmod +x "$PYTHON_ONLY_BIN/pip"
 OUT_VERSION="$TMP_ROOT/tui-version.log"
 PROJECT="$TMP_ROOT/project"
 printf '%s\n' "" "n" "$PROJECT" "2" "1" "2" "1" | \
-  env HOME="$TMP_ROOT/home" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+  env HOME="$TEST_HOME" XDG_CONFIG_HOME="$TEST_XDG_CONFIG_HOME" XDG_DATA_HOME="$TEST_XDG_DATA_HOME" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" \
   "$CLI" tui >"$OUT_VERSION" 2>&1
 grep -Fq "Agentic installer (TUI mode) v$VERSION" "$OUT_VERSION"
 grep -Fq "Agentic version: v$VERSION" "$OUT_VERSION"

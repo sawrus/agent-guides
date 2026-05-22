@@ -9,10 +9,13 @@ trap 'rm -rf "$TMP_ROOT"' EXIT
 P="$TMP_ROOT/project"
 OUT="$TMP_ROOT/out.log"
 VERSION_OUT="$TMP_ROOT/version.log"
+TEST_HOME="$TMP_ROOT/home"
+TEST_XDG_CONFIG_HOME="$TMP_ROOT/xdg-config"
+TEST_XDG_DATA_HOME="$TMP_ROOT/xdg-data"
 "$CLI" --version >"$VERSION_OUT" 2>&1
 grep -Fxq "v$VERSION" "$VERSION_OUT"
 
-HOME="$TMP_ROOT/home" AGENTIC_ENABLE_MEMPALACE=n AGENTIC_ENABLE_CONTEXT7=n "$CLI" install \
+HOME="$TEST_HOME" XDG_CONFIG_HOME="$TEST_XDG_CONFIG_HOME" XDG_DATA_HOME="$TEST_XDG_DATA_HOME" AGENTIC_ENABLE_MEMPALACE=n AGENTIC_ENABLE_CONTEXT7=n "$CLI" install \
   --project-dir "$P" --agent-os opencode,codex --areas software --specializations software.backend >"$OUT" 2>&1
 
 grep -Fq "Agentic version: v$VERSION" "$OUT"

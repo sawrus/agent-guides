@@ -30,6 +30,8 @@ docker run --rm \
       sed
 
     ./agentic --version
+    export XDG_CONFIG_HOME=/tmp/agentic-blackbox-xdg-config
+    export XDG_DATA_HOME=/tmp/agentic-blackbox-xdg-data
     make test
   '
 
