@@ -403,7 +403,7 @@ echo "[e2e] Scenario 1b: interactive install asks before enabling Context7"
 P1_CTX="$TMP_ROOT/project-context7"
 HOME_CTX="$TMP_ROOT/home-context7"
 OUT1A="$TMP_ROOT/project-context7.log"
-printf '%s\n' "y" | \
+printf '%s\n' "y" "2" "" | \
   env HOME="$HOME_CTX" AGENTIC_FORCE_INTERACTIVE=1 CONTEXT7_API_KEY="test-context7-key" "$CLI" install \
     --project-dir "$P1_CTX" \
     --agent-os codex \
@@ -412,11 +412,11 @@ printf '%s\n' "y" | \
     --theme=light >"$OUT1A" 2>&1
 assert_file_contains "$P1_CTX/.codex/config.toml" "[mcp_servers.context7]"
 assert_file_contains "$P1_CTX/.codex/config.toml" "test-context7-key"
-assert_file_not_contains "$OUT1A" "Context7 API key (optional, empty = no key):"
+assert_file_contains "$OUT1A" "Context7 API key mode:"
 
 P1_CTX_EMPTY="$TMP_ROOT/project-context7-empty-key"
 OUT1A_EMPTY="$TMP_ROOT/project-context7-empty-key.log"
-printf '%s\n' "y" | \
+printf '%s\n' "y" "1" | \
   env HOME="$HOME_CTX" AGENTIC_FORCE_INTERACTIVE=1 "$CLI" install \
     --project-dir "$P1_CTX_EMPTY" \
     --agent-os codex \
@@ -426,13 +426,14 @@ printf '%s\n' "y" | \
 assert_file_contains "$P1_CTX_EMPTY/.codex/config.toml" "[mcp_servers.context7]"
 assert_file_not_contains "$P1_CTX_EMPTY/.codex/config.toml" "CONTEXT7_API_KEY"
 assert_file_contains "$OUT1A_EMPTY" "Context7 MCP configured without an API key."
-assert_file_contains "$OUT1A_EMPTY" "$P1_CTX_EMPTY/.codex/config.toml"
-assert_file_not_contains "$OUT1A_EMPTY" "Context7 API key (optional, empty = no key):"
+assert_file_contains "$OUT1A_EMPTY" "Context7 API key mode:"
+assert_file_not_contains "$OUT1A_EMPTY" "To add a Context7 API key later"
+assert_file_not_contains "$OUT1A_EMPTY" "ctx7_your_api_key_here"
 
 echo "[e2e] Scenario 1b1: Context7 writes antigravity-specific path"
 P1_CTX_MULTI="$TMP_ROOT/project-context7-antigravity"
 OUT1A_MULTI="$TMP_ROOT/project-context7-antigravity.log"
-printf '%s\n' "y" | \
+printf '%s\n' "y" "1" | \
   env HOME="$HOME_CTX" AGENTIC_FORCE_INTERACTIVE=1 "$CLI" install \
     --project-dir "$P1_CTX_MULTI" \
     --agent-os antigravity \
@@ -476,6 +477,28 @@ assert_file_not_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json
 assert_file_not_contains "$OUT1A_OC_PLUGINS" "Telegram bot token (empty disables plugin):"
 assert_file_contains "$OUT1A_OC_PLUGINS" "agent-model-mapper: updated .opencode/opencode.json"
 assert_exists "$P1_OC_PLUGINS/.opencode/agent-model-mapper.state.json"
+assert_file_contains "$P1_OC_PLUGINS/.agentic.json" '"opencode_plugins"'
+assert_file_contains "$P1_OC_PLUGINS/.agentic.json" '"agentModelMapper"'
+
+echo "[e2e] Scenario 1b3b: interactive OpenCode telegram plugin stores credentials in project manifest"
+P1_OC_TELEGRAM="$TMP_ROOT/project-opencode-telegram"
+HOME_OC_TELEGRAM="$TMP_ROOT/home-opencode-telegram"
+OUT1A_OC_TELEGRAM="$TMP_ROOT/project-opencode-telegram.log"
+TELEGRAM_TOKEN="123456:test-token"
+TELEGRAM_CHAT="987654321"
+printf '%s\n' "1" "$TELEGRAM_TOKEN" "$TELEGRAM_CHAT" "n" "n" | \
+  env HOME="$HOME_OC_TELEGRAM" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
+    --project-dir "$P1_OC_TELEGRAM" \
+    --agent-os opencode \
+    --areas software \
+    --specializations software.backend \
+    --theme=light >"$OUT1A_OC_TELEGRAM" 2>&1
+assert_file_contains "$P1_OC_TELEGRAM/.agentic.json" '"botToken": "123456:test-token"'
+assert_file_contains "$P1_OC_TELEGRAM/.agentic.json" '"chatId": "987654321"'
+assert_file_not_contains "$HOME_OC_TELEGRAM/.config/agentic/opencode-plugins.json" "$TELEGRAM_TOKEN"
+assert_file_not_contains "$HOME_OC_TELEGRAM/.config/agentic/opencode-plugins.json" "$TELEGRAM_CHAT"
+assert_file_not_contains "$OUT1A_OC_TELEGRAM" "$TELEGRAM_TOKEN"
+assert_file_not_contains "$OUT1A_OC_TELEGRAM" "$TELEGRAM_CHAT"
 
 echo "[e2e] Scenario 1b4: interactive OpenCode plugin multi-select with no selection does not request Telegram credentials"
 P1_OC_NO_PLUGINS="$TMP_ROOT/project-opencode-no-plugins"

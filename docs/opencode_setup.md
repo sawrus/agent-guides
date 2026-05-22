@@ -35,16 +35,18 @@ When `agentic` installs the OpenCode extension, it configures optional plugins i
 
 Telegram notifications and agent model mapping are opt-in. Interactive `agentic install` and `agentic tui` ask for OpenCode plugin selection whenever `opencode` is selected; the answer rewrites this config. During manifest-based upgrade/re-install sync, existing plugin settings are kept so automated refreshes do not open prompts. If the config is absent or a plugin is disabled, the plugin returns no hooks and OpenCode continues without that behavior.
 
-Telegram notifications read credentials from environment variables only:
+When `telegram-notification` is selected interactively, `agentic` asks for `botToken` and `chatId` and stores them in the target project's `.agentic.json`:
 
 ```text
-OPENCODE_TELEGRAM_BOT_TOKEN
-OPENCODE_TELEGRAM_CHAT_ID
+settings.opencode_plugins.telegram.botToken
+settings.opencode_plugins.telegram.chatId
 ```
+
+The runtime plugin reads credentials from the project `.agentic.json`; it does not read Telegram credentials from environment variables. This file stores credentials in plaintext, so do not commit a Telegram-enabled `.agentic.json` to public repositories.
 
 Non-interactive `agentic install` defaults optional plugins to disabled when no config exists.
 
-`agent-model-mapper` reads roles from target `.opencode/agents/*.md` and discovers model names from `~/.config/opencode/opencode.json`, falling back to a built-in list only when that file has no model names. When enabled, interactive `agentic install`/`agentic tui` prompts for a main and fallback model per role, using `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after confirmation. OpenCode startup never opens `fzf` or waits for model input; the runtime plugin only reports whether install-time mapping is complete.
+`agent-model-mapper` reads roles from target `.opencode/agents/*.md` and discovers model names from `~/.config/opencode/opencode.json`, then adds models from active providers in `~/.local/share/opencode/auth.json` using non-deprecated entries in `~/.cache/opencode/models.json`. When enabled, interactive `agentic install`/`agentic tui` prompts for a main and fallback model per role, using `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after a Confirm action. OpenCode startup never opens `fzf` or waits for model input; the runtime plugin only reports whether install-time mapping is complete.
 
 For OpenCode targets, `agentic` writes generated operating guidance to `.opencode/AGENTS.md`. If OpenCode is installed
 alongside another agent target, root `AGENTS.md` is generated as well for the non-OpenCode target.

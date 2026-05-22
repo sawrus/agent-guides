@@ -3,9 +3,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
 type AgenticPluginConfig = {
-  telegram?: {
-    enabled?: boolean
-  }
+  settings?: any
 }
 
 function telegramApiBaseUrl(): string {
@@ -18,15 +16,14 @@ function telegramUrl(botToken: string, method: string): string {
 
 function redactSecret(value: unknown): string {
   const text = String(value)
-  const token = process.env.OPENCODE_TELEGRAM_BOT_TOKEN
-  const chatId = process.env.OPENCODE_TELEGRAM_CHAT_ID
+  const telegram = currentTelegramConfig
+  const token = telegram?.botToken
+  const chatId = telegram?.chatId
   return [token, chatId].filter(Boolean).reduce((output, secret) => output.split(secret as string).join("[redacted]"), text)
 }
 
-function readAgenticConfig(): AgenticPluginConfig {
-  const configHome = process.env.XDG_CONFIG_HOME || join(process.env.HOME || "", ".config")
-  const configPath = join(configHome, "agentic", "opencode-plugins.json")
-
+function readAgenticConfig(directory: string): AgenticPluginConfig {
+  const configPath = join(directory, ".agentic.json")
   try {
     return JSON.parse(readFileSync(configPath, "utf-8")) as AgenticPluginConfig
   } catch {
@@ -34,11 +31,14 @@ function readAgenticConfig(): AgenticPluginConfig {
   }
 }
 
+let currentTelegramConfig
+
 export const TelegramNotificationPlugin: Plugin = async ({ $, client, directory }) => {
-  const config = readAgenticConfig()
-  const telegram = config.telegram
-  const botToken = process.env.OPENCODE_TELEGRAM_BOT_TOKEN
-  const chatId = process.env.OPENCODE_TELEGRAM_CHAT_ID
+  const config = readAgenticConfig(directory)
+  const telegram = config.settings?.opencode_plugins?.telegram
+  currentTelegramConfig = telegram
+  const botToken = telegram?.botToken
+  const chatId = telegram?.chatId
 
   if (!telegram?.enabled || !botToken || !chatId) {
     return {}
@@ -96,7 +96,7 @@ export const TelegramNotificationPlugin: Plugin = async ({ $, client, directory 
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   chat_id: chatId,
-                  text: `${messageText}\n\n📎 Полный ответ в attachment (${fullText.length} символов):\n\n${shortText}...`
+                  text: `${messageText}\n\nПолный ответ в attachment (${fullText.length} символов):\n\n${shortText}...`
                 })
               }
             )

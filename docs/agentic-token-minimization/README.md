@@ -32,14 +32,16 @@ When installing for OpenCode, `agentic` writes optional plugin state to:
 ~/.config/agentic/opencode-plugins.json
 ```
 
-Interactive installs ask whether to enable Telegram notifications and model checking. Non-interactive installs default optional plugins to disabled when no config exists.
+Interactive installs ask whether to enable Telegram notifications and model mapping. Non-interactive installs default optional plugins to disabled when no config exists.
 
-The OpenCode plugins read this config at startup and return no hooks when disabled. Telegram credentials can also be supplied through:
+The OpenCode plugins read project `.agentic.json` at startup and return no hooks when disabled. When Telegram is enabled, credentials are stored in plaintext at:
 
 ```text
-OPENCODE_TELEGRAM_BOT_TOKEN
-OPENCODE_TELEGRAM_CHAT_ID
+settings.opencode_plugins.telegram.botToken
+settings.opencode_plugins.telegram.chatId
 ```
+
+Do not commit a Telegram-enabled `.agentic.json` to public repositories.
 
 ## Context7
 
@@ -54,7 +56,7 @@ OPENCODE_TELEGRAM_CHAT_ID
 - `.kilocode/mcp.json` for `kilocode`
 - `~/.gemini/antigravity/mcp_config.json` for `antigravity` (global user config)
 
-Interactive installs ask whether to enable Context7. If enabled, Context7 is configured without a key unless `CONTEXT7_API_KEY` is already set; the install output prints the config path(s) and an example key placement. Non-interactive installs enable Context7 when either `AGENTIC_ENABLE_CONTEXT7=y` or `CONTEXT7_API_KEY` is set. Generated guidance requires agents to use Context7 for framework, SDK, library, and API documentation before relying on model memory when the project config is present.
+Interactive installs ask whether to enable Context7. If enabled, Context7 can be configured without a key or with a `CONTEXT7_API_KEY` entered during setup. Non-interactive installs enable Context7 when either `AGENTIC_ENABLE_CONTEXT7=y` or `CONTEXT7_API_KEY` is set. Generated guidance requires agents to use Context7 for framework, SDK, library, and API documentation before relying on model memory when the project config is present.
 
 Directory copies are processed in batches so large specialization installs avoid spawning a separate marker/manifest process for every copied file. Manifest protection still applies: existing unmanaged files are skipped on rerun, user-modified managed files are skipped, and new generated files can be added by newer `agentic` versions.
 

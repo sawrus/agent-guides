@@ -169,11 +169,11 @@ When `opencode` is selected, interactive installs ask whether to enable Telegram
 ~/.config/agentic/opencode-plugins.json
 ```
 
-Non-interactive installs create a disabled config when no config exists. Telegram reads `OPENCODE_TELEGRAM_BOT_TOKEN` and `OPENCODE_TELEGRAM_CHAT_ID` from the environment only; tokens are not written to `~/.config/agentic/opencode-plugins.json`. When enabled, `agent-model-mapper` runs during interactive `agentic install`/`agentic tui`, uses `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after confirmation. OpenCode startup never prompts for model mapping; the runtime plugin only reports whether install-time mapping is already complete.
+Non-interactive installs create a disabled config when no config exists. Interactive installs ask for Telegram `botToken` and `chatId` when `telegram-notification` is selected. Those credentials are written to the target project `.agentic.json` under `settings.opencode_plugins.telegram`, not to `~/.config/agentic/opencode-plugins.json`. Treat `.agentic.json` as plaintext secret-bearing project config when Telegram is enabled and do not commit it to public repositories. When enabled, `agent-model-mapper` runs during interactive `agentic install`/`agentic tui`, uses `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after a Confirm action. OpenCode startup never prompts for model mapping; the runtime plugin only reports whether install-time mapping is already complete.
 
 ## Context7
 
-For `opencode`, `codex`, `claude`, `cursor`, `gemini`, `kilocode`, and `antigravity`, interactive installs ask whether to add Context7 MCP configuration. If enabled, Context7 is configured without a key unless `CONTEXT7_API_KEY` is already set in the environment. The install output prints the generated config path(s) and an example showing where to add the key later. Most targets use project-level files, while `antigravity` is written to the global user path `~/.gemini/antigravity/mcp_config.json`.
+For `opencode`, `codex`, `claude`, `cursor`, `gemini`, `kilocode`, and `antigravity`, interactive installs ask whether to add Context7 MCP configuration. If enabled, a follow-up menu chooses either keyless mode or entering `CONTEXT7_API_KEY`. The selected key is written to all selected target configs for the current project. Most targets use project-level files, while `antigravity` is written to the global user path `~/.gemini/antigravity/mcp_config.json`.
 
 Non-interactive installs enable Context7 when either `AGENTIC_ENABLE_CONTEXT7=y` or `CONTEXT7_API_KEY` is set. Agents are instructed to use Context7 for framework, library, SDK, API, and setup documentation when the project config is present.
 
@@ -191,7 +191,7 @@ For environments that already provide `mempalace-mcp` and need a fast install pa
 
 `make test` runs the fast deterministic e2e suite and is intended to finish in under a minute on a normal local machine. Longer deterministic checks (`test-doctor`, `test-markers`), real-agent blackbox, and coverage checks are explicit targets so the default local loop stays short.
 
-`make test-real-blackbox` validates real Codex/OpenCode install artifacts, generated guidance, MCP config, and manifest evidence without starting live LLM sessions by default. Set `AGENTIC_REAL_BLACKBOX_LIVE=1` to execute live `codex`/`opencode` runs. Live Telegram checks also require `OPENCODE_TELEGRAM_BOT_TOKEN` and `OPENCODE_TELEGRAM_CHAT_ID`; secrets are redacted from test output.
+`make test-real-blackbox` validates real Codex/OpenCode install artifacts, generated guidance, MCP config, and manifest evidence without starting live LLM sessions by default. Set `AGENTIC_REAL_BLACKBOX_LIVE=1` to execute live `codex`/`opencode` runs. Live Telegram checks require Telegram credentials to be present in the target project `.agentic.json`; secrets are redacted from test output.
 
 Makefile test targets print timestamped `[make-timing]` start, success/failure, exit status, and elapsed seconds for every top-level test step. `test-real-blackbox` is split into separate Codex, OpenCode, OpenCode mapper, and Telegram timed steps. Blackbox instruction evidence is saved to a `/tmp/agentic-instruction-evidence.*` file and the path is printed. `test-coverage` also prints timing for each traced coverage scenario before the final coverage parser. Use `make test-all` when you want the fast suite, longer deterministic checks, install/evidence blackbox, and coverage in one command.
 

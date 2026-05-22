@@ -62,6 +62,12 @@ AGENTIC_DOCTOR_KEEP_TMP="${AGENTIC_DOCTOR_KEEP_TMP:-0}"
 AGENTIC_DOCTOR_TIMEOUT_SECONDS="${AGENTIC_DOCTOR_TIMEOUT_SECONDS:-10}"
 AGENTIC_MEMPALACE_TIMEOUT_SECONDS="${AGENTIC_MEMPALACE_TIMEOUT_SECONDS:-60}"
 
+OPENCODE_TELEGRAM_ENABLED=""
+OPENCODE_TELEGRAM_BOT_TOKEN=""
+OPENCODE_TELEGRAM_CHAT_ID=""
+OPENCODE_AGENT_MODEL_MAPPER_ENABLED=""
+OPENCODE_PLUGINS_CONFIGURED=false
+
 RUN_LOG_ACTIVE=false
 RUN_LOG_FILE=""
 CHANGED_PATHS_REPORT_FILE=""
@@ -1048,7 +1054,7 @@ write_agentic_manifest() {
   IFS="$old_ifs"
 
   local manifest_status
-  manifest_status="$(python3 - "$manifest" "$records_file" "$skipped_file" "$APP_REPO_LINK" "$REPO_ROOT" "$agent_os_csv" "$areas_csv" "$specs_csv" "$(app_version_label)" "$mcp_integrations_csv" <<'PY'
+  manifest_status="$(python3 - "$manifest" "$records_file" "$skipped_file" "$APP_REPO_LINK" "$REPO_ROOT" "$agent_os_csv" "$areas_csv" "$specs_csv" "$(app_version_label)" "$mcp_integrations_csv" "$OPENCODE_TELEGRAM_ENABLED" "$OPENCODE_TELEGRAM_BOT_TOKEN" "$OPENCODE_TELEGRAM_CHAT_ID" "$OPENCODE_AGENT_MODEL_MAPPER_ENABLED" <<'PY'
 import json
 import sys
 from datetime import datetime, timezone
@@ -1064,6 +1070,10 @@ areas = [x for x in sys.argv[7].split(",") if x]
 specs = [x for x in sys.argv[8].split(",") if x]
 app_version = sys.argv[9]
 mcp_integrations = [x for x in sys.argv[10].split(",") if x] if len(sys.argv) > 10 else []
+telegram_enabled = sys.argv[11].lower() == "true" if len(sys.argv) > 11 and sys.argv[11] else None
+telegram_bot_token = sys.argv[12] if len(sys.argv) > 12 else ""
+telegram_chat_id = sys.argv[13] if len(sys.argv) > 13 else ""
+mapper_enabled = sys.argv[14].lower() == "true" if len(sys.argv) > 14 and sys.argv[14] else None
 now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 existing = {}
@@ -1105,7 +1115,26 @@ for line in records_file.read_text(encoding="utf-8").splitlines():
 
 skipped = [x for x in skipped_file.read_text(encoding="utf-8").splitlines() if x]
 old_agentic = old_data.get("_agentic", {}) if isinstance(old_data, dict) else {}
+old_settings = old_data.get("settings", {}) if isinstance(old_data, dict) else {}
 created_by = old_agentic.get("created_by", app_version)
+opencode_plugins = old_settings.get("opencode_plugins", {}) if isinstance(old_settings, dict) else {}
+if not isinstance(opencode_plugins, dict):
+    opencode_plugins = {}
+telegram = opencode_plugins.get("telegram", {}) if isinstance(opencode_plugins.get("telegram"), dict) else {}
+agent_model_mapper = opencode_plugins.get("agentModelMapper", {}) if isinstance(opencode_plugins.get("agentModelMapper"), dict) else {}
+if telegram_enabled is not None:
+    telegram = {
+        "enabled": telegram_enabled,
+        "botToken": telegram_bot_token,
+        "chatId": telegram_chat_id,
+    }
+if mapper_enabled is not None:
+    agent_model_mapper = {"enabled": mapper_enabled}
+if telegram or agent_model_mapper:
+    opencode_plugins = {
+        "telegram": telegram or {"enabled": False},
+        "agentModelMapper": agent_model_mapper or {"enabled": False},
+    }
 data = {
     "_agentic": {
         "generated_by": "agentic",
@@ -1121,6 +1150,7 @@ data = {
         "areas": areas,
         "specializations": specs,
         "mcp_integrations": mcp_integrations,
+        "opencode_plugins": opencode_plugins,
         "source_repo": repo_link,
         "source_checkout": repo_root,
     },
@@ -1168,6 +1198,24 @@ for key in ("agent_os", "areas", "specializations", "mcp_integrations"):
     print("::" + key)
     for value in settings.get(key, []):
         print(value)
+plugins = settings.get("opencode_plugins", {})
+if isinstance(plugins, dict):
+    telegram = plugins.get("telegram", {})
+    if isinstance(telegram, dict):
+        print("::opencode_telegram_enabled")
+        if telegram.get("enabled") is not None:
+            print("true" if telegram.get("enabled") is True else "false")
+        print("::opencode_telegram_bot_token")
+        if telegram.get("botToken"):
+            print(telegram.get("botToken"))
+        print("::opencode_telegram_chat_id")
+        if telegram.get("chatId"):
+            print(telegram.get("chatId"))
+    mapper = plugins.get("agentModelMapper", {})
+    if isinstance(mapper, dict):
+        print("::opencode_agent_model_mapper_enabled")
+        if mapper.get("enabled") is not None:
+            print("true" if mapper.get("enabled") is True else "false")
 PY
 )
 
@@ -1176,6 +1224,10 @@ PY
   local loaded_areas=()
   local loaded_specs=()
   local loaded_mcp_integrations=()
+  local loaded_telegram_enabled=""
+  local loaded_telegram_bot_token=""
+  local loaded_telegram_chat_id=""
+  local loaded_mapper_enabled=""
   local value
   for value in "${values[@]}"; do
     case "$value" in
@@ -1189,6 +1241,10 @@ PY
           areas) loaded_areas+=("$value") ;;
           specializations) loaded_specs+=("$value") ;;
           mcp_integrations) loaded_mcp_integrations+=("$value") ;;
+          opencode_telegram_enabled) loaded_telegram_enabled="$value" ;;
+          opencode_telegram_bot_token) loaded_telegram_bot_token="$value" ;;
+          opencode_telegram_chat_id) loaded_telegram_chat_id="$value" ;;
+          opencode_agent_model_mapper_enabled) loaded_mapper_enabled="$value" ;;
         esac
         ;;
     esac
@@ -1221,6 +1277,17 @@ PY
           ;;
       esac
     done
+  fi
+
+  if [[ -n "$loaded_telegram_enabled" ]]; then
+    OPENCODE_TELEGRAM_ENABLED="$loaded_telegram_enabled"
+    OPENCODE_TELEGRAM_BOT_TOKEN="$loaded_telegram_bot_token"
+    OPENCODE_TELEGRAM_CHAT_ID="$loaded_telegram_chat_id"
+    OPENCODE_PLUGINS_CONFIGURED=true
+  fi
+  if [[ -n "$loaded_mapper_enabled" ]]; then
+    OPENCODE_AGENT_MODEL_MAPPER_ENABLED="$loaded_mapper_enabled"
+    OPENCODE_PLUGINS_CONFIGURED=true
   fi
 }
 
@@ -1800,36 +1867,32 @@ print_context7_key_recommendation() {
   [[ -z "$CONTEXT7_API_KEY" ]] || return 0
 
   out "Context7 MCP configured without an API key."
-  out "To add a Context7 API key later, set CONTEXT7_API_KEY before rerunning agentic or edit the generated config:"
+}
 
-  if selected_agent_os_contains "opencode"; then
-    out "  - $PROJECT_DIR/opencode.json"
-    out "  - $PROJECT_DIR/.opencode/opencode.json"
-    out '    Example: "headers": {"CONTEXT7_API_KEY": "ctx7_your_api_key_here"}'
+configure_context7_key_interactive() {
+  is_interactive_terminal || return 0
+
+  local choice
+  if fzf_available; then
+    choice="$(choose_single_fzf "Context7 API key mode:" "Use without API key" "Enter CONTEXT7_API_KEY" || true)"
+  else
+    echo "Context7 API key mode:" >&2
+    echo "  1) Use without API key" >&2
+    echo "  2) Enter CONTEXT7_API_KEY" >&2
+    local answer
+    read -r -p "Select one (empty=1): " answer
+    answer="$(trim "$answer")"
+    case "$answer" in
+      ""|1) choice="Use without API key" ;;
+      2) choice="Enter CONTEXT7_API_KEY" ;;
+      *) error "Invalid choice"; exit 1 ;;
+    esac
   fi
-  if selected_agent_os_contains "codex"; then
-    out "  - $PROJECT_DIR/.codex/config.toml"
-    out '    Example: http_headers = { "CONTEXT7_API_KEY" = "ctx7_your_api_key_here" }'
-  fi
-  if selected_agent_os_contains "claude"; then
-    out "  - $PROJECT_DIR/.mcp.json"
-    out '    Example: "headers": {"CONTEXT7_API_KEY": "ctx7_your_api_key_here"}'
-  fi
-  if selected_agent_os_contains "cursor"; then
-    out "  - $PROJECT_DIR/.cursor/mcp.json"
-    out '    Example: "headers": {"CONTEXT7_API_KEY": "ctx7_your_api_key_here"}'
-  fi
-  if selected_agent_os_contains "gemini"; then
-    out "  - $PROJECT_DIR/.gemini/settings.json"
-    out '    Example: "headers": {"CONTEXT7_API_KEY": "ctx7_your_api_key_here"}'
-  fi
-  if selected_agent_os_contains "kilocode"; then
-    out "  - $PROJECT_DIR/.kilocode/mcp.json"
-    out '    Example: "headers": {"CONTEXT7_API_KEY": "ctx7_your_api_key_here"}'
-  fi
-  if selected_agent_os_contains "antigravity"; then
-    out "  - $HOME/.gemini/antigravity/mcp_config.json"
-    out '    Example: "headers": {"CONTEXT7_API_KEY": "ctx7_your_api_key_here"}'
+
+  if [[ "$choice" == "Enter CONTEXT7_API_KEY" ]]; then
+    CONTEXT7_API_KEY="$(prompt_text_interactive "CONTEXT7_API_KEY" "$CONTEXT7_API_KEY")"
+  else
+    CONTEXT7_API_KEY=""
   fi
 }
 
@@ -2242,6 +2305,7 @@ configure_context7_if_needed() {
       log "Context7 MCP configuration disabled"
       return
     fi
+    configure_context7_key_interactive
 
   elif [[ -n "$enable_context7" ]]; then
     if [[ ! "$enable_context7" =~ ^[Yy]$ ]]; then
@@ -2287,6 +2351,11 @@ configure_context7_if_needed() {
 
 write_default_opencode_plugin_config() {
   ensure_dir "$APP_CONFIG_DIR"
+  OPENCODE_TELEGRAM_ENABLED="false"
+  OPENCODE_TELEGRAM_BOT_TOKEN=""
+  OPENCODE_TELEGRAM_CHAT_ID=""
+  OPENCODE_AGENT_MODEL_MAPPER_ENABLED="false"
+  OPENCODE_PLUGINS_CONFIGURED=true
   if [[ "$DRY_RUN" == true ]]; then
     log "DRY-RUN write disabled opencode plugin config to $OPENCODE_PLUGIN_CONFIG_FILE"
   else
@@ -2304,6 +2373,33 @@ PY
   fi
 }
 
+load_opencode_plugin_config_globals() {
+  [[ -f "$OPENCODE_PLUGIN_CONFIG_FILE" ]] || return 1
+  local values=()
+  readlines values < <(python3 - "$OPENCODE_PLUGIN_CONFIG_FILE" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+telegram = data.get("telegram", {}) if isinstance(data, dict) else {}
+mapper = data.get("agentModelMapper", {}) if isinstance(data, dict) else {}
+print("true" if telegram.get("enabled") is True else "false")
+print(telegram.get("botToken") or "")
+print(telegram.get("chatId") or "")
+print("true" if mapper.get("enabled") is True else "false")
+PY
+)
+  OPENCODE_TELEGRAM_ENABLED="${values[0]:-false}"
+  OPENCODE_TELEGRAM_BOT_TOKEN="${values[1]:-}"
+  OPENCODE_TELEGRAM_CHAT_ID="${values[2]:-}"
+  OPENCODE_AGENT_MODEL_MAPPER_ENABLED="${values[3]:-false}"
+  OPENCODE_PLUGINS_CONFIGURED=true
+}
+
 configure_opencode_plugins_if_needed() {
   selected_agent_os_contains "opencode" || return 0
 
@@ -2316,7 +2412,12 @@ configure_opencode_plugins_if_needed() {
   ensure_dir "$APP_CONFIG_DIR"
 
   # During manifest replay/re-install, keep current global plugin settings and avoid prompts.
+  if [[ "$INSTALL_SETTINGS_REPLAY" == true && "$OPENCODE_PLUGINS_CONFIGURED" == true ]]; then
+    log "OpenCode plugin settings loaded from .agentic.json"
+    return
+  fi
   if [[ "$INSTALL_SETTINGS_REPLAY" == true && -f "$OPENCODE_PLUGIN_CONFIG_FILE" ]]; then
+    load_opencode_plugin_config_globals || true
     log "OpenCode plugin config already exists; keeping current settings"
     return
   fi
@@ -2324,11 +2425,13 @@ configure_opencode_plugins_if_needed() {
   if ! is_interactive_terminal; then
     if [[ ! -f "$OPENCODE_PLUGIN_CONFIG_FILE" ]]; then
       write_default_opencode_plugin_config
+    else
+      load_opencode_plugin_config_globals || true
     fi
     return
   fi
 
-  local plugin_options=("telegram-opencode-notifier" "agent-model-mapper")
+  local plugin_options=("telegram-notification" "agent-model-mapper")
   local selected_plugins=()
   local use_fzf_plugins=false
   if fzf_available; then
@@ -2351,14 +2454,26 @@ configure_opencode_plugins_if_needed() {
     selected_plugin="$(trim "$selected_plugin")"
     [[ -z "$selected_plugin" ]] && continue
     case "$selected_plugin" in
-      telegram-opencode-notifier) enable_telegram="y" ;;
+      telegram-notification|telegram-opencode-notifier) enable_telegram="y" ;;
       agent-model-mapper) enable_agent_model_mapper="y" ;;
     esac
   done
 
   if [[ "$enable_telegram" =~ ^[Yy]$ ]]; then
-    log "Telegram plugin enabled; credentials are read only from OPENCODE_TELEGRAM_BOT_TOKEN and OPENCODE_TELEGRAM_CHAT_ID"
+    OPENCODE_TELEGRAM_BOT_TOKEN="$(prompt_text_interactive "Telegram botToken" "$OPENCODE_TELEGRAM_BOT_TOKEN")"
+    OPENCODE_TELEGRAM_CHAT_ID="$(prompt_text_interactive "Telegram chatId" "$OPENCODE_TELEGRAM_CHAT_ID")"
+    if [[ -z "$OPENCODE_TELEGRAM_BOT_TOKEN" || -z "$OPENCODE_TELEGRAM_CHAT_ID" ]]; then
+      warn "Telegram plugin credentials are incomplete; disabling telegram-notification"
+      enable_telegram="n"
+      OPENCODE_TELEGRAM_BOT_TOKEN=""
+      OPENCODE_TELEGRAM_CHAT_ID=""
+    else
+      log "Telegram plugin enabled; credentials will be stored in project .agentic.json"
+    fi
   fi
+  OPENCODE_TELEGRAM_ENABLED=$([[ "$enable_telegram" =~ ^[Yy]$ ]] && echo "true" || echo "false")
+  OPENCODE_AGENT_MODEL_MAPPER_ENABLED=$([[ "$enable_agent_model_mapper" =~ ^[Yy]$ ]] && echo "true" || echo "false")
+  OPENCODE_PLUGINS_CONFIGURED=true
 
   python3 - "$OPENCODE_PLUGIN_CONFIG_FILE" "$enable_telegram" "$enable_agent_model_mapper" <<'PY'
 import json
@@ -2382,6 +2497,12 @@ PY
 }
 
 opencode_agent_model_mapper_config_enabled() {
+  if [[ "$OPENCODE_AGENT_MODEL_MAPPER_ENABLED" == "true" ]]; then
+    return 0
+  fi
+  if [[ "$OPENCODE_AGENT_MODEL_MAPPER_ENABLED" == "false" ]]; then
+    return 1
+  fi
   [[ -f "$OPENCODE_PLUGIN_CONFIG_FILE" ]] || return 1
   python3 - "$OPENCODE_PLUGIN_CONFIG_FILE" <<'PY'
 import json
@@ -2430,14 +2551,22 @@ PY
 
 opencode_mapper_discover_models() {
   local config_path="$HOME/.config/opencode/opencode.json"
-  python3 - "$config_path" <<'PY'
+  local auth_path="$HOME/.local/share/opencode/auth.json"
+  local models_cache_path="$HOME/.cache/opencode/models.json"
+  python3 - "$config_path" "$auth_path" "$models_cache_path" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 fallback = ["opencode/minimax-m2.5-free"]
-path = Path(sys.argv[1])
+config_path = Path(sys.argv[1])
+auth_path = Path(sys.argv[2])
+models_cache_path = Path(sys.argv[3])
 models = []
+
+def add_model(model):
+    if isinstance(model, str) and model.strip() and "/" in model:
+        models.append(model.strip())
 
 def collect_provider_models(data):
     """Extract models from provider.<name>.models dict keys."""
@@ -2452,7 +2581,7 @@ def collect_provider_models(data):
             continue
         for model_name in provider_models:
             if isinstance(model_name, str) and model_name.strip():
-                models.append(f"{provider_name}/{model_name}")
+                add_model(f"{provider_name}/{model_name}")
 
 def collect(value):
     if isinstance(value, list):
@@ -2463,17 +2592,62 @@ def collect(value):
         return
     for key, item in value.items():
         if key in {"model", "id"} and isinstance(item, str) and "/" in item:
-            models.append(item)
+            add_model(item)
         if key == "fallback" and isinstance(item, list):
-            models.extend(model for model in item if isinstance(model, str))
+            for model in item:
+                add_model(model)
         collect(item)
 
+def read_json(path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+def is_deprecated(model_data):
+    if not isinstance(model_data, dict):
+        return False
+    status = str(model_data.get("status", "")).lower()
+    lifecycle = str(model_data.get("lifecycle", "")).lower()
+    return (
+        model_data.get("deprecated") is True
+        or status in {"deprecated", "retired", "removed"}
+        or lifecycle in {"deprecated", "retired", "removed"}
+    )
+
+def collect_authenticated_provider_models(auth_data, cache_data):
+    if not isinstance(auth_data, dict) or not isinstance(cache_data, dict):
+        return
+    for provider_name, auth in auth_data.items():
+        if not isinstance(provider_name, str) or not provider_name.strip():
+            continue
+        if auth in (None, False):
+            continue
+        provider_data = cache_data.get(provider_name)
+        if not isinstance(provider_data, dict):
+            continue
+        provider_models = provider_data.get("models")
+        if isinstance(provider_models, dict):
+            for model_name, model_data in provider_models.items():
+                if isinstance(model_name, str) and model_name.strip() and not is_deprecated(model_data):
+                    add_model(f"{provider_name}/{model_name}")
+        elif isinstance(provider_models, list):
+            for item in provider_models:
+                if isinstance(item, str):
+                    add_model(f"{provider_name}/{item}")
+                elif isinstance(item, dict) and not is_deprecated(item):
+                    model_name = item.get("id") or item.get("name")
+                    if isinstance(model_name, str) and model_name.strip():
+                        add_model(f"{provider_name}/{model_name}")
+
 try:
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = json.loads(config_path.read_text(encoding="utf-8"))
     collect_provider_models(data)
     collect(data)
 except Exception:
     pass
+
+collect_authenticated_provider_models(read_json(auth_path), read_json(models_cache_path))
 
 seen = set()
 for model in models or fallback:
@@ -2634,6 +2808,51 @@ PY
   register_managed_file "$state_path" "generated:opencode-agent-model-mapper-state" "config"
 }
 
+confirm_opencode_agent_model_mapping() {
+  local mapping_file="$1"
+  if fzf_available; then
+    local summary selected
+    summary="$(python3 - "$mapping_file" <<'PY'
+import sys
+from pathlib import Path
+
+for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    if not line:
+        continue
+    name, model, fallback = (line.split("\t") + ["", "", ""])[:3]
+    print(f"{name}: main={model} fallback={fallback}")
+PY
+)"
+    set +e
+    selected="$(printf '%s\n' "Confirm" "Cancel" | fzf \
+      --ansi \
+      --border \
+      --height=70% \
+      --layout=reverse \
+      --no-sort \
+      --prompt "Save OpenCode model mapping? " \
+      --header "$summary")"
+    local fzf_status=$?
+    set -e
+    [[ "$fzf_status" -eq 0 ]] || return 1
+    [[ "$selected" == "Confirm" ]]
+    return
+  fi
+
+  out "agent-model-mapper selected mapping:"
+  python3 - "$mapping_file" <<'PY'
+import sys
+from pathlib import Path
+
+for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    if not line:
+        continue
+    name, model, fallback = (line.split("\t") + ["", "", ""])[:3]
+    print(f"  - {name}: main={model} fallback={fallback}")
+PY
+  confirm_action_interactive "Write .opencode/opencode.json agent model mapping?"
+}
+
 configure_opencode_agent_model_mapper_if_needed() {
   selected_agent_os_contains "opencode" || return 0
   opencode_agent_model_mapper_config_enabled || return 0
@@ -2685,13 +2904,8 @@ configure_opencode_agent_model_mapper_if_needed() {
     printf '%s\t%s\t%s\n' "$role_name" "$model" "$fallback" >> "$mapping_file"
   done < "$roles_file"
 
-  local confirm
-  if ! read -r -p "Write .opencode/opencode.json agent model mapping? [y/N]: " confirm <&3; then
-    confirm=""
-  fi
   exec 3<&-
-  confirm="$(trim "$confirm")"
-  if [[ ! "$confirm" =~ ^[Yy]([Ee][Ss])?$ ]]; then
+  if ! confirm_opencode_agent_model_mapping "$mapping_file"; then
     log "agent-model-mapper: skipped by user; no files changed"
     rm -f "$roles_file" "$models_file" "$mapping_file"
     return 0
@@ -3423,6 +3637,84 @@ prompt_with_default_fzf() {
     return
   fi
   printf '%s\n' "$default"
+}
+
+prompt_text_fzf() {
+  local prompt="$1"
+  local default="${2:-}"
+  local header="Type value and press Enter to confirm"
+  if [[ -n "$default" ]]; then
+    header="$header (empty = current value)"
+  fi
+  local fzf_args=(
+    --ansi
+    --border
+    --height=70%
+    --layout=reverse
+    --cycle
+    --no-sort
+    --phony
+    --print-query
+    --bind "enter:accept"
+    --prompt "$prompt "
+    --header "$header"
+  )
+  if [[ "${#FZF_COLOR_ARGS[@]}" -gt 0 ]]; then
+    fzf_args+=("${FZF_COLOR_ARGS[@]}")
+  fi
+
+  local output selected
+  if ! output="$(printf '%s\n' "<press Enter to confirm>" | fzf "${fzf_args[@]}")"; then
+    return 1
+  fi
+  selected="$(printf '%s\n' "$output" | sed -n '1p')"
+  selected="$(trim "$selected")"
+  if [[ -n "$selected" ]]; then
+    printf '%s\n' "$selected"
+  else
+    printf '%s\n' "$default"
+  fi
+}
+
+prompt_text_tui() {
+  local prompt="$1"
+  local default="${2:-}"
+  local answer
+  if [[ -n "$default" ]]; then
+    read -r -p "$prompt [keep current]: " answer
+  else
+    read -r -p "$prompt: " answer
+  fi
+  answer="$(trim "$answer")"
+  if [[ -n "$answer" ]]; then
+    printf '%s\n' "$answer"
+  else
+    printf '%s\n' "$default"
+  fi
+}
+
+prompt_text_interactive() {
+  local prompt="$1"
+  local default="${2:-}"
+  if fzf_available; then
+    prompt_text_fzf "$prompt" "$default"
+  else
+    prompt_text_tui "$prompt" "$default"
+  fi
+}
+
+confirm_action_interactive() {
+  local prompt="$1"
+  local selected
+  if fzf_available; then
+    selected="$(choose_single_fzf "$prompt" "Confirm" "Cancel" || true)"
+    [[ "$selected" == "Confirm" ]]
+    return
+  fi
+  local answer
+  read -r -p "$prompt [y/N]: " answer
+  answer="$(trim "$answer")"
+  [[ "$answer" =~ ^[Yy]([Ee][Ss])?$ ]]
 }
 
 choose_single_by_index() {

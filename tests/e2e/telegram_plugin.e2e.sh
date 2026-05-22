@@ -27,9 +27,24 @@ assert_file_not_contains() {
 PROJECT="$TMP_ROOT/project"
 HOME_DIR="$TMP_ROOT/home"
 mkdir -p "$PROJECT/.opencode" "$HOME_DIR/.config/agentic"
+TOKEN="123456:super-secret-token"
+CHAT="987654321"
 cat > "$HOME_DIR/.config/agentic/opencode-plugins.json" <<'JSON'
 {
   "telegram": {"enabled": true, "botToken": "must-not-be-read", "chatId": "must-not-be-read"}
+}
+JSON
+cat > "$PROJECT/.agentic.json" <<JSON
+{
+  "settings": {
+    "opencode_plugins": {
+      "telegram": {
+        "enabled": true,
+        "botToken": "$TOKEN",
+        "chatId": "$CHAT"
+      }
+    }
+  }
 }
 JSON
 
@@ -61,7 +76,7 @@ with socketserver.TCPServer(("127.0.0.1", 0), Handler) as server:
     server.serve_forever()
 PY
 SERVER_PID=$!
-for _ in 1 2 3 4 5 6 7 8 9 10; do
+for _ in $(seq 1 50); do
   [[ -s "$PORT_FILE" ]] && break
   sleep 0.2
 done
@@ -77,6 +92,8 @@ plugin="${1:?missing plugin}"
 directory="${2:?missing directory}"
 node - "$plugin" "$directory" <<'NODE'
 const fs = require("fs")
+const http = require("http")
+const https = require("https")
 const vm = require("vm")
 const pluginPath = process.argv[2]
 const directory = process.argv[3]
@@ -92,11 +109,31 @@ source = source.replace(/: unknown/g, "")
 source = source.replace(/ as AgenticPluginConfig/g, "")
 source = source.replace(/ as string/g, "")
 source = source.replace(/ as any/g, "")
-vm.runInNewContext(source, { require, console, process, globalThis, fetch, FormData, Blob })
+const testFetch = global.fetch || ((url, options = {}) => new Promise((resolve, reject) => {
+  const target = new URL(url)
+  const client = target.protocol === "https:" ? https : http
+  const body = options.body || ""
+  const request = client.request(target, {
+    method: options.method || "GET",
+    headers: {
+      ...(options.headers || {}),
+      "Content-Length": Buffer.byteLength(body),
+    },
+  }, (response) => {
+    response.resume()
+    response.on("end", () => resolve({ ok: response.statusCode >= 200 && response.statusCode < 300, status: response.statusCode }))
+  })
+  request.on("error", reject)
+  if (body) request.write(body)
+  request.end()
+}))
+class TestBlob {}
+class TestFormData {}
+vm.runInNewContext(source, { require, console, process, globalThis, fetch: testFetch, FormData: global.FormData || TestFormData, Blob: global.Blob || TestBlob })
 const client = {
   session: {
     get: async () => ({ data: { title: "hello_world.py", summary: { additions: 1, deletions: 0, files: 1 } } }),
-    messages: async () => ({ data: [{ parts: [{ type: "text", text: "created hello_world.py" }] }] }),
+    messages: async () => ({ data: [{ parts: [{ type: "text", text: "## Affected modules/files for the simple task\n\n# created hello_world.py\n\n```bash\npython3 hello_world.py\n```\n\n```text\nHello, world!\n```" }] }] }),
   },
 }
 const dollar = async (strings, ...values) => {
@@ -116,18 +153,21 @@ NODE
 EOS
 chmod +x "$NODE_STUB"
 
-TOKEN="123456:super-secret-token"
-CHAT="987654321"
 OUT="$TMP_ROOT/plugin.log"
 HOME="$HOME_DIR" \
-  OPENCODE_TELEGRAM_BOT_TOKEN="$TOKEN" \
-  OPENCODE_TELEGRAM_CHAT_ID="$CHAT" \
   OPENCODE_TELEGRAM_API_BASE_URL="http://127.0.0.1:$PORT" \
   "$NODE_STUB" "$ROOT_DIR/extensions/opencode/plugins/telegram-notification.ts" "$PROJECT" >"$OUT" 2>&1
 
 assert_file_contains "$SERVER_LOG" "/bot$TOKEN/sendMessage"
 assert_file_contains "$SERVER_LOG" "$CHAT"
-assert_file_contains "$SERVER_LOG" "created hello_world.py"
+assert_file_not_contains "$SERVER_LOG" "parse_mode"
+assert_file_not_contains "$SERVER_LOG" "MarkdownV2"
+assert_file_contains "$SERVER_LOG" "created hello"
+assert_file_contains "$SERVER_LOG" "## Affected modules/files for the simple task"
+assert_file_contains "$SERVER_LOG" "# created hello_world"
+assert_file_not_contains "$SERVER_LOG" "*Affected modules/files for the simple task*"
+assert_file_contains "$SERVER_LOG" '```bash\npython3 hello_world.py\n```'
+assert_file_contains "$SERVER_LOG" '```text\nHello, world!\n```'
 assert_file_not_contains "$OUT" "$TOKEN"
 assert_file_not_contains "$OUT" "$CHAT"
 assert_file_not_contains "$HOME_DIR/.config/agentic/opencode-plugins.json" "$TOKEN"

@@ -22,7 +22,7 @@ theme=auto
 
 Supported values are `auto`, `dark`, and `light`.
 
-Target projects receive `.agentic.json`. It stores selected install settings, managed file paths, source paths, hashes, generated marker type, and skipped files from the latest rerun.
+Target projects receive `.agentic.json`. It stores selected install settings, optional project-level OpenCode plugin configuration, managed file paths, source paths, hashes, generated marker type, and skipped files from the latest rerun. When Telegram notifications are enabled, `.agentic.json` includes plaintext `botToken` and `chatId`; keep that file out of public repositories.
 
 ## Repository modes
 

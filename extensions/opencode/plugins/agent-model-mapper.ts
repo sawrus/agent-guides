@@ -7,6 +7,7 @@ type AgenticPluginConfig = {
   agentModelMapper?: {
     enabled?: boolean
   }
+  settings?: any
 }
 
 type Role = {
@@ -21,6 +22,14 @@ function readAgenticConfig(): AgenticPluginConfig {
 
   try {
     return JSON.parse(readFileSync(configPath, "utf-8")) as AgenticPluginConfig
+  } catch {
+    return {}
+  }
+}
+
+function readProjectAgenticConfig(directory: string): AgenticPluginConfig {
+  try {
+    return JSON.parse(readFileSync(join(directory, ".agentic.json"), "utf-8")) as AgenticPluginConfig
   } catch {
     return {}
   }
@@ -87,8 +96,10 @@ function hasCompleteAgentModelMapping(directory: string, roles: Role[]): boolean
 }
 
 export const AgentModelMapperPlugin: Plugin = async ({ directory }) => {
-  const config = readAgenticConfig()
-  if (!config.agentModelMapper?.enabled) return {}
+  const projectConfig = readProjectAgenticConfig(directory)
+  const globalConfig = readAgenticConfig()
+  const enabled = projectConfig.settings?.opencode_plugins?.agentModelMapper?.enabled ?? globalConfig.agentModelMapper?.enabled
+  if (!enabled) return {}
 
   const roles = await readRoles(directory)
   if (!roles.length) {
