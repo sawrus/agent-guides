@@ -26,10 +26,12 @@ assert_file_not_contains() {
 
 PROJECT="$TMP_ROOT/project"
 HOME_DIR="$TMP_ROOT/home"
-mkdir -p "$PROJECT/.opencode" "$HOME_DIR/.config/agentic"
+XDG_CONFIG_DIR="$TMP_ROOT/xdg-config"
+XDG_DATA_DIR="$TMP_ROOT/xdg-data"
+mkdir -p "$PROJECT/.opencode" "$XDG_CONFIG_DIR/agentic"
 TOKEN="123456:super-secret-token"
 CHAT="987654321"
-cat > "$HOME_DIR/.config/agentic/opencode-plugins.json" <<'JSON'
+cat > "$XDG_CONFIG_DIR/agentic/opencode-plugins.json" <<'JSON'
 {
   "telegram": {"enabled": true, "botToken": "must-not-be-read", "chatId": "must-not-be-read"}
 }
@@ -155,6 +157,8 @@ chmod +x "$NODE_STUB"
 
 OUT="$TMP_ROOT/plugin.log"
 HOME="$HOME_DIR" \
+  XDG_CONFIG_HOME="$XDG_CONFIG_DIR" \
+  XDG_DATA_HOME="$XDG_DATA_DIR" \
   OPENCODE_TELEGRAM_API_BASE_URL="http://127.0.0.1:$PORT" \
   "$NODE_STUB" "$ROOT_DIR/extensions/opencode/plugins/telegram-notification.ts" "$PROJECT" >"$OUT" 2>&1
 
@@ -170,7 +174,7 @@ assert_file_contains "$SERVER_LOG" '```bash\npython3 hello_world.py\n```'
 assert_file_contains "$SERVER_LOG" '```text\nHello, world!\n```'
 assert_file_not_contains "$OUT" "$TOKEN"
 assert_file_not_contains "$OUT" "$CHAT"
-assert_file_not_contains "$HOME_DIR/.config/agentic/opencode-plugins.json" "$TOKEN"
-assert_file_not_contains "$HOME_DIR/.config/agentic/opencode-plugins.json" "$CHAT"
+assert_file_not_contains "$XDG_CONFIG_DIR/agentic/opencode-plugins.json" "$TOKEN"
+assert_file_not_contains "$XDG_CONFIG_DIR/agentic/opencode-plugins.json" "$CHAT"
 
 echo "telegram plugin e2e ok"

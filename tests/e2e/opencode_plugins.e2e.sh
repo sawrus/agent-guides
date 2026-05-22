@@ -122,8 +122,10 @@ EOS
 chmod +x "$NODE_STUB"
 
 HOME_NONTTY="$TMP_ROOT/home-nontty"
-mkdir -p "$HOME_NONTTY/.config/agentic" "$HOME_NONTTY/.config/opencode"
-cat > "$HOME_NONTTY/.config/agentic/opencode-plugins.json" <<'JSON'
+XDG_CONFIG_NONTTY="$TMP_ROOT/xdg-config-nontty"
+XDG_DATA_NONTTY="$TMP_ROOT/xdg-data-nontty"
+mkdir -p "$XDG_CONFIG_NONTTY/agentic" "$HOME_NONTTY/.config/opencode"
+cat > "$XDG_CONFIG_NONTTY/agentic/opencode-plugins.json" <<'JSON'
 {
   "agentModelMapper": {"enabled": true}
 }
@@ -140,7 +142,7 @@ cat > "$HOME_NONTTY/.config/opencode/opencode.json" <<'JSON'
 JSON
 BEFORE_HASH="$(shasum -a 256 "$PROJECT/.opencode/opencode.json" | cut -d ' ' -f 1)"
 OUT_NONTTY="$TMP_ROOT/mapper-nontty.log"
-HOME="$HOME_NONTTY" "$NODE_STUB" mapper "$PROJECT/.opencode/plugins/agent-model-mapper.ts" "$PROJECT" >"$OUT_NONTTY" 2>&1 || {
+HOME="$HOME_NONTTY" XDG_CONFIG_HOME="$XDG_CONFIG_NONTTY" XDG_DATA_HOME="$XDG_DATA_NONTTY" "$NODE_STUB" mapper "$PROJECT/.opencode/plugins/agent-model-mapper.ts" "$PROJECT" >"$OUT_NONTTY" 2>&1 || {
   cat "$OUT_NONTTY" >&2
   exit 1
 }
@@ -157,11 +159,12 @@ cat > "$PROJECT/.opencode/agent-model-mapper.state.json" <<'JSON'
 }
 JSON
 OUT_TTY_SECOND="$TMP_ROOT/mapper-tty-second.log"
-HOME="$HOME_NONTTY" "$NODE_STUB" mapper-tty "$PROJECT/.opencode/plugins/agent-model-mapper.ts" "$PROJECT" >"$OUT_TTY_SECOND" 2>&1
+HOME="$HOME_NONTTY" XDG_CONFIG_HOME="$XDG_CONFIG_NONTTY" XDG_DATA_HOME="$XDG_DATA_NONTTY" "$NODE_STUB" mapper-tty "$PROJECT/.opencode/plugins/agent-model-mapper.ts" "$PROJECT" >"$OUT_TTY_SECOND" 2>&1
 assert_file_contains "$OUT_TTY_SECOND" "skipped because all Agentic roles already have model mappings"
 
 INSTALL_PROJECT="$TMP_ROOT/install-project"
 INSTALL_HOME="$TMP_ROOT/install-home"
+INSTALL_XDG_CONFIG_HOME="$TMP_ROOT/install-xdg-config"
 INSTALL_BIN="$TMP_ROOT/install-bin"
 INSTALL_LOG="$TMP_ROOT/install-mapper.log"
 PYTHON3_BIN="$(command -v python3)"
@@ -194,7 +197,7 @@ cat > "$INSTALL_HOME/.cache/opencode/models.json" <<'JSON'
 }
 JSON
 printf '%s\n' "n" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "y" "n" "n" | \
-  env HOME="$INSTALL_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 AGENTIC_DOCTOR=0 "$ROOT_DIR/agentic" install \
+  env HOME="$INSTALL_HOME" XDG_CONFIG_HOME="$INSTALL_XDG_CONFIG_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 AGENTIC_DOCTOR=0 "$ROOT_DIR/agentic" install \
     --project-dir "$INSTALL_PROJECT" \
     --agent-os opencode \
     --areas software \

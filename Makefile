@@ -1,4 +1,4 @@
-.PHONY: help install dev test test-all test-cli test-tui test-cross test-doctor test-markers test-opencode-plugins test-telegram-plugin test-real-agent-doctor test-real-blackbox test-real-blackbox-codex test-real-blackbox-opencode test-real-blackbox-telegram test-real-opencode-mapper test-coverage _test-coverage-steps lint fmt clean build assess-areas
+.PHONY: help install dev test test-all test-cli test-tui test-cross test-doctor test-markers test-opencode-plugins test-telegram-plugin test-ubuntu-blackbox test-real-agent-doctor test-real-blackbox test-real-blackbox-codex test-real-blackbox-opencode test-real-blackbox-telegram test-real-opencode-mapper test-coverage _test-coverage-steps lint fmt clean build assess-areas
 
 define timed_step
 	@label='$(1)'; \
@@ -32,6 +32,7 @@ help:
 		"  test-markers  Run generated marker and idempotency tests" \
 		"  test-opencode-plugins  Run OpenCode plugin deterministic tests" \
 		"  test-telegram-plugin   Run Telegram plugin deterministic tests" \
+		"  test-ubuntu-blackbox   Run make test in a clean Docker Ubuntu image" \
 		"  test-real-agent-doctor  Run real agent doctor checks" \
 		"  test-real-blackbox      Run real Codex/OpenCode/Telegram blackbox tests" \
 		"  test-real-blackbox-codex  Run real Codex blackbox test" \
@@ -88,6 +89,9 @@ test-opencode-plugins:
 
 test-telegram-plugin:
 	$(call timed_step,test-telegram-plugin,bash tests/e2e/telegram_plugin.e2e.sh)
+
+test-ubuntu-blackbox:
+	$(call timed_step,test-ubuntu-blackbox,bash tests/e2e/ubuntu_blackbox.e2e.sh)
 
 test-real-agent-doctor:
 	$(call timed_step,test-real-agent-doctor,bash tests/e2e/real_agent_doctor.e2e.sh)
