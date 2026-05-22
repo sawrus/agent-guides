@@ -1,0 +1,22 @@
+name: Run tests on MR to main
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Make dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make
+
+      - name: Run tests
+        run: make test

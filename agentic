@@ -2095,23 +2095,87 @@ run_mempalace_command() {
 }
 
 install_mempalace_with_pip() {
-  local pip_bin="$1"
-  local output_file status
-  output_file="$(mktemp "${TMPDIR:-/tmp}/agentic-mempalace-pip.XXXXXX")"
+    local pip_bin="$1"
+    local output_file status
+    local py_bin venv_dir venv_python
 
-  if $pip_bin install mempalace >"$output_file" 2>&1; then
-    log "MemPalace package installed via '$pip_bin install mempalace'"
+    output_file="$(mktemp "${TMPDIR:-/tmp}/agentic-mempalace-pip.XXXXXX")"
+
+    if $pip_bin install mempalace >"$output_file" 2>&1; then
+        log "MemPalace package installed via '$pip_bin install mempalace'"
+        log_file_block "MemPalace pip install" "$output_file"
+        rm -f "$output_file"
+        return 0
+    else
+        status=$?
+    fi
+
+    if grep -qi "externally-managed-environment" "$output_file"; then
+        log "Detected PEP 668 externally-managed Python environment; retrying inside isolated venv"
+
+        py_bin="$(command -v python3 || command -v python)"
+        if [[ -z "$py_bin" ]]; then
+            warn "python3/python executable not found"
+            return 1
+        fi
+
+        venv_dir="${HOME}/.agentic/mempalace-venv"
+
+        if [[ ! -d "$venv_dir" ]]; then
+            mkdir -p "$(dirname "$venv_dir")"
+
+            if ! "$py_bin" -m venv "$venv_dir" >>"$output_file" 2>&1; then
+                warn "Unable to create virtual environment at $venv_dir"
+                log_file_block "MemPalace pip install" "$output_file"
+                return 1
+            fi
+        fi
+
+        venv_python="$venv_dir/bin/python"
+
+        if ! "$venv_python" -m pip install --upgrade pip setuptools wheel >>"$output_file" 2>&1; then
+            warn "Unable to upgrade pip inside virtual environment"
+            log_file_block "MemPalace pip install" "$output_file"
+            return 1
+        fi
+
+        if ! "$venv_python" -m pip install --no-cache-dir --upgrade mempalace >>"$output_file" 2>&1; then
+            warn "Unable to install mempalace inside virtual environment"
+            log_file_block "MemPalace pip install" "$output_file"
+            return 1
+        fi
+
+        local_bin_dir="$HOME/.local/bin"
+
+        mkdir -p "$local_bin_dir"
+
+        ln -sf "$venv_dir/bin/mempalace" "$local_bin_dir/mempalace"
+
+        export PATH="$local_bin_dir:$venv_dir/bin:$PATH"
+
+        shell_name="$(basename "${SHELL:-}")"
+
+        if [[ "$shell_name" == "zsh" ]]; then
+            grep -qxF 'export PATH="$HOME/.local/bin:$PATH"' "$HOME/.zshrc" 2>/dev/null || \
+                echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.zshrc"
+        else
+            grep -qxF 'export PATH="$HOME/.local/bin:$PATH"' "$HOME/.bashrc" 2>/dev/null || \
+                echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+        fi
+
+        log "MemPalace installed successfully inside virtual environment: $venv_dir"
+        log "MemPalace binary linked to: $local_bin_dir/mempalace"
+        log_file_block "MemPalace pip install" "$output_file"
+
+        rm -f "$output_file"
+        return 0
+    fi
+
+    warn "Unable to auto-install mempalace via pip; continuing with manual setup instructions (exit $status, log: $output_file)"
     log_file_block "MemPalace pip install" "$output_file"
-    rm -f "$output_file"
-    return 0
-  else
-    status=$?
-  fi
+    warn_mempalace_pip_failure_reason "$output_file"
 
-  warn "Unable to auto-install mempalace via pip; continuing with manual setup instructions (exit $status, log: $output_file)"
-  log_file_block "MemPalace pip install" "$output_file"
-  warn_mempalace_pip_failure_reason "$output_file"
-  return 1
+    return 1
 }
 
 mempalace_venv_dir() {
