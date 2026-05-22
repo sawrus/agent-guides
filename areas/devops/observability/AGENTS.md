@@ -4,13 +4,6 @@
 
 Platform observability: Prometheus metrics and Alertmanager rules, Loki log aggregation, Tempo distributed tracing, Grafana dashboards, SLO implementation, and service monitoring onboarding.
 
-## Guidance chain
-
-1. Project `.agent/` baseline
-2. `.agent/rules/*` — load all
-3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-4. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Cross-cutting constraints
 
 - **Golden signals first** — every new service exposes latency, traffic, errors, and saturation before any custom metrics.
@@ -39,10 +32,3 @@ Platform observability: Prometheus metrics and Alertmanager rules, Loki log aggr
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

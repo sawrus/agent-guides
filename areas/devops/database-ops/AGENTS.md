@@ -4,13 +4,6 @@
 
 Operational database management: backup verification, performance tuning, migration safety, incident response, PostgreSQL and Redis operations. Focus is on production database reliability, not application-level ORM usage.
 
-## Guidance chain
-
-1. Project `.agent/` baseline
-2. `.agent/rules/*` — load all
-3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-4. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Cross-cutting constraints
 
 - **Backups are not optional** — every production database has a verified backup and a tested restore procedure.
@@ -38,10 +31,3 @@ Operational database management: backup verification, performance tuning, migrat
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

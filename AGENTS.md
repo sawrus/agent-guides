@@ -16,12 +16,19 @@ project_dir/
     └── prompts/
 ```
 
+## Guidance chain
+
+1. Project `.agent/` baseline
+2. `.agent/rules/*` — load all
+3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
+4. `.agent/workflows/*` — load the workflow matching the triggered command
+
 **Discovery patterns:**
 
-- `project_dir/.agent/rules/*`
-- `project_dir/.agent/skills/*`
-- `project_dir/.agent/workflows/*`
-- `project_dir/.agent/prompts/*`
+- `.agent/rules/*.md`
+- `.agent/skills/*/SKILL.md`
+- `.agent/workflows/*.md`
+- `.agent/prompts/*.md`
 
 Prefer relative paths in references inside markdown files.
 

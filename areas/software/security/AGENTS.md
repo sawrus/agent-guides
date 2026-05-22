@@ -4,14 +4,6 @@
 
 Application and infrastructure security: secure coding standards, dependency auditing, SAST/DAST interpretation, threat modeling, auth patterns, cryptography standards, security headers, secret rotation, and compliance reporting.
 
-## Guidance chain
-
-1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `.agent/rules/*` — always active
-3. `.agent/rules/*` — load all for this spec
-4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-5. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Inherited from general
 
 - Git / CI quality baseline
@@ -49,10 +41,3 @@ Application and infrastructure security: secure coding standards, dependency aud
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

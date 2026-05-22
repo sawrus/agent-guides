@@ -37,6 +37,8 @@ Rules:
 
 ### Writing facts
 
+Use `mempalace_store` proactively when a durable fact is discovered, decided, or corrected. Do not wait for a later search to make project knowledge persistent.
+
 Store only durable, self-contained facts:
 
 - architecture decisions and rationale;
@@ -46,6 +48,15 @@ Store only durable, self-contained facts:
 - team conventions not already captured in `docs/**`.
 
 Store one fact per call, tagged with project/module/domain nouns. Write project facts to the current project wing. Write to `shared_docs` only when the knowledge is intentionally reusable across projects.
+
+```json
+mempalace_store({
+  "wing": "<current_project_wing>",
+  "room": "<known_room_if_confirmed>",
+  "text": "Durable fact stated as a complete sentence with enough context to stand alone.",
+  "tags": ["project", "module", "domain"]
+})
+```
 
 ## Fallback
 

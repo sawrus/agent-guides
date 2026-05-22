@@ -12,15 +12,6 @@ Delete all AGENT INSTRUCTIONS comments before finalising.
 
 {{ONE_PARAGRAPH: what domain this spec covers, who uses it, and what kinds of work it guides agents through.}}
 
-## Guidance chain
-
-Load in this order:
-
-1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `.agent/rules/*` — load all rules for this spec
-3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task (see "When to load" in each skill)
-4. `.agent/workflows/*` — load the workflow matching the triggered slash command
-
 ## Inherited from {{DOMAIN_NAME}} area
 
 <!--
@@ -58,10 +49,3 @@ Avoid advice-language: "consider", "try to", "ideally".
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

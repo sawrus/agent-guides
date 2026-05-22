@@ -4,14 +4,6 @@
 
 End-to-end product feature development spanning backend services and frontend interfaces: API design, backend architecture, database access, async processing, frontend integration, testing pipelines, and full project lifecycle management.
 
-## Guidance chain
-
-1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `.agent/rules/*` — always active
-3. `.agent/rules/*` — load all for this spec
-4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-5. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Inherited from general
 
 - SDLC methodology, role responsibilities, and handoff contracts
@@ -60,10 +52,3 @@ End-to-end product feature development spanning backend services and frontend in
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

@@ -4,13 +4,6 @@
 
 Self-hosted and managed Kubernetes cluster operations: cluster bootstrap, workload onboarding, RBAC design, network policies, resource governance, upgrade management, and pod-level debugging.
 
-## Guidance chain
-
-1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `.agent/rules/*` — load all
-3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-4. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Inherited from devops area
 
 - Infrastructure-as-Code immutability principle — no manual kubectl edits in production.
@@ -48,10 +41,3 @@ Self-hosted and managed Kubernetes cluster operations: cluster bootstrap, worklo
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

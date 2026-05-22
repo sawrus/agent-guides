@@ -4,14 +4,6 @@
 
 Internal platform engineering for software teams: Kubernetes manifests, Terraform patterns, CI/CD pipeline setup, secrets management, observability stack configuration, networking, cost governance, and production incident response. The platform area bridges software development and dedicated DevOps specializations.
 
-## Guidance chain
-
-1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `.agent/rules/*` — always active
-3. `.agent/rules/*` — load all for this spec
-4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-5. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Spec selection
 
 For deep platform specialization, prefer the dedicated DevOps area specs:
@@ -58,10 +50,3 @@ For deep platform specialization, prefer the dedicated DevOps area specs:
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

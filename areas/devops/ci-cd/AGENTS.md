@@ -4,13 +4,6 @@
 
 Continuous integration and delivery pipelines: GitHub Actions, GitLab CI, quality gates, artifact management, build optimization, supply-chain security, and pipeline security hardening.
 
-## Guidance chain
-
-1. Project `.agent/` baseline
-2. `.agent/rules/*` — load all
-3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-4. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Cross-cutting constraints
 
 - **No secrets in pipeline YAML** — all credentials via vault / environment secrets, never inline.
@@ -39,10 +32,3 @@ Continuous integration and delivery pipelines: GitHub Actions, GitLab CI, qualit
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

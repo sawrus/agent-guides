@@ -4,14 +4,6 @@
 
 Machine learning operations: experiment tracking, model training pipelines, feature engineering, model evaluation, champion/challenger workflows, inference serving, model monitoring, and production safety gates. MLOps treats models as software artifacts with the same reproducibility and observability requirements as any production service.
 
-## Guidance chain
-
-1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `.agent/rules/*` — always active
-3. `.agent/rules/*` — load all for this spec
-4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-5. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Inherited from general
 
 - SDLC methodology and handoff contracts
@@ -48,10 +40,3 @@ Machine learning operations: experiment tracking, model training pipelines, feat
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

@@ -4,13 +4,6 @@
 
 Infrastructure-as-Code lifecycle: Terraform module authoring, environment provisioning and destruction, drift detection and remediation, state management, Ansible playbooks, cost optimization, and secret hygiene.
 
-## Guidance chain
-
-1. Project `.agent/` baseline
-2. `.agent/rules/*` — load all
-3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-4. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Cross-cutting constraints
 
 - **IaC-only changes** — zero manual console or CLI changes in non-development environments; document exceptions.
@@ -41,10 +34,3 @@ Infrastructure-as-Code lifecycle: Terraform module authoring, environment provis
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

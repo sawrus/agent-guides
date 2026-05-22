@@ -4,13 +4,6 @@
 
 Shift-left security integration: container hardening, SBOM and supply-chain attestation, OPA / Kyverno policy enforcement, secret detection, and Sigstore artifact signing. Security controls are embedded in the delivery pipeline, not applied after the fact.
 
-## Guidance chain
-
-1. Project `.agent/` baseline
-2. `.agent/rules/*` — load all
-3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-4. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Cross-cutting constraints
 
 - **Shift left** — security checks run in CI, not in a post-deploy audit.
@@ -38,10 +31,3 @@ Shift-left security integration: container hardening, SBOM and supply-chain atte
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

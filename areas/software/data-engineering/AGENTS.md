@@ -4,14 +4,6 @@
 
 Data pipeline engineering: dbt model development, data warehouse schema management, orchestration (Airflow / Prefect), data quality checks, lineage governance, SQL optimization, streaming patterns, and PII-safe data handling.
 
-## Guidance chain
-
-1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `.agent/rules/*` — always active
-3. `.agent/rules/*` — load all for this spec
-4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-5. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Inherited from general
 
 - SDLC methodology and handoff contracts
@@ -50,10 +42,3 @@ Data pipeline engineering: dbt model development, data warehouse schema manageme
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

@@ -4,14 +4,6 @@
 
 iOS, Android, and cross-platform mobile development (React Native, Flutter): offline-first architecture, platform compliance (App Store / Play Store), performance budgets, native module integration, push notifications, OTA update delivery, release builds, and crash triage.
 
-## Guidance chain
-
-1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `.agent/rules/*` — always active
-3. `.agent/rules/*` — load all for this spec
-4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-5. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Inherited from general
 
 - SDLC methodology and handoff contracts
@@ -49,10 +41,3 @@ iOS, Android, and cross-platform mobile development (React Native, Flutter): off
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

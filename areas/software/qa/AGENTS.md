@@ -4,14 +4,6 @@
 
 Test strategy, risk-based verification, and release confidence: test pyramid design, flakiness management, performance auditing, regression suite maintenance, test data management, and accessibility testing.
 
-## Guidance chain
-
-1. Project `.agent/` baseline (`AGENTS.md` + `.agent/*`)
-2. `.agent/rules/*` — always active
-3. `.agent/rules/*` — load all for this spec
-4. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-5. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Inherited from general
 
 - SDLC role responsibilities and handoffs
@@ -49,10 +41,3 @@ Test strategy, risk-based verification, and release confidence: test pyramid des
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

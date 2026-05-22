@@ -4,13 +4,6 @@
 
 Platform networking: Kubernetes ingress design, TLS termination, service mesh onboarding, DNS management, VPC design, and network segmentation. Networking changes are high-blast-radius — this area enforces a plan-review-apply discipline.
 
-## Guidance chain
-
-1. Project `.agent/` baseline
-2. `.agent/rules/*` — load all
-3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-4. `.agent/workflows/*` — load the workflow matching the triggered command
-
 ## Cross-cutting constraints
 
 - **TLS everywhere** — plaintext traffic is forbidden between services and at ingress, without exception.
@@ -38,10 +31,3 @@ Platform networking: Kubernetes ingress design, TLS termination, service mesh on
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`

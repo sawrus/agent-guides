@@ -60,9 +60,3 @@ Specializations reference general guidance and keep only domain-specific overrid
     ├── code-review-workflow.md         ← /code-review
     └── development-cycle-workflow.md   ← /dev-cycle
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`

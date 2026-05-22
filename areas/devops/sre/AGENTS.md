@@ -4,13 +4,6 @@
 
 Site reliability engineering: SLO/SLI design, error budget policy, chaos engineering, capacity planning, incident command, and post-mortem facilitation. The SRE area treats reliability as a measurable feature with a finite budget — not a vague aspiration.
 
-## Guidance chain
-
-1. Project `.agent/` baseline
-2. `.agent/rules/*` — load all
-3. `.agent/skills/*/SKILL.md` — load matching skill only
-4. `.agent/workflows/*` — load matching workflow
-
 ## Cross-cutting constraints
 
 - **SLOs drive decisions** — if error budget remains, ship features; if exhausted, halt features and fix reliability.
@@ -39,10 +32,3 @@ Site reliability engineering: SLO/SLI design, error budget policy, chaos enginee
 └── prompts/
     └── *.md
 ```
-
-## Discovery patterns
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`
