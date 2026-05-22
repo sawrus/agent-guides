@@ -13,10 +13,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Make dependencies
+      - name: Set up test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y make
+          sudo apt-get install -y --no-install-recommends \
+            bash \
+            ca-certificates \
+            coreutils \
+            git \
+            grep \
+            make \
+            nodejs \
+            npm \
+            python3 \
+            python3-pip \
+            sed
 
       - name: Run tests
         run: make test
