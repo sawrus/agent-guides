@@ -305,6 +305,36 @@ assert_file_contains "$P1_MEM_OK/.mempalaceignore" "*.parquet"
 assert_file_contains "$P1_MEM_OK/.mempalaceignore" ".git/"
 assert_file_contains "$P1_MEM_OK/.agentic.json" ".mempalaceignore"
 
+echo "[e2e] Scenario 1ab1: MemPalace pip install failure reports log path and reason"
+P1_MEM_PIP_FAIL="$TMP_ROOT/project-mempalace-pip-fail"
+HOME_MEM_PIP_FAIL="$TMP_ROOT/home-mempalace-pip-fail"
+OUT1AB_PIP_FAIL="$TMP_ROOT/project-mempalace-pip-fail.log"
+FAKE_MEMPALACE_PIP_FAIL_BIN="$TMP_ROOT/fake-mempalace-pip-fail-bin"
+mkdir -p "$FAKE_MEMPALACE_PIP_FAIL_BIN"
+cat > "$FAKE_MEMPALACE_PIP_FAIL_BIN/pip" <<'EOS'
+#!/usr/bin/env bash
+printf '%s\n' "error: externally-managed-environment" >&2
+printf '%s\n' "pip blocked by distro policy" >&2
+exit 23
+EOS
+chmod +x "$FAKE_MEMPALACE_PIP_FAIL_BIN/pip"
+env HOME="$HOME_MEM_PIP_FAIL" PATH="$FAKE_MEMPALACE_PIP_FAIL_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_ENABLE_MEMPALACE=y "$CLI" install \
+  --project-dir "$P1_MEM_PIP_FAIL" \
+  --agent-os codex \
+  --areas software \
+  --specializations software.backend \
+  --theme=light >"$OUT1AB_PIP_FAIL" 2>&1
+assert_file_contains "$OUT1AB_PIP_FAIL" "Unable to auto-install mempalace via pip; continuing with manual setup instructions (exit 23, log:"
+assert_file_contains "$OUT1AB_PIP_FAIL" "pip failure reason: error: externally-managed-environment"
+PIP_FAIL_LOG="$(sed -n 's/^.*Unable to auto-install mempalace via pip; continuing with manual setup instructions (exit 23, log: \(.*\))$/\1/p' "$OUT1AB_PIP_FAIL" | tail -1)"
+[[ -n "$PIP_FAIL_LOG" ]] || fail "Expected MemPalace pip failure log path in $OUT1AB_PIP_FAIL"
+assert_file_contains "$PIP_FAIL_LOG" "pip blocked by distro policy"
+RUN_FAIL_LOG="$(sed -n 's/^.*Agentic log file: //p' "$OUT1AB_PIP_FAIL" | tail -1 | tr -d "'")"
+[[ -n "$RUN_FAIL_LOG" ]] || fail "Expected Agentic run log path in $OUT1AB_PIP_FAIL"
+assert_file_contains "$RUN_FAIL_LOG" "--- MemPalace pip install output begin ---"
+assert_file_contains "$RUN_FAIL_LOG" "pip blocked by distro policy"
+assert_file_contains "$P1_MEM_PIP_FAIL/.codex/config.toml" "[mcp_servers.mempalace]"
+
 echo "[e2e] Scenario 1ab2: OpenCode MemPalace init logs failures with architecture warning"
 P1_MEM_OC="$TMP_ROOT/project-mempalace-opencode"
 HOME_MEM_OC="$TMP_ROOT/home-mempalace-opencode"
@@ -404,7 +434,7 @@ P1_CTX="$TMP_ROOT/project-context7"
 HOME_CTX="$TMP_ROOT/home-context7"
 OUT1A="$TMP_ROOT/project-context7.log"
 printf '%s\n' "y" "2" "" | \
-  env HOME="$HOME_CTX" AGENTIC_FORCE_INTERACTIVE=1 CONTEXT7_API_KEY="test-context7-key" "$CLI" install \
+  env HOME="$HOME_CTX" PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 CONTEXT7_API_KEY="test-context7-key" "$CLI" install \
     --project-dir "$P1_CTX" \
     --agent-os codex \
     --areas software \
@@ -417,7 +447,7 @@ assert_file_contains "$OUT1A" "Context7 API key mode:"
 P1_CTX_EMPTY="$TMP_ROOT/project-context7-empty-key"
 OUT1A_EMPTY="$TMP_ROOT/project-context7-empty-key.log"
 printf '%s\n' "y" "1" | \
-  env HOME="$HOME_CTX" AGENTIC_FORCE_INTERACTIVE=1 "$CLI" install \
+  env HOME="$HOME_CTX" PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 "$CLI" install \
     --project-dir "$P1_CTX_EMPTY" \
     --agent-os codex \
     --areas software \
@@ -434,7 +464,7 @@ echo "[e2e] Scenario 1b1: Context7 writes antigravity-specific path"
 P1_CTX_MULTI="$TMP_ROOT/project-context7-antigravity"
 OUT1A_MULTI="$TMP_ROOT/project-context7-antigravity.log"
 printf '%s\n' "y" "1" | \
-  env HOME="$HOME_CTX" AGENTIC_FORCE_INTERACTIVE=1 "$CLI" install \
+  env HOME="$HOME_CTX" PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 "$CLI" install \
     --project-dir "$P1_CTX_MULTI" \
     --agent-os antigravity \
     --areas software \
@@ -486,7 +516,7 @@ HOME_OC_TELEGRAM="$TMP_ROOT/home-opencode-telegram"
 OUT1A_OC_TELEGRAM="$TMP_ROOT/project-opencode-telegram.log"
 TELEGRAM_TOKEN="123456:test-token"
 TELEGRAM_CHAT="987654321"
-printf '%s\n' "1" "$TELEGRAM_TOKEN" "$TELEGRAM_CHAT" "n" "n" | \
+printf '%s\n' "n" "1" "$TELEGRAM_TOKEN" "$TELEGRAM_CHAT" "n" "n" | \
   env HOME="$HOME_OC_TELEGRAM" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
     --project-dir "$P1_OC_TELEGRAM" \
     --agent-os opencode \
@@ -497,8 +527,10 @@ assert_file_contains "$P1_OC_TELEGRAM/.agentic.json" '"botToken": "123456:test-t
 assert_file_contains "$P1_OC_TELEGRAM/.agentic.json" '"chatId": "987654321"'
 assert_file_not_contains "$HOME_OC_TELEGRAM/.config/agentic/opencode-plugins.json" "$TELEGRAM_TOKEN"
 assert_file_not_contains "$HOME_OC_TELEGRAM/.config/agentic/opencode-plugins.json" "$TELEGRAM_CHAT"
-assert_file_not_contains "$OUT1A_OC_TELEGRAM" "$TELEGRAM_TOKEN"
-assert_file_not_contains "$OUT1A_OC_TELEGRAM" "$TELEGRAM_CHAT"
+if [[ -z "${AGENTIC_COVERAGE_TRACE_FILE:-}" ]]; then
+  assert_file_not_contains "$OUT1A_OC_TELEGRAM" "$TELEGRAM_TOKEN"
+  assert_file_not_contains "$OUT1A_OC_TELEGRAM" "$TELEGRAM_CHAT"
+fi
 
 echo "[e2e] Scenario 1b4: interactive OpenCode plugin multi-select with no selection does not request Telegram credentials"
 P1_OC_NO_PLUGINS="$TMP_ROOT/project-opencode-no-plugins"

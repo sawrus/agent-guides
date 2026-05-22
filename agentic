@@ -2004,6 +2004,7 @@ coverage/
 *.jsonl
 
 data/
+dumps/
 tmp/
 '
 
@@ -2027,6 +2028,19 @@ warn_mempalace_failure_reason() {
 
   if grep -Fq "No LLM provider reachable" "$output_file"; then
     warn "MemPalace could not reach an LLM provider and continued heuristics-only; this is non-fatal unless a later dependency error appears."
+  fi
+}
+
+warn_mempalace_pip_failure_reason() {
+  local output_file="$1"
+  [[ -f "$output_file" ]] || return 0
+
+  local reason
+  reason="$(sed -n '/[^[:space:]]/{p;q;}' "$output_file" 2>/dev/null || true)"
+  if [[ -n "$reason" ]]; then
+    warn "pip failure reason: $reason"
+  else
+    warn "pip failure output was empty; inspect the MemPalace pip install log for details."
   fi
 }
 
@@ -2077,6 +2091,26 @@ run_mempalace_command() {
   warn "Failed: $* (exit $status, log: $output_file)"
   log_file_block "$label" "$output_file"
   warn_mempalace_failure_reason "$output_file"
+  return 1
+}
+
+install_mempalace_with_pip() {
+  local pip_bin="$1"
+  local output_file status
+  output_file="$(mktemp "${TMPDIR:-/tmp}/agentic-mempalace-pip.XXXXXX")"
+
+  if $pip_bin install mempalace >"$output_file" 2>&1; then
+    log "MemPalace package installed via '$pip_bin install mempalace'"
+    log_file_block "MemPalace pip install" "$output_file"
+    rm -f "$output_file"
+    return 0
+  else
+    status=$?
+  fi
+
+  warn "Unable to auto-install mempalace via pip; continuing with manual setup instructions (exit $status, log: $output_file)"
+  log_file_block "MemPalace pip install" "$output_file"
+  warn_mempalace_pip_failure_reason "$output_file"
   return 1
 }
 
@@ -2204,10 +2238,7 @@ setup_mempalace_for_agentic() {
   log "$step_prefix [2/4] pip check passed"
 
   log "$step_prefix [3/4] Installing mempalace package"
-  if $pip_bin install mempalace >/dev/null 2>&1; then
-    log "MemPalace package installed via '$pip_bin install mempalace'"
-  else
-    warn "Unable to auto-install mempalace via pip; continuing with manual setup instructions"
+  if ! install_mempalace_with_pip "$pip_bin"; then
     print_mempalace_project_setup_instructions
     return 1
   fi

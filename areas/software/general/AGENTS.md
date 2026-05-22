@@ -41,7 +41,7 @@ Specializations reference general guidance and keep only domain-specific overrid
 ## Guidance tree
 
 ```text
-general/
+.agent/
 ├── rules/
 │   ├── git-workflow-guide.md          ← branching, commit messages, PR conventions
 │   ├── github-workflow-guide.md       ← GitHub-specific CI triggers and branch protection

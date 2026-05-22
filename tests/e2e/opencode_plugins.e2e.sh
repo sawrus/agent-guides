@@ -211,10 +211,11 @@ assert_file_contains "$INSTALL_PROJECT/.opencode/opencode.json" '"local/install-
 
 TELEGRAM_PLUGIN="$ROOT_DIR/extensions/opencode/plugins/telegram-notification.ts"
 assert_file_contains "$TELEGRAM_PLUGIN" ".agentic.json"
-assert_file_contains "$TELEGRAM_PLUGIN" "parse_mode"
-assert_file_contains "$TELEGRAM_PLUGIN" "MarkdownV2"
+assert_file_not_contains "$TELEGRAM_PLUGIN" "parse_mode"
+assert_file_not_contains "$TELEGRAM_PLUGIN" "MarkdownV2"
 assert_file_not_contains "$TELEGRAM_PLUGIN" "process.env.OPENCODE_TELEGRAM_BOT_TOKEN"
 assert_file_not_contains "$TELEGRAM_PLUGIN" "process.env.OPENCODE_TELEGRAM_CHAT_ID"
+assert_file_contains "$TELEGRAM_PLUGIN" "text: textToSend.slice(0, 4096)"
 assert_file_contains "$TELEGRAM_PLUGIN" "[redacted]"
 
 echo "opencode plugins e2e ok"
