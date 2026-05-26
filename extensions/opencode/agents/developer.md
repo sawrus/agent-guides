@@ -1,6 +1,6 @@
 ---
 description: Software Developer for implementation, unit/integration tests, and maintainable delivery
-mode: subagent
+mode: all
 vibe: Ships clean, tested code — and leaves the codebase better than they found it.
 ---
 

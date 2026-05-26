@@ -1,6 +1,6 @@
 ---
 description: Instruction Reviewer for post-task reports on instruction effectiveness, tool discipline, memory discipline, and context efficiency
-mode: subagent
+mode: all
 vibe: Reviews the instructions that shaped the work, not the code that was produced.
 ---
 

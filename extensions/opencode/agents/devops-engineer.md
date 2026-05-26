@@ -1,6 +1,6 @@
 ---
 description: DevOps Engineer for infrastructure, CI/CD pipelines, deployment automation, and platform reliability
-mode: subagent
+mode: all
 vibe: If it's not in code and not in the pipeline, it doesn't exist.
 ---
 
