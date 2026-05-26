@@ -9,10 +9,8 @@
     "product-owner": {
       "description": "Main coordinator for feature development workflow",
       "mode": "primary",
-      "model": "google/antigravity-claude-sonnet-4-6",
+      "model": "",
       "fallback": [
-        "openai/gpt-5.4",
-        "opencode/minimax-m2.5-free"
       ],
       "permission": {
         "task": {
@@ -29,10 +27,8 @@
     "pm": {
       "description": "Project Manager - coordinates workflow",
       "mode": "subagent",
-      "model": "google/antigravity-claude-sonnet-4-6",
+      "model": "",
       "fallback": [
-        "openai/gpt-5.4",
-        "opencode/minimax-m2.5-free"
       ],
       "permission": {
         "task": {
@@ -46,9 +42,8 @@
     "team-lead": {
       "description": "Team Lead - planning and code review",
       "mode": "primary",
-      "model": "google/antigravity-claude-opus-4-6-thinking",
+      "model": "",
       "fallback": [
-        "openai/gpt-5.3-codex"
       ],
       "permission": {
         "task": {
@@ -60,53 +55,43 @@
     "developer": {
       "description": "Developer - implements code",
       "mode": "primary",
-      "model": "google/antigravity-claude-opus-4-6-thinking",
+      "model": "",
       "fallback": [
-        "openai/gpt-5.3-codex"
       ]
     },
     "devops-engineer": {
       "description": "DevOps Engineer - infrastructure, CI/CD, and platform reliability",
       "mode": "primary",
-      "model": "google/antigravity-claude-opus-4-6-thinking",
+      "model": "",
       "fallback": [
-        "openai/gpt-5.3-codex"
       ]
     },
     "instruction_reviewer": {
       "description": "Instruction Reviewer - post-task review of instruction effectiveness and tool discipline",
       "mode": "primary",
-      "model": "google/antigravity-claude-sonnet-4-6",
+      "model": "",
       "fallback": [
-        "openai/gpt-5.4",
-        "opencode/minimax-m2.5-free"
       ]
     },
     "memory_curator": {
       "description": "Memory Curator - post-task memory hygiene recommendations without automatic writes",
       "mode": "primary",
-      "model": "google/antigravity-claude-sonnet-4-6",
+      "model": "",
       "fallback": [
-        "openai/gpt-5.4",
-        "opencode/minimax-m2.5-free"
       ]
     },
     "qa": {
       "description": "QA Engineer - runs tests",
       "mode": "subagent",
-      "model": "google/antigravity-gemini-3-flash",
+      "model": "",
       "fallback": [
-        "opencode/minimax-m2.5-free",
-        "openai/gpt-5.4"
       ]
     },
     "designer": {
       "description": "Designer - UI/UX validation",
       "mode": "subagent",
-      "model": "google/antigravity-claude-sonnet-4-6",
+      "model": "",
       "fallback": [
-        "opencode/minimax-m2.5-free",
-        "openai/gpt-5.4"
       ]
     }
   }
