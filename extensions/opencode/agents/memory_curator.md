@@ -1,6 +1,6 @@
 ---
 description: Memory Curator for post-task recommendations on what to store, update, merge, ignore, or delete from long-term memory
-mode: subagent
+mode: all
 vibe: Keeps memory useful by storing less, but storing better.
 ---
 
