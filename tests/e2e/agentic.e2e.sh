@@ -491,7 +491,7 @@ echo "[e2e] Scenario 1b3: interactive OpenCode plugin multi-select enables agent
 P1_OC_PLUGINS="$TMP_ROOT/project-opencode-plugins"
 HOME_OC_PLUGINS="$TMP_ROOT/home-opencode-plugins"
 OUT1A_OC_PLUGINS="$TMP_ROOT/project-opencode-plugins.log"
-printf '%s\n' "n" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "y" "n" "n" | \
+printf '%s\n' "n" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "y" "n" "n" | \
   env HOME="$HOME_OC_PLUGINS" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
     --project-dir "$P1_OC_PLUGINS" \
     --agent-os opencode \

@@ -1,6 +1,6 @@
 # Agent Intelligence Configuration (agentic)
 
-> **18 areas · 10 Software specs · 8 DevOps specs · 7 SDLC agents · 105+ skills · 73+ workflows**
+> **18 areas · 10 Software specs · 8 DevOps specs · 7 SDLC agents + 2 specialists · 105+ skills · 73+ workflows**
 
 A unified catalog of agentic specializations and the `agentic` CLI. Install orchestrator-ready rules, skills, workflows,
 and prompts into any project — and run a full SDLC agent team out of the box.
@@ -77,14 +77,14 @@ agent-guides/
 │       └── database-ops/      # PostgreSQL, Redis, migrations, backup/restore
 ├── extensions/
 │   ├── opencode/              # OpenCode agent definitions, commands, skills
-│   │   └── agents/            # 7 SDLC agents for .opencode/agents/
+│   │   └── agents/            # SDLC agents + optional specialists for .opencode/agents/
 │   ├── claude/                # Claude Code configs
-│   │   └── agents/            # 7 SDLC agents for .claude/agents/
+│   │   └── agents/            # SDLC agents + optional specialists for .claude/agents/
 │   ├── antigravity/           # Antigravity platform configs
 │   ├── codex/                 # Codex custom agents and override configs
-│   │   └── agents/            # 7 SDLC agents for .codex/agents/
+│   │   └── agents/            # SDLC agents + optional specialists for .codex/agents/
 │   └── gemini/                # Gemini-specific configs
-│   │   └── agents/            # 7 SDLC agents for .gemini/agents/
+│   │   └── agents/            # SDLC agents + optional specialists for .gemini/agents/
 ├── areas/template/            # Authoring templates — start here for new content
 ├── docs/                      # Setup and usage guides
 ├── AGENTS.md                  # Root agent guidance (loaded into every project)
@@ -140,8 +140,8 @@ guidance bundle.
 
 ## SDLC Agent team
 
-The same 7-agent team works across **Claude Code**, **OpenCode**, **Codex**, and any tool that supports agent or
-subagent files.
+The same 7-agent SDLC team works across **Claude Code**, **OpenCode**, **Codex**, and any tool that supports agent or
+subagent files. Agentic also ships optional post-task review specialists for instruction quality and memory hygiene.
 
 | Agent             | Role                                           | Invoke when                                   |
 |:------------------|:-----------------------------------------------|:----------------------------------------------|
@@ -155,6 +155,16 @@ subagent files.
 
 Each agent has a `vibe` (one-line personality), `Identity`, `Communication Style`, `Success Metrics`, and explicit
 `Boundaries` — so roles never overlap and handoffs are always documented.
+
+Optional specialist agents run outside the mandatory SDLC role matrix:
+
+| Agent                  | Role                                             | Invoke when                                      |
+|:-----------------------|:-------------------------------------------------|:-------------------------------------------------|
+| `instruction_reviewer` | Post-task instruction effectiveness review       | Instructions, tool use, or role guidance changed |
+| `memory_curator`       | Post-task memory hygiene recommendations         | Durable facts or memory quality need review      |
+
+See [Review Pipeline](docs/review-pipeline.md) for the guidance-mode pipeline and `.reviews/<task-id>/` output
+convention.
 
 | Platform    | Agent path                      | Format                         | Guide                                                                                           |
 |:------------|:--------------------------------|:-------------------------------|:------------------------------------------------------------------------------------------------|

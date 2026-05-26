@@ -44,6 +44,8 @@ cp "$ROOT_DIR/extensions/opencode/plugins/agent-model-mapper.ts" "$PROJECT/.open
 assert_not_exists "$ROOT_DIR/extensions/opencode/plugins/model-checker.ts"
 assert_not_exists "$ROOT_DIR/extensions/opencode/plugins/model-checker.json"
 assert_file_contains "$ROOT_DIR/extensions/opencode/opencode.json" "agent-model-mapper"
+assert_file_contains "$ROOT_DIR/extensions/opencode/opencode.json" "instruction_reviewer"
+assert_file_contains "$ROOT_DIR/extensions/opencode/opencode.json" "memory_curator"
 assert_file_not_contains "$ROOT_DIR/extensions/opencode/opencode.json" "model-checker"
 
 NODE_STUB="$TMP_ROOT/node-stub"
@@ -97,7 +99,7 @@ async function main() {
     Object.defineProperty(process.stdout, "isTTY", { value: true })
     const answers = process.env.AGENTIC_AGENT_MODEL_MAPPER_ALLOW_FZF
       ? ["y"]
-      : ["1", "2", "1", "2", "1", "2", "1", "2", "1", "2", "1", "2", "1", "2", "y"]
+      : ["1", "2", "1", "2", "1", "2", "1", "2", "1", "2", "1", "2", "1", "2", "1", "2", "1", "2", "y"]
     if (!process.env.AGENTIC_AGENT_MODEL_MAPPER_ALLOW_FZF) {
       process.env.AGENTIC_AGENT_MODEL_MAPPER_NO_FZF = "1"
     }
@@ -155,7 +157,7 @@ assert_file_not_contains "$OUT_NONTTY" "Select fallback model"
 cat > "$PROJECT/.opencode/agent-model-mapper.state.json" <<'JSON'
 {
   "configured": true,
-  "roles": ["designer", "developer", "devops-engineer", "pm", "product-owner", "qa", "team-lead"]
+  "roles": ["designer", "developer", "devops-engineer", "instruction_reviewer", "memory_curator", "pm", "product-owner", "qa", "team-lead"]
 }
 JSON
 OUT_TTY_SECOND="$TMP_ROOT/mapper-tty-second.log"
@@ -196,7 +198,7 @@ cat > "$INSTALL_HOME/.cache/opencode/models.json" <<'JSON'
   }
 }
 JSON
-printf '%s\n' "n" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "y" "n" "n" | \
+printf '%s\n' "n" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "y" "n" "n" | \
   env HOME="$INSTALL_HOME" XDG_CONFIG_HOME="$INSTALL_XDG_CONFIG_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 AGENTIC_DOCTOR=0 "$ROOT_DIR/agentic" install \
     --project-dir "$INSTALL_PROJECT" \
     --agent-os opencode \
@@ -211,6 +213,8 @@ assert_file_not_contains "$INSTALL_LOG" "github-copilot/old-model"
 assert_exists "$INSTALL_PROJECT/.opencode/agent-model-mapper.state.json"
 assert_file_contains "$INSTALL_PROJECT/.opencode/opencode.json" '"model": "local/install-main"'
 assert_file_contains "$INSTALL_PROJECT/.opencode/opencode.json" '"local/install-fallback"'
+assert_file_contains "$INSTALL_PROJECT/.opencode/opencode.json" '"instruction_reviewer"'
+assert_file_contains "$INSTALL_PROJECT/.opencode/opencode.json" '"memory_curator"'
 
 TELEGRAM_PLUGIN="$ROOT_DIR/extensions/opencode/plugins/telegram-notification.ts"
 assert_file_contains "$TELEGRAM_PLUGIN" ".agentic.json"

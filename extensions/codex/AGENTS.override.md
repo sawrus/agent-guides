@@ -49,6 +49,14 @@ Use the shipped role agents under `.codex/agents/`:
 - `@qa` for verification, test strategy, and go or no-go recommendations
 - `@devops-engineer` for CI/CD, infrastructure, deployment safety, and observability
 
+Optional post-task specialist agents:
+
+- `@instruction_reviewer` for instruction effectiveness, tool discipline, memory discipline, ambiguity, and token-efficiency reports
+- `@memory_curator` for long-term memory store/update/merge/ignore/delete-candidate recommendations
+
+These specialist agents are not SDLC owners and do not replace the mandatory SDLC role mapping. Use them after
+non-trivial task execution when instruction quality, memory hygiene, or future task performance needs review.
+
 Role selection guidance:
 
 - Prefer read-only agents for planning and review: `@product-owner`, `@pm`, `@team-lead`, `@designer`.
@@ -69,6 +77,15 @@ Suggested default flow:
 2. `@team-lead` and `@designer` for technical and UX review
 3. `@developer` or `@devops-engineer` for execution
 4. `@qa` and `@team-lead` for verification and release readiness
+5. Optional: `@instruction_reviewer` and `@memory_curator` for post-task review reports
+
+When these optional specialists produce artifacts, use:
+
+- `.reviews/<task-id>/instruction-review.md`
+- `.reviews/<task-id>/memory-curation.md`
+- `.reviews/<task-id>/summary.md`
+
+If no task id exists, use a timestamp directory in `YYYY-MM-DD-HHMMSS` format.
 
 ## 5. Enforcement
 

@@ -24,4 +24,34 @@ grep -Fq 'Skipped MemPalace MCP configuration' "$OUT"
 if [ -f "$P/opencode.json" ]; then
   ! grep -Fq '.mempalace' "$P/opencode.json"
 fi
+
+for file in \
+  "$ROOT_DIR/agents/instruction_reviewer.md" \
+  "$ROOT_DIR/agents/memory_curator.md" \
+  "$ROOT_DIR/extensions/opencode/agents/instruction_reviewer.md" \
+  "$ROOT_DIR/extensions/opencode/agents/memory_curator.md" \
+  "$ROOT_DIR/extensions/claude/agents/instruction_reviewer.md" \
+  "$ROOT_DIR/extensions/claude/agents/memory_curator.md" \
+  "$ROOT_DIR/extensions/gemini/agents/instruction_reviewer.md" \
+  "$ROOT_DIR/extensions/gemini/agents/memory_curator.md" \
+  "$ROOT_DIR/extensions/codex/agents/instruction_reviewer.toml" \
+  "$ROOT_DIR/extensions/codex/agents/memory_curator.toml" \
+  "$P/.opencode/agents/instruction_reviewer.md" \
+  "$P/.opencode/agents/memory_curator.md" \
+  "$P/.codex/agents/instruction_reviewer.toml" \
+  "$P/.codex/agents/memory_curator.toml"; do
+  [ -f "$file" ] || { echo "missing expected role file: $file" >&2; exit 1; }
+done
+
+grep -Fq "You do NOT review code quality." "$ROOT_DIR/agents/instruction_reviewer.md"
+grep -Fq "## Redundant instructions" "$ROOT_DIR/agents/instruction_reviewer.md"
+grep -Fq "temporary debugging output" "$ROOT_DIR/agents/memory_curator.md"
+grep -Fq "secrets" "$ROOT_DIR/agents/memory_curator.md"
+grep -Fq "review_pipeline:" "$ROOT_DIR/docs/review-pipeline.md"
+grep -Fq ".reviews/<task-id>/" "$ROOT_DIR/docs/review-pipeline.md"
+grep -Fq "instruction-review.md" "$ROOT_DIR/docs/review-pipeline.md"
+grep -Fq "instruction_reviewer" "$ROOT_DIR/extensions/opencode/opencode.json"
+grep -Fq "memory_curator" "$ROOT_DIR/extensions/opencode/opencode.json"
+grep -Fq "# Instruction Effectiveness Review" "$ROOT_DIR/docs/review-pipeline/examples/instruction-review.example.md"
+grep -Fq "# Memory Curation Report" "$ROOT_DIR/docs/review-pipeline/examples/memory-curation.example.md"
 echo 'cli e2e ok'

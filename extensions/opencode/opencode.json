@@ -20,7 +20,9 @@
           "team-lead": "allow",
           "designer": "allow",
           "developer": "allow",
-          "qa": "allow"
+          "qa": "allow",
+          "instruction_reviewer": "allow",
+          "memory_curator": "allow"
         }
       }
     },
@@ -37,7 +39,9 @@
           "team-lead": "allow",
           "designer": "allow",
           "developer": "allow",
-          "qa": "allow"
+          "qa": "allow",
+          "instruction_reviewer": "allow",
+          "memory_curator": "allow"
         }
       }
     },
@@ -51,7 +55,9 @@
       "permission": {
         "task": {
           "developer": "allow",
-          "qa": "allow"
+          "qa": "allow",
+          "instruction_reviewer": "allow",
+          "memory_curator": "allow"
         }
       }
     },
@@ -69,6 +75,24 @@
       "model": "google/antigravity-claude-opus-4-6-thinking",
       "fallback": [
         "openai/gpt-5.3-codex"
+      ]
+    },
+    "instruction_reviewer": {
+      "description": "Instruction Reviewer - post-task review of instruction effectiveness and tool discipline",
+      "mode": "subagent",
+      "model": "google/antigravity-claude-sonnet-4-6",
+      "fallback": [
+        "openai/gpt-5.4",
+        "opencode/minimax-m2.5-free"
+      ]
+    },
+    "memory_curator": {
+      "description": "Memory Curator - post-task memory hygiene recommendations without automatic writes",
+      "mode": "subagent",
+      "model": "google/antigravity-claude-sonnet-4-6",
+      "fallback": [
+        "openai/gpt-5.4",
+        "opencode/minimax-m2.5-free"
       ]
     },
     "qa": {

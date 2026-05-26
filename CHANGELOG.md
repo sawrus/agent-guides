@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.2
+
+- Added optional post-task specialist agents `instruction_reviewer` and `memory_curator` outside the mandatory SDLC role matrix.
+- Added review pipeline guidance, `.reviews/<task-id>/` output conventions, and documented example instruction/memory review reports.
+- Registered the new specialists in OpenCode role configuration and extended deterministic install/model-mapper coverage.
+
 ## v0.3.1
 
 - Added project-level OpenCode plugin settings in `.agentic.json`, including Telegram `botToken` and `chatId` when `telegram-notification` is enabled.
