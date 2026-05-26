@@ -41,7 +41,7 @@
     },
     "team-lead": {
       "description": "Team Lead - planning and code review",
-      "mode": "primary",
+      "mode": "all",
       "model": "",
       "fallback": [
       ],
@@ -54,28 +54,28 @@
     },
     "developer": {
       "description": "Developer - implements code",
-      "mode": "primary",
+      "mode": "all",
       "model": "",
       "fallback": [
       ]
     },
     "devops-engineer": {
       "description": "DevOps Engineer - infrastructure, CI/CD, and platform reliability",
-      "mode": "primary",
+      "mode": "all",
       "model": "",
       "fallback": [
       ]
     },
     "instruction_reviewer": {
       "description": "Instruction Reviewer - post-task review of instruction effectiveness and tool discipline",
-      "mode": "primary",
+      "mode": "all",
       "model": "",
       "fallback": [
       ]
     },
     "memory_curator": {
       "description": "Memory Curator - post-task memory hygiene recommendations without automatic writes",
-      "mode": "primary",
+      "mode": "all",
       "model": "",
       "fallback": [
       ]
