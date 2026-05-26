@@ -1,34 +1,17 @@
 # AGENTS — root guidance
 
-## Dynamic loading of guidance
+## Dynamic guidance loading
 
-The set of loaded guidance is configurable per project and may change per task. Do not assume only statically listed
-files are available.
+The loaded guidance set is project-specific and may change per task. Do not assume the statically listed files are
+complete; first discover optional guidance under the target project's `.agent/` directory.
 
-Discover and load custom files from the target project when present:
+Discover and load guidance in this order:
 
-```text
-project_dir/
-└── .agent/
-    ├── rules/
-    ├── skills/
-    ├── workflows/
-    └── prompts/
-```
-
-## Guidance chain
-
-1. Project `.agent/` baseline
-2. `.agent/rules/*` — load all
-3. `.agent/skills/*/SKILL.md` — load only the skill matching the current task
-4. `.agent/workflows/*` — load the workflow matching the triggered command
-
-**Discovery patterns:**
-
-- `.agent/rules/*.md`
-- `.agent/skills/*/SKILL.md`
-- `.agent/workflows/*.md`
-- `.agent/prompts/*.md`
+1. `.agent/*.md` — project baseline files, when present
+2. `.agent/rules/*.md` — all project rules
+3. `.agent/skills/*/SKILL.md` — only the skill matching the current task
+4. `.agent/workflows/*.md` — only the workflow matching the triggered command
+5. `.agent/prompts/*.md` — only when explicitly requested or referenced by loaded guidance
 
 Prefer relative paths in references inside markdown files.
 
@@ -73,13 +56,17 @@ Cross-cutting practices that apply to every project regardless of area.
 ### Documentation of Behavior Changes
 
 - Any behavior change captured in Markdown artifacts must be documented under the project `docs/` directory.
-- Use documentation paths that match the change type, for example `docs/<feature>/README.md` for feature behavior and `docs/incidents/<date>-<workload>-root-cause.md` for incident root cause reports.
-- Create or update the relevant `docs/` artifact in the same change set; do not leave behavior changes documented only in workflow outputs, tickets, or PR comments.
-- Apply the `product-owner` role to confirm that docs describe the user-facing behavior, acceptance criteria, and operational constraints of the change.
+- Use documentation paths that match the change type, for example `docs/<feature>/README.md` for feature behavior and
+  `docs/incidents/<date>-<workload>-root-cause.md` for incident root cause reports.
+- Create or update the relevant `docs/` artifact in the same change set; do not leave behavior changes documented only
+  in workflow outputs, tickets, or PR comments.
+- Apply the `product-owner` role to confirm that docs describe the user-facing behavior, acceptance criteria, and
+  operational constraints of the change.
 
 ### MCP Memory Providers
 
-See [MEMORY.md](MEMORY.md) for the full protocol: provider roles, Context7 usage, MemPalace session-start queries, fact-writing triggers, tool call examples, and fallback order.
+See [MEMORY.md](MEMORY.md) for the full protocol: provider roles, Context7 usage, MemPalace session-start queries,
+fact-writing triggers, tool call examples, and fallback order.
 
 ### Code Style
 
