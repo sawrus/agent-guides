@@ -39,15 +39,13 @@
           "team-lead": "allow",
           "designer": "allow",
           "developer": "allow",
-          "qa": "allow",
-          "instruction_reviewer": "allow",
-          "memory_curator": "allow"
+          "qa": "allow"
         }
       }
     },
     "team-lead": {
       "description": "Team Lead - planning and code review",
-      "mode": "subagent",
+      "mode": "primary",
       "model": "google/antigravity-claude-opus-4-6-thinking",
       "fallback": [
         "openai/gpt-5.3-codex"
@@ -55,15 +53,13 @@
       "permission": {
         "task": {
           "developer": "allow",
-          "qa": "allow",
-          "instruction_reviewer": "allow",
-          "memory_curator": "allow"
+          "qa": "allow"
         }
       }
     },
     "developer": {
       "description": "Developer - implements code",
-      "mode": "subagent",
+      "mode": "primary",
       "model": "google/antigravity-claude-opus-4-6-thinking",
       "fallback": [
         "openai/gpt-5.3-codex"
@@ -71,7 +67,7 @@
     },
     "devops-engineer": {
       "description": "DevOps Engineer - infrastructure, CI/CD, and platform reliability",
-      "mode": "subagent",
+      "mode": "primary",
       "model": "google/antigravity-claude-opus-4-6-thinking",
       "fallback": [
         "openai/gpt-5.3-codex"
@@ -79,7 +75,7 @@
     },
     "instruction_reviewer": {
       "description": "Instruction Reviewer - post-task review of instruction effectiveness and tool discipline",
-      "mode": "subagent",
+      "mode": "primary",
       "model": "google/antigravity-claude-sonnet-4-6",
       "fallback": [
         "openai/gpt-5.4",
@@ -88,7 +84,7 @@
     },
     "memory_curator": {
       "description": "Memory Curator - post-task memory hygiene recommendations without automatic writes",
-      "mode": "subagent",
+      "mode": "primary",
       "model": "google/antigravity-claude-sonnet-4-6",
       "fallback": [
         "openai/gpt-5.4",
