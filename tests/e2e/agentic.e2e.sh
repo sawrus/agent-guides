@@ -101,7 +101,7 @@ make_repo() {
            "$dest/extensions/claude"
   cat > "$dest/AGENTS.md" <<'EOT'
 # Root AGENTS
-Dynamic loading of guidance
+Dynamic guidance loading
 EOT
   cat > "$dest/areas/software/backend/AGENTS.md" <<'EOT'
 # Backend AGENTS
@@ -240,7 +240,7 @@ assert_exists "$P1/.agent/prompts"
 assert_not_exists "$P1/AGENTS.md"
 assert_exists "$P1/.opencode/AGENTS.md"
 assert_file_contains "$P1/.opencode/AGENTS.md" "software/backend"
-assert_file_contains "$P1/.opencode/AGENTS.md" "Dynamic loading of guidance"
+assert_file_contains "$P1/.opencode/AGENTS.md" "Dynamic guidance loading"
 assert_file_contains "$P1/.opencode/AGENTS.md" "generated_by: agentic"
 assert_exists "$P1/.agentic.json"
 assert_file_contains "$P1/.agentic.json" "\"managed_files\""
@@ -507,6 +507,7 @@ assert_file_not_contains "$HOME_OC_PLUGINS/.config/agentic/opencode-plugins.json
 assert_file_not_contains "$OUT1A_OC_PLUGINS" "Telegram bot token (empty disables plugin):"
 assert_file_contains "$OUT1A_OC_PLUGINS" "agent-model-mapper: updated .opencode/opencode.json"
 assert_exists "$P1_OC_PLUGINS/.opencode/agent-model-mapper.state.json"
+assert_not_exists "$P1_OC_PLUGINS/.opencode/plugins/agent-model-mapper.ts"
 assert_file_contains "$P1_OC_PLUGINS/.agentic.json" '"opencode_plugins"'
 assert_file_contains "$P1_OC_PLUGINS/.agentic.json" '"agentModelMapper"'
 
@@ -550,8 +551,8 @@ assert_file_contains "$HOME_OC_NO_PLUGINS/.config/agentic/opencode-plugins.json"
 assert_file_not_contains "$OUT1A_OC_NO_PLUGINS" "Telegram bot token (empty disables plugin):"
 assert_not_exists "$P1_OC_NO_PLUGINS/.opencode/plugins/model-checker.ts"
 assert_not_exists "$P1_OC_NO_PLUGINS/.opencode/plugins/model-checker.json"
-assert_exists "$P1_OC_NO_PLUGINS/.opencode/plugins/agent-model-mapper.ts"
-assert_file_contains "$P1_OC_NO_PLUGINS/.opencode/opencode.json" "agent-model-mapper"
+assert_not_exists "$P1_OC_NO_PLUGINS/.opencode/plugins/agent-model-mapper.ts"
+assert_file_not_contains "$P1_OC_NO_PLUGINS/.opencode/opencode.json" "agent-model-mapper"
 assert_file_not_contains "$P1_OC_NO_PLUGINS/.opencode/opencode.json" "model-checker"
 
 echo "[e2e] Scenario 1c: rerun skips user-modified managed files"

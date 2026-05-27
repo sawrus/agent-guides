@@ -46,7 +46,7 @@ The runtime plugin reads credentials from the project `.agentic.json`; it does n
 
 Non-interactive `agentic install` defaults optional plugins to disabled when no config exists.
 
-`agent-model-mapper` reads roles from target `.opencode/agents/*.md` and discovers model names from `~/.config/opencode/opencode.json`, then adds models from active providers in `~/.local/share/opencode/auth.json` using non-deprecated entries in `~/.cache/opencode/models.json`. When enabled, interactive `agentic install`/`agentic tui` prompts for a main and fallback model per role, using `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after a Confirm action. OpenCode startup never opens `fzf` or waits for model input; the runtime plugin only reports whether install-time mapping is complete.
+`agent-model-mapper` reads roles from target `.opencode/agents/*.md` and discovers model names from `~/.config/opencode/opencode.json`, then adds models from active providers in `~/.local/share/opencode/auth.json` using non-deprecated entries in `~/.cache/opencode/models.json`. When enabled, interactive `agentic install`/`agentic tui` prompts for a main and fallback model per role, using `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after a Confirm action. OpenCode startup never opens `fzf` or waits for model input because no mapper runtime plugin is shipped or registered.
 
 For OpenCode targets, `agentic` writes generated operating guidance to `.opencode/AGENTS.md`. If OpenCode is installed
 alongside another agent target, root `AGENTS.md` is generated as well for the non-OpenCode target.

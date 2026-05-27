@@ -169,7 +169,7 @@ When `opencode` is selected, interactive installs ask whether to enable Telegram
 ~/.config/agentic/opencode-plugins.json
 ```
 
-Non-interactive installs create a disabled config when no config exists. Interactive installs ask for Telegram `botToken` and `chatId` when `telegram-notification` is selected. Those credentials are written to the target project `.agentic.json` under `settings.opencode_plugins.telegram`, not to `~/.config/agentic/opencode-plugins.json`. Treat `.agentic.json` as plaintext secret-bearing project config when Telegram is enabled and do not commit it to public repositories. When enabled, `agent-model-mapper` runs during interactive `agentic install`/`agentic tui`, uses `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after a Confirm action. OpenCode startup never prompts for model mapping; the runtime plugin only reports whether install-time mapping is already complete.
+Non-interactive installs create a disabled config when no config exists. Interactive installs ask for Telegram `botToken` and `chatId` when `telegram-notification` is selected. Those credentials are written to the target project `.agentic.json` under `settings.opencode_plugins.telegram`, not to `~/.config/agentic/opencode-plugins.json`. Treat `.agentic.json` as plaintext secret-bearing project config when Telegram is enabled and do not commit it to public repositories. When enabled, `agent-model-mapper` runs during interactive `agentic install`/`agentic tui`, uses `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after a Confirm action. OpenCode startup does not load a mapper runtime plugin or prompt for model mapping.
 
 ## Context7
 
