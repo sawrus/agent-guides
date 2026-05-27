@@ -7,6 +7,7 @@ SOURCE_CLI="$ROOT_DIR/agentic"
 export AGENTIC_TEST_SOURCE_AGENTIC="$SOURCE_CLI"
 export AGENTIC_DOCTOR=0
 TMP_ROOT="$(mktemp -d /tmp/agentic-e2e.XXXXXX)"
+TMP_ROOT_REAL="$(cd "$TMP_ROOT" && pwd -P)"
 PYTHON_ONLY_BIN="$TMP_ROOT/python-bin"
 mkdir -p "$PYTHON_ONLY_BIN"
 ln -s "$(command -v python3)" "$PYTHON_ONLY_BIN/python3"
@@ -305,6 +306,42 @@ assert_file_contains "$P1_MEM_OK/.mempalaceignore" "*.parquet"
 assert_file_contains "$P1_MEM_OK/.mempalaceignore" ".git/"
 assert_file_contains "$P1_MEM_OK/.agentic.json" ".mempalaceignore"
 
+echo "[e2e] Scenario 1ab0: MemPalace project wing uses real basename for dot project dir"
+P1_MEM_DOT="$TMP_ROOT/proxy-api"
+HOME_MEM_DOT="$TMP_ROOT/home-mempalace-dot"
+OUT1AB_DOT="$TMP_ROOT/project-mempalace-dot.log"
+FAKE_MEMPALACE_DOT_BIN="$TMP_ROOT/fake-mempalace-dot-bin"
+FAKE_MEMPALACE_DOT_LOG="$TMP_ROOT/fake-mempalace-dot.log"
+mkdir -p "$P1_MEM_DOT" "$FAKE_MEMPALACE_DOT_BIN"
+P1_MEM_DOT_REAL="$(cd "$P1_MEM_DOT" && pwd -P)"
+cat > "$FAKE_MEMPALACE_DOT_BIN/pip" <<'EOS'
+#!/usr/bin/env bash
+exit 0
+EOS
+cat > "$FAKE_MEMPALACE_DOT_BIN/mempalace-mcp" <<'EOS'
+#!/usr/bin/env bash
+exit 0
+EOS
+cat > "$FAKE_MEMPALACE_DOT_BIN/mempalace" <<'EOS'
+#!/usr/bin/env bash
+printf 'mempalace %s\n' "$*" >> "${FAKE_MEMPALACE_DOT_LOG:?missing FAKE_MEMPALACE_DOT_LOG}"
+exit 0
+EOS
+chmod +x "$FAKE_MEMPALACE_DOT_BIN"/*
+
+(
+  cd "$P1_MEM_DOT"
+  env HOME="$HOME_MEM_DOT" PATH="$FAKE_MEMPALACE_DOT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" FAKE_MEMPALACE_DOT_LOG="$FAKE_MEMPALACE_DOT_LOG" AGENTIC_ENABLE_MEMPALACE=y "$CLI" install \
+    --project-dir . \
+    --agent-os codex \
+    --areas software \
+    --specializations software.backend \
+    --theme=light >"$OUT1AB_DOT" 2>&1
+)
+assert_file_contains "$OUT1AB_DOT" "Initializing project memory at $P1_MEM_DOT_REAL (wing: proxy_api)"
+assert_file_contains "$OUT1AB_DOT" "Project dir: $P1_MEM_DOT_REAL"
+assert_file_contains "$FAKE_MEMPALACE_DOT_LOG" "mempalace mine $P1_MEM_DOT_REAL --wing proxy_api"
+
 echo "[e2e] Scenario 1ab1: MemPalace pip install failure reports log path and reason"
 P1_MEM_PIP_FAIL="$TMP_ROOT/project-mempalace-pip-fail"
 HOME_MEM_PIP_FAIL="$TMP_ROOT/home-mempalace-pip-fail"
@@ -313,8 +350,8 @@ FAKE_MEMPALACE_PIP_FAIL_BIN="$TMP_ROOT/fake-mempalace-pip-fail-bin"
 mkdir -p "$FAKE_MEMPALACE_PIP_FAIL_BIN"
 cat > "$FAKE_MEMPALACE_PIP_FAIL_BIN/pip" <<'EOS'
 #!/usr/bin/env bash
-printf '%s\n' "error: externally-managed-environment" >&2
-printf '%s\n' "pip blocked by distro policy" >&2
+printf '%s\n' "error: network unavailable" >&2
+printf '%s\n' "pip could not reach package index" >&2
 exit 23
 EOS
 chmod +x "$FAKE_MEMPALACE_PIP_FAIL_BIN/pip"
@@ -325,18 +362,19 @@ env HOME="$HOME_MEM_PIP_FAIL" PATH="$FAKE_MEMPALACE_PIP_FAIL_BIN:$PYTHON_ONLY_BI
   --specializations software.backend \
   --theme=light >"$OUT1AB_PIP_FAIL" 2>&1
 assert_file_contains "$OUT1AB_PIP_FAIL" "Unable to auto-install mempalace via pip; continuing with manual setup instructions (exit 23, log:"
-assert_file_contains "$OUT1AB_PIP_FAIL" "pip failure reason: error: externally-managed-environment"
+assert_file_contains "$OUT1AB_PIP_FAIL" "pip failure reason: error: network unavailable"
 PIP_FAIL_LOG="$(sed -n 's/^.*Unable to auto-install mempalace via pip; continuing with manual setup instructions (exit 23, log: \(.*\))$/\1/p' "$OUT1AB_PIP_FAIL" | tail -1)"
 [[ -n "$PIP_FAIL_LOG" ]] || fail "Expected MemPalace pip failure log path in $OUT1AB_PIP_FAIL"
-assert_file_contains "$PIP_FAIL_LOG" "pip blocked by distro policy"
+assert_file_contains "$PIP_FAIL_LOG" "pip could not reach package index"
 RUN_FAIL_LOG="$(sed -n 's/^.*Agentic log file: //p' "$OUT1AB_PIP_FAIL" | tail -1 | tr -d "'")"
 [[ -n "$RUN_FAIL_LOG" ]] || fail "Expected Agentic run log path in $OUT1AB_PIP_FAIL"
 assert_file_contains "$RUN_FAIL_LOG" "--- MemPalace pip install output begin ---"
-assert_file_contains "$RUN_FAIL_LOG" "pip blocked by distro policy"
+assert_file_contains "$RUN_FAIL_LOG" "pip could not reach package index"
 assert_file_contains "$P1_MEM_PIP_FAIL/.codex/config.toml" "[mcp_servers.mempalace]"
 
 echo "[e2e] Scenario 1ab2: OpenCode MemPalace init logs failures with architecture warning"
 P1_MEM_OC="$TMP_ROOT/project-mempalace-opencode"
+P1_MEM_OC_REAL="$TMP_ROOT_REAL/project-mempalace-opencode"
 HOME_MEM_OC="$TMP_ROOT/home-mempalace-opencode"
 OUT1AB_OC="$TMP_ROOT/project-mempalace-opencode.log"
 FAKE_MEMPALACE_OC_BIN="$TMP_ROOT/fake-mempalace-opencode-bin"
@@ -372,11 +410,11 @@ env HOME="$HOME_MEM_OC" PATH="$FAKE_MEMPALACE_OC_BIN:$PYTHON_ONLY_BIN:/usr/bin:/
   --theme=light >"$OUT1AB_OC" 2>&1
 # mempalace init IS now attempted (always for all agent IDEs)
 assert_exists "$FAKE_MEMPALACE_OC_LOG"
-assert_file_contains "$FAKE_MEMPALACE_OC_LOG" "init $P1_MEM_OC --yes --no-llm"
+assert_file_contains "$FAKE_MEMPALACE_OC_LOG" "init $P1_MEM_OC_REAL --yes --no-llm"
 # Init fails → architecture warning is shown
 assert_file_contains "$OUT1AB_OC" "Python/NumPy architecture is inconsistent"
 # Fallback instructions shown after failure
-assert_file_contains "$OUT1AB_OC" "Optional MemPalace project indexing instructions for target project: $P1_MEM_OC"
+assert_file_contains "$OUT1AB_OC" "Optional MemPalace project indexing instructions for target project: $P1_MEM_OC_REAL"
 # Config files still written despite init failure
 assert_file_contains "$P1_MEM_OC/.opencode/opencode.json" "mempalace-mcp"
 assert_file_contains "$P1_MEM_OC/.mempalaceignore" "node_modules/"
@@ -964,6 +1002,7 @@ fi
 echo "[e2e] Scenario 9: install with mempalace enabled runs mempalace init"
 HOME_INIT="$TMP_ROOT/home-mempalace-init"
 P9="$TMP_ROOT/project-mempalace-init"
+P9_REAL="$TMP_ROOT_REAL/project-mempalace-init"
 FAKE_INIT_BIN="$TMP_ROOT/fake-init-mempalace-bin"
 MEMPALACE_INIT_LOG="$TMP_ROOT/mempalace-init-calls.log"
 FAKE_INIT_PIP_LOG="$TMP_ROOT/fake-init-pip.log"
@@ -1003,9 +1042,9 @@ HOME="$HOME_INIT" AGENTIC_ENABLE_MEMPALACE=y AGENTIC_DOCTOR=0 \
     --theme=light >"$OUT9" 2>&1
 
 # Verify mempalace init/mining uses low-budget, wing-aware commands
-assert_file_contains "$MEMPALACE_INIT_LOG" "mempalace init $P9 --yes --no-llm"
-assert_file_contains "$MEMPALACE_INIT_LOG" "mempalace mine $P9 --wing project_mempalace_init"
-assert_file_contains "$MEMPALACE_INIT_LOG" "mempalace mine $P9/docs --wing shared_docs"
+assert_file_contains "$MEMPALACE_INIT_LOG" "mempalace init $P9_REAL --yes --no-llm"
+assert_file_contains "$MEMPALACE_INIT_LOG" "mempalace mine $P9_REAL --wing project_mempalace_init"
+assert_file_contains "$MEMPALACE_INIT_LOG" "mempalace mine $P9_REAL/docs --wing shared_docs"
 # Should NOT show fallback instructions since init succeeded
 assert_output_not_contains "$(cat "$OUT9")" "Optional MemPalace project indexing instructions"
 # Manifest should contain mcp_integrations with mempalace
@@ -1015,6 +1054,7 @@ assert_file_contains "$P9/.agentic.json" '"mempalace"'
 echo "[e2e] Scenario 9b: mempalace init timeout does not hang install"
 HOME_TIMEOUT="$TMP_ROOT/home-mempalace-timeout"
 P9_TIMEOUT="$TMP_ROOT/project-mempalace-timeout"
+P9_TIMEOUT_REAL="$TMP_ROOT_REAL/project-mempalace-timeout"
 FAKE_TIMEOUT_BIN="$TMP_ROOT/fake-timeout-mempalace-bin"
 MEMPALACE_TIMEOUT_LOG="$TMP_ROOT/mempalace-timeout-calls.log"
 FAKE_TIMEOUT_PIP_LOG="$TMP_ROOT/fake-timeout-pip.log"
@@ -1054,9 +1094,10 @@ HOME="$HOME_TIMEOUT" AGENTIC_ENABLE_MEMPALACE=y AGENTIC_DOCTOR=0 AGENTIC_MEMPALA
     --specializations software.backend \
     --theme=light >"$OUT9_TIMEOUT" 2>&1
 
-assert_file_contains "$MEMPALACE_TIMEOUT_LOG" "mempalace init $P9_TIMEOUT --yes --no-llm"
-assert_file_contains "$OUT9_TIMEOUT" "Timed out after 1s: mempalace init $P9_TIMEOUT --yes --no-llm"
-assert_file_contains "$OUT9_TIMEOUT" "Optional MemPalace project indexing instructions for target project: $P9_TIMEOUT"
+assert_file_contains "$MEMPALACE_TIMEOUT_LOG" "mempalace init $P9_TIMEOUT_REAL --yes --no-llm"
+assert_file_contains "$OUT9_TIMEOUT" "Timed out after 1s:"
+assert_file_contains "$OUT9_TIMEOUT" "$P9_TIMEOUT_REAL"
+assert_file_contains "$OUT9_TIMEOUT" "Optional MemPalace project indexing instructions for target project: $P9_TIMEOUT_REAL"
 assert_file_contains "$P9_TIMEOUT/.codex/config.toml" "[mcp_servers.mempalace]"
 
 echo "[e2e] Scenario 10: mempalace enabled but binary missing shows fallback instructions"
@@ -1094,6 +1135,7 @@ assert_file_contains "$OUT10" "pip install mempalace"
 echo "[e2e] Scenario 11: upgrade with manifest skips MCP prompts and re-applies config"
 HOME_UPGRADE="$TMP_ROOT/home-upgrade-mcp"
 P11="$TMP_ROOT/project-upgrade-mcp"
+P11_REAL="$TMP_ROOT_REAL/project-upgrade-mcp"
 FAKE_UPGRADE_BIN="$TMP_ROOT/fake-upgrade-mcp-bin"
 MEMPALACE_UPGRADE_LOG="$TMP_ROOT/mempalace-upgrade-calls.log"
 FAKE_UPGRADE_PIP_LOG="$TMP_ROOT/fake-upgrade-pip.log"
@@ -1160,9 +1202,9 @@ assert_output_not_contains "$(cat "$OUT11")" "Enable MemPalace MCP memory integr
 assert_output_not_contains "$(cat "$OUT11")" "Enable Context7 MCP configuration? [y/N]:"
 assert_output_not_contains "$(cat "$OUT11")" "Select optional OpenCode plugin(s):"
 # Should have run mempalace init/mining (since mempalace was enabled)
-assert_file_contains "$MEMPALACE_UPGRADE_LOG" "mempalace init $P11 --yes --no-llm"
-assert_file_contains "$MEMPALACE_UPGRADE_LOG" "mempalace mine $P11 --wing project_upgrade_mcp"
-assert_file_contains "$MEMPALACE_UPGRADE_LOG" "mempalace mine $P11/docs --wing shared_docs"
+assert_file_contains "$MEMPALACE_UPGRADE_LOG" "mempalace init $P11_REAL --yes --no-llm"
+assert_file_contains "$MEMPALACE_UPGRADE_LOG" "mempalace mine $P11_REAL --wing project_upgrade_mcp"
+assert_file_contains "$MEMPALACE_UPGRADE_LOG" "mempalace mine $P11_REAL/docs --wing shared_docs"
 
 echo "[e2e] Scenario 12: opencode_mapper_discover_models finds provider models"
 HOME_MODELS="$TMP_ROOT/home-models"

@@ -764,6 +764,34 @@ project_manifest_path() {
   printf '%s\n' "$PROJECT_DIR/$PROJECT_MANIFEST_NAME"
 }
 
+normalize_project_dir_path() {
+  local raw="$1"
+  local parent base parent_real
+
+  if [[ -z "$raw" ]]; then
+    printf '%s\n' "$raw"
+    return
+  fi
+
+  if [[ -d "$raw" ]]; then
+    (cd -- "$raw" && pwd -P)
+    return
+  fi
+
+  parent="$(dirname -- "$raw")"
+  base="$(basename -- "$raw")"
+  if [[ -d "$parent" ]]; then
+    parent_real="$(cd -- "$parent" && pwd -P)" || {
+      printf '%s\n' "$raw"
+      return
+    }
+    printf '%s/%s\n' "$parent_real" "$base"
+    return
+  fi
+
+  printf '%s\n' "$raw"
+}
+
 project_rel_path() {
   local path="$1"
   local rel="${path#"$PROJECT_DIR"/}"
@@ -3651,6 +3679,7 @@ run_install() {
   normalize_selected_agent_os
   validate_inputs
 
+  PROJECT_DIR="$(normalize_project_dir_path "$PROJECT_DIR")"
   ensure_dir "$PROJECT_DIR"
   configure_opencode_plugins_if_needed
   copy_extensions "$PROJECT_DIR"
