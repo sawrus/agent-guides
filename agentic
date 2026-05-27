@@ -1946,7 +1946,7 @@ print_mempalace_project_setup_instructions() {
   out "2) Install MemPalace:"
   out "   pip install mempalace"
   out "3) Initialize the project memory taxonomy without LLM calls:"
-  out "   mempalace init \"$PROJECT_DIR\" --yes --no-llm"
+  out "   echo \"N\" | mempalace init \"$PROJECT_DIR\" --yes --no-llm"
   out "4) Mine project knowledge into its isolated wing:"
   out "   mempalace mine \"$PROJECT_DIR\" --wing \"$project_wing\""
   if [[ -d "$PROJECT_DIR/docs" ]]; then
@@ -2242,7 +2242,7 @@ initialize_mempalace_project() {
     return 1
   fi
 
-  if ! run_mempalace_command "MemPalace init" bash -lc "echo \"Y\" | mempalace init \"$PROJECT_DIR\" --yes --no-llm"; then
+  if ! run_mempalace_command "MemPalace init" bash -lc "echo \"N\" | mempalace init \"$PROJECT_DIR\" --yes --no-llm"; then
     print_mempalace_project_setup_instructions
     return 1
   fi
