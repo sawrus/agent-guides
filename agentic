@@ -2242,7 +2242,7 @@ initialize_mempalace_project() {
     return 1
   fi
 
-  if ! run_mempalace_command "MemPalace init" mempalace init "$PROJECT_DIR" --yes --no-llm; then
+  if ! run_mempalace_command "MemPalace init" bash -lc "echo \"Y\" | mempalace init \"$PROJECT_DIR\" --yes --no-llm"; then
     print_mempalace_project_setup_instructions
     return 1
   fi
