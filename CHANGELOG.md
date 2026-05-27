@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.3
+
+- Updated MemPalace project initialization to pipe explicit confirmation (`echo "Y" | mempalace init ...`) for non-interactive setup robustness.
+- Removed `agent-model-mapper` from OpenCode plugin registration.
+- Deleted obsolete OpenCode plugin source `extensions/opencode/plugins/agent-model-mapper.ts`.
+
 ## v0.3.2
 
 - Added optional post-task specialist agents `instruction_reviewer` and `memory_curator` outside the mandatory SDLC role matrix.
