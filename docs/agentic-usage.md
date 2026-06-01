@@ -90,7 +90,16 @@ agentic install \
   --specializations software.general,software.backend
 ```
 
-After install, `agentic` writes `.agentic.json` in the target project. It records copied/generated files and their hashes. A later install rerun updates only manifest-managed files and skips files changed by the user. Generated guidance is written to root `AGENTS.md` for most agents and to `.opencode/AGENTS.md` when OpenCode is selected; multi-target installs that include OpenCode and another agent write both files.
+After install, `agentic` writes `.agentic.json` in the target project. It records copied/generated files and their hashes. A later install rerun updates only manifest-managed files and skips files changed by the user. Generated guidance is always written to root `AGENTS.md`; when OpenCode is selected, `agentic` also writes `.opencode/AGENTS.md`.
+
+When Codex is selected, `agentic` creates or updates the project-local `.codex/config.toml` with Codex memories enabled:
+
+```toml
+[features]
+memories = true
+```
+
+This config file follows the same manifest-managed safeguards as other generated project files.
 
 After the project files are generated, `agentic` starts timestamped operational logging and mirrors install output to a temporary log file such as:
 

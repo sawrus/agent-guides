@@ -99,6 +99,8 @@ assert_common_install_evidence() {
 assert_codex_install_evidence() {
   local project="$1"
   assert_common_install_evidence "$project" "codex" "AGENTS.md" "MEMORY.md"
+  assert_file_contains "$project/.codex/config.toml" "[features]"
+  assert_file_contains "$project/.codex/config.toml" "memories = true"
   assert_file_contains "$project/.codex/config.toml" "[mcp_servers.context7]"
   assert_file_contains "$project/.codex/config.toml" "[mcp_servers.mempalace]"
 }

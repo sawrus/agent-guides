@@ -1789,6 +1789,51 @@ mcp["context7"] = context7
   write_json_config_file "$dest" "generated:context7-opencode-legacy-config" "$body"
 }
 
+write_codex_features_config() {
+  local dest="$PROJECT_DIR/.codex/config.toml"
+  local body
+  body="$(python3 - "$dest" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8") if path.exists() else ""
+features_re = re.compile(r"(?ms)^(\[features\]\n)(.*?)(?=^\[|\Z)")
+
+
+def enable_memories(match):
+    header = match.group(1)
+    body = match.group(2)
+    lines = body.splitlines(keepends=True)
+    output = []
+    found = False
+    for line in lines:
+        if re.match(r"\s*memories\s*=", line):
+            output.append("memories = true" + ("\n" if line.endswith("\n") else ""))
+            found = True
+        else:
+            output.append(line)
+    if not found:
+        trailing = re.search(r"\n*\Z", body).group(0)
+        main = body[: len(body) - len(trailing)] if trailing else body
+        if main and not main.endswith("\n"):
+            main += "\n"
+        return header + main + "memories = true\n" + trailing
+    return header + "".join(output)
+
+
+if features_re.search(text):
+    print(features_re.sub(enable_memories, text, count=1), end="")
+elif text.strip():
+    print(text.rstrip() + "\n\n[features]\nmemories = true\n", end="")
+else:
+    print("[features]\nmemories = true\n", end="")
+PY
+)"
+  write_text_config_file "$dest" "generated:codex-features-config" "$body"
+}
+
 write_context7_codex_config() {
   local dest="$PROJECT_DIR/.codex/config.toml"
   local body
@@ -3193,23 +3238,12 @@ append_root_agents_template() {
 generate_agents_md() {
   local project_dir="$1"
   local outputs=()
-  local needs_root=false
-  local agent_os
 
   if selected_agent_os_contains "opencode"; then
     unique_append "$project_dir/.opencode/AGENTS.md" outputs
   fi
 
-  for agent_os in "${SELECTED_AGENT_OS[@]}"; do
-    if [[ "$agent_os" != "opencode" ]]; then
-      needs_root=true
-      break
-    fi
-  done
-
-  if [[ "$needs_root" == true ]] || ! selected_agent_os_contains "opencode"; then
-    unique_append "$project_dir/AGENTS.md" outputs
-  fi
+  unique_append "$project_dir/AGENTS.md" outputs
 
   if [[ "$DRY_RUN" == true ]]; then
     local dry_run_out
@@ -3687,6 +3721,9 @@ run_install() {
   copy_specialization_assets "$PROJECT_DIR"
   generate_agents_md "$PROJECT_DIR"
   copy_memory_md "$PROJECT_DIR"
+  if selected_agent_os_contains "codex"; then
+    write_codex_features_config
+  fi
   configure_context7_if_needed
   configure_mempalace_if_needed
   write_agentic_manifest "$PROJECT_DIR"

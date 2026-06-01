@@ -20,6 +20,8 @@ HOME="$TEST_HOME" XDG_CONFIG_HOME="$TEST_XDG_CONFIG_HOME" XDG_DATA_HOME="$TEST_X
 
 grep -Fq "Agentic version: v$VERSION" "$OUT"
 grep -Fq 'Skipped MemPalace MCP configuration' "$OUT"
+grep -Fq "[features]" "$P/.codex/config.toml"
+grep -Fq "memories = true" "$P/.codex/config.toml"
 [ ! -d "$P/.mempalace" ]
 if [ -f "$P/opencode.json" ]; then
   ! grep -Fq '.mempalace' "$P/opencode.json"
