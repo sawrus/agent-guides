@@ -28,8 +28,6 @@ if [ -f "$P/opencode.json" ]; then
 fi
 
 for file in \
-  "$ROOT_DIR/agents/instruction_reviewer.md" \
-  "$ROOT_DIR/agents/memory_curator.md" \
   "$ROOT_DIR/extensions/opencode/agents/instruction_reviewer.md" \
   "$ROOT_DIR/extensions/opencode/agents/memory_curator.md" \
   "$ROOT_DIR/extensions/claude/agents/instruction_reviewer.md" \
@@ -45,10 +43,10 @@ for file in \
   [ -f "$file" ] || { echo "missing expected role file: $file" >&2; exit 1; }
 done
 
-grep -Fq "You do NOT review code quality." "$ROOT_DIR/agents/instruction_reviewer.md"
-grep -Fq "## Redundant instructions" "$ROOT_DIR/agents/instruction_reviewer.md"
-grep -Fq "temporary debugging output" "$ROOT_DIR/agents/memory_curator.md"
-grep -Fq "secrets" "$ROOT_DIR/agents/memory_curator.md"
+grep -Fq "You do NOT review code quality." "$ROOT_DIR/extensions/opencode/agents/instruction_reviewer.md"
+grep -Fq "## Redundant instructions" "$ROOT_DIR/extensions/opencode/agents/instruction_reviewer.md"
+grep -Fq "temporary debugging output" "$ROOT_DIR/extensions/opencode/agents/memory_curator.md"
+grep -Fq "secrets" "$ROOT_DIR/extensions/opencode/agents/memory_curator.md"
 grep -Fq "review_pipeline:" "$ROOT_DIR/docs/review-pipeline.md"
 grep -Fq ".reviews/<task-id>/" "$ROOT_DIR/docs/review-pipeline.md"
 grep -Fq "instruction-review.md" "$ROOT_DIR/docs/review-pipeline.md"
