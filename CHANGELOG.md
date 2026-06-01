@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.4
+
+- Enabled Codex project memories by generating `.codex/config.toml` with `[features] memories = true` whenever Codex is selected.
+
 ## v0.3.3
 
 - Updated MemPalace project initialization to pipe explicit confirmation (`echo "Y" | mempalace init ...`) for non-interactive setup robustness.

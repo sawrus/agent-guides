@@ -20,14 +20,14 @@ HOME="$TEST_HOME" XDG_CONFIG_HOME="$TEST_XDG_CONFIG_HOME" XDG_DATA_HOME="$TEST_X
 
 grep -Fq "Agentic version: v$VERSION" "$OUT"
 grep -Fq 'Skipped MemPalace MCP configuration' "$OUT"
+grep -Fq "[features]" "$P/.codex/config.toml"
+grep -Fq "memories = true" "$P/.codex/config.toml"
 [ ! -d "$P/.mempalace" ]
 if [ -f "$P/opencode.json" ]; then
   ! grep -Fq '.mempalace' "$P/opencode.json"
 fi
 
 for file in \
-  "$ROOT_DIR/agents/instruction_reviewer.md" \
-  "$ROOT_DIR/agents/memory_curator.md" \
   "$ROOT_DIR/extensions/opencode/agents/instruction_reviewer.md" \
   "$ROOT_DIR/extensions/opencode/agents/memory_curator.md" \
   "$ROOT_DIR/extensions/claude/agents/instruction_reviewer.md" \
@@ -43,10 +43,10 @@ for file in \
   [ -f "$file" ] || { echo "missing expected role file: $file" >&2; exit 1; }
 done
 
-grep -Fq "You do NOT review code quality." "$ROOT_DIR/agents/instruction_reviewer.md"
-grep -Fq "## Redundant instructions" "$ROOT_DIR/agents/instruction_reviewer.md"
-grep -Fq "temporary debugging output" "$ROOT_DIR/agents/memory_curator.md"
-grep -Fq "secrets" "$ROOT_DIR/agents/memory_curator.md"
+grep -Fq "You do NOT review code quality." "$ROOT_DIR/extensions/opencode/agents/instruction_reviewer.md"
+grep -Fq "## Redundant instructions" "$ROOT_DIR/extensions/opencode/agents/instruction_reviewer.md"
+grep -Fq "temporary debugging output" "$ROOT_DIR/extensions/opencode/agents/memory_curator.md"
+grep -Fq "secrets" "$ROOT_DIR/extensions/opencode/agents/memory_curator.md"
 grep -Fq "review_pipeline:" "$ROOT_DIR/docs/review-pipeline.md"
 grep -Fq ".reviews/<task-id>/" "$ROOT_DIR/docs/review-pipeline.md"
 grep -Fq "instruction-review.md" "$ROOT_DIR/docs/review-pipeline.md"

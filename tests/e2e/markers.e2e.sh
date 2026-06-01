@@ -104,6 +104,8 @@ for raw in sys.argv[1:-1]:
 codex = Path(sys.argv[-1]).read_text(encoding="utf-8")
 if "[mcp_servers.context7]" not in codex or "[mcp_servers.mempalace]" not in codex:
     raise SystemExit("codex config missing expected MCP sections")
+if "[features]" not in codex or "memories = true" not in codex:
+    raise SystemExit("codex config missing expected memories feature")
 PY
 
 echo "[markers-e2e] Scenario 3: identical second install does not rewrite project files"
