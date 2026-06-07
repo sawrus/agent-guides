@@ -1,4 +1,4 @@
-.PHONY: help install dev test test-all test-cli test-tui test-cross test-doctor test-markers test-opencode-plugins test-telegram-plugin test-ubuntu-blackbox test-real-agent-doctor test-real-blackbox test-real-blackbox-codex test-real-blackbox-opencode test-real-blackbox-telegram test-real-opencode-mapper test-coverage _test-coverage-steps lint fmt clean build assess-areas
+.PHONY: help install dev test test-all test-cli test-tui test-mcp test-cross test-doctor test-markers test-opencode-plugins test-telegram-plugin test-ubuntu-blackbox test-real-agent-doctor test-real-blackbox test-real-blackbox-codex test-real-blackbox-opencode test-real-blackbox-telegram test-real-opencode-mapper test-coverage _test-coverage-steps lint fmt clean build assess-areas
 
 define timed_step
 	@label='$(1)'; \
@@ -27,6 +27,7 @@ help:
 		"  test-all      Run fast tests, real blackbox, and coverage" \
 		"  test-cli      Run CLI end-to-end tests" \
 		"  test-tui      Run TUI end-to-end tests" \
+		"  test-mcp      Run MCP selection/config end-to-end tests" \
 		"  test-cross    Run cross-mode end-to-end tests" \
 		"  test-doctor   Run deterministic doctor end-to-end tests" \
 		"  test-markers  Run generated marker and idempotency tests" \
@@ -55,6 +56,7 @@ dev:
 test:
 	$(call timed_step,test-cli,bash tests/e2e/cli.e2e.sh)
 	$(call timed_step,test-tui,bash tests/e2e/tui.e2e.sh)
+	$(call timed_step,test-mcp,bash tests/e2e/mcp.e2e.sh)
 	$(call timed_step,test-cross,bash tests/e2e/cross.e2e.sh)
 	$(call timed_step,test-opencode-plugins,bash tests/e2e/opencode_plugins.e2e.sh)
 	$(call timed_step,test-telegram-plugin,bash tests/e2e/telegram_plugin.e2e.sh)
@@ -74,6 +76,9 @@ test-cli:
 
 test-tui:
 	$(call timed_step,test-tui,bash tests/e2e/tui.e2e.sh)
+
+test-mcp:
+	$(call timed_step,test-mcp,bash tests/e2e/mcp.e2e.sh)
 
 test-cross:
 	$(call timed_step,test-cross,bash tests/e2e/cross.e2e.sh)

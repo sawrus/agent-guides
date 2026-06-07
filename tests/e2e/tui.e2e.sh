@@ -31,4 +31,7 @@ printf '%s\n' "" "n" "$PROJECT" "2" "1" "2" "1" | \
   "$CLI" tui >"$OUT_VERSION" 2>&1
 grep -Fq "Agentic installer (TUI mode) v$VERSION" "$OUT_VERSION"
 grep -Fq "Agentic version: v$VERSION" "$OUT_VERSION"
+grep -Fq "Select MCP servers to enable:" "$OUT_VERSION"
+grep -Fq "opencode-docs" "$OUT_VERSION"
+grep -Fq "None / skip" "$OUT_VERSION"
 echo 'tui e2e ok'
