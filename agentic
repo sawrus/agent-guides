@@ -4267,11 +4267,88 @@ auto_install_fzf_windows() {
   return 1
 }
 
+add_fzf_to_path_if_installed() {
+  local candidate candidate_dir
+  for candidate in "/opt/homebrew/bin/fzf" "/usr/local/bin/fzf"; do
+    if [[ -x "$candidate" ]]; then
+      candidate_dir="$(dirname -- "$candidate")"
+      case ":$PATH:" in
+        *:"$candidate_dir":*) ;;
+        *) PATH="$candidate_dir:$PATH" ;;
+      esac
+      return 0
+    fi
+  done
+  return 1
+}
+
+fzf_install_hint() {
+  local platform
+  platform="$(detect_platform)"
+  case "$platform" in
+    macos)
+      cat <<'HINT'
+Install fzf on macOS with one of:
+  brew install fzf
+  /opt/homebrew/opt/fzf/install
+If Homebrew is not installed, install it from https://brew.sh/ first.
+HINT
+      ;;
+    linux)
+      cat <<'HINT'
+Install fzf with your package manager, for example:
+  sudo apt-get install -y fzf
+  sudo dnf install -y fzf
+HINT
+      ;;
+    windows)
+      cat <<'HINT'
+Install fzf with one of:
+  winget install --id junegunn.fzf -e
+  choco install fzf -y
+  scoop install fzf
+HINT
+      ;;
+    *)
+      echo "Install fzf from https://github.com/junegunn/fzf and re-run agentic tui."
+      ;;
+  esac
+}
+
+print_fzf_install_hint() {
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -n "$line" ]] && warn "$line"
+  done < <(fzf_install_hint)
+}
+
 auto_install_fzf_macos() {
-  if command -v brew >/dev/null 2>&1; then
-    brew install fzf
+  if add_fzf_to_path_if_installed && fzf_available; then
     return 0
   fi
+
+  if ! command -v brew >/dev/null 2>&1; then
+    warn "Homebrew was not found; cannot auto-install fzf on macOS."
+    print_fzf_install_hint
+    return 1
+  fi
+
+  if ! brew install fzf; then
+    warn "Homebrew failed to install fzf."
+    print_fzf_install_hint
+    return 1
+  fi
+
+  if fzf_available; then
+    return 0
+  fi
+
+  if add_fzf_to_path_if_installed && fzf_available; then
+    log "Added installed fzf to PATH for this session"
+    return 0
+  fi
+
+  warn "fzf was installed but is not available in PATH for this shell."
+  print_fzf_install_hint
   return 1
 }
 
