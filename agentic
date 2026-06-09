@@ -3,6 +3,18 @@
 set -euo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 
+# Bash 4.0+ is required for robust empty-array handling under set -u.
+# macOS ships bash 3.2 by default (GPL licensing). Install a newer bash:
+#   brew install bash
+# Then run the script via: /opt/homebrew/bin/bash agentic  (or add to PATH)
+if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+  printf '\033[1;33mWARNING: bash %s detected (bash 4.0+ required).\033[0m\n' "$BASH_VERSION" >&2
+  printf '\033[1;33mOn macOS, install a modern bash with: brew install bash\033[0m\n' >&2
+  printf '\033[1;33mThen re-run: /opt/homebrew/bin/bash %s\033[0m\n' "${BASH_SOURCE[0]}" >&2
+  printf '\033[1;33mContinuing, but errors may occur with empty selections.\033[0m\n' >&2
+  echo >&2
+fi
+
 SCRIPT_SOURCE="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "$SCRIPT_SOURCE")" && pwd -P)"
 SCRIPT_NAME="$(basename -- "$SCRIPT_SOURCE")"
@@ -2885,7 +2897,7 @@ configure_opencode_plugins_if_needed() {
 
   local enable_telegram="n" enable_agent_model_mapper="n"
   local selected_plugin
-  for selected_plugin in "${selected_plugins[@]}"; do
+  for selected_plugin in ${selected_plugins[@]+"${selected_plugins[@]}"}; do
     selected_plugin="$(trim "$selected_plugin")"
     [[ -z "$selected_plugin" ]] && continue
     case "$selected_plugin" in
@@ -4201,7 +4213,7 @@ choose_multi_by_index() {
     unique_append "${options[$((idx - 1))]}" out
   done
 
-  printf '%s\n' "${out[@]}"
+  printf '%s\n' ${out[@]+"${out[@]}"}
 }
 
 fzf_available() {
@@ -4465,7 +4477,7 @@ choose_multi_fzf_strict() {
   readlines picked < <(choose_multi_fzf "$prompt" "$sentinel" "${options[@]}")
 
   local item
-  for item in "${picked[@]}"; do
+  for item in ${picked[@]+"${picked[@]}"}; do
     item="$(trim "$item")"
     [[ -z "$item" || "$item" == "$sentinel" ]] && continue
     printf '%s\n' "$item"
@@ -4557,16 +4569,16 @@ run_tui() {
 
   local picked_agent_os=()
   if [[ "$use_fzf" == true ]]; then
-    readlines picked_agent_os < <(choose_multi_fzf "Select Agent OS target(s):" "${agentos_choices[@]}")
+    readlines picked_agent_os < <(choose_multi_fzf "Select Agent OS target(s):" ${agentos_choices[@]+"${agentos_choices[@]}"})
   else
     local picked_agent_os_output
-    picked_agent_os_output="$(choose_multi_by_index "Select Agent OS target(s):" "${agentos_choices[@]}")"
+    picked_agent_os_output="$(choose_multi_by_index "Select Agent OS target(s):" ${agentos_choices[@]+"${agentos_choices[@]}"})"
     readlines picked_agent_os <<< "$picked_agent_os_output"
   fi
   if [[ "${#picked_agent_os[@]}" -eq 0 ]]; then
     SELECTED_AGENT_OS=("$DEFAULT_AGENT_OS")
   else
-    SELECTED_AGENT_OS=("${picked_agent_os[@]}")
+    SELECTED_AGENT_OS=(${picked_agent_os[@]+"${picked_agent_os[@]}"})
   fi
 
   local detected_mcps=()
@@ -4576,7 +4588,7 @@ run_tui() {
   for registry_mcp in "${MCP_REGISTRY_IDS[@]}"; do
     local checked=false
     local detected_mcp
-    for detected_mcp in "${detected_mcps[@]}"; do
+    for detected_mcp in ${detected_mcps[@]+"${detected_mcps[@]}"}; do
       if [[ "$detected_mcp" == "$registry_mcp" ]]; then
         checked=true
         break
@@ -4587,10 +4599,10 @@ run_tui() {
 
   local picked_mcps=()
   if [[ "$use_fzf" == true ]]; then
-    readlines picked_mcps < <(choose_multi_fzf "Select MCP servers to enable:" "${mcp_options[@]}")
+    readlines picked_mcps < <(choose_multi_fzf "Select MCP servers to enable:" ${mcp_options[@]+"${mcp_options[@]}"})
   else
     local picked_mcps_output
-    picked_mcps_output="$(choose_multi_by_index "Select MCP servers to enable:" "${mcp_options[@]}")"
+    picked_mcps_output="$(choose_multi_by_index "Select MCP servers to enable:" ${mcp_options[@]+"${mcp_options[@]}"})"
     readlines picked_mcps <<< "$picked_mcps_output"
   fi
 
@@ -4599,11 +4611,11 @@ run_tui() {
   AGENTIC_ENABLE_MEMPALACE="n"
   local picked_mcp picked_mcp_id
   if [[ "${#picked_mcps[@]}" -eq 0 && "${#detected_mcps[@]}" -gt 0 ]]; then
-    for picked_mcp_id in "${detected_mcps[@]}"; do
+    for picked_mcp_id in ${detected_mcps[@]+"${detected_mcps[@]}"}; do
       add_selected_mcp "$picked_mcp_id"
     done
   else
-    for picked_mcp in "${picked_mcps[@]}"; do
+    for picked_mcp in ${picked_mcps[@]+"${picked_mcps[@]}"}; do
       picked_mcp="$(trim "$picked_mcp")"
       [[ -z "$picked_mcp" ]] && continue
       if [[ "$picked_mcp" == "$MCP_NONE_OPTION" ]]; then
@@ -4621,17 +4633,17 @@ run_tui() {
 
   local picked_areas=()
   if [[ "$use_fzf" == true ]]; then
-    readlines picked_areas < <(choose_multi_fzf "Select area(s):" "${areas[@]}")
+    readlines picked_areas < <(choose_multi_fzf "Select area(s):" ${areas[@]+"${areas[@]}"})
   else
     local picked_areas_output
-    picked_areas_output="$(choose_multi_by_index "Select area(s):" "${areas[@]}")"
+    picked_areas_output="$(choose_multi_by_index "Select area(s):" ${areas[@]+"${areas[@]}"})"
     readlines picked_areas <<< "$picked_areas_output"
   fi
 
   if [[ "${#picked_areas[@]}" -eq 0 ]]; then
     SELECTED_AREAS=(software)
   else
-    SELECTED_AREAS=("${picked_areas[@]}")
+    SELECTED_AREAS=(${picked_areas[@]+"${picked_areas[@]}"})
   fi
 
   SELECTED_SPECS=()
@@ -4642,10 +4654,10 @@ run_tui() {
 
     local chosen_specs=()
     if [[ "$use_fzf" == true ]]; then
-      readlines chosen_specs < <(choose_multi_fzf "Select specialization(s) for '$area':" "${specs[@]}")
+      readlines chosen_specs < <(choose_multi_fzf "Select specialization(s) for '$area':" ${specs[@]+"${specs[@]}"})
     else
       local chosen_specs_output
-      chosen_specs_output="$(choose_multi_by_index "Select specialization(s) for '$area':" "${specs[@]}")"
+      chosen_specs_output="$(choose_multi_by_index "Select specialization(s) for '$area':" ${specs[@]+"${specs[@]}"})"
       readlines chosen_specs <<< "$chosen_specs_output"
     fi
 
@@ -4655,7 +4667,7 @@ run_tui() {
     fi
 
     local spec
-    for spec in "${chosen_specs[@]}"; do
+    for spec in ${chosen_specs[@]+"${chosen_specs[@]}"}; do
       SELECTED_SPECS+=("$area.$spec")
     done
   done
