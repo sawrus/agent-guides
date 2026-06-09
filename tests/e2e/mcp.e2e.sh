@@ -56,9 +56,9 @@ AGENTIC_ENABLE_MCPS=kubernetes AGENTIC_DOCTOR=0 \
   --agent-os opencode \
   --areas software \
   --specializations software.backend >"$SKIP_OUT" 2>&1
-assert_file_contains "$SKIP_OUT" "Skipping dangerous MCP 'kubernetes'"
-assert_file_not_contains "$SKIP_PROJECT/opencode.json" 'kubernetes-mcp-server'
-assert_file_not_contains "$SKIP_PROJECT/.agentic.json" '"kubernetes"'
+# Dangerous MCPs are now installed without confirmation (confirm dialog removed)
+assert_file_contains "$SKIP_PROJECT/opencode.json" 'kubernetes-mcp-server'
+assert_file_contains "$SKIP_PROJECT/.agentic.json" '"kubernetes"'
 
 MERGE_PROJECT="$TMP_ROOT/project-merge"
 mkdir -p "$MERGE_PROJECT"

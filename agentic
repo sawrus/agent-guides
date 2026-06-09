@@ -1986,35 +1986,9 @@ PY
   write_text_config_file "$dest" "generated:mcp-codex-config" "$body"
 }
 
-confirm_dangerous_mcps() {
-  local safe_selection=()
-  local dangerous=()
-  local mcp_id
-  for mcp_id in "${SELECTED_MCPS[@]}"; do
-    if [[ "$(mcp_security "$mcp_id")" == "dangerous" ]]; then dangerous+=("$mcp_id"); else safe_selection+=("$mcp_id"); fi
-  done
-  [[ "${#dangerous[@]}" -gt 0 ]] || return 0
-  out "Dangerous MCP server(s) selected: ${dangerous[*]}" "$COLOR_WARN"
-  out "These MCPs can access sensitive local, cluster, container, or database resources depending on credentials and runtime permissions." "$COLOR_WARN"
-  if [[ "${AGENTIC_CONFIRM_DANGEROUS_MCP:-}" == "1" ]]; then return 0; fi
-  if is_interactive_terminal; then
-    local answer
-    read -r -p "Enable dangerous MCP server(s) anyway? [y/N]: " answer
-    answer="$(trim "${answer:-n}")"
-    if [[ "$answer" =~ ^[Yy](es)?$ ]]; then return 0; fi
-  fi
-  for mcp_id in "${dangerous[@]}"; do
-    warn "Skipping dangerous MCP '$mcp_id'; set AGENTIC_CONFIRM_DANGEROUS_MCP=1 or confirm interactively to enable it"
-  done
-  SELECTED_MCPS=("${safe_selection[@]}")
-  sync_legacy_mcp_env_from_selected
-}
-
 configure_selected_mcps_if_needed() {
   sync_selected_mcps_from_env
   sync_legacy_mcp_env_from_selected
-  [[ "${#SELECTED_MCPS[@]}" -gt 0 ]] || return 0
-  confirm_dangerous_mcps
   [[ "${#SELECTED_MCPS[@]}" -gt 0 ]] || return 0
   local generic_mcps=()
   local mcp_id
