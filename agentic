@@ -2372,22 +2372,6 @@ configure_opencode_profile_if_needed() {
   selected_agent_os_contains "opencode" || return 0
 
   local profile_id="${AGENTIC_OPENCODE_PROFILE:-$SELECTED_OPENCODE_PROFILE}"
-  if [[ -z "$profile_id" && "$INSTALL_SETTINGS_REPLAY" != true && "$DRY_RUN" != true ]] && is_interactive_terminal; then
-    local options=("$OPENCODE_PROFILE_NONE_OPTION")
-    local candidate selected
-    for candidate in "${OPENCODE_PROFILE_IDS[@]}"; do
-      options+=("$(opencode_profile_label "$candidate")")
-    done
-    if fzf_available; then
-      selected="$(choose_single_fzf "Select OpenCode model profile:" "${options[@]}")"
-    else
-      selected="$(choose_single_by_index "Select OpenCode model profile:" "${options[@]}")"
-    fi
-    if [[ "$selected" != "$OPENCODE_PROFILE_NONE_OPTION" ]]; then
-      profile_id="$(opencode_profile_id_from_label "$selected")"
-    fi
-  fi
-
   profile_id="$(trim "$profile_id")"
   case "$profile_id" in
     none|None|skip|Skip|no|No) return 0 ;;
@@ -3080,7 +3064,12 @@ configure_opencode_plugins_if_needed() {
     return
   fi
 
-  local plugin_options=("$(opencode_plugin_label "telegram-notification")" "$(opencode_plugin_label "agent-model-mapper")")
+  local plugin_options=(
+    "$(opencode_plugin_label "telegram-notification")"
+    "$(opencode_plugin_label "agent-model-mapper")"
+    "$(opencode_profile_label "openai")"
+    "$(opencode_profile_label "githubcopilot")"
+  )
   local selected_plugins=()
   local use_fzf_plugins=false
   if fzf_available; then
@@ -3106,6 +3095,8 @@ configure_opencode_plugins_if_needed() {
     case "$selected_plugin" in
       telegram-notification|telegram-opencode-notifier) enable_telegram="y" ;;
       agent-model-mapper) enable_agent_model_mapper="y" ;;
+      "OpenAI Model Profile") SELECTED_OPENCODE_PROFILE="openai" ;;
+      "GitHub Copilot Model Profile") SELECTED_OPENCODE_PROFILE="githubcopilot" ;;
     esac
   done
 

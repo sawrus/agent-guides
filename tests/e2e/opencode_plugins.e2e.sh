@@ -93,6 +93,8 @@ assert_file_contains "$INSTALL_LOG" "agent-model-mapper: updated .opencode/openc
 assert_file_contains "$INSTALL_LOG" "Select optional OpenCode plugin(s):"
 assert_file_contains "$INSTALL_LOG" "Agent Model Mapping"
 assert_file_contains "$INSTALL_LOG" "Telegram Notifications"
+assert_file_contains "$INSTALL_LOG" "OpenAI Model Profile"
+assert_file_contains "$INSTALL_LOG" "GitHub Copilot Model Profile"
 assert_file_contains "$INSTALL_LOG" "github-copilot/claude-opus-4.6"
 assert_file_contains "$INSTALL_LOG" "github-copilot/gpt-5.5"
 assert_file_not_contains "$INSTALL_LOG" "github-copilot/old-model"
@@ -104,10 +106,24 @@ assert_file_contains "$INSTALL_PROJECT/.opencode/opencode.json" '"memory_curator
 assert_not_exists "$INSTALL_PROJECT/.opencode/profiles"
 
 PROFILE_HOME="$TMP_ROOT/profile-home"
+PROFILE_MENU_PROJECT="$TMP_ROOT/profile-menu-project"
 PROFILE_OPENAI_PROJECT="$TMP_ROOT/profile-openai-project"
 PROFILE_COPILOT_PROJECT="$TMP_ROOT/profile-copilot-project"
+PROFILE_MENU_LOG="$TMP_ROOT/profile-menu.log"
 PROFILE_OPENAI_LOG="$TMP_ROOT/profile-openai.log"
 PROFILE_COPILOT_LOG="$TMP_ROOT/profile-copilot.log"
+printf '%s\n' "n" "3" "n" "n" | \
+  env HOME="$PROFILE_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 AGENTIC_DOCTOR=0 "$ROOT_DIR/agentic" install \
+    --project-dir "$PROFILE_MENU_PROJECT" \
+    --agent-os opencode \
+    --areas software \
+    --specializations software.backend >"$PROFILE_MENU_LOG" 2>&1
+assert_file_contains "$PROFILE_MENU_LOG" "OpenAI Model Profile"
+assert_file_contains "$PROFILE_MENU_LOG" "GitHub Copilot Model Profile"
+assert_file_contains "$PROFILE_MENU_LOG" "Applied OpenCode profile: OpenAI Model Profile"
+assert_file_contains "$PROFILE_MENU_PROJECT/.opencode/opencode.json" '"model": "openai/gpt-5.5"'
+assert_file_contains "$PROFILE_MENU_PROJECT/.agentic.json" '"opencode_profile": "openai"'
+
 HOME="$PROFILE_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_DOCTOR=0 AGENTIC_OPENCODE_PROFILE=openai "$ROOT_DIR/agentic" install \
   --project-dir "$PROFILE_OPENAI_PROJECT" \
   --agent-os opencode \
