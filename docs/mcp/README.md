@@ -19,4 +19,6 @@ Supported registry ids:
 
 For non-interactive installs, set `AGENTIC_ENABLE_MCPS` to a comma-separated list of registry ids. Dangerous MCPs require explicit confirmation before config is written. In non-interactive installs, set `AGENTIC_CONFIRM_DANGEROUS_MCP=1` to enable selected dangerous MCPs; otherwise agentic skips them and reports a warning.
 
-OpenCode config generation preserves existing unknown fields and MCP servers, preserves an existing `$schema`, and creates the default OpenCode schema when a config file is new. Re-running agentic updates only the selected MCP entries and does not remove unselected or unknown MCP entries.
+OpenCode config generation writes current OpenCode-compatible top-level `mcp` entries, not legacy `mcpServers`. Re-running agentic preserves existing unknown fields, preserves an existing `$schema`, updates only the selected MCP entries, and migrates any existing OpenCode `mcpServers` entries into `mcp` before removing the invalid legacy key.
+
+Codex config generation remains TOML-based and writes `[mcp_servers.<name>]` sections in `.codex/config.toml`.

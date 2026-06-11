@@ -82,7 +82,7 @@ cat > "$INSTALL_HOME/.cache/opencode/models.json" <<'JSON'
 }
 JSON
 printf '%s\n' "n" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "y" "n" "n" | \
-  env HOME="$INSTALL_HOME" XDG_CONFIG_HOME="$INSTALL_XDG_CONFIG_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 AGENTIC_DOCTOR=0 "$ROOT_DIR/agentic" install \
+  env HOME="$INSTALL_HOME" XDG_CONFIG_HOME="$INSTALL_XDG_CONFIG_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 AGENTIC_DOCTOR=0 "$ROOT_DIR/agentic" install \
     --project-dir "$INSTALL_PROJECT" \
     --agent-os opencode \
     --areas software \
@@ -90,6 +90,9 @@ printf '%s\n' "n" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1
     --theme=light >"$INSTALL_LOG" 2>&1
 assert_file_contains "$INSTALL_LOG" "agent-model-mapper: choose OpenCode models for Agentic roles"
 assert_file_contains "$INSTALL_LOG" "agent-model-mapper: updated .opencode/opencode.json"
+assert_file_contains "$INSTALL_LOG" "Select optional OpenCode plugin(s):"
+assert_file_contains "$INSTALL_LOG" "Agent Model Mapping"
+assert_file_contains "$INSTALL_LOG" "Telegram Notifications"
 assert_file_contains "$INSTALL_LOG" "github-copilot/claude-opus-4.6"
 assert_file_contains "$INSTALL_LOG" "github-copilot/gpt-5.5"
 assert_file_not_contains "$INSTALL_LOG" "github-copilot/old-model"
@@ -98,6 +101,34 @@ assert_file_contains "$INSTALL_PROJECT/.opencode/opencode.json" '"model": "local
 assert_file_contains "$INSTALL_PROJECT/.opencode/opencode.json" '"local/install-fallback"'
 assert_file_contains "$INSTALL_PROJECT/.opencode/opencode.json" '"instruction_reviewer"'
 assert_file_contains "$INSTALL_PROJECT/.opencode/opencode.json" '"memory_curator"'
+assert_not_exists "$INSTALL_PROJECT/.opencode/profiles"
+
+PROFILE_HOME="$TMP_ROOT/profile-home"
+PROFILE_OPENAI_PROJECT="$TMP_ROOT/profile-openai-project"
+PROFILE_COPILOT_PROJECT="$TMP_ROOT/profile-copilot-project"
+PROFILE_OPENAI_LOG="$TMP_ROOT/profile-openai.log"
+PROFILE_COPILOT_LOG="$TMP_ROOT/profile-copilot.log"
+HOME="$PROFILE_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_DOCTOR=0 AGENTIC_OPENCODE_PROFILE=openai "$ROOT_DIR/agentic" install \
+  --project-dir "$PROFILE_OPENAI_PROJECT" \
+  --agent-os opencode \
+  --areas software \
+  --specializations software.backend >"$PROFILE_OPENAI_LOG" 2>&1
+assert_file_contains "$PROFILE_OPENAI_LOG" "Applied OpenCode profile: OpenAI Model Profile"
+assert_file_contains "$PROFILE_OPENAI_PROJECT/.opencode/opencode.json" '"model": "openai/gpt-5.5"'
+assert_file_contains "$PROFILE_OPENAI_PROJECT/.opencode/opencode.json" '"plan"'
+assert_file_contains "$PROFILE_OPENAI_PROJECT/.agentic.json" '"opencode_profile": "openai"'
+assert_not_exists "$PROFILE_OPENAI_PROJECT/.opencode/profiles"
+
+HOME="$PROFILE_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_DOCTOR=0 AGENTIC_OPENCODE_PROFILE=githubcopilot "$ROOT_DIR/agentic" install \
+  --project-dir "$PROFILE_COPILOT_PROJECT" \
+  --agent-os opencode \
+  --areas software \
+  --specializations software.backend >"$PROFILE_COPILOT_LOG" 2>&1
+assert_file_contains "$PROFILE_COPILOT_LOG" "Applied OpenCode profile: GitHub Copilot Model Profile"
+assert_file_contains "$PROFILE_COPILOT_PROJECT/.opencode/opencode.json" '"model": "github-copilot/gpt-5.3-codex"'
+assert_file_contains "$PROFILE_COPILOT_PROJECT/.opencode/opencode.json" '"model": "github-copilot/claude-opus-4.7"'
+assert_file_contains "$PROFILE_COPILOT_PROJECT/.agentic.json" '"opencode_profile": "githubcopilot"'
+assert_not_exists "$PROFILE_COPILOT_PROJECT/.opencode/profiles"
 
 TELEGRAM_PLUGIN="$ROOT_DIR/extensions/opencode/plugins/telegram-notification.ts"
 assert_file_contains "$TELEGRAM_PLUGIN" ".agentic.json"

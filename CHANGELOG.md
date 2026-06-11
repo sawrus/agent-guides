@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.4.0
+
+- Fixed OpenCode MCP config generation to use top-level `mcp` entries and migrate/remove legacy `mcpServers` from generated OpenCode configs.
+- Added readable OpenCode menu labels for Telegram notifications and agent model mapping while preserving existing internal ids.
+- Added committed OpenCode model profiles for OpenAI and GitHub Copilot under `extensions/opencode/profiles`.
+- Added OpenCode profile selection support with manifest persistence and MCP-safe config merging.
+- Removed the macOS bash 3.2 warning and added compatibility handling for older bash empty-array behavior.
+- Extended deterministic e2e coverage for all-MCP doctor setup, OpenCode MCP migration, OpenCode profiles, readable menu labels, and bash 3 compatibility.
+
 ## v0.3.4
 
 - Enabled Codex project memories by generating `.codex/config.toml` with `[features] memories = true` whenever Codex is selected.

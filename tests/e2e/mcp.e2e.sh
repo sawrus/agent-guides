@@ -38,6 +38,12 @@ assert_file_contains "$PROJECT/opencode.json" '"kubernetes-mcp-server"'
 assert_file_contains "$PROJECT/opencode.json" '"@kimtaeyoon83/mcp-server-youtube-transcript"'
 assert_file_contains "$PROJECT/opencode.json" '"MCP_DOCKER"'
 assert_file_contains "$PROJECT/opencode.json" '"anydb-mcp"'
+assert_file_contains "$PROJECT/opencode.json" '"mcp"'
+assert_file_contains "$PROJECT/opencode.json" '"type": "local"'
+assert_file_contains "$PROJECT/opencode.json" '"enabled": true'
+assert_file_not_contains "$PROJECT/opencode.json" '"mcpServers"'
+assert_file_contains "$PROJECT/.opencode/opencode.json" '"mcp"'
+assert_file_not_contains "$PROJECT/.opencode/opencode.json" '"mcpServers"'
 assert_file_contains "$PROJECT/.codex/config.toml" '[mcp_servers.opencode]'
 assert_file_contains "$PROJECT/.codex/config.toml" 'args = ["mcp", "gateway", "run"]'
 assert_file_contains "$PROJECT/.mcp.json" '"playwright"'
@@ -90,5 +96,20 @@ assert_file_contains "$MERGE_PROJECT/opencode.json" '"existing"'
 assert_file_contains "$MERGE_PROJECT/opencode.json" '"keep-me"'
 assert_file_contains "$MERGE_PROJECT/opencode.json" '"@playwright/mcp@latest"'
 assert_file_not_contains "$MERGE_PROJECT/opencode.json" '"command": "old"'
+assert_file_not_contains "$MERGE_PROJECT/opencode.json" '"mcpServers"'
+python3 - "$MERGE_PROJECT/opencode.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if "mcpServers" in data:
+    raise SystemExit("OpenCode config still contains legacy mcpServers")
+mcp = data.get("mcp", {})
+if mcp.get("existing", {}).get("command") != ["keep-me"]:
+    raise SystemExit("legacy existing server was not migrated to mcp")
+if mcp.get("playwright", {}).get("command") != ["npx", "@playwright/mcp@latest"]:
+    raise SystemExit("selected playwright server was not rewritten in mcp")
+PY
 
 echo 'mcp e2e ok'

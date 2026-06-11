@@ -14,6 +14,12 @@ TEST_XDG_CONFIG_HOME="$TMP_ROOT/xdg-config"
 TEST_XDG_DATA_HOME="$TMP_ROOT/xdg-data"
 "$CLI" --version >"$VERSION_OUT" 2>&1
 grep -Fxq "v$VERSION" "$VERSION_OUT"
+AGENTIC_TEST_BASH_MAJOR=3 "$CLI" --version >"$TMP_ROOT/version-bash3.log" 2>&1
+grep -Fxq "v$VERSION" "$TMP_ROOT/version-bash3.log"
+if grep -Fq "bash 4.0+ required" "$TMP_ROOT/version-bash3.log"; then
+  echo "unexpected bash 4 warning under bash3 compatibility mode" >&2
+  exit 1
+fi
 
 HOME="$TEST_HOME" XDG_CONFIG_HOME="$TEST_XDG_CONFIG_HOME" XDG_DATA_HOME="$TEST_XDG_DATA_HOME" AGENTIC_ENABLE_MEMPALACE=n AGENTIC_ENABLE_CONTEXT7=n "$CLI" install \
   --project-dir "$P" --agent-os opencode,codex --areas software --specializations software.backend >"$OUT" 2>&1
