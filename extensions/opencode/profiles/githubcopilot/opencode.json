@@ -39,7 +39,7 @@
     "team-lead": {
       "description": "Team Lead - planning and code review",
       "mode": "all",
-      "model": "github-copilot/claude-opus-4.7",
+      "model": "github-copilot/claude-opus-4.8",
       "fallback": [],
       "permission": {
         "task": {
