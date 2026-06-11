@@ -1,0 +1,88 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "sound-notification",
+    "telegram-notification"
+  ],
+  "agent": {
+    "product-owner": {
+      "description": "Main coordinator for feature development workflow",
+      "mode": "primary",
+      "model": "github-copilot/gpt-5.5",
+      "fallback": [],
+      "permission": {
+        "task": {
+          "pm": "allow",
+          "team-lead": "allow",
+          "designer": "allow",
+          "developer": "allow",
+          "qa": "allow",
+          "instruction_reviewer": "allow",
+          "memory_curator": "allow"
+        }
+      }
+    },
+    "pm": {
+      "description": "Project Manager - coordinates workflow",
+      "mode": "subagent",
+      "model": "github-copilot/gpt-5.3-codex",
+      "fallback": [],
+      "permission": {
+        "task": {
+          "team-lead": "allow",
+          "designer": "allow",
+          "developer": "allow",
+          "qa": "allow"
+        }
+      }
+    },
+    "team-lead": {
+      "description": "Team Lead - planning and code review",
+      "mode": "all",
+      "model": "github-copilot/claude-opus-4.7",
+      "fallback": [],
+      "permission": {
+        "task": {
+          "developer": "allow",
+          "qa": "allow"
+        }
+      }
+    },
+    "developer": {
+      "description": "Developer - implements code",
+      "mode": "all",
+      "model": "github-copilot/gpt-5.3-codex",
+      "fallback": []
+    },
+    "devops-engineer": {
+      "description": "DevOps Engineer - infrastructure, CI/CD, and platform reliability",
+      "mode": "all",
+      "model": "github-copilot/claude-sonnet-4.6",
+      "fallback": []
+    },
+    "instruction_reviewer": {
+      "description": "Instruction Reviewer - post-task review of instruction effectiveness and tool discipline",
+      "mode": "all",
+      "model": "github-copilot/claude-sonnet-4.6",
+      "fallback": []
+    },
+    "memory_curator": {
+      "description": "Memory Curator - post-task memory hygiene recommendations without automatic writes",
+      "mode": "all",
+      "model": "github-copilot/gpt-5-mini",
+      "fallback": []
+    },
+    "qa": {
+      "description": "QA Engineer - runs tests",
+      "mode": "subagent",
+      "model": "github-copilot/gpt-5.3-codex",
+      "fallback": []
+    },
+    "designer": {
+      "description": "Designer - UI/UX validation",
+      "mode": "subagent",
+      "model": "github-copilot/gemini-3.5-flash",
+      "fallback": []
+    }
+  }
+}

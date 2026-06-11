@@ -546,7 +546,7 @@ P1_OC_PLUGINS="$TMP_ROOT/project-opencode-plugins"
 HOME_OC_PLUGINS="$TMP_ROOT/home-opencode-plugins"
 OUT1A_OC_PLUGINS="$TMP_ROOT/project-opencode-plugins.log"
 printf '%s\n' "n" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "y" "n" "n" | \
-  env HOME="$HOME_OC_PLUGINS" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
+  env HOME="$HOME_OC_PLUGINS" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
     --project-dir "$P1_OC_PLUGINS" \
     --agent-os opencode \
     --areas software \
@@ -572,7 +572,7 @@ OUT1A_OC_TELEGRAM="$TMP_ROOT/project-opencode-telegram.log"
 TELEGRAM_TOKEN="123456:test-token"
 TELEGRAM_CHAT="987654321"
 printf '%s\n' "n" "1" "$TELEGRAM_TOKEN" "$TELEGRAM_CHAT" "n" "n" | \
-  env HOME="$HOME_OC_TELEGRAM" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
+  env HOME="$HOME_OC_TELEGRAM" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none AGENTIC_DOCTOR=0 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
     --project-dir "$P1_OC_TELEGRAM" \
     --agent-os opencode \
     --areas software \
@@ -592,7 +592,7 @@ P1_OC_NO_PLUGINS="$TMP_ROOT/project-opencode-no-plugins"
 HOME_OC_NO_PLUGINS="$TMP_ROOT/home-opencode-no-plugins"
 OUT1A_OC_NO_PLUGINS="$TMP_ROOT/project-opencode-no-plugins.log"
 printf '%s\n' "n" "" "n" "n" | \
-  env HOME="$HOME_OC_NO_PLUGINS" AGENTIC_FORCE_INTERACTIVE=1 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
+  env HOME="$HOME_OC_NO_PLUGINS" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
     --project-dir "$P1_OC_NO_PLUGINS" \
     --agent-os opencode \
     --areas software \
@@ -765,7 +765,7 @@ P5A="$TMP_ROOT/project-tui-a"
 P5B="$TMP_ROOT/project-tui-b"
 
 printf '%s\n' "3" "n" "$P5A" "1" "1" "1" "1" "1" | \
-  env HOME="$HOME_TUI" AGENTIC_FORCE_INTERACTIVE=1 PATH="$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
+  env HOME="$HOME_TUI" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none PATH="$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
   "$INSTALLED_BIN" tui >"$OUT5A" 2>&1
 
 assert_exists "$HOME_TUI/.config/agentic/config"
@@ -775,7 +775,7 @@ assert_exists "$P5A/.agent/rules"
 assert_file_contains "$OUT5A" "Theme: light"
 
 printf '%s\n' "n" "$P5B" "1" "1" "1" "1" "1" | \
-  env HOME="$HOME_TUI" AGENTIC_FORCE_INTERACTIVE=1 PATH="$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
+  env HOME="$HOME_TUI" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none PATH="$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
   "$INSTALLED_BIN" tui >"$OUT5B" 2>&1
 
 assert_exists "$P5B/.agent/rules"
@@ -788,7 +788,7 @@ OUT5B_OC="$TMP_ROOT/tui-opencode-plugins-none.log"
 P5B_OC="$TMP_ROOT/project-tui-opencode-plugins-none"
 
 printf '%s\n' "n" "$P5B_OC" "1,2" "1" "1" "1" "n" "" | \
-  env HOME="$HOME_TUI_OC_PLUGINS" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 PATH="$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
+  env HOME="$HOME_TUI_OC_PLUGINS" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none AGENTIC_DOCTOR=0 PATH="$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
   "$INSTALLED_BIN" tui --theme=light >"$OUT5B_OC" 2>&1
 
 assert_exists "$HOME_TUI_OC_PLUGINS/.config/agentic/opencode-plugins.json"
@@ -822,7 +822,7 @@ cat > "$HOME_TUI_OC_EXISTING/.config/agentic/opencode-plugins.json" <<'JSON'
 JSON
 
 printf '%s\n' "n" "$P5B_EXISTING" "1,2" "1" "1" "1" "n" "" | \
-  env HOME="$HOME_TUI_OC_EXISTING" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 PATH="$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
+  env HOME="$HOME_TUI_OC_EXISTING" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none AGENTIC_DOCTOR=0 PATH="$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" AGENTIC_TEST_GIT_LOG="$GIT_LOG" \
   "$INSTALLED_BIN" tui --theme=light >"$OUT5B_EXISTING" 2>&1
 
 assert_file_contains "$OUT5B_EXISTING" "Select optional OpenCode plugin(s):"
@@ -861,7 +861,7 @@ EOS
 chmod +x "$FAKE_TUI_MEMPALACE_BIN"/*
 
 printf '%s\n' "n" "$P5C" "2" "3" "1" "1" | \
-  env HOME="$HOME_TUI_MEMPALACE" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 PATH="$FAKE_TUI_MEMPALACE_BIN:$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+  env HOME="$HOME_TUI_MEMPALACE" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none AGENTIC_DOCTOR=0 PATH="$FAKE_TUI_MEMPALACE_BIN:$FAKE_GIT_BIN:$NO_FZF_PATH:$PYTHON_ONLY_BIN:/usr/bin:/bin" \
     AGENTIC_TEST_GIT_LOG="$GIT_LOG" FAKE_TUI_MEMPALACE_PIP_LOG="$FAKE_TUI_MEMPALACE_PIP_LOG" \
     "$INSTALLED_BIN" tui --theme=light >"$OUT5C" 2>&1
 
@@ -908,7 +908,7 @@ esac
 EOS
 chmod +x "$FAKE_FZF_BIN/fzf"
 
-env HOME="$HOME_TUI_FZF" AGENTIC_FORCE_INTERACTIVE=1 PATH="$FAKE_FZF_BIN:$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+env HOME="$HOME_TUI_FZF" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none PATH="$FAKE_FZF_BIN:$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" \
   AGENTIC_TEST_GIT_LOG="$GIT_LOG" AGENTIC_TEST_FZF_CALLS_LOG="$FZF_CALLS_LOG" \
   AGENTIC_TEST_FZF_DIR_QUERY_RESULT="$P6" \
   "$INSTALLED_BIN" tui --theme=dark >"$OUT6" 2>&1
@@ -957,7 +957,7 @@ esac
 EOS
   chmod +x "$REAL_FZF_PROXY_BIN/fzf"
 
-  env HOME="$HOME_TUI_REAL_FZF" AGENTIC_FORCE_INTERACTIVE=1 PATH="$REAL_FZF_PROXY_BIN:$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+  env HOME="$HOME_TUI_REAL_FZF" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none PATH="$REAL_FZF_PROXY_BIN:$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" \
     AGENTIC_TEST_GIT_LOG="$GIT_LOG" AGENTIC_TEST_REAL_FZF_BIN="$REAL_FZF_BIN" \
     AGENTIC_TEST_FZF_DIR_QUERY_RESULT="$P7" \
     "$INSTALLED_BIN" tui --theme=dark >"$OUT7" 2>&1

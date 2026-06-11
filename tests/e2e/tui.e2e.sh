@@ -27,7 +27,7 @@ chmod +x "$PYTHON_ONLY_BIN/pip"
 OUT_VERSION="$TMP_ROOT/tui-version.log"
 PROJECT="$TMP_ROOT/project"
 printf '%s\n' "" "n" "$PROJECT" "2" "1" "2" "1" | \
-  env HOME="$TEST_HOME" XDG_CONFIG_HOME="$TEST_XDG_CONFIG_HOME" XDG_DATA_HOME="$TEST_XDG_DATA_HOME" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+  env HOME="$TEST_HOME" XDG_CONFIG_HOME="$TEST_XDG_CONFIG_HOME" XDG_DATA_HOME="$TEST_XDG_DATA_HOME" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DISABLE_FZF=1 AGENTIC_OPENCODE_PROFILE=none AGENTIC_DOCTOR=0 PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" \
   "$CLI" tui >"$OUT_VERSION" 2>&1
 grep -Fq "Agentic installer (TUI mode) v$VERSION" "$OUT_VERSION"
 grep -Fq "Agentic version: v$VERSION" "$OUT_VERSION"
@@ -38,7 +38,7 @@ grep -Fq "None / skip" "$OUT_VERSION"
 OUT_MAC_FZF="$TMP_ROOT/tui-macos-fzf.log"
 PROJECT_MAC_FZF="$TMP_ROOT/project-macos-fzf"
 printf '%s\n' "" "Y" "$PROJECT_MAC_FZF" "2" "1" "2" "1" | \
-  env HOME="$TMP_ROOT/home-macos-fzf" XDG_CONFIG_HOME="$TMP_ROOT/xdg-config-macos-fzf" XDG_DATA_HOME="$TMP_ROOT/xdg-data-macos-fzf" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 AGENTIC_PLATFORM_OVERRIDE=macos PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+  env HOME="$TMP_ROOT/home-macos-fzf" XDG_CONFIG_HOME="$TMP_ROOT/xdg-config-macos-fzf" XDG_DATA_HOME="$TMP_ROOT/xdg-data-macos-fzf" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DISABLE_FZF=1 AGENTIC_OPENCODE_PROFILE=none AGENTIC_DOCTOR=0 AGENTIC_PLATFORM_OVERRIDE=macos PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" \
   "$CLI" tui >"$OUT_MAC_FZF" 2>&1
 grep -Fq "Homebrew was not found; cannot auto-install fzf on macOS." "$OUT_MAC_FZF"
 grep -Fq "brew install fzf" "$OUT_MAC_FZF"

@@ -200,7 +200,7 @@ JSON
   ln -s "$(command -v python3)" "$install_bin/python3"
 
   printf '%s\n' "n" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "1" "2" "y" "n" "n" | \
-    HOME="$home" PATH="$install_bin:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 AGENTIC_DOCTOR=0 \
+    HOME="$home" PATH="$install_bin:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 AGENTIC_DOCTOR=0 \
       "$CLI" install \
       --project-dir "$project" \
       --agent-os opencode \

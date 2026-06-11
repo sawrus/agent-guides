@@ -204,6 +204,36 @@ if [[ -e "$P1/src/doctor-touched.txt" ]]; then
   fail "Doctor wrote into the target project"
 fi
 
+echo "[doctor-e2e] Scenario 1b: all MCP selections keep Codex deterministic and OpenCode valid"
+P1B="$TMP_ROOT/project-all-mcps"
+OUT1B="$TMP_ROOT/all-mcps.log"
+HOME1B="$TMP_ROOT/home-1b"
+PATH="$FAKE_BIN:/usr/bin:/bin" \
+  HOME="$HOME1B" \
+  TMPDIR="$TMP_ROOT" \
+  AGENTIC_ENABLE_MCPS=opencode-docs,playwright,kubernetes,youtube-transcript,docker-mcp,context7,mempalace,anydb \
+  AGENTIC_CONFIRM_DANGEROUS_MCP=1 \
+  "$CLI" install \
+    --project-dir "$P1B" \
+    --agent-os codex,opencode \
+    --areas software \
+    --specializations software.backend >"$OUT1B" 2>&1
+
+assert_file_contains "$OUT1B" "✅ codex: lightweight smoke passed"
+assert_file_contains "$OUT1B" "✅ opencode: lightweight smoke passed"
+assert_file_contains "$P1B/.codex/config.toml" "[mcp_servers.opencode]"
+assert_file_contains "$P1B/.codex/config.toml" "[mcp_servers.playwright]"
+assert_file_contains "$P1B/.codex/config.toml" "[mcp_servers.kubernetes]"
+assert_file_contains "$P1B/.codex/config.toml" "[mcp_servers.youtube-transcript]"
+assert_file_contains "$P1B/.codex/config.toml" "[mcp_servers.docker]"
+assert_file_contains "$P1B/.codex/config.toml" "[mcp_servers.context7]"
+assert_file_contains "$P1B/.codex/config.toml" "[mcp_servers.mempalace]"
+assert_file_contains "$P1B/.codex/config.toml" "[mcp_servers.anydb]"
+assert_file_contains "$P1B/opencode.json" '"mcp"'
+assert_file_not_contains "$P1B/opencode.json" '"mcpServers"'
+assert_file_contains "$P1B/.opencode/opencode.json" '"mcp"'
+assert_file_not_contains "$P1B/.opencode/opencode.json" '"mcpServers"'
+
 echo "[doctor-e2e] Scenario 2: selected claude,gemini reports failing gemini without failing install"
 P2="$TMP_ROOT/project-claude-gemini"
 OUT2="$TMP_ROOT/claude-gemini.log"

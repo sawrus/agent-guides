@@ -3,16 +3,11 @@
 set -euo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 
-# Bash 4.0+ is required for robust empty-array handling under set -u.
-# macOS ships bash 3.2 by default (GPL licensing). Install a newer bash:
-#   brew install bash
-# Then run the script via: /opt/homebrew/bin/bash agentic  (or add to PATH)
-if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
-  printf '\033[1;33mWARNING: bash %s detected (bash 4.0+ required).\033[0m\n' "$BASH_VERSION" >&2
-  printf '\033[1;33mOn macOS, install a modern bash with: brew install bash\033[0m\n' >&2
-  printf '\033[1;33mThen re-run: /opt/homebrew/bin/bash %s\033[0m\n' "${BASH_SOURCE[0]}" >&2
-  printf '\033[1;33mContinuing, but errors may occur with empty selections.\033[0m\n' >&2
-  echo >&2
+# macOS ships bash 3.2, where empty arrays and set -u interact poorly.
+# Keep the CLI quiet and compatible there while retaining nounset on newer bash.
+AGENTIC_BASH_MAJOR="${AGENTIC_TEST_BASH_MAJOR:-${BASH_VERSINFO[0]}}"
+if [[ "$AGENTIC_BASH_MAJOR" =~ ^[0-9]+$ ]] && (( AGENTIC_BASH_MAJOR < 4 )); then
+  set +u
 fi
 
 SCRIPT_SOURCE="${BASH_SOURCE[0]}"
@@ -55,6 +50,7 @@ SELECTED_AGENT_OS=("$DEFAULT_AGENT_OS")
 SELECTED_AREAS=()
 SELECTED_SPECS=()
 SELECTED_MCPS=()
+SELECTED_OPENCODE_PROFILE=""
 INSTALL_SETTINGS_REPLAY=false
 
 SELF_INSTALL_FORCE=false
@@ -765,6 +761,8 @@ ensure_agentic_runtime_requirements() {
 
 MCP_REGISTRY_IDS=(opencode-docs playwright kubernetes youtube-transcript docker-mcp context7 mempalace anydb)
 MCP_NONE_OPTION="None / skip"
+OPENCODE_PROFILE_IDS=(openai githubcopilot)
+OPENCODE_PROFILE_NONE_OPTION="No OpenCode model profile"
 
 mcp_registry_contains() {
   local expected="$1"
@@ -905,12 +903,57 @@ mcp_registry_json() {
   "playwright": {"security":"sensitive", "default_enabled":false, "target":"mcpServers", "server":"playwright", "command":"npx", "args":["@playwright/mcp@latest"]},
   "kubernetes": {"security":"dangerous", "default_enabled":false, "target":"mcpServers", "server":"kubernetes", "command":"npx", "args":["-y", "kubernetes-mcp-server"]},
   "youtube-transcript": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"youtube-transcript", "command":"npx", "args":["-y", "@kimtaeyoon83/mcp-server-youtube-transcript"]},
-  "docker-mcp": {"security":"dangerous", "default_enabled":false, "target":"mcp", "server":"MCP_DOCKER", "opencode":{"type":"local", "command":["docker", "mcp", "gateway", "run"], "enabled":true}, "generic":{"command":"docker", "args":["mcp", "gateway", "run"]}},
+  "docker-mcp": {"security":"dangerous", "default_enabled":false, "target":"mcp", "server":"docker", "opencode":{"type":"local", "command":["docker", "mcp", "gateway", "run"], "enabled":true}, "generic":{"command":"docker", "args":["mcp", "gateway", "run"]}},
   "context7": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"context7", "command":"npx", "args":["-y", "@upstash/context7-mcp"], "remote":"https://mcp.context7.com/mcp"},
   "mempalace": {"security":"sensitive", "default_enabled":false, "target":"mcpServers", "server":"mempalace", "command":"mempalace-mcp", "args":[]},
   "anydb": {"security":"dangerous", "default_enabled":false, "target":"mcpServers", "server":"anydb", "command":"npx", "args":["-y", "anydb-mcp"]}
 }
 JSON
+}
+
+opencode_profile_contains() {
+  local expected="$1"
+  local profile_id
+  for profile_id in "${OPENCODE_PROFILE_IDS[@]}"; do
+    [[ "$profile_id" == "$expected" ]] && return 0
+  done
+  return 1
+}
+
+opencode_profile_label() {
+  case "$1" in
+    openai) echo "OpenAI Model Profile" ;;
+    githubcopilot) echo "GitHub Copilot Model Profile" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+opencode_profile_id_from_label() {
+  local label="$1"
+  local profile_id
+  for profile_id in "${OPENCODE_PROFILE_IDS[@]}"; do
+    if [[ "$label" == "$(opencode_profile_label "$profile_id")" ]]; then
+      printf '%s\n' "$profile_id"
+      return
+    fi
+  done
+  printf '%s\n' "$label"
+}
+
+opencode_plugin_label() {
+  case "$1" in
+    telegram-notification) echo "Telegram Notifications" ;;
+    agent-model-mapper) echo "Agent Model Mapping" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+opencode_plugin_id_from_label() {
+  case "$1" in
+    "Telegram Notifications") echo "telegram-notification" ;;
+    "Agent Model Mapping") echo "agent-model-mapper" ;;
+    *) echo "$1" ;;
+  esac
 }
 
 selected_agent_os_contains() {
@@ -1236,7 +1279,7 @@ write_agentic_manifest() {
   mcp_integrations_csv="$(selected_mcps_csv)"
 
   local manifest_status
-  manifest_status="$(python3 - "$manifest" "$records_file" "$skipped_file" "$APP_REPO_LINK" "$REPO_ROOT" "$agent_os_csv" "$areas_csv" "$specs_csv" "$(app_version_label)" "$mcp_integrations_csv" "$OPENCODE_TELEGRAM_ENABLED" "$OPENCODE_TELEGRAM_BOT_TOKEN" "$OPENCODE_TELEGRAM_CHAT_ID" "$OPENCODE_AGENT_MODEL_MAPPER_ENABLED" <<'PY'
+  manifest_status="$(python3 - "$manifest" "$records_file" "$skipped_file" "$APP_REPO_LINK" "$REPO_ROOT" "$agent_os_csv" "$areas_csv" "$specs_csv" "$(app_version_label)" "$mcp_integrations_csv" "$OPENCODE_TELEGRAM_ENABLED" "$OPENCODE_TELEGRAM_BOT_TOKEN" "$OPENCODE_TELEGRAM_CHAT_ID" "$OPENCODE_AGENT_MODEL_MAPPER_ENABLED" "$SELECTED_OPENCODE_PROFILE" <<'PY'
 import json
 import sys
 from datetime import datetime, timezone
@@ -1256,6 +1299,7 @@ telegram_enabled = sys.argv[11].lower() == "true" if len(sys.argv) > 11 and sys.
 telegram_bot_token = sys.argv[12] if len(sys.argv) > 12 else ""
 telegram_chat_id = sys.argv[13] if len(sys.argv) > 13 else ""
 mapper_enabled = sys.argv[14].lower() == "true" if len(sys.argv) > 14 and sys.argv[14] else None
+opencode_profile = sys.argv[15] if len(sys.argv) > 15 else ""
 now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 existing = {}
@@ -1332,6 +1376,7 @@ data = {
         "areas": areas,
         "specializations": specs,
         "mcp_integrations": mcp_integrations,
+        "opencode_profile": opencode_profile,
         "opencode_plugins": opencode_plugins,
         "source_repo": repo_link,
         "source_checkout": repo_root,
@@ -1380,6 +1425,9 @@ for key in ("agent_os", "areas", "specializations", "mcp_integrations"):
     print("::" + key)
     for value in settings.get(key, []):
         print(value)
+print("::opencode_profile")
+if settings.get("opencode_profile"):
+    print(settings.get("opencode_profile"))
 plugins = settings.get("opencode_plugins", {})
 if isinstance(plugins, dict):
     telegram = plugins.get("telegram", {})
@@ -1410,6 +1458,7 @@ PY
   local loaded_telegram_bot_token=""
   local loaded_telegram_chat_id=""
   local loaded_mapper_enabled=""
+  local loaded_opencode_profile=""
   local value
   for value in "${values[@]}"; do
     case "$value" in
@@ -1417,12 +1466,18 @@ PY
       "::areas") section="areas" ;;
       "::specializations") section="specializations" ;;
       "::mcp_integrations") section="mcp_integrations" ;;
+      "::opencode_profile") section="opencode_profile" ;;
+      "::opencode_telegram_enabled") section="opencode_telegram_enabled" ;;
+      "::opencode_telegram_bot_token") section="opencode_telegram_bot_token" ;;
+      "::opencode_telegram_chat_id") section="opencode_telegram_chat_id" ;;
+      "::opencode_agent_model_mapper_enabled") section="opencode_agent_model_mapper_enabled" ;;
       *)
         case "$section" in
           agent_os) loaded_agent_os+=("$value") ;;
           areas) loaded_areas+=("$value") ;;
           specializations) loaded_specs+=("$value") ;;
           mcp_integrations) loaded_mcp_integrations+=("$value") ;;
+          opencode_profile) loaded_opencode_profile="$value" ;;
           opencode_telegram_enabled) loaded_telegram_enabled="$value" ;;
           opencode_telegram_bot_token) loaded_telegram_bot_token="$value" ;;
           opencode_telegram_chat_id) loaded_telegram_chat_id="$value" ;;
@@ -1460,6 +1515,9 @@ PY
   if [[ -n "$loaded_mapper_enabled" ]]; then
     OPENCODE_AGENT_MODEL_MAPPER_ENABLED="$loaded_mapper_enabled"
     OPENCODE_PLUGINS_CONFIGURED=true
+  fi
+  if [[ -n "$loaded_opencode_profile" ]]; then
+    SELECTED_OPENCODE_PROFILE="$loaded_opencode_profile"
   fi
 }
 
@@ -1667,6 +1725,8 @@ def add_marker(file_path: Path, target: Path, source_ref: str) -> str:
 emit("DIR", str(dest_root))
 for file_path in sorted(p for p in src.rglob("*") if p.is_file()):
     rel = file_path.relative_to(src)
+    if str(src).endswith("/extensions/opencode") and rel.parts and rel.parts[0] == "profiles":
+        continue
     target = dest_root / rel
     project_rel = rel_to_project(target)
     source_ref = rel_to_repo(file_path)
@@ -1909,7 +1969,7 @@ import re
 import sys
 from pathlib import Path
 project = Path(sys.argv[1]); home = Path(sys.argv[2]); found = set()
-server_to_id = {"opencode":"opencode-docs","playwright":"playwright","kubernetes":"kubernetes","youtube-transcript":"youtube-transcript","MCP_DOCKER":"docker-mcp","context7":"context7","mempalace":"mempalace","anydb":"anydb"}
+server_to_id = {"opencode":"opencode-docs","playwright":"playwright","kubernetes":"kubernetes","youtube-transcript":"youtube-transcript","docker":"docker-mcp","MCP_DOCKER":"docker-mcp","context7":"context7","mempalace":"mempalace","anydb":"anydb"}
 json_paths = [project/"opencode.json", project/".opencode"/"opencode.json", project/".mcp.json", project/".cursor"/"mcp.json", project/".gemini"/"settings.json", project/".kilocode"/"mcp.json", home/".gemini"/"antigravity"/"mcp_config.json"]
 for path in json_paths:
     if not path.exists(): continue
@@ -1950,7 +2010,56 @@ registry = json.loads(sys.argv[3])
 print('registry = ' + repr(registry))
 print('selected = ' + repr(selected))
 print('platform = ' + repr(platform))
-print('\nif platform == "opencode":\n    data.setdefault("$schema", "https://opencode.ai/config.json")\nfor mcp_id in selected:\n    entry = registry.get(mcp_id)\n    if not entry:\n        continue\n    server = entry["server"]\n    if platform == "opencode" and entry.get("target") == "mcp":\n        data.setdefault("mcp", {})[server] = dict(entry.get("opencode", {}))\n        continue\n    if mcp_id == "docker-mcp":\n        cfg = dict(entry.get("generic", {}))\n    else:\n        cfg = {"command": entry["command"]}\n        args = list(entry.get("args", []))\n        if args:\n            cfg["args"] = args\n        if mcp_id == "context7" and context7_api_key:\n            cfg["env"] = {"CONTEXT7_API_KEY": context7_api_key}\n    data.setdefault("mcpServers", {})[server] = cfg\n')
+print(r'''
+def opencode_local(command, args=None):
+    values = [command] + list(args or [])
+    return {"type": "local", "command": values, "enabled": True}
+
+def opencode_remote(url, headers=None):
+    cfg = {"type": "remote", "url": url, "enabled": True}
+    if headers:
+        cfg["headers"] = headers
+    return cfg
+
+if platform == "opencode":
+    data.setdefault("$schema", "https://opencode.ai/config.json")
+    legacy_servers = data.pop("mcpServers", {})
+    mcp = data.setdefault("mcp", {})
+    if isinstance(legacy_servers, dict):
+        for legacy_server, legacy_cfg in legacy_servers.items():
+            if legacy_server in mcp:
+                continue
+            if not isinstance(legacy_cfg, dict):
+                continue
+            command = legacy_cfg.get("command")
+            args = legacy_cfg.get("args", [])
+            if isinstance(command, str):
+                mcp[legacy_server] = opencode_local(command, args if isinstance(args, list) else [])
+for mcp_id in selected:
+    entry = registry.get(mcp_id)
+    if not entry:
+        continue
+    server = entry["server"]
+    if platform == "opencode":
+        if mcp_id == "docker-mcp":
+            data.setdefault("mcp", {})[server] = dict(entry.get("opencode", {}))
+        elif mcp_id == "context7":
+            headers = {"CONTEXT7_API_KEY": context7_api_key} if context7_api_key else None
+            data.setdefault("mcp", {})[server] = opencode_remote(entry.get("remote", ""), headers)
+        else:
+            data.setdefault("mcp", {})[server] = opencode_local(entry["command"], entry.get("args", []))
+        continue
+    if mcp_id == "docker-mcp":
+        cfg = dict(entry.get("generic", {}))
+    else:
+        cfg = {"command": entry["command"]}
+        args = list(entry.get("args", []))
+        if args:
+            cfg["args"] = args
+        if mcp_id == "context7" and context7_api_key:
+            cfg["env"] = {"CONTEXT7_API_KEY": context7_api_key}
+    data.setdefault("mcpServers", {})[server] = cfg
+''')
 PY
 )"
   write_json_config_file "$dest" "$source_ref" "$body"
@@ -2008,11 +2117,34 @@ configure_selected_mcps_if_needed() {
   if selected_agent_os_contains "antigravity"; then write_selected_mcp_json_config "$HOME/.gemini/antigravity/mcp_config.json" "generated:mcp-antigravity-config" "generic" "${generic_mcps[@]}"; fi
 }
 
+check_selected_mcp_runtime_prerequisites() {
+  if selected_mcp_contains "kubernetes"; then
+    if ! kubectl version >/dev/null 2>&1; then
+      warn "Kubernetes MCP selected, but 'kubectl version' did not complete successfully. Install or configure kubectl: https://kubernetes.io/docs/tasks/tools/"
+    fi
+  fi
+
+  if selected_mcp_contains "docker-mcp"; then
+    if ! docker mcp --version >/dev/null 2>&1; then
+      warn "Docker MCP selected, but 'docker mcp --version' did not complete successfully. Install Docker and Docker MCP support: https://docs.docker.com/get-started/get-docker/ and https://docs.docker.com/ai/mcp-catalog-and-toolkit/"
+    fi
+  fi
+}
+
 write_context7_opencode_config() {
   local dest="$PROJECT_DIR/opencode.json"
   local body
   body='
+legacy_servers = data.pop("mcpServers", {})
 mcp = data.setdefault("mcp", {})
+if isinstance(legacy_servers, dict):
+    for legacy_server, legacy_cfg in legacy_servers.items():
+        if legacy_server in mcp or not isinstance(legacy_cfg, dict):
+            continue
+        command = legacy_cfg.get("command")
+        args = legacy_cfg.get("args", [])
+        if isinstance(command, str):
+            mcp[legacy_server] = {"type": "local", "command": [command] + (args if isinstance(args, list) else []), "enabled": True}
 context7 = {
     "type": "remote",
     "url": "https://mcp.context7.com/mcp",
@@ -2029,7 +2161,16 @@ write_context7_opencode_legacy_config() {
   local dest="$PROJECT_DIR/.opencode/opencode.json"
   local body
   body='
+legacy_servers = data.pop("mcpServers", {})
 mcp = data.setdefault("mcp", {})
+if isinstance(legacy_servers, dict):
+    for legacy_server, legacy_cfg in legacy_servers.items():
+        if legacy_server in mcp or not isinstance(legacy_cfg, dict):
+            continue
+        command = legacy_cfg.get("command")
+        args = legacy_cfg.get("args", [])
+        if isinstance(command, str):
+            mcp[legacy_server] = {"type": "local", "command": [command] + (args if isinstance(args, list) else []), "enabled": True}
 context7 = {
     "type": "remote",
     "url": "https://mcp.context7.com/mcp",
@@ -2226,10 +2367,95 @@ write_mempalace_opencode_config() {
   local dest="$1"
   local body
   body='
+legacy_servers = data.pop("mcpServers", {})
 mcp = data.setdefault("mcp", {})
+if isinstance(legacy_servers, dict):
+    for legacy_server, legacy_cfg in legacy_servers.items():
+        if legacy_server in mcp or not isinstance(legacy_cfg, dict):
+            continue
+        command = legacy_cfg.get("command")
+        args = legacy_cfg.get("args", [])
+        if isinstance(command, str):
+            mcp[legacy_server] = {"type": "local", "command": [command] + (args if isinstance(args, list) else []), "enabled": True}
 mcp["mempalace"] = {"type": "local", "command": ["mempalace-mcp"]}
 '
   write_json_config_file "$dest" "generated:mempalace-opencode-config" "$body"
+}
+
+configure_opencode_profile_if_needed() {
+  selected_agent_os_contains "opencode" || return 0
+
+  local profile_id="${AGENTIC_OPENCODE_PROFILE:-$SELECTED_OPENCODE_PROFILE}"
+  profile_id="$(trim "$profile_id")"
+  case "$profile_id" in
+    none|None|skip|Skip|no|No) return 0 ;;
+  esac
+  [[ -n "$profile_id" ]] || return 0
+  if ! opencode_profile_contains "$profile_id"; then
+    warn "Ignoring unknown OpenCode profile '$profile_id'"
+    return 0
+  fi
+  SELECTED_OPENCODE_PROFILE="$profile_id"
+
+  local src="$EXTENSIONS_ROOT/opencode/profiles/$profile_id/opencode.json"
+  local dest="$PROJECT_DIR/.opencode/opencode.json"
+  if [[ ! -f "$src" ]]; then
+    warn "OpenCode profile not found: $src"
+    return 0
+  fi
+  if [[ "$DRY_RUN" == true ]]; then
+    log "DRY-RUN apply OpenCode profile $(opencode_profile_label "$profile_id") to $dest"
+    unique_append "$dest" COPIED_PATHS
+    return 0
+  fi
+  can_write_managed_file "$dest" || return 0
+  ensure_dir "$(dirname -- "$dest")"
+
+  local write_status
+  write_status="$(python3 - "$src" "$dest" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+src = Path(sys.argv[1])
+dest = Path(sys.argv[2])
+profile = json.loads(src.read_text(encoding="utf-8"))
+if not isinstance(profile, dict):
+    raise SystemExit("OpenCode profile must be a JSON object")
+try:
+    data = json.loads(dest.read_text(encoding="utf-8")) if dest.exists() else {}
+except Exception:
+    data = {}
+if not isinstance(data, dict):
+    data = {}
+
+def merge(base, incoming):
+    for key, value in incoming.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            merge(base[key], value)
+        else:
+            base[key] = value
+    return base
+
+merge(data, profile)
+output = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+if dest.exists():
+    try:
+        if dest.read_text(encoding="utf-8") == output:
+            print("unchanged")
+            raise SystemExit(0)
+    except UnicodeDecodeError:
+        pass
+dest.write_text(output, encoding="utf-8")
+print("written")
+PY
+)"
+  if [[ "$write_status" == "unchanged" ]]; then
+    register_managed_file "$dest" "generated:opencode-profile-$profile_id" "config" false
+  else
+    register_managed_file "$dest" "generated:opencode-profile-$profile_id" "config"
+  fi
+  log "Applied OpenCode profile: $(opencode_profile_label "$profile_id")"
 }
 
 write_mempalace_codex_config() {
@@ -2852,7 +3078,12 @@ configure_opencode_plugins_if_needed() {
     return
   fi
 
-  local plugin_options=("telegram-notification" "agent-model-mapper")
+  local plugin_options=(
+    "$(opencode_plugin_label "telegram-notification")"
+    "$(opencode_plugin_label "agent-model-mapper")"
+    "$(opencode_profile_label "openai")"
+    "$(opencode_profile_label "githubcopilot")"
+  )
   local selected_plugins=()
   local use_fzf_plugins=false
   if fzf_available; then
@@ -2874,9 +3105,12 @@ configure_opencode_plugins_if_needed() {
   for selected_plugin in ${selected_plugins[@]+"${selected_plugins[@]}"}; do
     selected_plugin="$(trim "$selected_plugin")"
     [[ -z "$selected_plugin" ]] && continue
+    selected_plugin="$(opencode_plugin_id_from_label "$selected_plugin")"
     case "$selected_plugin" in
       telegram-notification|telegram-opencode-notifier) enable_telegram="y" ;;
       agent-model-mapper) enable_agent_model_mapper="y" ;;
+      "OpenAI Model Profile") SELECTED_OPENCODE_PROFILE="openai" ;;
+      "GitHub Copilot Model Profile") SELECTED_OPENCODE_PROFILE="githubcopilot" ;;
     esac
   done
 
@@ -3970,6 +4204,7 @@ run_install() {
   ensure_dir "$PROJECT_DIR"
   configure_opencode_plugins_if_needed
   copy_extensions "$PROJECT_DIR"
+  configure_opencode_profile_if_needed
   configure_opencode_agent_model_mapper_if_needed
   copy_specialization_assets "$PROJECT_DIR"
   generate_agents_md "$PROJECT_DIR"
@@ -3982,6 +4217,7 @@ run_install() {
   configure_context7_if_needed
   configure_mempalace_if_needed
   configure_selected_mcps_if_needed
+  check_selected_mcp_runtime_prerequisites
   write_agentic_manifest "$PROJECT_DIR"
   print_report
   print_missing_agent_binary_guides
@@ -4191,6 +4427,8 @@ choose_multi_by_index() {
 }
 
 fzf_available() {
+  [[ "${AGENTIC_DISABLE_FZF:-}" != "1" ]] || return 1
+  [[ "${AGENTIC_AGENT_MODEL_MAPPER_NO_FZF:-}" != "1" ]] || return 1
   command -v fzf >/dev/null 2>&1
 }
 

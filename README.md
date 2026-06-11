@@ -194,8 +194,14 @@ project/.agent/
 
 ### MCP
 
-- `context7`: adds a remote MCP server for up-to-date framework, library, SDK, and API documentation.
-- `mempalace`: adds a local memory MCP server for project context discovery and reuse.
+- `opencode-docs` (safe): adds OpenCode documentation through a local MCP server.
+- `playwright` (sensitive): adds browser automation through Playwright MCP.
+- `kubernetes` (dangerous): adds Kubernetes cluster access through Kubernetes MCP.
+- `youtube-transcript` (safe): adds YouTube transcript lookup through a local MCP server.
+- `docker-mcp` (dangerous): adds Docker MCP Gateway as the generated `docker` MCP server.
+- `context7` (safe): adds a remote MCP server for up-to-date framework, library, SDK, and API documentation.
+- `mempalace` (sensitive): adds a local memory MCP server for project context discovery and reuse.
+- `anydb` (dangerous): adds database access through AnyDB MCP.
 
 ### OpenCode Plugins
 

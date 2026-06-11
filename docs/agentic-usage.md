@@ -146,6 +146,8 @@ TUI uses `fzf` for interactive selection. If `fzf` is missing, `agentic` can:
 
 `--install-fzf` only affects `self-install`. If auto-install fails, self-install still completes.
 
+The CLI supports the system bash 3.2 shipped with macOS and does not require installing a newer bash.
+
 Manual install examples:
 
 Linux:
@@ -172,13 +174,19 @@ scoop install fzf
 
 ## OpenCode optional plugins
 
-When `opencode` is selected, interactive installs ask whether to enable Telegram notifications and `agent-model-mapper`. The answer is stored globally in:
+When `opencode` is selected, interactive installs ask whether to enable `Telegram Notifications` and `Agent Model Mapping`. These are readable menu labels for the stable internal ids `telegram-notification` and `agent-model-mapper`. The answer is stored globally in:
 
 ```text
 ~/.config/agentic/opencode-plugins.json
 ```
 
 Non-interactive installs create a disabled config when no config exists. Interactive installs ask for Telegram `botToken` and `chatId` when `telegram-notification` is selected. Those credentials are written to the target project `.agentic.json` under `settings.opencode_plugins.telegram`, not to `~/.config/agentic/opencode-plugins.json`. Treat `.agentic.json` as plaintext secret-bearing project config when Telegram is enabled and do not commit it to public repositories. When enabled, `agent-model-mapper` runs during interactive `agentic install`/`agentic tui`, uses `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after a Confirm action. OpenCode startup does not load a mapper runtime plugin or prompt for model mapping.
+
+OpenCode model profiles are stored in `extensions/opencode/profiles` and appear in the same optional OpenCode selection menu as the plugin choices. The built-in choices are `OpenAI Model Profile` and `GitHub Copilot Model Profile`; non-interactive installs can choose them with `AGENTIC_OPENCODE_PROFILE=openai` or `AGENTIC_OPENCODE_PROFILE=githubcopilot`. Profile selection merges agent model mappings into `.opencode/opencode.json`, then MCP configuration is merged afterward.
+
+OpenCode MCP config uses top-level `mcp`, not `mcpServers`. Agentic migrates legacy OpenCode `mcpServers` entries into `mcp` during install. Codex continues to use `.codex/config.toml` with `[mcp_servers.*]` sections.
+
+For selected Kubernetes and Docker MCP integrations, `agentic` performs non-fatal local checks after config generation: `kubectl version` for Kubernetes and `docker mcp --version` for Docker MCP. Failed checks appear as warnings in the final install report with official setup links. Docker MCP server entries are generated under the server name `docker`.
 
 ## Context7
 
