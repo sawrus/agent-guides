@@ -6,6 +6,8 @@
 - Added readable OpenCode menu labels for Telegram notifications and agent model mapping while preserving existing internal ids.
 - Added committed OpenCode model profiles for OpenAI and GitHub Copilot under `extensions/opencode/profiles`.
 - Added OpenCode profile choices to the optional OpenCode menu with manifest persistence and MCP-safe config merging.
+- Renamed generated Docker MCP server entries from `MCP_DOCKER` to `docker`.
+- Added non-fatal local prerequisite warnings for selected Kubernetes and Docker MCP integrations.
 - Removed the macOS bash 3.2 warning and added compatibility handling for older bash empty-array behavior.
 - Extended deterministic e2e coverage for all-MCP doctor setup, OpenCode MCP migration, OpenCode profiles, readable menu labels, and bash 3 compatibility.
 

@@ -903,7 +903,7 @@ mcp_registry_json() {
   "playwright": {"security":"sensitive", "default_enabled":false, "target":"mcpServers", "server":"playwright", "command":"npx", "args":["@playwright/mcp@latest"]},
   "kubernetes": {"security":"dangerous", "default_enabled":false, "target":"mcpServers", "server":"kubernetes", "command":"npx", "args":["-y", "kubernetes-mcp-server"]},
   "youtube-transcript": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"youtube-transcript", "command":"npx", "args":["-y", "@kimtaeyoon83/mcp-server-youtube-transcript"]},
-  "docker-mcp": {"security":"dangerous", "default_enabled":false, "target":"mcp", "server":"MCP_DOCKER", "opencode":{"type":"local", "command":["docker", "mcp", "gateway", "run"], "enabled":true}, "generic":{"command":"docker", "args":["mcp", "gateway", "run"]}},
+  "docker-mcp": {"security":"dangerous", "default_enabled":false, "target":"mcp", "server":"docker", "opencode":{"type":"local", "command":["docker", "mcp", "gateway", "run"], "enabled":true}, "generic":{"command":"docker", "args":["mcp", "gateway", "run"]}},
   "context7": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"context7", "command":"npx", "args":["-y", "@upstash/context7-mcp"], "remote":"https://mcp.context7.com/mcp"},
   "mempalace": {"security":"sensitive", "default_enabled":false, "target":"mcpServers", "server":"mempalace", "command":"mempalace-mcp", "args":[]},
   "anydb": {"security":"dangerous", "default_enabled":false, "target":"mcpServers", "server":"anydb", "command":"npx", "args":["-y", "anydb-mcp"]}
@@ -1969,7 +1969,7 @@ import re
 import sys
 from pathlib import Path
 project = Path(sys.argv[1]); home = Path(sys.argv[2]); found = set()
-server_to_id = {"opencode":"opencode-docs","playwright":"playwright","kubernetes":"kubernetes","youtube-transcript":"youtube-transcript","MCP_DOCKER":"docker-mcp","context7":"context7","mempalace":"mempalace","anydb":"anydb"}
+server_to_id = {"opencode":"opencode-docs","playwright":"playwright","kubernetes":"kubernetes","youtube-transcript":"youtube-transcript","docker":"docker-mcp","MCP_DOCKER":"docker-mcp","context7":"context7","mempalace":"mempalace","anydb":"anydb"}
 json_paths = [project/"opencode.json", project/".opencode"/"opencode.json", project/".mcp.json", project/".cursor"/"mcp.json", project/".gemini"/"settings.json", project/".kilocode"/"mcp.json", home/".gemini"/"antigravity"/"mcp_config.json"]
 for path in json_paths:
     if not path.exists(): continue
@@ -2115,6 +2115,20 @@ configure_selected_mcps_if_needed() {
   if selected_agent_os_contains "gemini"; then write_selected_mcp_json_config "$PROJECT_DIR/.gemini/settings.json" "generated:mcp-gemini-config" "gemini" "${generic_mcps[@]}"; fi
   if selected_agent_os_contains "kilocode"; then write_selected_mcp_json_config "$PROJECT_DIR/.kilocode/mcp.json" "generated:mcp-kilocode-config" "generic" "${generic_mcps[@]}"; fi
   if selected_agent_os_contains "antigravity"; then write_selected_mcp_json_config "$HOME/.gemini/antigravity/mcp_config.json" "generated:mcp-antigravity-config" "generic" "${generic_mcps[@]}"; fi
+}
+
+check_selected_mcp_runtime_prerequisites() {
+  if selected_mcp_contains "kubernetes"; then
+    if ! kubectl version >/dev/null 2>&1; then
+      warn "Kubernetes MCP selected, but 'kubectl version' did not complete successfully. Install or configure kubectl: https://kubernetes.io/docs/tasks/tools/"
+    fi
+  fi
+
+  if selected_mcp_contains "docker-mcp"; then
+    if ! docker mcp --version >/dev/null 2>&1; then
+      warn "Docker MCP selected, but 'docker mcp --version' did not complete successfully. Install Docker and Docker MCP support: https://docs.docker.com/get-started/get-docker/ and https://docs.docker.com/ai/mcp-catalog-and-toolkit/"
+    fi
+  fi
 }
 
 write_context7_opencode_config() {
@@ -4203,6 +4217,7 @@ run_install() {
   configure_context7_if_needed
   configure_mempalace_if_needed
   configure_selected_mcps_if_needed
+  check_selected_mcp_runtime_prerequisites
   write_agentic_manifest "$PROJECT_DIR"
   print_report
   print_missing_agent_binary_guides

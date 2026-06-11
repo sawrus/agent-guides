@@ -25,7 +25,7 @@
     "pm": {
       "description": "Project Manager - coordinates workflow",
       "mode": "subagent",
-      "model": "openai/gpt-5.5-fast",
+      "model": "openai/gpt-5.5",
       "fallback": [],
       "permission": {
         "task": {
@@ -63,25 +63,25 @@
     "instruction_reviewer": {
       "description": "Instruction Reviewer - post-task review of instruction effectiveness and tool discipline",
       "mode": "all",
-      "model": "openai/gpt-5.5-fast",
+      "model": "openai/gpt-5.5",
       "fallback": []
     },
     "memory_curator": {
       "description": "Memory Curator - post-task memory hygiene recommendations without automatic writes",
       "mode": "all",
-      "model": "openai/gpt-5.5-fast",
+      "model": "openai/gpt-5.5",
       "fallback": []
     },
     "qa": {
       "description": "QA Engineer - runs tests",
       "mode": "subagent",
-      "model": "openai/gpt-5.5-fast",
+      "model": "openai/gpt-5.5",
       "fallback": []
     },
     "designer": {
       "description": "Designer - UI/UX validation",
       "mode": "subagent",
-      "model": "openai/gpt-5.5-fast",
+      "model": "openai/gpt-5.5",
       "fallback": []
     },
     "plan": {

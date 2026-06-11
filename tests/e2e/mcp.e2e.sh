@@ -17,7 +17,15 @@ cat > "$PYTHON_ONLY_BIN/pip" <<'EOS'
 #!/usr/bin/env bash
 exit 0
 EOS
-chmod +x "$PYTHON_ONLY_BIN/pip"
+cat > "$PYTHON_ONLY_BIN/kubectl" <<'EOS'
+#!/usr/bin/env bash
+exit 1
+EOS
+cat > "$PYTHON_ONLY_BIN/docker" <<'EOS'
+#!/usr/bin/env bash
+exit 1
+EOS
+chmod +x "$PYTHON_ONLY_BIN/pip" "$PYTHON_ONLY_BIN/kubectl" "$PYTHON_ONLY_BIN/docker"
 
 PROJECT="$TMP_ROOT/project-all"
 OUT="$TMP_ROOT/all.log"
@@ -36,7 +44,7 @@ assert_file_contains "$PROJECT/opencode.json" '"opencode-docs-mcp"'
 assert_file_contains "$PROJECT/opencode.json" '"@playwright/mcp@latest"'
 assert_file_contains "$PROJECT/opencode.json" '"kubernetes-mcp-server"'
 assert_file_contains "$PROJECT/opencode.json" '"@kimtaeyoon83/mcp-server-youtube-transcript"'
-assert_file_contains "$PROJECT/opencode.json" '"MCP_DOCKER"'
+assert_file_contains "$PROJECT/opencode.json" '"docker"'
 assert_file_contains "$PROJECT/opencode.json" '"anydb-mcp"'
 assert_file_contains "$PROJECT/opencode.json" '"mcp"'
 assert_file_contains "$PROJECT/opencode.json" '"type": "local"'
@@ -52,6 +60,10 @@ assert_file_contains "$PROJECT/.gemini/settings.json" '"anydb"'
 assert_file_contains "$PROJECT/.kilocode/mcp.json" '"kubernetes"'
 assert_file_contains "$PROJECT/.agentic.json" '"opencode-docs"'
 assert_file_contains "$PROJECT/.agentic.json" '"docker-mcp"'
+assert_file_contains "$OUT" "Kubernetes MCP selected, but 'kubectl version' did not complete successfully."
+assert_file_contains "$OUT" "https://kubernetes.io/docs/tasks/tools/"
+assert_file_contains "$OUT" "Docker MCP selected, but 'docker mcp --version' did not complete successfully."
+assert_file_contains "$OUT" "https://docs.docker.com/get-started/get-docker/"
 
 SKIP_PROJECT="$TMP_ROOT/project-skip-dangerous"
 SKIP_OUT="$TMP_ROOT/skip-dangerous.log"

@@ -131,6 +131,7 @@ HOME="$PROFILE_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_DOCTOR=0 AGENTIC_
   --specializations software.backend >"$PROFILE_OPENAI_LOG" 2>&1
 assert_file_contains "$PROFILE_OPENAI_LOG" "Applied OpenCode profile: OpenAI Model Profile"
 assert_file_contains "$PROFILE_OPENAI_PROJECT/.opencode/opencode.json" '"model": "openai/gpt-5.5"'
+assert_file_not_contains "$PROFILE_OPENAI_PROJECT/.opencode/opencode.json" 'openai/gpt-5.5-fast'
 assert_file_contains "$PROFILE_OPENAI_PROJECT/.opencode/opencode.json" '"plan"'
 assert_file_contains "$PROFILE_OPENAI_PROJECT/.agentic.json" '"opencode_profile": "openai"'
 assert_not_exists "$PROFILE_OPENAI_PROJECT/.opencode/profiles"
