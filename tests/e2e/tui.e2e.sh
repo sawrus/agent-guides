@@ -31,4 +31,16 @@ printf '%s\n' "" "n" "$PROJECT" "2" "1" "2" "1" | \
   "$CLI" tui >"$OUT_VERSION" 2>&1
 grep -Fq "Agentic installer (TUI mode) v$VERSION" "$OUT_VERSION"
 grep -Fq "Agentic version: v$VERSION" "$OUT_VERSION"
+grep -Fq "Select MCP servers to enable:" "$OUT_VERSION"
+grep -Fq "opencode-docs" "$OUT_VERSION"
+grep -Fq "None / skip" "$OUT_VERSION"
+
+OUT_MAC_FZF="$TMP_ROOT/tui-macos-fzf.log"
+PROJECT_MAC_FZF="$TMP_ROOT/project-macos-fzf"
+printf '%s\n' "" "Y" "$PROJECT_MAC_FZF" "2" "1" "2" "1" | \
+  env HOME="$TMP_ROOT/home-macos-fzf" XDG_CONFIG_HOME="$TMP_ROOT/xdg-config-macos-fzf" XDG_DATA_HOME="$TMP_ROOT/xdg-data-macos-fzf" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DOCTOR=0 AGENTIC_PLATFORM_OVERRIDE=macos PATH="$PYTHON_ONLY_BIN:/usr/bin:/bin" \
+  "$CLI" tui >"$OUT_MAC_FZF" 2>&1
+grep -Fq "Homebrew was not found; cannot auto-install fzf on macOS." "$OUT_MAC_FZF"
+grep -Fq "brew install fzf" "$OUT_MAC_FZF"
+grep -Fq "Falling back to index menus" "$OUT_MAC_FZF"
 echo 'tui e2e ok'

@@ -3,6 +3,18 @@
 set -euo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 
+# Bash 4.0+ is required for robust empty-array handling under set -u.
+# macOS ships bash 3.2 by default (GPL licensing). Install a newer bash:
+#   brew install bash
+# Then run the script via: /opt/homebrew/bin/bash agentic  (or add to PATH)
+if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+  printf '\033[1;33mWARNING: bash %s detected (bash 4.0+ required).\033[0m\n' "$BASH_VERSION" >&2
+  printf '\033[1;33mOn macOS, install a modern bash with: brew install bash\033[0m\n' >&2
+  printf '\033[1;33mThen re-run: /opt/homebrew/bin/bash %s\033[0m\n' "${BASH_SOURCE[0]}" >&2
+  printf '\033[1;33mContinuing, but errors may occur with empty selections.\033[0m\n' >&2
+  echo >&2
+fi
+
 SCRIPT_SOURCE="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "$SCRIPT_SOURCE")" && pwd -P)"
 SCRIPT_NAME="$(basename -- "$SCRIPT_SOURCE")"
@@ -42,6 +54,7 @@ ACTIVE_THEME="dark"
 SELECTED_AGENT_OS=("$DEFAULT_AGENT_OS")
 SELECTED_AREAS=()
 SELECTED_SPECS=()
+SELECTED_MCPS=()
 INSTALL_SETTINGS_REPLAY=false
 
 SELF_INSTALL_FORCE=false
@@ -749,6 +762,157 @@ ensure_agentic_runtime_requirements() {
   ensure_hash_available
 }
 
+
+MCP_REGISTRY_IDS=(opencode-docs playwright kubernetes youtube-transcript docker-mcp context7 mempalace anydb)
+MCP_NONE_OPTION="None / skip"
+
+mcp_registry_contains() {
+  local expected="$1"
+  local mcp_id
+  for mcp_id in "${MCP_REGISTRY_IDS[@]}"; do
+    [[ "$mcp_id" == "$expected" ]] && return 0
+  done
+  return 1
+}
+
+mcp_title() {
+  case "$1" in
+    opencode-docs) echo "OpenCode Docs" ;;
+    playwright) echo "Playwright" ;;
+    kubernetes) echo "Kubernetes" ;;
+    youtube-transcript) echo "YouTube Transcript" ;;
+    docker-mcp) echo "Docker MCP" ;;
+    context7) echo "Context7" ;;
+    mempalace) echo "MemPalace" ;;
+    anydb) echo "AnyDB" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+mcp_description() {
+  case "$1" in
+    opencode-docs) echo "OpenCode docs MCP" ;;
+    playwright) echo "Browser automation via Playwright MCP" ;;
+    kubernetes) echo "Kubernetes pods/logs/exec management" ;;
+    youtube-transcript) echo "YouTube transcript extraction" ;;
+    docker-mcp) echo "Docker MCP Gateway" ;;
+    context7) echo "Fresh library documentation" ;;
+    mempalace) echo "Persistent project memory" ;;
+    anydb) echo "Database access MCP" ;;
+    *) echo "MCP server" ;;
+  esac
+}
+
+mcp_security() {
+  case "$1" in
+    kubernetes|docker-mcp|anydb) echo "dangerous" ;;
+    playwright|mempalace) echo "sensitive" ;;
+    *) echo "safe" ;;
+  esac
+}
+
+mcp_verified() {
+  case "$1" in
+    opencode-docs|playwright|kubernetes|youtube-transcript|docker-mcp|context7|mempalace|anydb) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+mcp_display_row() {
+  local mcp_id="$1"
+  local checked="${2:-false}"
+  local mark="[ ]"
+  [[ "$checked" == true ]] && mark="[x]"
+  printf '%s %-20s %s\n' "$mark" "$mcp_id" "$(mcp_description "$mcp_id")"
+}
+
+mcp_id_from_display_row() {
+  local row="$1"
+  row="${row#\[ \] }"
+  row="${row#\[x\] }"
+  row="${row#\[X\] }"
+  row="${row%%[[:space:]]*}"
+  printf '%s\n' "$row"
+}
+
+selected_mcp_contains() {
+  local expected="$1"
+  local mcp_id
+  for mcp_id in "${SELECTED_MCPS[@]}"; do
+    [[ "$mcp_id" == "$expected" ]] && return 0
+  done
+  return 1
+}
+
+add_selected_mcp() {
+  local mcp_id="$1"
+  mcp_registry_contains "$mcp_id" || {
+    warn "Ignoring unknown MCP integration '$mcp_id'"
+    return 0
+  }
+  mcp_verified "$mcp_id" || {
+    warn "Skipping MCP integration '$mcp_id' because its package/config is not verified"
+    return 0
+  }
+  unique_append "$mcp_id" SELECTED_MCPS
+}
+
+sync_selected_mcps_from_env() {
+  local raw="${AGENTIC_ENABLE_MCPS:-}"
+  local item
+  if [[ -n "$raw" ]]; then
+    local old_ifs="$IFS"
+    IFS=,
+    for item in $raw; do
+      item="$(trim "$item")"
+      [[ -z "$item" ]] && continue
+      add_selected_mcp "$item"
+    done
+    IFS="$old_ifs"
+  fi
+  if [[ "${AGENTIC_ENABLE_CONTEXT7:-}" =~ ^[Yy](es)?$ ]]; then
+    add_selected_mcp "context7"
+  fi
+  if [[ "${AGENTIC_ENABLE_MEMPALACE:-}" =~ ^[Yy](es)?$ ]]; then
+    add_selected_mcp "mempalace"
+  fi
+}
+
+sync_legacy_mcp_env_from_selected() {
+  if selected_mcp_contains "context7"; then
+    AGENTIC_ENABLE_CONTEXT7="y"
+  elif [[ -z "${AGENTIC_ENABLE_CONTEXT7:-}" ]]; then
+    AGENTIC_ENABLE_CONTEXT7="n"
+  fi
+  if selected_mcp_contains "mempalace"; then
+    AGENTIC_ENABLE_MEMPALACE="y"
+  elif [[ -z "${AGENTIC_ENABLE_MEMPALACE:-}" ]]; then
+    AGENTIC_ENABLE_MEMPALACE="n"
+  fi
+}
+
+selected_mcps_csv() {
+  local old_ifs="$IFS"
+  IFS=,
+  printf '%s\n' "${SELECTED_MCPS[*]:-}"
+  IFS="$old_ifs"
+}
+
+mcp_registry_json() {
+  cat <<'JSON'
+{
+  "opencode-docs": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"opencode", "command":"npx", "args":["-y", "opencode-docs-mcp"]},
+  "playwright": {"security":"sensitive", "default_enabled":false, "target":"mcpServers", "server":"playwright", "command":"npx", "args":["@playwright/mcp@latest"]},
+  "kubernetes": {"security":"dangerous", "default_enabled":false, "target":"mcpServers", "server":"kubernetes", "command":"npx", "args":["-y", "kubernetes-mcp-server"]},
+  "youtube-transcript": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"youtube-transcript", "command":"npx", "args":["-y", "@kimtaeyoon83/mcp-server-youtube-transcript"]},
+  "docker-mcp": {"security":"dangerous", "default_enabled":false, "target":"mcp", "server":"MCP_DOCKER", "opencode":{"type":"local", "command":["docker", "mcp", "gateway", "run"], "enabled":true}, "generic":{"command":"docker", "args":["mcp", "gateway", "run"]}},
+  "context7": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"context7", "command":"npx", "args":["-y", "@upstash/context7-mcp"], "remote":"https://mcp.context7.com/mcp"},
+  "mempalace": {"security":"sensitive", "default_enabled":false, "target":"mcpServers", "server":"mempalace", "command":"mempalace-mcp", "args":[]},
+  "anydb": {"security":"dangerous", "default_enabled":false, "target":"mcpServers", "server":"anydb", "command":"npx", "args":["-y", "anydb-mcp"]}
+}
+JSON
+}
+
 selected_agent_os_contains() {
   local expected="$1"
   local agent
@@ -1068,18 +1232,8 @@ write_agentic_manifest() {
   specs_csv="${SELECTED_SPECS[*]}"
   IFS="$old_ifs"
 
-  # Build mcp_integrations list from current env selections
-  local mcp_integrations=()
-  if [[ "${AGENTIC_ENABLE_CONTEXT7:-}" =~ ^[Yy](es)?$ ]]; then
-    mcp_integrations+=("context7")
-  fi
-  if [[ "${AGENTIC_ENABLE_MEMPALACE:-}" =~ ^[Yy](es)?$ ]]; then
-    mcp_integrations+=("mempalace")
-  fi
-  old_ifs="$IFS"
-  IFS=,
-  mcp_integrations_csv="${mcp_integrations[*]:-}"
-  IFS="$old_ifs"
+  sync_legacy_mcp_env_from_selected
+  mcp_integrations_csv="$(selected_mcps_csv)"
 
   local manifest_status
   manifest_status="$(python3 - "$manifest" "$records_file" "$skipped_file" "$APP_REPO_LINK" "$REPO_ROOT" "$agent_os_csv" "$areas_csv" "$specs_csv" "$(app_version_label)" "$mcp_integrations_csv" "$OPENCODE_TELEGRAM_ENABLED" "$OPENCODE_TELEGRAM_BOT_TOKEN" "$OPENCODE_TELEGRAM_CHAT_ID" "$OPENCODE_AGENT_MODEL_MAPPER_ENABLED" <<'PY'
@@ -1288,23 +1442,13 @@ PY
     SELECTED_SPECS=("${loaded_specs[@]}")
   fi
 
-  # Restore MCP integration selections so configure_*_if_needed skip interactive prompts
+  # Restore MCP integration selections so MCP config replay skips interactive prompts.
   local mcp_item
   if [[ "${#loaded_mcp_integrations[@]}" -gt 0 ]]; then
     for mcp_item in "${loaded_mcp_integrations[@]}"; do
-      case "$mcp_item" in
-        context7)
-          if [[ -z "${AGENTIC_ENABLE_CONTEXT7:-}" ]]; then
-            AGENTIC_ENABLE_CONTEXT7="y"
-          fi
-          ;;
-        mempalace)
-          if [[ -z "${AGENTIC_ENABLE_MEMPALACE:-}" ]]; then
-            AGENTIC_ENABLE_MEMPALACE="y"
-          fi
-          ;;
-      esac
+      add_selected_mcp "$mcp_item"
     done
+    sync_legacy_mcp_env_from_selected
   fi
 
   if [[ -n "$loaded_telegram_enabled" ]]; then
@@ -1753,6 +1897,115 @@ PY
   else
     register_managed_file "$dest" "$source_ref" "config"
   fi
+}
+
+
+detect_configured_mcps() {
+  local project_dir="$1"
+  [[ -n "$project_dir" ]] || return 0
+  python3 - "$project_dir" "$HOME" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+project = Path(sys.argv[1]); home = Path(sys.argv[2]); found = set()
+server_to_id = {"opencode":"opencode-docs","playwright":"playwright","kubernetes":"kubernetes","youtube-transcript":"youtube-transcript","MCP_DOCKER":"docker-mcp","context7":"context7","mempalace":"mempalace","anydb":"anydb"}
+json_paths = [project/"opencode.json", project/".opencode"/"opencode.json", project/".mcp.json", project/".cursor"/"mcp.json", project/".gemini"/"settings.json", project/".kilocode"/"mcp.json", home/".gemini"/"antigravity"/"mcp_config.json"]
+for path in json_paths:
+    if not path.exists(): continue
+    try: data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception: continue
+    if not isinstance(data, dict): continue
+    for section in ("mcpServers", "mcp"):
+        value = data.get(section, {})
+        if isinstance(value, dict):
+            for server in value:
+                if server in server_to_id: found.add(server_to_id[server])
+config = project/".codex"/"config.toml"
+if config.exists():
+    try: text = config.read_text(encoding="utf-8")
+    except Exception: text = ""
+    for server, mcp_id in server_to_id.items():
+        if re.search(rf"(?m)^\[mcp_servers\.{re.escape(server)}\]", text): found.add(mcp_id)
+for mcp_id in sorted(found): print(mcp_id)
+PY
+}
+
+write_selected_mcp_json_config() {
+  local dest="$1"
+  local source_ref="$2"
+  local platform="$3"
+  shift 3
+  local selected_ids=("$@")
+  [[ "${#selected_ids[@]}" -gt 0 ]] || return 0
+  local selected_csv old_ifs registry_json
+  old_ifs="$IFS"; IFS=,; selected_csv="${selected_ids[*]}"; IFS="$old_ifs"
+  registry_json="$(mcp_registry_json)"
+  local body
+  body="$(python3 - "$platform" "$selected_csv" "$registry_json" <<'PY'
+import json, sys
+platform = sys.argv[1]
+selected = [x for x in sys.argv[2].split(",") if x]
+registry = json.loads(sys.argv[3])
+print('registry = ' + repr(registry))
+print('selected = ' + repr(selected))
+print('platform = ' + repr(platform))
+print('\nif platform == "opencode":\n    data.setdefault("$schema", "https://opencode.ai/config.json")\nfor mcp_id in selected:\n    entry = registry.get(mcp_id)\n    if not entry:\n        continue\n    server = entry["server"]\n    if platform == "opencode" and entry.get("target") == "mcp":\n        data.setdefault("mcp", {})[server] = dict(entry.get("opencode", {}))\n        continue\n    if mcp_id == "docker-mcp":\n        cfg = dict(entry.get("generic", {}))\n    else:\n        cfg = {"command": entry["command"]}\n        args = list(entry.get("args", []))\n        if args:\n            cfg["args"] = args\n        if mcp_id == "context7" and context7_api_key:\n            cfg["env"] = {"CONTEXT7_API_KEY": context7_api_key}\n    data.setdefault("mcpServers", {})[server] = cfg\n')
+PY
+)"
+  write_json_config_file "$dest" "$source_ref" "$body"
+}
+
+write_selected_mcp_codex_config() {
+  local selected_ids=("$@")
+  [[ "${#selected_ids[@]}" -gt 0 ]] || return 0
+  local dest="$PROJECT_DIR/.codex/config.toml"
+  local selected_csv old_ifs registry_json
+  old_ifs="$IFS"; IFS=,; selected_csv="${selected_ids[*]}"; IFS="$old_ifs"
+  registry_json="$(mcp_registry_json)"
+  local body
+  body="$(python3 - "$dest" "$selected_csv" "$registry_json" "$CONTEXT7_API_KEY" <<'PY'
+import json, re, sys
+from pathlib import Path
+path = Path(sys.argv[1]); selected = [x for x in sys.argv[2].split(",") if x]; registry = json.loads(sys.argv[3]); context7_api_key = sys.argv[4]
+text = path.read_text(encoding="utf-8") if path.exists() else ""
+for mcp_id in selected:
+    entry = registry.get(mcp_id)
+    if not entry: continue
+    server = entry["server"]
+    text = re.sub(rf"(?ms)^\[mcp_servers\.{re.escape(server)}\]\n.*?(?=^\[|\Z)", "", text).strip()
+    if mcp_id == "docker-mcp": command, args = "docker", ["mcp", "gateway", "run"]
+    else: command, args = entry["command"], entry.get("args", [])
+    block = f"[mcp_servers.{server}]\ncommand = {json.dumps(command)}\n"
+    if args: block += "args = [" + ", ".join(json.dumps(a) for a in args) + "]\n"
+    if mcp_id == "context7" and context7_api_key: block += 'env = { "CONTEXT7_API_KEY" = ' + json.dumps(context7_api_key) + ' }\n'
+    text = (text.rstrip() + "\n\n" + block).strip() if text else block.strip()
+print(text.rstrip() + "\n", end="")
+PY
+)"
+  write_text_config_file "$dest" "generated:mcp-codex-config" "$body"
+}
+
+configure_selected_mcps_if_needed() {
+  sync_selected_mcps_from_env
+  sync_legacy_mcp_env_from_selected
+  [[ "${#SELECTED_MCPS[@]}" -gt 0 ]] || return 0
+  local generic_mcps=()
+  local mcp_id
+  for mcp_id in "${SELECTED_MCPS[@]}"; do
+    case "$mcp_id" in context7|mempalace) ;; *) generic_mcps+=("$mcp_id") ;; esac
+  done
+  [[ "${#generic_mcps[@]}" -gt 0 ]] || return 0
+  if selected_agent_os_contains "opencode"; then
+    write_selected_mcp_json_config "$PROJECT_DIR/opencode.json" "generated:mcp-opencode-config" "opencode" "${generic_mcps[@]}"
+    write_selected_mcp_json_config "$PROJECT_DIR/.opencode/opencode.json" "generated:mcp-opencode-legacy-config" "opencode" "${generic_mcps[@]}"
+  fi
+  if selected_agent_os_contains "codex"; then write_selected_mcp_codex_config "${generic_mcps[@]}"; fi
+  if selected_agent_os_contains "claude"; then write_selected_mcp_json_config "$PROJECT_DIR/.mcp.json" "generated:mcp-claude-config" "generic" "${generic_mcps[@]}"; fi
+  if selected_agent_os_contains "cursor"; then write_selected_mcp_json_config "$PROJECT_DIR/.cursor/mcp.json" "generated:mcp-cursor-config" "generic" "${generic_mcps[@]}"; fi
+  if selected_agent_os_contains "gemini"; then write_selected_mcp_json_config "$PROJECT_DIR/.gemini/settings.json" "generated:mcp-gemini-config" "gemini" "${generic_mcps[@]}"; fi
+  if selected_agent_os_contains "kilocode"; then write_selected_mcp_json_config "$PROJECT_DIR/.kilocode/mcp.json" "generated:mcp-kilocode-config" "generic" "${generic_mcps[@]}"; fi
+  if selected_agent_os_contains "antigravity"; then write_selected_mcp_json_config "$HOME/.gemini/antigravity/mcp_config.json" "generated:mcp-antigravity-config" "generic" "${generic_mcps[@]}"; fi
 }
 
 write_context7_opencode_config() {
@@ -2618,7 +2871,7 @@ configure_opencode_plugins_if_needed() {
 
   local enable_telegram="n" enable_agent_model_mapper="n"
   local selected_plugin
-  for selected_plugin in "${selected_plugins[@]}"; do
+  for selected_plugin in ${selected_plugins[@]+"${selected_plugins[@]}"}; do
     selected_plugin="$(trim "$selected_plugin")"
     [[ -z "$selected_plugin" ]] && continue
     case "$selected_plugin" in
@@ -3724,8 +3977,11 @@ run_install() {
   if selected_agent_os_contains "codex"; then
     write_codex_features_config
   fi
+  sync_selected_mcps_from_env
+  sync_legacy_mcp_env_from_selected
   configure_context7_if_needed
   configure_mempalace_if_needed
+  configure_selected_mcps_if_needed
   write_agentic_manifest "$PROJECT_DIR"
   print_report
   print_missing_agent_binary_guides
@@ -3931,7 +4187,7 @@ choose_multi_by_index() {
     unique_append "${options[$((idx - 1))]}" out
   done
 
-  printf '%s\n' "${out[@]}"
+  printf '%s\n' ${out[@]+"${out[@]}"}
 }
 
 fzf_available() {
@@ -3997,11 +4253,88 @@ auto_install_fzf_windows() {
   return 1
 }
 
+add_fzf_to_path_if_installed() {
+  local candidate candidate_dir
+  for candidate in "/opt/homebrew/bin/fzf" "/usr/local/bin/fzf"; do
+    if [[ -x "$candidate" ]]; then
+      candidate_dir="$(dirname -- "$candidate")"
+      case ":$PATH:" in
+        *:"$candidate_dir":*) ;;
+        *) PATH="$candidate_dir:$PATH" ;;
+      esac
+      return 0
+    fi
+  done
+  return 1
+}
+
+fzf_install_hint() {
+  local platform
+  platform="$(detect_platform)"
+  case "$platform" in
+    macos)
+      cat <<'HINT'
+Install fzf on macOS with one of:
+  brew install fzf
+  /opt/homebrew/opt/fzf/install
+If Homebrew is not installed, install it from https://brew.sh/ first.
+HINT
+      ;;
+    linux)
+      cat <<'HINT'
+Install fzf with your package manager, for example:
+  sudo apt-get install -y fzf
+  sudo dnf install -y fzf
+HINT
+      ;;
+    windows)
+      cat <<'HINT'
+Install fzf with one of:
+  winget install --id junegunn.fzf -e
+  choco install fzf -y
+  scoop install fzf
+HINT
+      ;;
+    *)
+      echo "Install fzf from https://github.com/junegunn/fzf and re-run agentic tui."
+      ;;
+  esac
+}
+
+print_fzf_install_hint() {
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -n "$line" ]] && warn "$line"
+  done < <(fzf_install_hint)
+}
+
 auto_install_fzf_macos() {
-  if command -v brew >/dev/null 2>&1; then
-    brew install fzf
+  if add_fzf_to_path_if_installed && fzf_available; then
     return 0
   fi
+
+  if ! command -v brew >/dev/null 2>&1; then
+    warn "Homebrew was not found; cannot auto-install fzf on macOS."
+    print_fzf_install_hint
+    return 1
+  fi
+
+  if ! brew install fzf; then
+    warn "Homebrew failed to install fzf."
+    print_fzf_install_hint
+    return 1
+  fi
+
+  if fzf_available; then
+    return 0
+  fi
+
+  if add_fzf_to_path_if_installed && fzf_available; then
+    log "Added installed fzf to PATH for this session"
+    return 0
+  fi
+
+  warn "fzf was installed but is not available in PATH for this shell."
+  print_fzf_install_hint
   return 1
 }
 
@@ -4118,7 +4451,7 @@ choose_multi_fzf_strict() {
   readlines picked < <(choose_multi_fzf "$prompt" "$sentinel" "${options[@]}")
 
   local item
-  for item in "${picked[@]}"; do
+  for item in ${picked[@]+"${picked[@]}"}; do
     item="$(trim "$item")"
     [[ -z "$item" || "$item" == "$sentinel" ]] && continue
     printf '%s\n' "$item"
@@ -4210,54 +4543,81 @@ run_tui() {
 
   local picked_agent_os=()
   if [[ "$use_fzf" == true ]]; then
-    readlines picked_agent_os < <(choose_multi_fzf "Select Agent OS target(s):" "${agentos_choices[@]}")
+    readlines picked_agent_os < <(choose_multi_fzf "Select Agent OS target(s):" ${agentos_choices[@]+"${agentos_choices[@]}"})
   else
     local picked_agent_os_output
-    picked_agent_os_output="$(choose_multi_by_index "Select Agent OS target(s):" "${agentos_choices[@]}")"
+    picked_agent_os_output="$(choose_multi_by_index "Select Agent OS target(s):" ${agentos_choices[@]+"${agentos_choices[@]}"})"
     readlines picked_agent_os <<< "$picked_agent_os_output"
   fi
   if [[ "${#picked_agent_os[@]}" -eq 0 ]]; then
     SELECTED_AGENT_OS=("$DEFAULT_AGENT_OS")
   else
-    SELECTED_AGENT_OS=("${picked_agent_os[@]}")
+    SELECTED_AGENT_OS=(${picked_agent_os[@]+"${picked_agent_os[@]}"})
   fi
 
-  local mcp_options=("context7" "mempalace")
+  local detected_mcps=()
+  readlines detected_mcps < <(detect_configured_mcps "$PROJECT_DIR" || true)
+  local mcp_options=("$MCP_NONE_OPTION")
+  local registry_mcp
+  for registry_mcp in "${MCP_REGISTRY_IDS[@]}"; do
+    local checked=false
+    local detected_mcp
+    for detected_mcp in ${detected_mcps[@]+"${detected_mcps[@]}"}; do
+      if [[ "$detected_mcp" == "$registry_mcp" ]]; then
+        checked=true
+        break
+      fi
+    done
+    mcp_options+=("$(mcp_display_row "$registry_mcp" "$checked")")
+  done
+
   local picked_mcps=()
   if [[ "$use_fzf" == true ]]; then
-    readlines picked_mcps < <(choose_multi_fzf_strict "Select optional MCP integration(s):" "${mcp_options[@]}")
+    readlines picked_mcps < <(choose_multi_fzf "Select MCP servers to enable:" ${mcp_options[@]+"${mcp_options[@]}"})
   else
     local picked_mcps_output
-    picked_mcps_output="$(choose_multi_by_index "Select optional MCP integration(s):" "<none>" "${mcp_options[@]}")"
+    picked_mcps_output="$(choose_multi_by_index "Select MCP servers to enable:" ${mcp_options[@]+"${mcp_options[@]}"})"
     readlines picked_mcps <<< "$picked_mcps_output"
   fi
 
+  SELECTED_MCPS=()
   AGENTIC_ENABLE_CONTEXT7="n"
   AGENTIC_ENABLE_MEMPALACE="n"
-  local picked_mcp
-  for picked_mcp in "${picked_mcps[@]}"; do
-    case "$picked_mcp" in
-      context7) AGENTIC_ENABLE_CONTEXT7="y" ;;
-      mempalace) AGENTIC_ENABLE_MEMPALACE="y" ;;
-    esac
-  done
+  local picked_mcp picked_mcp_id
+  if [[ "${#picked_mcps[@]}" -eq 0 && "${#detected_mcps[@]}" -gt 0 ]]; then
+    for picked_mcp_id in ${detected_mcps[@]+"${detected_mcps[@]}"}; do
+      add_selected_mcp "$picked_mcp_id"
+    done
+  else
+    for picked_mcp in ${picked_mcps[@]+"${picked_mcps[@]}"}; do
+      picked_mcp="$(trim "$picked_mcp")"
+      [[ -z "$picked_mcp" ]] && continue
+      if [[ "$picked_mcp" == "$MCP_NONE_OPTION" ]]; then
+        SELECTED_MCPS=()
+        break
+      fi
+      picked_mcp_id="$(mcp_id_from_display_row "$picked_mcp")"
+      add_selected_mcp "$picked_mcp_id"
+    done
+  fi
+  sync_legacy_mcp_env_from_selected
 
   local areas=()
   readlines areas < <(list_areas)
 
   local picked_areas=()
   if [[ "$use_fzf" == true ]]; then
-    readlines picked_areas < <(choose_multi_fzf "Select area(s):" "${areas[@]}")
+    readlines picked_areas < <(choose_multi_fzf "Select area(s):" ${areas[@]+"${areas[@]}"})
   else
     local picked_areas_output
-    picked_areas_output="$(choose_multi_by_index "Select area(s):" "${areas[@]}")"
+    picked_areas_output="$(choose_multi_by_index "Select area(s):" ${areas[@]+"${areas[@]}"})"
     readlines picked_areas <<< "$picked_areas_output"
   fi
 
   if [[ "${#picked_areas[@]}" -eq 0 ]]; then
     SELECTED_AREAS=(software)
   else
-    SELECTED_AREAS=("${picked_areas[@]}")
+    SELECTED_AREAS=(${picked_areas[@]+"${picked_areas[@]}"})
   fi
 
   SELECTED_SPECS=()
@@ -4268,10 +4628,10 @@ run_tui() {
 
     local chosen_specs=()
     if [[ "$use_fzf" == true ]]; then
-      readlines chosen_specs < <(choose_multi_fzf "Select specialization(s) for '$area':" "${specs[@]}")
+      readlines chosen_specs < <(choose_multi_fzf "Select specialization(s) for '$area':" ${specs[@]+"${specs[@]}"})
     else
       local chosen_specs_output
-      chosen_specs_output="$(choose_multi_by_index "Select specialization(s) for '$area':" "${specs[@]}")"
+      chosen_specs_output="$(choose_multi_by_index "Select specialization(s) for '$area':" ${specs[@]+"${specs[@]}"})"
       readlines chosen_specs <<< "$chosen_specs_output"
     fi
 
@@ -4281,7 +4641,7 @@ run_tui() {
     fi
 
     local spec
-    for spec in "${chosen_specs[@]}"; do
+    for spec in ${chosen_specs[@]+"${chosen_specs[@]}"}; do
       SELECTED_SPECS+=("$area.$spec")
     done
   done
