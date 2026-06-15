@@ -31,6 +31,7 @@ XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 APP_CONFIG_DIR="$XDG_CONFIG_HOME/$APP_NAME"
 APP_CONFIG_FILE="$APP_CONFIG_DIR/config"
 OPENCODE_PLUGIN_CONFIG_FILE="$APP_CONFIG_DIR/opencode-plugins.json"
+OPENCODE_USER_PROFILES_DIR="$APP_CONFIG_DIR/opencode/profiles"
 APP_DATA_DIR="$XDG_DATA_HOME/$APP_NAME"
 APP_REPO_DIR="$APP_DATA_DIR/repo"
 
@@ -911,7 +912,7 @@ mcp_registry_json() {
 JSON
 }
 
-opencode_profile_contains() {
+opencode_builtin_profile_contains() {
   local expected="$1"
   local profile_id
   for profile_id in "${OPENCODE_PROFILE_IDS[@]}"; do
@@ -920,11 +921,37 @@ opencode_profile_contains() {
   return 1
 }
 
+opencode_profile_contains() {
+  local expected="$1"
+  opencode_builtin_profile_contains "$expected" && return 0
+  [[ -f "$OPENCODE_USER_PROFILES_DIR/$expected/opencode.json" ]] && return 0
+  return 1
+}
+
+opencode_user_profile_ids() {
+  [[ -d "$OPENCODE_USER_PROFILES_DIR" ]] || return 0
+  find "$OPENCODE_USER_PROFILES_DIR" -mindepth 2 -maxdepth 2 -type f -name opencode.json -print 2>/dev/null | \
+    while IFS= read -r profile_config; do
+      basename -- "$(dirname -- "$profile_config")"
+    done | sort
+}
+
+opencode_profile_source_path() {
+  local profile_id="$1"
+  local bundled_src="$EXTENSIONS_ROOT/opencode/profiles/$profile_id/opencode.json"
+  local user_src="$OPENCODE_USER_PROFILES_DIR/$profile_id/opencode.json"
+  if [[ -f "$bundled_src" ]]; then
+    printf '%s\n' "$bundled_src"
+    return
+  fi
+  printf '%s\n' "$user_src"
+}
+
 opencode_profile_label() {
   case "$1" in
     openai) echo "OpenAI Model Profile" ;;
     githubcopilot) echo "GitHub Copilot Model Profile" ;;
-    *) echo "$1" ;;
+    *) echo "$1 profile" ;;
   esac
 }
 
@@ -937,6 +964,12 @@ opencode_profile_id_from_label() {
       return
     fi
   done
+  case "$label" in
+    *" profile")
+      printf '%s\n' "${label%" profile"}"
+      return
+      ;;
+  esac
   printf '%s\n' "$label"
 }
 
@@ -2412,7 +2445,8 @@ configure_opencode_profile_if_needed() {
   fi
   SELECTED_OPENCODE_PROFILE="$profile_id"
 
-  local src="$EXTENSIONS_ROOT/opencode/profiles/$profile_id/opencode.json"
+  local src
+  src="$(opencode_profile_source_path "$profile_id")"
   local dest="$PROJECT_DIR/.opencode/opencode.json"
   if [[ ! -f "$src" ]]; then
     warn "OpenCode profile not found: $src"
@@ -3099,6 +3133,13 @@ configure_opencode_plugins_if_needed() {
     "$(opencode_profile_label "openai")"
     "$(opencode_profile_label "githubcopilot")"
   )
+  local user_profile_id
+  while IFS= read -r user_profile_id; do
+    [[ -z "$user_profile_id" ]] && continue
+    opencode_builtin_profile_contains "$user_profile_id" && continue
+    opencode_profile_contains "$user_profile_id" || continue
+    plugin_options+=("$(opencode_profile_label "$user_profile_id")")
+  done < <(opencode_user_profile_ids)
   local selected_plugins=()
   local use_fzf_plugins=false
   if fzf_available; then
@@ -3124,8 +3165,13 @@ configure_opencode_plugins_if_needed() {
     case "$selected_plugin" in
       telegram-notification|telegram-opencode-notifier) enable_telegram="y" ;;
       agent-model-mapper) enable_agent_model_mapper="y" ;;
-      "OpenAI Model Profile") SELECTED_OPENCODE_PROFILE="openai" ;;
-      "GitHub Copilot Model Profile") SELECTED_OPENCODE_PROFILE="githubcopilot" ;;
+      *)
+        local selected_profile_id
+        selected_profile_id="$(opencode_profile_id_from_label "$selected_plugin")"
+        if opencode_profile_contains "$selected_profile_id"; then
+          SELECTED_OPENCODE_PROFILE="$selected_profile_id"
+        fi
+        ;;
     esac
   done
 

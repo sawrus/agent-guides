@@ -216,6 +216,9 @@ project/.agent/
 - `OpenAI Model Profile`: applies the bundled OpenAI model mapping from `extensions/opencode/profiles/openai/`.
 - `GitHub Copilot Model Profile`: applies the bundled GitHub Copilot model mapping from
   `extensions/opencode/profiles/githubcopilot/`.
+- User profiles: place `opencode.json` files under `$HOME/.config/agentic/opencode/profiles/<profile-id>/`. For
+  example, `$HOME/.config/agentic/opencode/profiles/DT/opencode.json` appears in the optional OpenCode plugin menu as
+  `DT profile`, and `$HOME/.config/agentic/opencode/profiles/GH/opencode.json` appears as `GH profile`.
 - `none`: applies no model profile and does not copy the baseline `extensions/opencode/opencode.json` just for profile
   selection. OpenCode MCPs, Telegram notifications, and model mapping may still create or update `.opencode/opencode.json`
   when those options are selected.
