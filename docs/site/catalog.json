@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "generated_from": "areas/**/{workflows,prompts}",
   "areas": [
     {
@@ -57,6 +57,7 @@
             "pipeline runs green on first PR",
             "all mandatory stages present"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /onboard-repo\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Assess & Plan\"]\n  step_2[\"2. Secrets & Environments Setup\"]\n  step_3[\"3. Write Pipeline Config\"]\n  step_4[\"4. First Run & Debug\"]\n  step_5[\"5. Document\"]\n  exit([\"Green pipeline + staging deploy + documentation = repo onboarded.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -119,6 +120,7 @@
             }
           ],
           "quality_gates": [],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /pipeline-debug\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Classify Failure\"]\n  step_2[\"2. Diagnose by Category\"]\n  step_3[\"3. Fix & Verify\"]\n  step_4[\"4. Merge & Monitor\"]\n  exit([\"Pipeline green + root cause documented in ticket = debug complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -199,6 +201,7 @@
             "staging deploy healthy >= 15 min before production gate",
             "manual approval from team-lead for production"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /release-pipeline\"])\n  role_1[\"team-lead\"]\n  role_2[\"pm\"]\n  role_3[\"developer\"]\n  role_4[\"devops-engineer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Release Readiness and Freeze Check\"]\n  step_2[\"2. Database Compatibility Gate\"]\n  step_3[\"3. Tag Release\"]\n  step_4[\"4. CI Release Pipeline (automated) — CI system\"]\n  step_5[\"5. Deploy Staging\"]\n  step_6[\"6. Production Gate\"]\n  step_7[\"7. Canary Deployment\"]\n  step_8[\"8. Feature Flag Progression\"]\n  step_9[\"9. Post-Deploy Validation\"]\n  exit([\"Release is complete when 100% traffic is healthy, post-deploy checks pass,...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> step_9\n  step_9 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_4 -. owns .-> step_4\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_4\n  role_5 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_1 -. owns .-> step_6\n  role_5 -. owns .-> step_6\n  role_4 -. owns .-> step_7\n  role_3 -. owns .-> step_8\n  role_5 -. owns .-> step_8\n  role_5 -. owns .-> step_9\n  role_2 -. owns .-> step_9\n  step_9 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -264,6 +267,7 @@
             "row counts match production within 1%",
             "backup age < 26 hours"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /backup-verify\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Pre-Check: Backup Catalog\"]\n  step_2[\"2. Provision Test Environment\"]\n  step_3[\"3. Restore Latest Backup\"]\n  step_4[\"4. Row Count Validation\"]\n  step_5[\"5. Report + Cleanup\"]\n  exit([\"Restore successful + row counts validated + test env destroyed + report pos...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -325,6 +329,7 @@
           "quality_gates": [
             "backup verified before any destructive action"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /db-incident\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Triage\"]\n  step_2[\"2. Immediate Mitigation by Type\"]\n  step_3[\"3. Root Cause\"]\n  step_4[\"4. Fix & Verify\"]\n  step_5[\"5. Document\"]\n  exit([\"Metrics normal + root cause documented = db incident resolved.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -398,6 +403,7 @@
             "each policy tested with passing AND failing manifest before deploy",
             "dryrun in staging before enforce in production"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /policy-onboard\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Design Policy\"]\n  step_2[\"2. Unit Test\"]\n  step_3[\"3. Dryrun in Staging\"]\n  step_4[\"4. Fix Existing Violations\"]\n  step_5[\"5. Switch to Enforce\"]\n  step_6[\"6. Monitor Policy Health\"]\n  exit([\"Policy tested + existing violations resolved + enforce mode active + monito...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -471,6 +477,7 @@
             "zero Critical/High unresolved before release",
             "SBOM generated and attached to image"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /security-scan-pipeline\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Secrets Scan\"]\n  step_2[\"2. SAST (Static Analysis)\"]\n  step_3[\"3. Dependency CVE Scan\"]\n  step_4[\"4. Container Image Scan\"]\n  step_5[\"5. IaC Security Scan\"]\n  step_6[\"6. Generate SBOM\"]\n  step_7[\"7. Collate Report\"]\n  exit([\"Zero unresolved Critical/High + SBOM attached + scan report filed = securit...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_1 -. owns .-> step_6\n  role_1 -. owns .-> step_7",
           "examples": {
             "both": [
               {
@@ -543,6 +550,7 @@
             "explicit team-lead approval required before any destroy",
             "backup of state file taken before destroy"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /destroy-environment\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Confirm Scope\"]\n  step_2[\"2. Approval\"]\n  step_3[\"3. Pre-Destroy Backup\"]\n  step_4[\"4. Ordered Teardown\"]\n  step_5[\"5. Verify & Cleanup\"]\n  step_6[\"6. Document\"]\n  exit([\"Terraform state empty + cloud console clean + documentation filed = environ...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -603,6 +611,7 @@
           "quality_gates": [
             "drift classified before any apply"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /drift-remediation\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Detect Drift\"]\n  step_2[\"2. Classify Findings\"]\n  step_3[\"3. Remediate (if REMEDIATE class)\"]\n  step_4[\"4. Investigate (if INVESTIGATE class)\"]\n  step_5[\"5. Report\"]\n  exit([\"All drift classified + REMEDIATE resolved + INVESTIGATE escalated = drift c...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -666,6 +675,7 @@
             "terraform validate passes",
             "no provider config inside module"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /module-development\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Design Interface\"]\n  step_2[\"2. Implement Module\"]\n  step_3[\"3. Write Examples\"]\n  step_4[\"4. Test\"]\n  step_5[\"5. Code Review\"]\n  step_6[\"6. Release\"]\n  exit([\"Module published + examples tested + documentation complete = module released.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -730,6 +740,7 @@
             "terraform plan reviewed and approved before apply",
             "no secrets in plan output"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /provision-environment\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Plan & Review\"]\n  step_2[\"2. Apply Infrastructure\"]\n  step_3[\"3. Configure Nodes (Ansible)\"]\n  step_4[\"4. Smoke Tests\"]\n  step_5[\"5. Document & Store Outputs\"]\n  exit([\"Terraform apply clean + Ansible 0 failures + smoke tests pass = environment...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -805,6 +816,7 @@
             "control plane HA (3 nodes) before adding workers",
             "etcd encrypted at rest"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /cluster-bootstrap\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Node Pre-Flight\"]\n  step_2[\"2. Bootstrap First Control Plane\"]\n  step_3[\"3. Install CNI (Cilium)\"]\n  step_4[\"4. Join Remaining Control Plane Nodes\"]\n  step_5[\"5. Join Worker Nodes\"]\n  step_6[\"6. etcd Encryption at Rest\"]\n  step_7[\"7. Core Platform Components\"]\n  step_8[\"8. Apply Security Baselines\"]\n  exit([\"All nodes Ready + core components Running + etcd encrypted + monitoring liv...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_1 -. owns .-> step_6\n  role_1 -. owns .-> step_7\n  role_1 -. owns .-> step_8",
           "examples": {
             "both": [
               {
@@ -867,6 +879,7 @@
             "symptom reproduced before fix applied",
             "fix verified in target environment"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /debug-workload\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Classify Symptom\"]\n  step_2[\"2. Deep Diagnosis\"]\n  step_3[\"3. Apply Fix\"]\n  step_4[\"4. Verify & Monitor\"]\n  step_5[\"5. Document\"]\n  exit([\"Pod Running + metrics stable + root cause documented = workload debug compl...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -949,6 +962,7 @@
             "all manifests pass `kubectl apply --dry-run=server`",
             "helm lint passes with no warnings"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /onboard-service\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Namespace Setup\"]\n  step_2[\"2. RBAC Setup\"]\n  step_3[\"3. Network Policies\"]\n  step_4[\"4. Helm Chart\"]\n  step_5[\"5. ArgoCD Application\"]\n  step_6[\"6. Validate & Smoke Test\"]\n  step_7[\"7. Monitoring\"]\n  exit([\"Pod Running + health check passing + ArgoCD Healthy + metrics visible = ser...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_2 -. owns .-> step_6\n  role_1 -. owns .-> step_7",
           "examples": {
             "both": [
               {
@@ -1013,6 +1027,7 @@
             "no active P0/P1 incidents",
             "deprecated API audit shows zero blocking deprecations"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /upgrade-cluster\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. etcd Backup\"]\n  step_2[\"2. Upgrade Control Plane (kubeadm)\"]\n  step_3[\"3. Validate Control Plane\"]\n  step_4[\"4. Upgrade Worker Nodes (rolling)\"]\n  step_5[\"5. Post-Upgrade Validation\"]\n  exit([\"All nodes on target version + Tier 1 services healthy + upgrade report comm...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_2 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -1080,6 +1095,7 @@
             "TLS certificate issued (not just pending)",
             "HTTPS accessible; HTTP redirects"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /onboard-ingress\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Write Ingress Manifest\"]\n  step_2[\"2. Apply & Wait for Certificate\"]\n  step_3[\"3. Verify HTTPS\"]\n  step_4[\"4. Verify Rate Limiting\"]\n  step_5[\"5. DNS (if needed)\"]\n  exit([\"HTTPS accessible + cert issued + security headers present + rate limit veri...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -1148,6 +1164,7 @@
             "mTLS verified between service and at least one upstream/downstream",
             "no plaintext traffic visible in mesh telemetry"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /service-mesh-onboard\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Pre-Check Mesh Health\"]\n  step_2[\"2. Enable Injection\"]\n  step_3[\"3. Verify mTLS\"]\n  step_4[\"4. Apply Traffic Policies\"]\n  step_5[\"5. Validate in Mesh Dashboard\"]\n  exit([\"Sidecar injected + mTLS verified + policies applied + dashboard shows servi...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -1225,6 +1242,7 @@
           "quality_gates": [
             "root cause identified before alert is silenced"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /alert-investigation\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Acknowledge & Classify\"]\n  step_2[\"2. Correlate Signals\"]\n  step_3[\"3. Identify Root Cause\"]\n  step_4[\"4. Mitigate\"]\n  step_5[\"5. Post-Investigation Notes\"]\n  exit([\"Alert resolved or escalated + root cause noted + runbook quality assessed =...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -1310,6 +1328,7 @@
             "all components healthy (Prometheus targets UP)",
             "sample alert fires and reaches Alertmanager"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /observability-stack-setup\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Namespace & Prerequisites\"]\n  step_2[\"2. kube-prometheus-stack (Prometheus + Grafana + Alertmanager)\"]\n  step_3[\"3. Loki + Promtail (Logs)\"]\n  step_4[\"4. Tempo (Traces)\"]\n  step_5[\"5. OpenTelemetry Collector (DaemonSet)\"]\n  step_6[\"6. Validate Stack\"]\n  step_7[\"7. Import Dashboards\"]\n  exit([\"All 4 components healthy + test alert fired + dashboards showing data = sta...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_1 -. owns .-> step_6\n  role_1 -. owns .-> step_7",
           "examples": {
             "both": [
               {
@@ -1383,6 +1402,7 @@
             "all four golden signals visible in Prometheus",
             "at least one critical alert deployed with runbook"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /onboard-service-monitoring\"])\n  role_1[\"developer\"]\n  role_2[\"devops-engineer\"]\n  step_1[\"1. Metrics Instrumentation\"]\n  step_2[\"2. ServiceMonitor\"]\n  step_3[\"3. Tracing Instrumentation\"]\n  step_4[\"4. Log Labels\"]\n  step_5[\"5. Alert Rules\"]\n  step_6[\"6. Grafana Dashboard\"]\n  exit([\"Golden signals in Prometheus + logs in Loki + traces in Tempo + alerts depl...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_2 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -1451,6 +1471,7 @@
             "status page updated within 10 min of P0 declaration",
             "mitigation applied before root cause fully known (if available)"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /incident-response\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  role_3[\"pm\"]\n  role_4[\"devops-engineer (IC)\"]\n  role_5[\"developer (technical lead)\"]\n  role_6[\"pm (comms)\"]\n  step_1[\"T+0–5: Acknowledge & Scope\"]\n  step_2[\"T+5–15: Mitigate\"]\n  step_3[\"T+10: Communicate\"]\n  step_4[\"T+15–30: Stabilize\"]\n  step_5[\"T+30: Resolve or Escalate\"]\n  step_6[\"T+60: Preliminary Postmortem\"]\n  step_7[\"T+24h: Full Postmortem\"]\n  exit([\"Service healthy + stakeholders informed + postmortem published = incident c...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_4 -. owns .-> step_5\n  role_5 -. owns .-> step_5\n  role_6 -. owns .-> step_5\n  role_2 -. owns .-> step_6\n  role_4 -. owns .-> step_6\n  role_5 -. owns .-> step_6\n  role_6 -. owns .-> step_6\n  role_2 -. owns .-> step_7\n  role_4 -. owns .-> step_7\n  role_5 -. owns .-> step_7\n  role_6 -. owns .-> step_7",
           "examples": {
             "both": [
               {
@@ -1520,6 +1541,7 @@
             "postmortem published within 48h of incident resolution",
             "every action item has an owner and a due date"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /postmortem\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Collect Data (within 2h of resolution)\"]\n  step_2[\"2. Draft Postmortem\"]\n  step_3[\"3. 5-Whys Facilitation Meeting (within 48h)\"]\n  step_4[\"4. Finalize Document\"]\n  step_5[\"5. Publish & Track\"]\n  step_6[\"6. Follow-Up (2 weeks later)\"]\n  exit([\"Postmortem published + all action items in tracker + team notified = postmo...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_2 -. owns .-> step_5\n  role_2 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -1588,6 +1610,7 @@
             "SLO targets grounded in actual reliability data (not aspirational)",
             "every changed SLO has product-owner sign-off"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /slo-review\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  role_3[\"product-owner\"]\n  step_1[\"1. Pull Reliability Data\"]\n  step_2[\"2. Classify Services\"]\n  step_3[\"3. SLO Adjustment Workshop\"]\n  step_4[\"4. Update SLO Definitions\"]\n  step_5[\"5. Error Budget Policy Review\"]\n  step_6[\"6. Publish SLO Review Report\"]\n  exit([\"Report published + SLO changes applied + action items in tracker = review c...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -1662,6 +1685,7 @@
             "forward migration validated on test DB",
             "rollback or mitigation strategy documented"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /add-migration\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  role_4[\"pm\"]\n  step_1[\"1. Risk & Compatibility Analysis\"]\n  step_2[\"2. Migration Implementation\"]\n  step_3[\"3. Test DB Validation & Data Checks\"]\n  step_4[\"4. Review & Remediation Loop\"]\n  step_5[\"5. Readiness Report\"]\n  exit([\"Validated migration + readiness report + @team-lead approval = ready to dep...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_1 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -1740,6 +1764,7 @@
             "API contract approved before implementation",
             "security checks passed (auth, input validation, rate limiting)"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /create-endpoint\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Scope & Contract\"]\n  step_2[\"2. Architecture Review\"]\n  step_3[\"3. Implementation\"]\n  step_4[\"4. Test Design & Execution\"]\n  step_5[\"5. Code Review & Sign-off\"]\n  step_6[\"6. Fix / Retest Loop\"]\n  step_7[\"7. Acceptance\"]\n  exit([\"Accepted endpoint + passing tests + @team-lead sign-off = ready to merge.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_5 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_4 -. owns .-> step_6\n  role_5 -. owns .-> step_6\n  role_1 -. owns .-> step_7\n  role_2 -. owns .-> step_7",
           "examples": {
             "both": [
               {
@@ -1810,6 +1835,7 @@
             "issue reproducible before fix is written",
             "fix verified by automated checks and regression test"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /debug-issue\"])\n  role_1[\"pm\"]\n  role_2[\"team-lead\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  step_1[\"1. Triage & Impact Classification\"]\n  step_2[\"2. Reproduce & Isolate\"]\n  step_3[\"3. Fix Implementation\"]\n  step_4[\"4. Verification & Regression Checks\"]\n  step_5[\"5. Technical Review & Closure\"]\n  exit([\"Merged fix + verified resolution + root cause documented = incident closed.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_2 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -1892,6 +1918,7 @@
             "each increment is independently testable and deployable",
             "integration and regression checks pass after each increment"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-epic\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Epic Decomposition & Milestone Planning\"]\n  step_2[\"2. Architecture Runway Definition\"]\n  step_3[\"3. Increment Implementation\"]\n  step_4[\"4. Increment Verification\"]\n  step_5[\"5. Milestone Review & Replanning\"]\n  step_6[\"6. Final Acceptance\"]\n  exit([\"All increments accepted by @product-owner + clean regression suite = epic d...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_5 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_1 -. owns .-> step_6\n  step_6 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -1964,6 +1991,7 @@
             "scope and acceptance criteria approved before implementation",
             "all automated checks pass (lint / test / build)"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-feature\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"designer\"]\n  role_5[\"developer\"]\n  role_6[\"qa\"]\n  step_1[\"1. Requirements & Value Framing\"]\n  step_2[\"2. Solution Design & Risk Plan\"]\n  step_3[\"3. Implementation\"]\n  step_4[\"4. Risk-Based Verification\"]\n  step_5[\"5. Code Review & Architecture Sign-off\"]\n  step_6[\"6. Fix / Retest Loop\"]\n  step_7[\"7. Acceptance & Final Report\"]\n  exit([\"@product-owner acceptance + no unresolved blockers = feature complete and r...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_2\n  role_5 -. owns .-> step_3\n  role_6 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_5 -. owns .-> step_6\n  role_6 -. owns .-> step_6\n  role_2 -. owns .-> step_6\n  role_1 -. owns .-> step_7\n  role_2 -. owns .-> step_7\n  step_7 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -2032,6 +2060,7 @@
             "behavior baseline captured before refactor begins",
             "no regressions on critical flows"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /refactor-module\"])\n  role_1[\"team-lead\"]\n  role_2[\"qa\"]\n  role_3[\"developer\"]\n  step_1[\"1. Refactor Plan & Boundaries\"]\n  step_2[\"2. Baseline Test Coverage\"]\n  step_3[\"3. Incremental Refactor Implementation\"]\n  step_4[\"4. Regression Validation\"]\n  step_5[\"5. Review / Fix Loop\"]\n  step_6[\"6. Closure with Parity Report\"]\n  exit([\"Merged refactor + behavior parity confirmed + improvement goal achieved = r...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_2 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -2100,6 +2129,7 @@
             "critical paths and failure paths covered",
             "all tests stable across 3+ consecutive CI runs"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /test-feature\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Coverage Gap Analysis\"]\n  step_2[\"2. Testability Adjustments\"]\n  step_3[\"3. Automated Test Implementation\"]\n  step_4[\"4. Review of Scenarios & Assertions\"]\n  step_5[\"5. Stability Run & Reporting\"]\n  exit([\"Stable test suite + coverage threshold met + @team-lead approval = tests re...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -2173,6 +2203,7 @@
             "single-partition validated before full run",
             "no duplicates on unique key post-backfill"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /backfill-data\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  step_1[\"1. Impact Assessment\"]\n  step_2[\"2. Dry Run\"]\n  step_3[\"3. Execute Backfill\"]\n  step_4[\"4. Post-Backfill Validation\"]\n  exit([\"Validated backfill + notified consumers + @team-lead sign-off = backfill co...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -2242,6 +2273,7 @@
             "affected partitions quarantined before fix",
             "root cause identified and documented"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /data-quality-incident\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Scope & Triage\"]\n  step_2[\"2. Quarantine\"]\n  step_3[\"3. Root Cause Isolation\"]\n  step_4[\"4. Remediation\"]\n  step_5[\"5. Post-Incident\"]\n  exit([\"Clean model + postmortem published + prevention measures added = incident c...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -2309,6 +2341,7 @@
             "all downstream models and dashboards identified",
             "SLA-critical models in blast radius explicitly flagged"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /lineage-trace\"])\n  role_1[\"developer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Parse Target\"]\n  step_2[\"2. Trace Lineage\"]\n  step_3[\"3. Impact Assessment\"]\n  step_4[\"4. Generate Report\"]\n  exit([\"Published lineage report + migration checklist = ready to plan the change s...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -2386,6 +2419,7 @@
             "dbt compile passes with no errors",
             "standard tests pass (unique/not_null on PK, relationships on FKs)"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /new-model\"])\n  role_1[\"pm\"]\n  role_2[\"team-lead\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  step_1[\"1. Requirements Gathering\"]\n  step_2[\"2. Model Design\"]\n  step_3[\"3. SQL & YAML Implementation\"]\n  step_4[\"4. Validation\"]\n  step_5[\"5. Review & Merge\"]\n  exit([\"Passing dbt tests + complete YAML docs + @team-lead approval = model produc...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_2 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -2455,6 +2489,7 @@
             "non-breaking changes confirmed or expand/contract plan approved",
             "all dbt tests pass post-migration"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /schema-migration\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  step_1[\"1. Change Classification\"]\n  step_2[\"2. Impact Assessment\"]\n  step_3[\"3. Migration Strategy\"]\n  step_4[\"4. Execute Migration\"]\n  step_5[\"5. Verify & Document\"]\n  exit([\"Post-migration tests green + catalog updated + owners notified = migration...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -2528,6 +2563,7 @@
             "no blocking WCAG A issues remaining",
             "keyboard and screen-reader critical paths validated"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /a11y-fix\"])\n  role_1[\"qa\"]\n  role_2[\"designer\"]\n  role_3[\"developer\"]\n  role_4[\"team-lead\"]\n  step_1[\"1. Audit & Severity Classification\"]\n  step_2[\"2. UX Decision for Ambiguous Fixes\"]\n  step_3[\"3. Implement Fixes\"]\n  step_4[\"4. Re-test & Regression Checks\"]\n  step_5[\"5. Final Review & Acceptance\"]\n  exit([\"Zero WCAG A issues + screen reader path validated + @team-lead approval = a...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_4 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -2585,6 +2621,7 @@
           "quality_gates": [
             "budget regressions triaged with root cause"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /bundle-analyze\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  role_4[\"pm\"]\n  step_1[\"1. Generate & Compare Bundle Metrics\"]\n  step_2[\"2. Validate Measurement Reliability\"]\n  step_3[\"3. Prioritize Optimization Candidates\"]\n  step_4[\"4. Publish Report & Next Actions\"]\n  exit([\"Report published + backlog items created = bundle analysis complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_3\n  role_4 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -2650,6 +2687,7 @@
             "all automated checks pass (lint / test / build / a11y / bundle)",
             "regression smoke test passes"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /release-prep\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  role_5[\"team-lead\"]\n  step_1[\"1. Confirm Release Scope & Success Criteria\"]\n  step_2[\"2. Execute Build/Lint/Test/Perf Checks\"]\n  step_3[\"3. Regression + Smoke Verification\"]\n  step_4[\"4. Review Go/No-Go Risks\"]\n  step_5[\"5. Publish Release Notes & Decision\"]\n  exit([\"Go decision + approved release notes + all checks passed = release ready to...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_5 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -2720,6 +2758,7 @@
             "component API documented (props, events, slots)",
             "all component states implemented (loading, empty, error, success)"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /scaffold-component\"])\n  role_1[\"product-owner\"]\n  role_2[\"designer\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  role_5[\"team-lead\"]\n  step_1[\"1. Component Intent & Acceptance Criteria\"]\n  step_2[\"2. Design System Alignment\"]\n  step_3[\"3. Component Implementation\"]\n  step_4[\"4. Functional & Accessibility Verification\"]\n  step_5[\"5. Code Review & Merge Readiness\"]\n  exit([\"Accepted component + passing tests + a11y clear = ready to merge and publis...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -2784,6 +2823,7 @@
             "critical diffs reviewed by designer before baseline update",
             "accepted diffs documented with rationale"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /visual-regression\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"designer\"]\n  role_4[\"team-lead\"]\n  step_1[\"1. Determine Visual Test Scope\"]\n  step_2[\"2. Run Capture & Comparison Suite\"]\n  step_3[\"3. Classify Diffs\"]\n  step_4[\"4. Fix or Approve Baseline Updates\"]\n  step_5[\"5. Final Gate Decision\"]\n  exit([\"Zero unexpected diffs + all baseline updates designer-approved + @team-lead...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_3 -. owns .-> step_4\n  role_4 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -2863,6 +2903,7 @@
             "plan explicitly approved by user before any code is written",
             "unit tests pass with coverage ≥ 70%"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /backend-project-full-cycle\"])\n  role_1[\"team-lead\"]\n  role_2[\"pm\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  step_1[\"1.1 — Define Tech Stack\"]\n  step_2[\"1.2 — Requirements Clarification\"]\n  step_3[\"1.3 — Architecture Plan\"]\n  step_4[\"1.4 — Plan Approval\"]\n  step_5[\"2.1 — Backend Logic\"]\n  step_6[\"2.2 — Unit Tests & Quality\"]\n  step_7[\"2.3 — Code Review\"]\n  step_8[\"3.1 — E2E Validation\"]\n  step_9[\"3.2 — Results Review & Report\"]\n  exit([\"Green E2E tests + @team-lead sign-off + delivery report = production-ready...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> step_9\n  step_9 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_4 -. owns .-> step_6\n  role_1 -. owns .-> step_7\n  role_4 -. owns .-> step_8\n  role_1 -. owns .-> step_9\n  role_2 -. owns .-> step_9\n  step_9 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -2935,6 +2976,7 @@
             "regression test fails before fix, passes after",
             "no mypy/ruff errors introduced"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /debug-issue\"])\n  role_1[\"backend-dev\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Triage\"]\n  step_2[\"2. Reproduce\"]\n  step_3[\"3. Root Cause Analysis\"]\n  step_4[\"4. Fix\"]\n  step_5[\"5. Review & Document\"]\n  exit([\"Merged fix + regression test + root cause documented in ticket.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -3010,6 +3052,7 @@
             "no mypy/ruff errors",
             "architecture layer boundaries respected (no cross-layer imports)"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-feature\"])\n  role_1[\"team-lead\"]\n  role_2[\"backend-dev\"]\n  role_3[\"frontend-dev\"]\n  role_4[\"qa-engineer\"]\n  step_1[\"1. Design\"]\n  step_2[\"2. DB Model & Migration\"]\n  step_3[\"3. Repository Layer\"]\n  step_4[\"4. Service Layer\"]\n  step_5[\"5. API Endpoint\"]\n  step_6[\"6. Frontend / UI\"]\n  step_7[\"7. QA & PR\"]\n  exit([\"Merged PR with passing CI. Feature accessible in target environment.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_4 -. owns .-> step_7\n  role_1 -. owns .-> step_7\n  step_7 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -3076,6 +3119,7 @@
             "layered architecture rules respected (no business logic in API layer)",
             "unit and integration tests pass"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /feature-implementation-flow\"])\n  role_1[\"pm\"]\n  role_2[\"team-lead\"]\n  role_3[\"designer\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Requirement Analysis & Models\"]\n  step_2[\"2. Design & Planning\"]\n  step_3[\"3. Implementation — Inner to Outer\"]\n  step_4[\"4. Verification\"]\n  step_5[\"5. Review\"]\n  step_6[\"6. Fix / Retest Loop\"]\n  exit([\"@team-lead approval + passing checks = feature ready to merge.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_4 -. owns .-> step_6\n  role_5 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -3139,6 +3183,7 @@
             "lint and format clean",
             "all tests in selected scope pass"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /testing-ci-pipeline\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Code Quality Check\"]\n  step_2[\"2. Unit Tests\"]\n  step_3[\"3. Build / Prepare\"]\n  step_4[\"4. E2E / Integration Tests\"]\n  step_5[\"5. Results Review & Report\"]\n  exit([\"All steps green + test_report.md produced = pipeline passed.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_2 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -3208,6 +3253,7 @@
             "CI pipeline passes before manual review begins",
             "all blocking comments resolved before approval"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /code-review-workflow\"])\n  role_1[\"developer\"]\n  role_2[\"team-lead\"]\n  role_3[\"qa\"]\n  step_1[\"1. Automated Pre-check\"]\n  step_2[\"2. Context Understanding\"]\n  step_3[\"3. Code Review\"]\n  step_4[\"4. Feedback Resolution\"]\n  step_5[\"5. Approval & Merge\"]\n  exit([\"Approved and merged PR = review complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -3276,6 +3322,7 @@
             "acceptance criteria confirmed before implementation starts",
             "all checks pass (lint / test / build)"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /development-cycle-workflow\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Requirements Framing\"]\n  step_2[\"2. Technical Design\"]\n  step_3[\"3. Implementation\"]\n  step_4[\"4. Verification\"]\n  step_5[\"5. Pull Request\"]\n  step_6[\"6. Review & Merge\"]\n  exit([\"Merged PR + acceptance criteria validated in staging = task complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_2 -. owns .-> step_6\n  step_6 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -3345,6 +3392,7 @@
             "CI pipeline passes on first commit",
             "make install && make dev works on a clean machine"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /project-setup-workflow\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Scope & Decisions\"]\n  step_2[\"2. Repository Setup\"]\n  step_3[\"3. Development Environment\"]\n  step_4[\"4. Code Quality Tooling\"]\n  step_5[\"5. CI Pipeline\"]\n  step_6[\"6. First Commit & Validation\"]\n  exit([\"Green CI + QA sign-off = project is ready for first feature development.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_4 -. owns .-> step_6\n  role_5 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -3420,6 +3468,7 @@
             "sample size calculated before experiment starts",
             "guardrail metrics monitored daily with auto-rollback"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /champion-challenger\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Experiment Design\"]\n  step_2[\"2. Configure Traffic Split\"]\n  step_3[\"3. Run & Monitor\"]\n  step_4[\"4. Analyze Results\"]\n  step_5[\"5. Promotion Decision\"]\n  exit([\"Decision recorded in registry + winner at 100% traffic + report published =...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -3483,6 +3532,7 @@
             "PROMOTE recommendation confirmed in model registry",
             "canary passes latency and error rate SLOs"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /deploy-endpoint\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  step_1[\"1. Pre-flight\"]\n  step_2[\"2. Shadow Deployment\"]\n  step_3[\"3. Canary Rollout\"]\n  step_4[\"4. Promote Champion\"]\n  step_5[\"5. Post-Deploy Monitoring\"]\n  exit([\"100% traffic on new champion + stable monitoring + deployment report = endp...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -3545,6 +3595,7 @@
             "test set was not used during any training iteration",
             "fairness disparity checked for people-affecting models"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /evaluate-model\"])\n  role_1[\"qa\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Load Model & Test Data\"]\n  step_2[\"2. Compute Core Metrics\"]\n  step_3[\"3. Business Impact Translation\"]\n  step_4[\"4. Fairness Analysis\"]\n  step_5[\"5. Champion Comparison\"]\n  exit([\"Signed scorecard + promotion recommendation = evaluation complete; feed int...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -3608,6 +3659,7 @@
             "rollback executed within 5 minutes for critical incidents",
             "affected prediction window scoped and logged"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /model-incident\"])\n  role_1[\"team-lead\"]\n  role_2[\"qa\"]\n  role_3[\"developer\"]\n  step_1[\"1. Immediate Response\"]\n  step_2[\"2. Diagnose\"]\n  step_3[\"3. Scope Affected Predictions\"]\n  step_4[\"4. Root Cause & Remediation\"]\n  step_5[\"5. Post-Incident\"]\n  exit([\"System restored + postmortem published + monitoring improved = incident clo...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -3669,6 +3721,7 @@
             "environment fully snapshotted before training starts",
             "training loss decreased monotonically"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /train-experiment\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  step_1[\"1. Prerequisites Validation\"]\n  step_2[\"2. Environment Snapshot\"]\n  step_3[\"3. Training Run\"]\n  step_4[\"4. Validation\"]\n  exit([\"Logged artifact + evaluation scorecard + champion comparison = experiment c...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -3736,6 +3789,7 @@
             "crash reproduced before fix is written",
             "fix verified on physical device"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /crash-triage\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  step_1[\"1. Gather & Symbolicate\"]\n  step_2[\"2. Reproduce\"]\n  step_3[\"3. Root Cause\"]\n  step_4[\"4. Fix & Regression Test\"]\n  step_5[\"5. Verification\"]\n  exit([\"Device-verified fix + passing regression test + crash-free rate restored =...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -3791,6 +3845,7 @@
           "quality_gates": [
             "device matrix covers latest 2 OS versions per platform"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /device-testing\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Select Device Matrix\"]\n  step_2[\"2. Upload Build\"]\n  step_3[\"3. Execute Test Suite\"]\n  step_4[\"4. Analyze Results\"]\n  exit([\"Device matrix report + explicit go/no-go = device testing complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_3 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -3846,6 +3901,7 @@
           "quality_gates": [
             "OTA eligibility confirmed (JS-only, no native modules changed)"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /ota-update\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  step_1[\"1. Validate OTA Eligibility\"]\n  step_2[\"2. Build Bundle\"]\n  step_3[\"3. Staged Rollout\"]\n  step_4[\"4. Monitor Adoption\"]\n  exit([\"100% adoption + stable error rate = OTA update complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -3910,6 +3966,7 @@
             "no debug flags or dev endpoints in release build",
             "Detox smoke tests pass on physical device"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /release-build\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Version Validation\"]\n  step_2[\"2. Environment Check\"]\n  step_3[\"3. Build\"]\n  step_4[\"4. Validate Build\"]\n  step_5[\"5. Upload & Report\"]\n  exit([\"Signed artifact uploaded + smoke tests passed + @team-lead approval = relea...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_3 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -3972,6 +4029,7 @@
             "crash-free rate ≥ 99.5% in pre-release track",
             "privacy labels match actual data collection"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /store-submission\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Validate Build\"]\n  step_2[\"2. Prepare Metadata\"]\n  step_3[\"3. Compliance Check\"]\n  step_4[\"4. Submit\"]\n  step_5[\"5. Monitor Post-Release\"]\n  exit([\"Submission live + stable 48h monitoring = release complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -4037,6 +4095,7 @@
           "quality_gates": [
             "all waste categories checked (EBS, EC2, ELB, S3, RDS)"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /cost-audit\"])\n  role_1[\"qa\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Fetch Billing Data\"]\n  step_2[\"2. Analyze Spend Patterns\"]\n  step_3[\"3. Detect Waste\"]\n  step_4[\"4. Generate Recommendations\"]\n  step_5[\"5. Report\"]\n  exit([\"Published report + owners assigned for top recommendations = audit complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_2 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -4106,6 +4165,7 @@
             "no active P0/P1 incidents before deploy starts",
             "canary passes error rate and latency SLOs"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /deploy-production\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  role_4[\"pm\"]\n  step_1[\"1. Pre-flight\"]\n  step_2[\"2. Canary (10% traffic)\"]\n  step_3[\"3. Progressive Rollout\"]\n  step_4[\"4. Post-Deploy Validation\"]\n  step_5[\"5. Complete\"]\n  exit([\"Green smoke tests + stable metrics + deployment report = release complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_4 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -4168,6 +4228,7 @@
           "quality_gates": [
             "Category D drift (unexpected destroy) pages on-call immediately"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /drift-check\"])\n  role_1[\"qa\"]\n  role_2[\"team-lead\"]\n  role_3[\"developer\"]\n  step_1[\"1. Fetch Live State\"]\n  step_2[\"2. Compute Diff\"]\n  step_3[\"3. Classify Drift\"]\n  step_4[\"4. Report\"]\n  step_5[\"5. Remediate\"]\n  exit([\"Drift report published + Category A resolved (if --fix) + B/C/D tracked = d...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -4236,6 +4297,7 @@
             "incident channel created within 5 minutes of P0/P1 alert",
             "mitigation attempted per runbook before ad-hoc debugging"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /incident-response\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"pm\"]\n  step_1[\"1. Triage\"]\n  step_2[\"2. Establish Incident Channel\"]\n  step_3[\"3. Generate Hypothesis List\"]\n  step_4[\"4. Execute Mitigation\"]\n  step_5[\"5. Draft Postmortem\"]\n  step_6[\"6. Communicate Resolution\"]\n  exit([\"Services healthy + postmortem scheduled + stakeholders notified = incident...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_3 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -4310,6 +4372,7 @@
             "no unexpected destroy operations in plan for non-preview envs",
             "cost delta within budget before apply"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /provision-env\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  role_4[\"pm\"]\n  step_1[\"1. Validate Prerequisites\"]\n  step_2[\"2. Plan Infrastructure\"]\n  step_3[\"3. Estimate Cost\"]\n  step_4[\"4. Apply Infrastructure\"]\n  step_5[\"5. Configure DNS & Ingress\"]\n  step_6[\"6. Seed & Smoke Test\"]\n  step_7[\"7. Report\"]\n  exit([\"Smoke tests green + URL published = environment ready for use.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_4 -. owns .-> step_7",
           "examples": {
             "both": [
               {
@@ -4383,6 +4446,7 @@
             "root cause identified (not just test quarantined)",
             "stabilization confirmed by 5+ consecutive green CI runs"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /flakiness-investigation\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Collect Failure Signals & Patterns\"]\n  step_2[\"2. Reproduce & Classify Root Cause\"]\n  step_3[\"3. Stabilization Fix\"]\n  step_4[\"4. Stress Re-run & Quarantine Decision\"]\n  step_5[\"5. Policy Review & Closure\"]\n  exit([\"Stable test in CI + root cause documented + log updated = investigation clo...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_3 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -4447,6 +4511,7 @@
             "SLO regressions explicitly identified vs. baseline",
             "bottleneck root cause identified (not just symptom)"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /performance-audit\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  role_4[\"pm\"]\n  step_1[\"1. Scenario Definition & Baseline Alignment\"]\n  step_2[\"2. Load/Stress Execution & Monitoring Capture\"]\n  step_3[\"3. Bottleneck Analysis & Fix Proposal\"]\n  step_4[\"4. Prioritization & Delivery Planning\"]\n  exit([\"Published report + prioritized remediation plan + backlog items created = a...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_4 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -4515,6 +4580,7 @@
             "no unresolved critical failures in selected scope",
             "flaky test handling policy applied (quarantine, not suppress)"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /regression-suite\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Scope Selection & Environment Readiness\"]\n  step_2[\"2. Suite Execution & Evidence Capture\"]\n  step_3[\"3. Failure Triage & Fixes\"]\n  step_4[\"4. Risk Review & Release Recommendation\"]\n  exit([\"Go recommendation + regression report = release confidence confirmed.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_1 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -4578,6 +4644,7 @@
           "quality_gates": [
             "critical path checks complete within 15 minutes of deployment"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /smoke-test\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  role_4[\"pm\"]\n  step_1[\"1. Prepare Environment & Test Data\"]\n  step_2[\"2. Run Critical Smoke Scenarios\"]\n  step_3[\"3. Defect Triage & Fix\"]\n  step_4[\"4. Operational Risk Assessment\"]\n  step_5[\"5. Communicate Go/No-Go\"]\n  exit([\"Go status + summary published = deployment validated. No-go + rollback trig...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -4640,6 +4707,7 @@
             "critical business paths meet coverage threshold",
             "top uncovered risks have assigned owners"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /test-coverage-report\"])\n  role_1[\"qa\"]\n  role_2[\"team-lead\"]\n  role_3[\"developer\"]\n  step_1[\"1. Collect & Compare Metrics\"]\n  step_2[\"2. Identify High-Risk Gaps\"]\n  step_3[\"3. Implement Targeted Tests & Fixes\"]\n  step_4[\"4. Publish Trend & Action Plan\"]\n  exit([\"Critical paths at threshold + trend published + gaps assigned = coverage cy...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -4707,6 +4775,7 @@
             "all controls evaluated (Compliant / Partial / Non-Compliant / N/A)",
             "remediation plan exists for all Non-Compliant controls"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /compliance-report\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  step_1[\"1. Map Controls\"]\n  step_2[\"2. Collect Evidence\"]\n  step_3[\"3. Evaluate Compliance\"]\n  step_4[\"4. Generate Report\"]\n  exit([\"Complete control matrix + gap analysis + human review flag = report ready f...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -4775,6 +4844,7 @@
             "target confirmed as staging (never production)",
             "all OWASP Top-10 categories evaluated"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /pen-test-sim\"])\n  role_1[\"team-lead\"]\n  role_2[\"qa\"]\n  step_1[\"1. Scope Confirmation\"]\n  step_2[\"2. Passive Recon\"]\n  step_3[\"3. Active Scanning\"]\n  step_4[\"4. Manual Checks\"]\n  step_5[\"5. Report\"]\n  exit([\"Published report + Critical/High findings assigned = pen-test complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -4837,6 +4907,7 @@
             "old credential revoked only after zero auth errors confirmed",
             "audit log entry created with rotation metadata"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /secret-rotation\"])\n  role_1[\"developer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Prepare New Secret\"]\n  step_2[\"2. Dual-Read Window\"]\n  step_3[\"3. Deploy New Secret\"]\n  step_4[\"4. Validate\"]\n  step_5[\"5. Revoke Old Secret\"]\n  step_6[\"6. Document\"]\n  exit([\"Old secret revoked + audit record updated = rotation complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -4906,6 +4977,7 @@
             "no critical findings unaddressed before merge",
             "high findings have 72-hour SLA assigned"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /security-scan\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. SAST Scan\"]\n  step_2[\"2. Dependency Audit\"]\n  step_3[\"3. Secret Scanning\"]\n  step_4[\"4. Infrastructure Scan\"]\n  step_5[\"5. Synthesize & Report\"]\n  exit([\"No unaddressed Critical findings + report saved = scan complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_3 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -4967,6 +5039,7 @@
             "all trust boundary crossings evaluated for all 6 STRIDE categories",
             "required mitigations mapped to controls before implementation"
           ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /threat-model-review\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  step_1[\"1. Parse Feature\"]\n  step_2[\"2. Data Flow Diagram\"]\n  step_3[\"3. STRIDE Analysis\"]\n  step_4[\"4. Prioritize\"]\n  step_5[\"5. Generate Mitigations\"]\n  exit([\"Published threat model + Required mitigations assigned = secure implementat...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5",
           "examples": {
             "both": [
               {

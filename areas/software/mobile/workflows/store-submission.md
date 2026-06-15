@@ -59,5 +59,34 @@ quality-gates:
 - **Output:** post-release monitoring report (48h window)
 - **Done when:** 48 hours stable; no new critical issues
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /store-submission"])
+  role_1["qa"]
+  role_2["developer"]
+  role_3["team-lead"]
+  step_1["1. Validate Build"]
+  step_2["2. Prepare Metadata"]
+  step_3["3. Compliance Check"]
+  step_4["4. Submit"]
+  step_5["5. Monitor Post-Release"]
+  exit(["Submission live + stable 48h monitoring = release complete."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Submission live + stable 48h monitoring = release complete.

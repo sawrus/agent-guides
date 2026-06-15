@@ -53,5 +53,32 @@ quality-gates:
 - **Output:** compliance report document
 - **Done when:** report complete; human review flag set
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /compliance-report"])
+  role_1["team-lead"]
+  role_2["developer"]
+  role_3["qa"]
+  step_1["1. Map Controls"]
+  step_2["2. Collect Evidence"]
+  step_3["3. Evaluate Compliance"]
+  step_4["4. Generate Report"]
+  exit(["Complete control matrix + gap analysis + human review flag = report ready f..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Complete control matrix + gap analysis + human review flag = report ready for review.

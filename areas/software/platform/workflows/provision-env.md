@@ -73,5 +73,41 @@ quality-gates:
 - **Output:** environment URL published in PR
 - **Done when:** team has access and teardown instructions
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /provision-env"])
+  role_1["team-lead"]
+  role_2["developer"]
+  role_3["qa"]
+  role_4["pm"]
+  step_1["1. Validate Prerequisites"]
+  step_2["2. Plan Infrastructure"]
+  step_3["3. Estimate Cost"]
+  step_4["4. Apply Infrastructure"]
+  step_5["5. Configure DNS & Ingress"]
+  step_6["6. Seed & Smoke Test"]
+  step_7["7. Report"]
+  exit(["Smoke tests green + URL published = environment ready for use."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> step_7
+  step_7 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_3 -. owns .-> step_6
+  role_4 -. owns .-> step_7
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Smoke tests green + URL published = environment ready for use.

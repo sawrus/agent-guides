@@ -44,7 +44,8 @@
                 "uses_skills",
                 "quality_gates",
                 "examples",
-                "skill_refs"
+                "skill_refs",
+                "workflow_diagram"
               ],
               "properties": {
                 "trigger": {
@@ -103,6 +104,9 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "workflow_diagram": {
+                  "type": "string"
                 },
                 "examples": {
                   "type": "object",

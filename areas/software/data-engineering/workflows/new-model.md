@@ -67,5 +67,35 @@ quality-gates:
 - **Actions:** review SQL logic, naming conventions, documentation completeness; approve or return with blocking feedback
 - **Done when:** `@team-lead` approves; PR merged
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /new-model"])
+  role_1["pm"]
+  role_2["team-lead"]
+  role_3["developer"]
+  role_4["qa"]
+  step_1["1. Requirements Gathering"]
+  step_2["2. Model Design"]
+  step_3["3. SQL & YAML Implementation"]
+  step_4["4. Validation"]
+  step_5["5. Review & Merge"]
+  exit(["Passing dbt tests + complete YAML docs + @team-lead approval = model produc..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_4 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Passing dbt tests + complete YAML docs + `@team-lead` approval = model production-ready.

@@ -82,5 +82,35 @@ SELECT pg_terminate_backend(<pid>); -- forceful
 - Root cause + fix in incident ticket
 - If query regression: create optimization ticket for development team
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /db-incident"])
+  role_1["devops-engineer"]
+  role_2["developer"]
+  step_1["1. Triage"]
+  step_2["2. Immediate Mitigation by Type"]
+  step_3["3. Root Cause"]
+  step_4["4. Fix & Verify"]
+  step_5["5. Document"]
+  exit(["Metrics normal + root cause documented = db incident resolved."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Metrics normal + root cause documented = db incident resolved.

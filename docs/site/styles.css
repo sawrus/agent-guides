@@ -137,6 +137,19 @@ input, select {
 code, pre { background: var(--code-bg); border-radius: 8px; }
 .chip { display:inline-block; border:1px solid var(--border); border-radius:999px; padding:.15rem .5rem; margin:.15rem; color:var(--muted); font-size:.82rem; }
 .meta { color: var(--muted); }
+.mermaid {
+  max-width: 100%;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.35);
+  overflow-x: auto;
+}
+.mermaid svg {
+  display: block;
+  max-width: none;
+}
 
 @media (max-width: 980px) {
   .site-header__inner {

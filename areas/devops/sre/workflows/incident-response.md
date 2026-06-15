@@ -62,5 +62,53 @@ quality-gates:
 - Define action items with owners and due dates
 - Publish to team wiki; announce in #postmortems
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /incident-response"])
+  role_1["devops-engineer"]
+  role_2["developer"]
+  role_3["pm"]
+  role_4["devops-engineer (IC)"]
+  role_5["developer (technical lead)"]
+  role_6["pm (comms)"]
+  step_1["T+0–5: Acknowledge & Scope"]
+  step_2["T+5–15: Mitigate"]
+  step_3["T+10: Communicate"]
+  step_4["T+15–30: Stabilize"]
+  step_5["T+30: Resolve or Escalate"]
+  step_6["T+60: Preliminary Postmortem"]
+  step_7["T+24h: Full Postmortem"]
+  exit(["Service healthy + stakeholders informed + postmortem published = incident c..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> step_7
+  step_7 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_1 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_4 -. owns .-> step_5
+  role_5 -. owns .-> step_5
+  role_6 -. owns .-> step_5
+  role_2 -. owns .-> step_6
+  role_4 -. owns .-> step_6
+  role_5 -. owns .-> step_6
+  role_6 -. owns .-> step_6
+  role_2 -. owns .-> step_7
+  role_4 -. owns .-> step_7
+  role_5 -. owns .-> step_7
+  role_6 -. owns .-> step_7
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Service healthy + stakeholders informed + postmortem published = incident closed.

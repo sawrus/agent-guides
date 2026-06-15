@@ -59,5 +59,35 @@ quality-gates:
 - **Output:** `@team-lead` approval
 - **Done when:** approved; CI a11y checks added or confirmed
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /a11y-fix"])
+  role_1["qa"]
+  role_2["designer"]
+  role_3["developer"]
+  role_4["team-lead"]
+  step_1["1. Audit & Severity Classification"]
+  step_2["2. UX Decision for Ambiguous Fixes"]
+  step_3["3. Implement Fixes"]
+  step_4["4. Re-test & Regression Checks"]
+  step_5["5. Final Review & Acceptance"]
+  exit(["Zero WCAG A issues + screen reader path validated + @team-lead approval = a..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_4 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Zero WCAG A issues + screen reader path validated + `@team-lead` approval = a11y fix complete.

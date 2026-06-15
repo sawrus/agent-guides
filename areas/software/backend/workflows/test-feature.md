@@ -63,5 +63,35 @@ quality-gates:
 - **Output:** `quality_report.md`; stable CI run evidence
 - **Done when:** zero flaky tests; coverage meets threshold; report complete
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /test-feature"])
+  role_1["qa"]
+  role_2["developer"]
+  role_3["team-lead"]
+  step_1["1. Coverage Gap Analysis"]
+  step_2["2. Testability Adjustments"]
+  step_3["3. Automated Test Implementation"]
+  step_4["4. Review of Scenarios & Assertions"]
+  step_5["5. Stability Run & Reporting"]
+  exit(["Stable test suite + coverage threshold met + @team-lead approval = tests re..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Stable test suite + coverage threshold met + `@team-lead` approval = tests ready to merge.

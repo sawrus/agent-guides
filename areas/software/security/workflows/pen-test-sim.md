@@ -59,5 +59,33 @@ quality-gates:
 - **Output:** `pentest_report_<date>.md`; remediation assignments
 - **Done when:** report reviewed; remediation owners assigned
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /pen-test-sim"])
+  role_1["team-lead"]
+  role_2["qa"]
+  step_1["1. Scope Confirmation"]
+  step_2["2. Passive Recon"]
+  step_3["3. Active Scanning"]
+  step_4["4. Manual Checks"]
+  step_5["5. Report"]
+  exit(["Published report + Critical/High findings assigned = pen-test complete."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Published report + Critical/High findings assigned = pen-test complete.

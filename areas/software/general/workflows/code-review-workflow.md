@@ -77,6 +77,37 @@ quality-gates:
 - **Output:** merged PR; branch deleted
 - **Done when:** change merged and feature branch removed
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /code-review-workflow"])
+  role_1["developer"]
+  role_2["team-lead"]
+  role_3["qa"]
+  step_1["1. Automated Pre-check"]
+  step_2["2. Context Understanding"]
+  step_3["3. Code Review"]
+  step_4["4. Feedback Resolution"]
+  step_5["5. Approval & Merge"]
+  exit(["Approved and merged PR = review complete."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  step_5 -. iterate if blocked .-> step_1
+```
+<!-- agent-diagram:end -->
+
 ## Iteration Loop
 If fixes introduce new issues → reviewer re-raises blocking comments; loop repeats until clean.
 

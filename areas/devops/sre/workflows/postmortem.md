@@ -86,5 +86,37 @@ done
 - Any blocked items? Need resource allocation?
 - If root cause not addressed: escalate to engineering lead
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /postmortem"])
+  role_1["devops-engineer"]
+  role_2["team-lead"]
+  step_1["1. Collect Data (within 2h of resolution)"]
+  step_2["2. Draft Postmortem"]
+  step_3["3. 5-Whys Facilitation Meeting (within 48h)"]
+  step_4["4. Finalize Document"]
+  step_5["5. Publish & Track"]
+  step_6["6. Follow-Up (2 weeks later)"]
+  exit(["Postmortem published + all action items in tracker + team notified = postmo..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_5
+  role_2 -. owns .-> step_6
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Postmortem published + all action items in tracker + team notified = postmortem complete.

@@ -85,6 +85,50 @@ quality-gates:
 - **Output:** `docs/<feature>/delivery_summary.md` — accepted / deferred with rationale
 - **Done when:** feature accepted or explicitly deferred
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /develop-feature"])
+  role_1["product-owner"]
+  role_2["pm"]
+  role_3["team-lead"]
+  role_4["designer"]
+  role_5["developer"]
+  role_6["qa"]
+  step_1["1. Requirements & Value Framing"]
+  step_2["2. Solution Design & Risk Plan"]
+  step_3["3. Implementation"]
+  step_4["4. Risk-Based Verification"]
+  step_5["5. Code Review & Architecture Sign-off"]
+  step_6["6. Fix / Retest Loop"]
+  step_7["7. Acceptance & Final Report"]
+  exit(["@product-owner acceptance + no unresolved blockers = feature complete and r..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> step_7
+  step_7 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_2
+  role_5 -. owns .-> step_3
+  role_6 -. owns .-> step_4
+  role_3 -. owns .-> step_5
+  role_5 -. owns .-> step_6
+  role_6 -. owns .-> step_6
+  role_2 -. owns .-> step_6
+  role_1 -. owns .-> step_7
+  role_2 -. owns .-> step_7
+  step_7 -. iterate if blocked .-> step_1
+```
+<!-- agent-diagram:end -->
+
 ## Iteration Loop
 Steps 3–6 repeat per increment for large features. `@pm` tracks scope changes and timeline impact.
 

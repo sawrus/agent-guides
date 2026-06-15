@@ -50,5 +50,32 @@ quality-gates:
 - **Output:** pass/fail matrix by device × test; failure screenshots with device context
 - **Done when:** all failures classified; release recommendation made
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /device-testing"])
+  role_1["qa"]
+  role_2["developer"]
+  role_3["team-lead"]
+  step_1["1. Select Device Matrix"]
+  step_2["2. Upload Build"]
+  step_3["3. Execute Test Suite"]
+  step_4["4. Analyze Results"]
+  exit(["Device matrix report + explicit go/no-go = device testing complete."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_3 -. owns .-> step_4
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Device matrix report + explicit go/no-go = device testing complete.

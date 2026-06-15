@@ -146,6 +146,36 @@ kubectl get pdb -A
 - **Output:** `upgrade_report.md` — versions before/after, issues found, time taken
 - **Done when:** all Tier 1 services healthy; no unexpected pod restarts
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /upgrade-cluster"])
+  role_1["devops-engineer"]
+  role_2["team-lead"]
+  step_1["1. etcd Backup"]
+  step_2["2. Upgrade Control Plane (kubeadm)"]
+  step_3["3. Validate Control Plane"]
+  step_4["4. Upgrade Worker Nodes (rolling)"]
+  step_5["5. Post-Upgrade Validation"]
+  exit(["All nodes on target version + Tier 1 services healthy + upgrade report comm..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_5
+  step_5 -. iterate if blocked .-> step_1
+```
+<!-- agent-diagram:end -->
+
 ## Rollback Plan
 
 ```bash

@@ -190,5 +190,41 @@ quality-gates:
   - Set up `kube-prometheus-stack` for cluster monitoring
 - **Output:** `bootstrap_report.md` — cluster version, node IPs, installed components, kubeconfig location
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /cluster-bootstrap"])
+  role_1["devops-engineer"]
+  step_1["1. Node Pre-Flight"]
+  step_2["2. Bootstrap First Control Plane"]
+  step_3["3. Install CNI (Cilium)"]
+  step_4["4. Join Remaining Control Plane Nodes"]
+  step_5["5. Join Worker Nodes"]
+  step_6["6. etcd Encryption at Rest"]
+  step_7["7. Core Platform Components"]
+  step_8["8. Apply Security Baselines"]
+  exit(["All nodes Ready + core components Running + etcd encrypted + monitoring liv..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> step_7
+  step_7 --> step_8
+  step_8 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+  role_1 -. owns .-> step_6
+  role_1 -. owns .-> step_7
+  role_1 -. owns .-> step_8
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 All nodes Ready + core components Running + etcd encrypted + monitoring live = cluster bootstrapped.

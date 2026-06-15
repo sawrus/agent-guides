@@ -94,5 +94,34 @@ Saturation?
 - Is the alert threshold correct? (too sensitive = toil; too loose = misses real issues)
 - Create ticket if: runbook needs update, threshold needs tuning, or root cause needs a code fix
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /alert-investigation"])
+  role_1["devops-engineer"]
+  role_2["developer"]
+  step_1["1. Acknowledge & Classify"]
+  step_2["2. Correlate Signals"]
+  step_3["3. Identify Root Cause"]
+  step_4["4. Mitigate"]
+  step_5["5. Post-Investigation Notes"]
+  exit(["Alert resolved or escalated + root cause noted + runbook quality assessed =..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Alert resolved or escalated + root cause noted + runbook quality assessed = investigation complete.

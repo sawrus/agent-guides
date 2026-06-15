@@ -97,5 +97,37 @@ git push origin modules/<module-name>/v1.0.0
 # Reference in other modules: ?ref=v1.0.0 (never ?ref=main)
 ```
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /module-development"])
+  role_1["devops-engineer"]
+  role_2["team-lead"]
+  step_1["1. Design Interface"]
+  step_2["2. Implement Module"]
+  step_3["3. Write Examples"]
+  step_4["4. Test"]
+  step_5["5. Code Review"]
+  step_6["6. Release"]
+  exit(["Module published + examples tested + documentation complete = module released."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_1 -. owns .-> step_6
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Module published + examples tested + documentation complete = module released.

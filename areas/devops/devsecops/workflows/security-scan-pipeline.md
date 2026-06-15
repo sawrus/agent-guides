@@ -151,5 +151,38 @@ echo "IaC:          $(cat iac-scan.sarif | jq '.runs[0].results | length') findi
 echo "SBOM:         attached to registry"
 ```
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /security-scan-pipeline"])
+  role_1["devops-engineer"]
+  step_1["1. Secrets Scan"]
+  step_2["2. SAST (Static Analysis)"]
+  step_3["3. Dependency CVE Scan"]
+  step_4["4. Container Image Scan"]
+  step_5["5. IaC Security Scan"]
+  step_6["6. Generate SBOM"]
+  step_7["7. Collate Report"]
+  exit(["Zero unresolved Critical/High + SBOM attached + scan report filed = securit..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> step_7
+  step_7 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+  role_1 -. owns .-> step_6
+  role_1 -. owns .-> step_7
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Zero unresolved Critical/High + SBOM attached + scan report filed = security scan complete.

@@ -78,6 +78,44 @@ quality-gates:
 - **Output:** passing CI + PR ready for review
 - **Done when:** `make test` green; `make lint` clean; PR submitted
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /develop-feature"])
+  role_1["team-lead"]
+  role_2["backend-dev"]
+  role_3["frontend-dev"]
+  role_4["qa-engineer"]
+  step_1["1. Design"]
+  step_2["2. DB Model & Migration"]
+  step_3["3. Repository Layer"]
+  step_4["4. Service Layer"]
+  step_5["5. API Endpoint"]
+  step_6["6. Frontend / UI"]
+  step_7["7. QA & PR"]
+  exit(["Merged PR with passing CI. Feature accessible in target environment."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> step_7
+  step_7 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_3 -. owns .-> step_6
+  role_4 -. owns .-> step_7
+  role_1 -. owns .-> step_7
+  step_7 -. iterate if blocked .-> step_1
+```
+<!-- agent-diagram:end -->
+
 ## Iteration Loop
 If review finds issues → return to relevant step (Step 2 for schema issues, Step 4 for logic issues, Step 5 for API issues).
 

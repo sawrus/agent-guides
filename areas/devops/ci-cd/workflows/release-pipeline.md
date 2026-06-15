@@ -110,6 +110,59 @@ helm upgrade --install order-service charts/order-service \
 - Verify business KPIs (conversion, checkout success, error funnel).
 - Publish deployment report with links to metrics, logs, and release artifact metadata.
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /release-pipeline"])
+  role_1["team-lead"]
+  role_2["pm"]
+  role_3["developer"]
+  role_4["devops-engineer"]
+  role_5["qa"]
+  step_1["1. Release Readiness and Freeze Check"]
+  step_2["2. Database Compatibility Gate"]
+  step_3["3. Tag Release"]
+  step_4["4. CI Release Pipeline (automated) — CI system"]
+  step_5["5. Deploy Staging"]
+  step_6["6. Production Gate"]
+  step_7["7. Canary Deployment"]
+  step_8["8. Feature Flag Progression"]
+  step_9["9. Post-Deploy Validation"]
+  exit(["Release is complete when 100% traffic is healthy, post-deploy checks pass,..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> step_7
+  step_7 --> step_8
+  step_8 --> step_9
+  step_9 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_4 -. owns .-> step_4
+  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_4
+  role_5 -. owns .-> step_4
+  role_4 -. owns .-> step_5
+  role_1 -. owns .-> step_6
+  role_5 -. owns .-> step_6
+  role_4 -. owns .-> step_7
+  role_3 -. owns .-> step_8
+  role_5 -. owns .-> step_8
+  role_5 -. owns .-> step_9
+  role_2 -. owns .-> step_9
+  step_9 -. iterate if blocked .-> step_1
+```
+<!-- agent-diagram:end -->
+
 ## Rollback
 
 ```bash

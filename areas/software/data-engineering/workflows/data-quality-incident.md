@@ -60,5 +60,36 @@ quality-gates:
 - **Output:** postmortem; monitoring updated; dbt tests updated
 - **Done when:** postmortem reviewed; prevention measures in place
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /data-quality-incident"])
+  role_1["qa"]
+  role_2["developer"]
+  role_3["team-lead"]
+  step_1["1. Scope & Triage"]
+  step_2["2. Quarantine"]
+  step_3["3. Root Cause Isolation"]
+  step_4["4. Remediation"]
+  step_5["5. Post-Incident"]
+  exit(["Clean model + postmortem published + prevention measures added = incident c..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_5
+  role_1 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Clean model + postmortem published + prevention measures added = incident closed.

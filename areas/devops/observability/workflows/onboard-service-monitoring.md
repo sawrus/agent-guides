@@ -79,5 +79,36 @@ spec:
 - Link trace panel (Tempo datasource) to request duration panel
 - **Done when:** dashboard saved in `infra/dashboards/`; Grafana shows live data
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /onboard-service-monitoring"])
+  role_1["developer"]
+  role_2["devops-engineer"]
+  step_1["1. Metrics Instrumentation"]
+  step_2["2. ServiceMonitor"]
+  step_3["3. Tracing Instrumentation"]
+  step_4["4. Log Labels"]
+  step_5["5. Alert Rules"]
+  step_6["6. Grafana Dashboard"]
+  exit(["Golden signals in Prometheus + logs in Loki + traces in Tempo + alerts depl..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_2 -. owns .-> step_6
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Golden signals in Prometheus + logs in Loki + traces in Tempo + alerts deployed + dashboard live = service monitored.

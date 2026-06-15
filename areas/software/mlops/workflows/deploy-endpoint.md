@@ -63,6 +63,36 @@ quality-gates:
 - **Output:** `deployment_report.md` — timeline, traffic split results, new baselines
 - **Done when:** stable 24 hours; report complete
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /deploy-endpoint"])
+  role_1["team-lead"]
+  role_2["developer"]
+  role_3["qa"]
+  step_1["1. Pre-flight"]
+  step_2["2. Shadow Deployment"]
+  step_3["3. Canary Rollout"]
+  step_4["4. Promote Champion"]
+  step_5["5. Post-Deploy Monitoring"]
+  exit(["100% traffic on new champion + stable monitoring + deployment report = endp..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_5
+  step_5 -. iterate if blocked .-> step_1
+```
+<!-- agent-diagram:end -->
+
 ## Iteration Loop
 Auto-rollback on SLO breach returns to Step 2 (shadow) or Step 1 (full re-review).
 

@@ -8,6 +8,14 @@ const contentEl = document.getElementById('content');
 const searchEl = document.getElementById('search');
 const langEl = document.getElementById('language');
 
+if (window.mermaid) {
+  window.mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'strict',
+    theme: 'dark',
+  });
+}
+
 init();
 
 async function init() {
@@ -91,6 +99,8 @@ ${wf.description || ''}
 ## Roles
 ${(wf.roles || []).map((r) => `<span class="chip">${r}</span>`).join(' ')}
 
+${wf.workflow_diagram ? `## Agent Interaction Diagram\n\n\`\`\`mermaid\n${escapeFence(wf.workflow_diagram)}\n\`\`\`` : ''}
+
 ## Quality gates
 ${(wf.quality_gates || []).map((q) => `- ${q}`).join('\n') || '- —'}
 
@@ -106,10 +116,28 @@ ${examples || '_No examples_'}
 `;
 
   contentEl.innerHTML = marked.parse(md);
+  renderMermaidBlocks();
 }
 
 function escapeFence(s) {
   return (s || '').replace(/```/g, '\\\`\\\`\\\`');
+}
+
+async function renderMermaidBlocks() {
+  const blocks = [...contentEl.querySelectorAll('code.language-mermaid')];
+  if (!blocks.length) return;
+
+  const nodes = blocks.map((block) => {
+    const diagram = document.createElement('div');
+    diagram.className = 'mermaid';
+    diagram.textContent = block.textContent;
+    block.parentElement.replaceWith(diagram);
+    return diagram;
+  });
+
+  if (window.mermaid) {
+    await window.mermaid.run({ nodes });
+  }
 }
 
 searchEl.addEventListener('input', () => {

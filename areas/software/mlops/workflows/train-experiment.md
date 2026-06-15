@@ -52,5 +52,30 @@ quality-gates:
 - **Output:** evaluation scorecard; comparison vs. top 3 previous runs
 - **Done when:** evaluation complete; recommendation produced (promote / continue tuning / investigate)
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /train-experiment"])
+  role_1["developer"]
+  role_2["qa"]
+  step_1["1. Prerequisites Validation"]
+  step_2["2. Environment Snapshot"]
+  step_3["3. Training Run"]
+  step_4["4. Validation"]
+  exit(["Logged artifact + evaluation scorecard + champion comparison = experiment c..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Logged artifact + evaluation scorecard + champion comparison = experiment complete.

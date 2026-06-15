@@ -90,5 +90,43 @@ quality-gates:
 - **Output:** green CI on first commit; validated by QA
 - **Done when:** CI green, QA confirms setup is reproducible
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /project-setup-workflow"])
+  role_1["product-owner"]
+  role_2["pm"]
+  role_3["team-lead"]
+  role_4["developer"]
+  role_5["qa"]
+  step_1["1. Scope & Decisions"]
+  step_2["2. Repository Setup"]
+  step_3["3. Development Environment"]
+  step_4["4. Code Quality Tooling"]
+  step_5["5. CI Pipeline"]
+  step_6["6. First Commit & Validation"]
+  exit(["Green CI + QA sign-off = project is ready for first feature development."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_2
+  role_4 -. owns .-> step_3
+  role_4 -. owns .-> step_4
+  role_4 -. owns .-> step_5
+  role_3 -. owns .-> step_5
+  role_4 -. owns .-> step_6
+  role_5 -. owns .-> step_6
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Green CI + QA sign-off = project is ready for first feature development.

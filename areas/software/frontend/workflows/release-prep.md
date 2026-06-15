@@ -62,5 +62,38 @@ quality-gates:
 - **Output:** approved release notes; team informed
 - **Done when:** notes approved; deployment team has green light
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /release-prep"])
+  role_1["product-owner"]
+  role_2["pm"]
+  role_3["developer"]
+  role_4["qa"]
+  role_5["team-lead"]
+  step_1["1. Confirm Release Scope & Success Criteria"]
+  step_2["2. Execute Build/Lint/Test/Perf Checks"]
+  step_3["3. Regression + Smoke Verification"]
+  step_4["4. Review Go/No-Go Risks"]
+  step_5["5. Publish Release Notes & Decision"]
+  exit(["Go decision + approved release notes + all checks passed = release ready to..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_3
+  role_5 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_1 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Go decision + approved release notes + all checks passed = release ready to deploy.

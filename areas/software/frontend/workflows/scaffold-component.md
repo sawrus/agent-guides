@@ -63,5 +63,37 @@ quality-gates:
 - **Output:** review feedback
 - **Done when:** all blocking feedback resolved; `@team-lead` approves
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /scaffold-component"])
+  role_1["product-owner"]
+  role_2["designer"]
+  role_3["developer"]
+  role_4["qa"]
+  role_5["team-lead"]
+  step_1["1. Component Intent & Acceptance Criteria"]
+  step_2["2. Design System Alignment"]
+  step_3["3. Component Implementation"]
+  step_4["4. Functional & Accessibility Verification"]
+  step_5["5. Code Review & Merge Readiness"]
+  exit(["Accepted component + passing tests + a11y clear = ready to merge and publis..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_4 -. owns .-> step_4
+  role_5 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Accepted component + passing tests + a11y clear = ready to merge and publish to design system.

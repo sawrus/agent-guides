@@ -17,11 +17,13 @@ For this repo we keep it lightweight and dependency-minimal:
 - site is static HTML/CSS/JS
 - markdown rendering via `marked` CDN
 - full-text search via `lunr` CDN
+- workflow diagrams rendered via `mermaid` CDN
 
 ## Run locally
 
 ```bash
-python3 scripts/build_docs_catalog.py --output docs/site/catalog.json --validate
+make sync-diagrams
+make build
 python3 -m http.server 8000
 # open http://localhost:8000/docs/site/
 ```
@@ -32,6 +34,7 @@ python3 -m http.server 8000
 - Full-text search by trigger/name/description/examples.
 - Language switcher: EN only / RU only / EN+RU.
 - Workflow page with quality gates and source paths.
+- Generated Mermaid agent interaction diagrams for workflows.
 
 
 ## GitHub Pages
@@ -42,3 +45,13 @@ This site can be published from GitHub Pages via Actions workflow (`.github/work
 ## Workflow mapping
 
 Prompt-to-workflow mapping is command-based: `/workflow-file-name` in prompt text links to `workflows/<workflow-file-name>.md` in the same area.
+
+## Workflow diagrams
+
+Workflow diagrams are generated into `areas/**/workflows/*.md` between `agent-diagram` markers:
+
+```bash
+make sync-diagrams
+```
+
+The catalog builder extracts those Mermaid blocks into `workflow_diagram`, and the static site renders them after Markdown parsing.

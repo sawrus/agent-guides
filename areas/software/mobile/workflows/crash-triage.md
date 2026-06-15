@@ -59,5 +59,33 @@ quality-gates:
 - **Output:** verification report with device results
 - **Done when:** crash resolved on all tested devices; crash-free rate confirmed
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /crash-triage"])
+  role_1["developer"]
+  role_2["qa"]
+  step_1["1. Gather & Symbolicate"]
+  step_2["2. Reproduce"]
+  step_3["3. Root Cause"]
+  step_4["4. Fix & Regression Test"]
+  step_5["5. Verification"]
+  exit(["Device-verified fix + passing regression test + crash-free rate restored =..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Device-verified fix + passing regression test + crash-free rate restored = triage complete.

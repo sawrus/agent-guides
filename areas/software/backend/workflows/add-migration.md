@@ -72,6 +72,39 @@ quality-gates:
 - **Output:** `migration_readiness.md` with deployment steps, rollback command, monitoring checklist
 - **Done when:** ops/release team has everything needed to deploy safely
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /add-migration"])
+  role_1["team-lead"]
+  role_2["developer"]
+  role_3["qa"]
+  role_4["pm"]
+  step_1["1. Risk & Compatibility Analysis"]
+  step_2["2. Migration Implementation"]
+  step_3["3. Test DB Validation & Data Checks"]
+  step_4["4. Review & Remediation Loop"]
+  step_5["5. Readiness Report"]
+  exit(["Validated migration + readiness report + @team-lead approval = ready to dep..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_4
+  role_4 -. owns .-> step_5
+  role_1 -. owns .-> step_5
+  step_5 -. iterate if blocked .-> step_1
+```
+<!-- agent-diagram:end -->
+
 ## Iteration Loop
 If validation reveals data issues or compatibility risks → return to Step 1 for strategy revision.
 

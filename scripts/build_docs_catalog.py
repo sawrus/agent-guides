@@ -31,6 +31,10 @@ PLACEHOLDER_STRINGS = (
     "Goal: execute workflow steps end-to-end",
     "Use when: run workflow",
 )
+WORKFLOW_DIAGRAM_RE = re.compile(
+    r"<!-- agent-diagram:start -->\n```mermaid\n(.*?)\n```\n<!-- agent-diagram:end -->",
+    re.DOTALL,
+)
 
 
 def _parse_yaml_list(frontmatter: str, key: str) -> List[str]:
@@ -76,6 +80,7 @@ class Workflow:
     uses_skills: List[str]
     quality_gates: List[str]
     skill_refs: List[dict]
+    workflow_diagram: str
 
 
 @dataclass
@@ -126,7 +131,13 @@ def parse_workflow(path: Path) -> Workflow:
         uses_skills=uses_skills,
         quality_gates=_parse_yaml_list(front, "quality-gates"),
         skill_refs=_resolve_skill_paths(area, uses_skills),
+        workflow_diagram=_extract_workflow_diagram(text),
     )
+
+
+def _extract_workflow_diagram(text: str) -> str:
+    match = WORKFLOW_DIAGRAM_RE.search(text)
+    return match.group(1).strip() if match else ""
 
 
 def parse_prompt(path: Path) -> Prompt:
@@ -242,12 +253,13 @@ def build_catalog(validate: bool = False) -> Tuple[dict, List[str]]:
                 "uses_skills": wf.uses_skills,
                 "skill_refs": wf.skill_refs,
                 "quality_gates": wf.quality_gates,
+                "workflow_diagram": wf.workflow_diagram,
                 "examples": {"both": [asdict(e) for e in (pr.examples if pr else [])]},
             }
         )
 
     catalog = {
-        "version": "1.1.0",
+        "version": "1.2.0",
         "generated_from": "areas/**/{workflows,prompts}",
         "areas": list(areas_out.values()),
         "stats": {

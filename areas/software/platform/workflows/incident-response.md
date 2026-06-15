@@ -65,5 +65,38 @@ quality-gates:
 - **Output:** stakeholders informed; status page updated
 - **Done when:** all affected parties notified
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /incident-response"])
+  role_1["team-lead"]
+  role_2["developer"]
+  role_3["pm"]
+  step_1["1. Triage"]
+  step_2["2. Establish Incident Channel"]
+  step_3["3. Generate Hypothesis List"]
+  step_4["4. Execute Mitigation"]
+  step_5["5. Draft Postmortem"]
+  step_6["6. Communicate Resolution"]
+  exit(["Services healthy + postmortem scheduled + stakeholders notified = incident..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+  role_3 -. owns .-> step_6
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Services healthy + postmortem scheduled + stakeholders notified = incident resolved.

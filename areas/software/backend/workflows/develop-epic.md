@@ -71,6 +71,43 @@ quality-gates:
 - **Output:** `docs/<epic>/delivery_summary.md` — accepted items, deferred items, follow-up backlog
 - **Done when:** epic accepted; follow-up items logged
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /develop-epic"])
+  role_1["product-owner"]
+  role_2["pm"]
+  role_3["team-lead"]
+  role_4["developer"]
+  role_5["qa"]
+  step_1["1. Epic Decomposition & Milestone Planning"]
+  step_2["2. Architecture Runway Definition"]
+  step_3["3. Increment Implementation"]
+  step_4["4. Increment Verification"]
+  step_5["5. Milestone Review & Replanning"]
+  step_6["6. Final Acceptance"]
+  exit(["All increments accepted by @product-owner + clean regression suite = epic d..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_3
+  role_5 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_3 -. owns .-> step_5
+  role_1 -. owns .-> step_6
+  step_6 -. iterate if blocked .-> step_1
+```
+<!-- agent-diagram:end -->
+
 ## Iteration Loop
 Steps 3–5 repeat for each increment. Replanning in Step 5 governs scope adjustments.
 

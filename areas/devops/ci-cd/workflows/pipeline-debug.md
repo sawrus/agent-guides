@@ -62,5 +62,31 @@ quality-gates:
 - Merge fix; confirm pipeline green on main
 - If flaky test: add to quarantine list; file follow-up ticket with `flaky-test` label
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /pipeline-debug"])
+  role_1["devops-engineer"]
+  role_2["developer"]
+  step_1["1. Classify Failure"]
+  step_2["2. Diagnose by Category"]
+  step_3["3. Fix & Verify"]
+  step_4["4. Merge & Monitor"]
+  exit(["Pipeline green + root cause documented in ticket = debug complete."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Pipeline green + root cause documented in ticket = debug complete.

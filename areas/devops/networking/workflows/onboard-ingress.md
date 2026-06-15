@@ -60,5 +60,32 @@ done | sort | uniq -c
 - Point hostname to MetalLB external IP: `kubectl get svc -n ingress-nginx`
 - Add A record in DNS provider or internal CoreDNS
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /onboard-ingress"])
+  role_1["devops-engineer"]
+  step_1["1. Write Ingress Manifest"]
+  step_2["2. Apply & Wait for Certificate"]
+  step_3["3. Verify HTTPS"]
+  step_4["4. Verify Rate Limiting"]
+  step_5["5. DNS (if needed)"]
+  exit(["HTTPS accessible + cert issued + security headers present + rate limit veri..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 HTTPS accessible + cert issued + security headers present + rate limit verified = ingress onboarded.

@@ -62,5 +62,34 @@ terraform apply remediation.plan
 ### 5. Report — `@devops-engineer`
 - Update `drift-log.md` with date, resources affected, classification, action taken
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /drift-remediation"])
+  role_1["devops-engineer"]
+  role_2["team-lead"]
+  step_1["1. Detect Drift"]
+  step_2["2. Classify Findings"]
+  step_3["3. Remediate (if REMEDIATE class)"]
+  step_4["4. Investigate (if INVESTIGATE class)"]
+  step_5["5. Report"]
+  exit(["All drift classified + REMEDIATE resolved + INVESTIGATE escalated = drift c..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 All drift classified + REMEDIATE resolved + INVESTIGATE escalated = drift cycle complete.

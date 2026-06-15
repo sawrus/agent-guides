@@ -58,5 +58,35 @@ quality-gates:
 - **Output:** `.security/threat-models/threat-model-<feature>.md` — DFD + STRIDE table + mitigations
 - **Done when:** all Required findings have assigned controls; document complete
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /threat-model-review"])
+  role_1["team-lead"]
+  role_2["developer"]
+  role_3["qa"]
+  step_1["1. Parse Feature"]
+  step_2["2. Data Flow Diagram"]
+  step_3["3. STRIDE Analysis"]
+  step_4["4. Prioritize"]
+  step_5["5. Generate Mitigations"]
+  exit(["Published threat model + Required mitigations assigned = secure implementat..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_3 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Published threat model + Required mitigations assigned = secure implementation can proceed.

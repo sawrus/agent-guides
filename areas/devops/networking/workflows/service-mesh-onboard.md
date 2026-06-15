@@ -118,5 +118,32 @@ kubectl -n istio-system port-forward svc/kiali 20001:20001 &
 ```
 - **Done when:** service visible in mesh dashboard; no unmeshed traffic warnings
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /service-mesh-onboard"])
+  role_1["devops-engineer"]
+  step_1["1. Pre-Check Mesh Health"]
+  step_2["2. Enable Injection"]
+  step_3["3. Verify mTLS"]
+  step_4["4. Apply Traffic Policies"]
+  step_5["5. Validate in Mesh Dashboard"]
+  exit(["Sidecar injected + mTLS verified + policies applied + dashboard shows servi..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Sidecar injected + mTLS verified + policies applied + dashboard shows service = onboarded.

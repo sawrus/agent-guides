@@ -50,5 +50,30 @@ quality-gates:
 - **Output:** adoption report with timeline and error rate
 - **Done when:** full adoption reached; no error rate regression
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /ota-update"])
+  role_1["developer"]
+  role_2["qa"]
+  step_1["1. Validate OTA Eligibility"]
+  step_2["2. Build Bundle"]
+  step_3["3. Staged Rollout"]
+  step_4["4. Monitor Adoption"]
+  exit(["100% adoption + stable error rate = OTA update complete."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 100% adoption + stable error rate = OTA update complete.

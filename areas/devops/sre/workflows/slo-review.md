@@ -91,5 +91,40 @@ kubectl apply -f rules/slo-${SERVICE}-generated.yaml -n monitoring
 - notify: tighten SLO to 99.3%; generates meaningful error budget
 ```
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /slo-review"])
+  role_1["devops-engineer"]
+  role_2["team-lead"]
+  role_3["product-owner"]
+  step_1["1. Pull Reliability Data"]
+  step_2["2. Classify Services"]
+  step_3["3. SLO Adjustment Workshop"]
+  step_4["4. Update SLO Definitions"]
+  step_5["5. Error Budget Policy Review"]
+  step_6["6. Publish SLO Review Report"]
+  exit(["Report published + SLO changes applied + action items in tracker = review c..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_3 -. owns .-> step_5
+  role_1 -. owns .-> step_6
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Report published + SLO changes applied + action items in tracker = review complete.

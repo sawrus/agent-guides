@@ -53,5 +53,33 @@ quality-gates:
 - **Output:** `coverage_report.md`; next sprint coverage actions noted
 - **Done when:** report shared with team; action items logged
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /test-coverage-report"])
+  role_1["qa"]
+  role_2["team-lead"]
+  role_3["developer"]
+  step_1["1. Collect & Compare Metrics"]
+  step_2["2. Identify High-Risk Gaps"]
+  step_3["3. Implement Targeted Tests & Fixes"]
+  step_4["4. Publish Trend & Action Plan"]
+  exit(["Critical paths at threshold + trend published + gaps assigned = coverage cy..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Critical paths at threshold + trend published + gaps assigned = coverage cycle complete.

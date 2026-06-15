@@ -69,5 +69,40 @@ quality-gates:
 - **Output:** merge approval + note in `refactor_plan.md`: "Goal achieved: <description>"
 - **Done when:** PR merged
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /refactor-module"])
+  role_1["team-lead"]
+  role_2["qa"]
+  role_3["developer"]
+  step_1["1. Refactor Plan & Boundaries"]
+  step_2["2. Baseline Test Coverage"]
+  step_3["3. Incremental Refactor Implementation"]
+  step_4["4. Regression Validation"]
+  step_5["5. Review / Fix Loop"]
+  step_6["6. Closure with Parity Report"]
+  exit(["Merged refactor + behavior parity confirmed + improvement goal achieved = r..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+  role_3 -. owns .-> step_5
+  role_2 -. owns .-> step_5
+  role_1 -. owns .-> step_6
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Merged refactor + behavior parity confirmed + improvement goal achieved = refactor complete.

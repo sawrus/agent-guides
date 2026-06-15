@@ -55,5 +55,33 @@ quality-gates:
 - **Output:** `regression_report.md`; go/no-go decision
 - **Done when:** recommendation is explicit; stakeholders informed
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /regression-suite"])
+  role_1["qa"]
+  role_2["developer"]
+  role_3["team-lead"]
+  step_1["1. Scope Selection & Environment Readiness"]
+  step_2["2. Suite Execution & Evidence Capture"]
+  step_3["3. Failure Triage & Fixes"]
+  step_4["4. Risk Review & Release Recommendation"]
+  exit(["Go recommendation + regression report = release confidence confirmed."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_1 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_1 -. owns .-> step_4
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Go recommendation + regression report = release confidence confirmed.

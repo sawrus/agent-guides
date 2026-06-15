@@ -60,5 +60,34 @@ quality-gates:
 - **Output:** postmortem at `.mlops/incidents/<date>-<model>-incident.md`; monitoring updated; model card updated
 - **Done when:** postmortem reviewed; prevention measures in place
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /model-incident"])
+  role_1["team-lead"]
+  role_2["qa"]
+  role_3["developer"]
+  step_1["1. Immediate Response"]
+  step_2["2. Diagnose"]
+  step_3["3. Scope Affected Predictions"]
+  step_4["4. Root Cause & Remediation"]
+  step_5["5. Post-Incident"]
+  exit(["System restored + postmortem published + monitoring improved = incident clo..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 System restored + postmortem published + monitoring improved = incident closed.

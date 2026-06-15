@@ -63,5 +63,35 @@ quality-gates:
 - **Output:** `deployment_report.md`
 - **Done when:** team and stakeholders informed
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /deploy-production"])
+  role_1["team-lead"]
+  role_2["developer"]
+  role_3["qa"]
+  role_4["pm"]
+  step_1["1. Pre-flight"]
+  step_2["2. Canary (10% traffic)"]
+  step_3["3. Progressive Rollout"]
+  step_4["4. Post-Deploy Validation"]
+  step_5["5. Complete"]
+  exit(["Green smoke tests + stable metrics + deployment report = release complete."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_4 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Green smoke tests + stable metrics + deployment report = release complete.

@@ -60,5 +60,34 @@ quality-gates:
 - **Output:** `finding_report.md`; PR review comments
 - **Done when:** report published; PR status set per findings
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /security-scan"])
+  role_1["developer"]
+  role_2["qa"]
+  role_3["team-lead"]
+  step_1["1. SAST Scan"]
+  step_2["2. Dependency Audit"]
+  step_3["3. Secret Scanning"]
+  step_4["4. Infrastructure Scan"]
+  step_5["5. Synthesize & Report"]
+  exit(["No unaddressed Critical findings + report saved = scan complete."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_3 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 No unaddressed Critical findings + report saved = scan complete.

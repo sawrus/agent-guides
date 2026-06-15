@@ -52,5 +52,33 @@ quality-gates:
 - **Output:** `bundle_diff_report.md`; backlog items created
 - **Done when:** report shared; items logged in project tracker
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /bundle-analyze"])
+  role_1["developer"]
+  role_2["qa"]
+  role_3["team-lead"]
+  role_4["pm"]
+  step_1["1. Generate & Compare Bundle Metrics"]
+  step_2["2. Validate Measurement Reliability"]
+  step_3["3. Prioritize Optimization Candidates"]
+  step_4["4. Publish Report & Next Actions"]
+  exit(["Report published + backlog items created = bundle analysis complete."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_1 -. owns .-> step_3
+  role_4 -. owns .-> step_4
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Report published + backlog items created = bundle analysis complete.

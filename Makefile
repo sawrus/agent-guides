@@ -1,4 +1,4 @@
-.PHONY: help install dev test test-all test-cli test-tui test-mcp test-cross test-doctor test-markers test-opencode-plugins test-telegram-plugin test-ubuntu-blackbox test-real-agent-doctor test-real-blackbox test-real-blackbox-codex test-real-blackbox-opencode test-real-blackbox-telegram test-real-opencode-mapper test-coverage _test-coverage-steps lint fmt clean build assess-areas
+.PHONY: help install dev test test-all test-cli test-tui test-mcp test-cross test-doctor test-markers test-opencode-plugins test-telegram-plugin test-ubuntu-blackbox test-real-agent-doctor test-real-blackbox test-real-blackbox-codex test-real-blackbox-opencode test-real-blackbox-telegram test-real-opencode-mapper test-coverage _test-coverage-steps lint fmt clean build sync-diagrams assess-areas
 
 define timed_step
 	@label='$(1)'; \
@@ -45,6 +45,7 @@ help:
 		"  fmt           Check formatting hooks placeholder" \
 		"  clean         Remove generated reports" \
 		"  build         Build generated docs catalog" \
+		"  sync-diagrams Generate workflow agent interaction diagrams" \
 		"  assess-areas  Generate area quality scorecards"
 
 install:
@@ -138,8 +139,9 @@ _test-coverage-steps:
 
 lint:
 	bash -n agentic
-	python3 -m py_compile scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/assess_area_quality.py
+	python3 -m py_compile scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py
 	python3 scripts/lint_prompts.py --strict
+	python3 scripts/sync_workflow_diagrams.py --check
 	python3 scripts/build_docs_catalog.py --validate --output /tmp/agentic-catalog-check.json
 
 fmt:
@@ -149,7 +151,11 @@ clean:
 	rm -f reports/area-quality.json reports/area-quality.md
 
 build:
+	python3 scripts/sync_workflow_diagrams.py --check
 	python3 scripts/build_docs_catalog.py --output docs/site/catalog.json --validate
+
+sync-diagrams:
+	python3 scripts/sync_workflow_diagrams.py
 
 assess-areas:
 	python3 scripts/assess_area_quality.py --json-output reports/area-quality.json --markdown-output reports/area-quality.md

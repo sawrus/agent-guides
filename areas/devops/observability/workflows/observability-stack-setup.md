@@ -152,5 +152,38 @@ for dashboard in infra/observability/dashboards/*.json; do
 done
 ```
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /observability-stack-setup"])
+  role_1["devops-engineer"]
+  step_1["1. Namespace & Prerequisites"]
+  step_2["2. kube-prometheus-stack (Prometheus + Grafana + Alertmanager)"]
+  step_3["3. Loki + Promtail (Logs)"]
+  step_4["4. Tempo (Traces)"]
+  step_5["5. OpenTelemetry Collector (DaemonSet)"]
+  step_6["6. Validate Stack"]
+  step_7["7. Import Dashboards"]
+  exit(["All 4 components healthy + test alert fired + dashboards showing data = sta..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> step_7
+  step_7 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+  role_1 -. owns .-> step_6
+  role_1 -. owns .-> step_7
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 All 4 components healthy + test alert fired + dashboards showing data = stack deployed.

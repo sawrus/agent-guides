@@ -104,5 +104,34 @@ quality-gates:
 - **Output:** `docs/incidents/<date>-<workload>-root-cause.md`
 - **Done when:** document committed; alert/runbook created if pattern is recurring
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /debug-workload"])
+  role_1["devops-engineer"]
+  role_2["developer"]
+  step_1["1. Classify Symptom"]
+  step_2["2. Deep Diagnosis"]
+  step_3["3. Apply Fix"]
+  step_4["4. Verify & Monitor"]
+  step_5["5. Document"]
+  exit(["Pod Running + metrics stable + root cause documented = workload debug compl..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Pod Running + metrics stable + root cause documented = workload debug complete.

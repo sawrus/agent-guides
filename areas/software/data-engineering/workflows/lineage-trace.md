@@ -52,5 +52,30 @@ quality-gates:
 - **Output:** `lineage_report.md` with diagram, summary, and checklist
 - **Done when:** report reviewed and ready to share with affected owners
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /lineage-trace"])
+  role_1["developer"]
+  role_2["team-lead"]
+  step_1["1. Parse Target"]
+  step_2["2. Trace Lineage"]
+  step_3["3. Impact Assessment"]
+  step_4["4. Generate Report"]
+  exit(["Published lineage report + migration checklist = ready to plan the change s..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Published lineage report + migration checklist = ready to plan the change safely.

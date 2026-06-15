@@ -125,6 +125,52 @@ quality-gates:
 - **Output:** `artifacts/delivery_report_<task_id>.md` — plan vs. delivered, test evidence, known gaps
 - **Done when:** `@team-lead` signs off; report complete
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /backend-project-full-cycle"])
+  role_1["team-lead"]
+  role_2["pm"]
+  role_3["developer"]
+  role_4["qa"]
+  step_1["1.1 — Define Tech Stack"]
+  step_2["1.2 — Requirements Clarification"]
+  step_3["1.3 — Architecture Plan"]
+  step_4["1.4 — Plan Approval"]
+  step_5["2.1 — Backend Logic"]
+  step_6["2.2 — Unit Tests & Quality"]
+  step_7["2.3 — Code Review"]
+  step_8["3.1 — E2E Validation"]
+  step_9["3.2 — Results Review & Report"]
+  exit(["Green E2E tests + @team-lead sign-off + delivery report = production-ready..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> step_7
+  step_7 --> step_8
+  step_8 --> step_9
+  step_9 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_5
+  role_3 -. owns .-> step_6
+  role_4 -. owns .-> step_6
+  role_1 -. owns .-> step_7
+  role_4 -. owns .-> step_8
+  role_1 -. owns .-> step_9
+  role_2 -. owns .-> step_9
+  step_9 -. iterate if blocked .-> step_1
+```
+<!-- agent-diagram:end -->
+
 ## Iteration Loop
 Phase 2 Steps 2.1–2.3 repeat until `@team-lead` approves. Phase 3 failure loops back to Phase 2 for fixes.
 

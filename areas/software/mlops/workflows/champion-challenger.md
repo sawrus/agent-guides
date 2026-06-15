@@ -61,5 +61,34 @@ quality-gates:
 - **Output:** experiment report in registry; traffic routed to winner
 - **Done when:** winner in production; loser archived; report complete
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /champion-challenger"])
+  role_1["developer"]
+  role_2["qa"]
+  role_3["team-lead"]
+  step_1["1. Experiment Design"]
+  step_2["2. Configure Traffic Split"]
+  step_3["3. Run & Monitor"]
+  step_4["4. Analyze Results"]
+  step_5["5. Promotion Decision"]
+  exit(["Decision recorded in registry + winner at 100% traffic + report published =..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Decision recorded in registry + winner at 100% traffic + report published = experiment closed.

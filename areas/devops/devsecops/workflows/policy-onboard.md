@@ -100,5 +100,39 @@ kubectl get constraint ${POLICY} -o jsonpath='{.status.byPod}'
 # metric: gatekeeper_violations_total{enforcement_action="deny"}
 ```
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /policy-onboard"])
+  role_1["devops-engineer"]
+  role_2["developer"]
+  role_3["team-lead"]
+  step_1["1. Design Policy"]
+  step_2["2. Unit Test"]
+  step_3["3. Dryrun in Staging"]
+  step_4["4. Fix Existing Violations"]
+  step_5["5. Switch to Enforce"]
+  step_6["6. Monitor Policy Health"]
+  exit(["Policy tested + existing violations resolved + enforce mode active + monito..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+  role_3 -. owns .-> step_5
+  role_1 -. owns .-> step_6
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Policy tested + existing violations resolved + enforce mode active + monitoring in place = policy onboarded.

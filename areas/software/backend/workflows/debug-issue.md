@@ -73,5 +73,36 @@ quality-gates:
 - **Output:** `root_cause_summary.md` — what failed, why, how fixed, how to prevent
 - **Done when:** `@team-lead` approves fix; root cause documented; ticket closed
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /debug-issue"])
+  role_1["pm"]
+  role_2["team-lead"]
+  role_3["developer"]
+  role_4["qa"]
+  step_1["1. Triage & Impact Classification"]
+  step_2["2. Reproduce & Isolate"]
+  step_3["3. Fix Implementation"]
+  step_4["4. Verification & Regression Checks"]
+  step_5["5. Technical Review & Closure"]
+  exit(["Merged fix + verified resolution + root cause documented = incident closed."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_4 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Merged fix + verified resolution + root cause documented = incident closed.

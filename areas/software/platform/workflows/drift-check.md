@@ -57,5 +57,34 @@ quality-gates:
 - **Output:** Category A drift resolved; issues created for B/C/D
 - **Done when:** Category A applied; B/C/D tracked in issues
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /drift-check"])
+  role_1["qa"]
+  role_2["team-lead"]
+  role_3["developer"]
+  step_1["1. Fetch Live State"]
+  step_2["2. Compute Diff"]
+  step_3["3. Classify Drift"]
+  step_4["4. Report"]
+  step_5["5. Remediate"]
+  exit(["Drift report published + Category A resolved (if --fix) + B/C/D tracked = d..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Drift report published + Category A resolved (if --fix) + B/C/D tracked = drift check complete.

@@ -78,6 +78,44 @@ quality-gates:
 - **Output:** merged PR; feature branch deleted
 - **Done when:** PR is merged and change is verified in staging/preview
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /development-cycle-workflow"])
+  role_1["product-owner"]
+  role_2["pm"]
+  role_3["team-lead"]
+  role_4["developer"]
+  role_5["qa"]
+  step_1["1. Requirements Framing"]
+  step_2["2. Technical Design"]
+  step_3["3. Implementation"]
+  step_4["4. Verification"]
+  step_5["5. Pull Request"]
+  step_6["6. Review & Merge"]
+  exit(["Merged PR + acceptance criteria validated in staging = task complete."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_3
+  role_4 -. owns .-> step_4
+  role_5 -. owns .-> step_4
+  role_4 -. owns .-> step_5
+  role_3 -. owns .-> step_6
+  role_2 -. owns .-> step_6
+  step_6 -. iterate if blocked .-> step_1
+```
+<!-- agent-diagram:end -->
+
 ## Iteration Loop
 If verification (Step 4) or review (Step 6) reveals gaps → return to Step 3. `@pm` tracks blockers and timeline.
 

@@ -55,5 +55,34 @@ quality-gates:
 - **Output:** `performance_report.md`; remediation backlog items created
 - **Done when:** report complete; backlog items assigned
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /performance-audit"])
+  role_1["qa"]
+  role_2["developer"]
+  role_3["team-lead"]
+  role_4["pm"]
+  step_1["1. Scenario Definition & Baseline Alignment"]
+  step_2["2. Load/Stress Execution & Monitoring Capture"]
+  step_3["3. Bottleneck Analysis & Fix Proposal"]
+  step_4["4. Prioritization & Delivery Planning"]
+  exit(["Published report + prioritized remediation plan + backlog items created = a..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_1 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_4 -. owns .-> step_4
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Published report + prioritized remediation plan + backlog items created = audit complete.

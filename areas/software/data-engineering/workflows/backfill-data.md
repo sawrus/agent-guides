@@ -55,5 +55,30 @@ quality-gates:
 - **Output:** `validation_report.md` — row counts, metric comparison, dbt test results
 - **Done when:** all tests pass; metrics match expected; consumers notified
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /backfill-data"])
+  role_1["developer"]
+  role_2["qa"]
+  step_1["1. Impact Assessment"]
+  step_2["2. Dry Run"]
+  step_3["3. Execute Backfill"]
+  step_4["4. Post-Backfill Validation"]
+  exit(["Validated backfill + notified consumers + @team-lead sign-off = backfill co..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> exit
+  role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Validated backfill + notified consumers + `@team-lead` sign-off = backfill complete.

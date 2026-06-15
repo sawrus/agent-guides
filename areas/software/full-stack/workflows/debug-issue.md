@@ -63,6 +63,35 @@ quality-gates:
 - **Output:** approved PR; root cause documented
 - **Done when:** PR merged; postmortem note added for P1/P2 issues
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /debug-issue"])
+  role_1["backend-dev"]
+  role_2["team-lead"]
+  step_1["1. Triage"]
+  step_2["2. Reproduce"]
+  step_3["3. Root Cause Analysis"]
+  step_4["4. Fix"]
+  step_5["5. Review & Document"]
+  exit(["Merged fix + regression test + root cause documented in ticket."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  step_5 -. iterate if blocked .-> step_1
+```
+<!-- agent-diagram:end -->
+
 ## Iteration Loop
 If fix reveals deeper root cause → return to Step 3 with updated understanding.
 

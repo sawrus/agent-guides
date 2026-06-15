@@ -61,5 +61,35 @@ quality-gates:
 ## Failure Policy
 If any step fails: pipeline halts. Fix the violation before proceeding. Do not skip or suppress failures.
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /testing-ci-pipeline"])
+  role_1["developer"]
+  role_2["qa"]
+  role_3["team-lead"]
+  step_1["1. Code Quality Check"]
+  step_2["2. Unit Tests"]
+  step_3["3. Build / Prepare"]
+  step_4["4. E2E / Integration Tests"]
+  step_5["5. Results Review & Report"]
+  exit(["All steps green + test_report.md produced = pipeline passed."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_5
+  role_2 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 All steps green + `test_report.md` produced = pipeline passed.

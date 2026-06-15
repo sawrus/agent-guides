@@ -59,5 +59,33 @@ quality-gates:
 - **Output:** `evaluation_scorecard.json` with recommendation; visualizations (confusion matrix, ROC, feature importance)
 - **Done when:** recommendation recorded in model registry
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /evaluate-model"])
+  role_1["qa"]
+  role_2["team-lead"]
+  step_1["1. Load Model & Test Data"]
+  step_2["2. Compute Core Metrics"]
+  step_3["3. Business Impact Translation"]
+  step_4["4. Fairness Analysis"]
+  step_5["5. Champion Comparison"]
+  exit(["Signed scorecard + promotion recommendation = evaluation complete; feed int..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Signed scorecard + promotion recommendation = evaluation complete; feed into `/deploy-endpoint` or `/champion-challenger`.

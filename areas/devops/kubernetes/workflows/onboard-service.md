@@ -120,5 +120,40 @@ quality-gates:
 - **Output:** metrics visible in Grafana; alerts configured
 - **Done when:** Grafana dashboard shows service metrics
 
+## Agent Interaction Diagram
+
+<!-- agent-diagram:start -->
+```mermaid
+flowchart TD
+  start(["Start /onboard-service"])
+  role_1["devops-engineer"]
+  role_2["developer"]
+  step_1["1. Namespace Setup"]
+  step_2["2. RBAC Setup"]
+  step_3["3. Network Policies"]
+  step_4["4. Helm Chart"]
+  step_5["5. ArgoCD Application"]
+  step_6["6. Validate & Smoke Test"]
+  step_7["7. Monitoring"]
+  exit(["Pod Running + health check passing + ArgoCD Healthy + metrics visible = ser..."])
+  start --> step_1
+  step_1 --> step_2
+  step_2 --> step_3
+  step_3 --> step_4
+  step_4 --> step_5
+  step_5 --> step_6
+  step_6 --> step_7
+  step_7 --> exit
+  role_1 -. owns .-> step_1
+  role_1 -. owns .-> step_2
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_1 -. owns .-> step_4
+  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_6
+  role_1 -. owns .-> step_7
+```
+<!-- agent-diagram:end -->
+
 ## Exit
 Pod Running + health check passing + ArgoCD Healthy + metrics visible = service onboarded.
