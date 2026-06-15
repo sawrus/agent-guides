@@ -29,5 +29,8 @@ jobs:
             python3-pip \
             sed
 
+      - name: Check for Python cache artifacts
+        run: make check-no-pycache
+
       - name: Run tests
         run: make test

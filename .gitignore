@@ -3,3 +3,6 @@
 /.cursor/
 /.agent/
 /.codex/
+__pycache__/
+*.py[cod]
+.pytest_cache/

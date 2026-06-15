@@ -2,19 +2,16 @@ let catalog;
 let current = null;
 let idx;
 let docs = [];
+let activeTheme = 'light';
 
 const menuEl = document.getElementById('menu');
 const contentEl = document.getElementById('content');
 const searchEl = document.getElementById('search');
 const langEl = document.getElementById('language');
+const themeToggleEl = document.getElementById('theme-toggle');
 
-if (window.mermaid) {
-  window.mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    theme: 'dark',
-  });
-}
+applyTheme(getStoredTheme());
+configureMermaid();
 
 init();
 
@@ -119,6 +116,41 @@ ${examples || '_No examples_'}
   renderMermaidBlocks();
 }
 
+function getStoredTheme() {
+  try {
+    const theme = window.localStorage.getItem('docs-site-theme');
+    return theme === 'dark' ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
+}
+
+function storeTheme(theme) {
+  try {
+    window.localStorage.setItem('docs-site-theme', theme);
+  } catch {
+    // localStorage can be unavailable in private or restricted browser modes.
+  }
+}
+
+function applyTheme(theme) {
+  activeTheme = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = activeTheme;
+  if (!themeToggleEl) return;
+  const isDark = activeTheme === 'dark';
+  themeToggleEl.setAttribute('aria-pressed', String(isDark));
+  themeToggleEl.textContent = isDark ? 'Light' : 'Dark';
+}
+
+function configureMermaid() {
+  if (!window.mermaid) return;
+  window.mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'strict',
+    theme: activeTheme === 'dark' ? 'dark' : 'default',
+  });
+}
+
 function escapeFence(s) {
   return (s || '').replace(/```/g, '\\\`\\\`\\\`');
 }
@@ -136,6 +168,7 @@ async function renderMermaidBlocks() {
   });
 
   if (window.mermaid) {
+    configureMermaid();
     await window.mermaid.run({ nodes });
   }
 }
@@ -151,5 +184,12 @@ searchEl.addEventListener('input', () => {
 });
 
 langEl.addEventListener('change', () => {
+  if (current) renderWorkflow(current.id);
+});
+
+themeToggleEl.addEventListener('click', () => {
+  const nextTheme = activeTheme === 'dark' ? 'light' : 'dark';
+  applyTheme(nextTheme);
+  storeTheme(nextTheme);
   if (current) renderWorkflow(current.id);
 });

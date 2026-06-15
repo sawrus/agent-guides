@@ -33,6 +33,7 @@ python3 -m http.server 8000
 - Left menu grouped by area.
 - Full-text search by trigger/name/description/examples.
 - Language switcher: EN only / RU only / EN+RU.
+- Light and dark themes, with light as the default and the selected theme saved in the browser.
 - Workflow page with quality gates and source paths.
 - Generated Mermaid agent interaction diagrams for workflows.
 

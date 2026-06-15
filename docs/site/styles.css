@@ -1,5 +1,18 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+  --bg: #f8fafc;
+  --fg: #0f172a;
+  --muted: #64748b;
+  --accent: #15803d;
+  --panel: rgba(255, 255, 255, 0.86);
+  --panel-strong: #ffffff;
+  --border: #cbd5e1;
+  --code-bg: #e2e8f0;
+  --code-fg: #0f172a;
+  --mermaid-bg: rgba(226, 232, 240, 0.45);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0f172a;
   --fg: #e2e8f0;
   --muted: #94a3b8;
@@ -8,6 +21,8 @@
   --panel-strong: #1e293b;
   --border: #334155;
   --code-bg: #020617;
+  --code-fg: #e2e8f0;
+  --mermaid-bg: rgba(2, 6, 23, 0.35);
 }
 body {
   margin: 0;
@@ -90,7 +105,8 @@ body {
   padding: 0.45rem 0.65rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: rgba(2, 6, 23, 0.75);
+  background: var(--code-bg);
+  color: var(--code-fg);
   font-size: 0.75rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -131,10 +147,28 @@ input, select {
   border-radius: 10px;
   padding: 0.5rem 0.75rem;
 }
+.theme-toggle {
+  flex: 0 0 auto;
+  min-width: 5rem;
+  background: var(--panel-strong);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+.theme-toggle:hover {
+  border-color: var(--accent);
+}
+.theme-toggle[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
 .area-title { font-size: .85rem; text-transform: uppercase; color: var(--muted); margin: 1rem 0 .4rem; }
 .wf-btn { width: 100%; text-align: left; margin-bottom: .4rem; background: var(--panel-strong); color: var(--fg); border: 1px solid var(--border); border-radius: 8px; padding: .5rem; cursor: pointer; }
 .wf-btn:hover { border-color: var(--accent); }
-code, pre { background: var(--code-bg); border-radius: 8px; }
+code, pre { background: var(--code-bg); color: var(--code-fg); border-radius: 8px; }
 .chip { display:inline-block; border:1px solid var(--border); border-radius:999px; padding:.15rem .5rem; margin:.15rem; color:var(--muted); font-size:.82rem; }
 .meta { color: var(--muted); }
 .mermaid {
@@ -143,7 +177,7 @@ code, pre { background: var(--code-bg); border-radius: 8px; }
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(2, 6, 23, 0.35);
+  background: var(--mermaid-bg);
   overflow-x: auto;
 }
 .mermaid svg {
@@ -175,7 +209,8 @@ code, pre { background: var(--code-bg); border-radius: 8px; }
     flex-wrap: wrap;
   }
   .toolbar input,
-  .toolbar select {
+  .toolbar select,
+  .theme-toggle {
     width: 100%;
     flex-basis: 100%;
   }

@@ -1,4 +1,4 @@
-.PHONY: help install dev test test-all test-cli test-tui test-mcp test-cross test-doctor test-markers test-opencode-plugins test-telegram-plugin test-ubuntu-blackbox test-real-agent-doctor test-real-blackbox test-real-blackbox-codex test-real-blackbox-opencode test-real-blackbox-telegram test-real-opencode-mapper test-coverage _test-coverage-steps lint fmt clean build sync-diagrams assess-areas
+.PHONY: help install dev test test-all test-cli test-tui test-mcp test-cross test-doctor test-markers test-opencode-plugins test-telegram-plugin test-ubuntu-blackbox test-real-agent-doctor test-real-blackbox test-real-blackbox-codex test-real-blackbox-opencode test-real-blackbox-telegram test-real-opencode-mapper test-coverage _test-coverage-steps check-no-pycache lint fmt clean build sync-diagrams assess-areas
 
 define timed_step
 	@label='$(1)'; \
@@ -41,6 +41,7 @@ help:
 		"  test-real-blackbox-telegram  Run real OpenCode Telegram blackbox test" \
 		"  test-real-opencode-mapper  Run real OpenCode mapper input blackbox" \
 		"  test-coverage  Run traced e2e coverage for agentic" \
+		"  check-no-pycache  Fail if Python bytecode/cache artifacts are present" \
 		"  lint          Run prompt and catalog validation" \
 		"  fmt           Check formatting hooks placeholder" \
 		"  clean         Remove generated reports" \
@@ -137,12 +138,21 @@ _test-coverage-steps:
 	$(call timed_step,test-coverage-doctor,AGENTIC_COVERAGE_TRACE_FILE="$(AGENTIC_COVERAGE_TRACE_FILE)" AGENTIC_TEST_CLI="$(CURDIR)/tests/e2e/coverage_shim.sh" bash tests/e2e/doctor.e2e.sh >/tmp/agentic-coverage-doctor.log 2>&1)
 	$(call timed_step,test-coverage-parse,bash tests/e2e/coverage_parse.sh "$(AGENTIC_COVERAGE_TRACE_FILE)")
 
+check-no-pycache:
+	@found="$$(find . -name .git -prune -o \( -type d -name __pycache__ -o -type f \( -name '*.pyc' -o -name '*.pyo' -o -name '*.pyd' \) \) -print)"; \
+	if [ -n "$$found" ]; then \
+	  printf '%s\n' "Python bytecode/cache artifacts are not allowed:"; \
+	  printf '%s\n' "$$found"; \
+	  exit 1; \
+	fi
+
 lint:
 	bash -n agentic
-	python3 -m py_compile scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py
-	python3 scripts/lint_prompts.py --strict
-	python3 scripts/sync_workflow_diagrams.py --check
-	python3 scripts/build_docs_catalog.py --validate --output /tmp/agentic-catalog-check.json
+	PYTHONPYCACHEPREFIX=/tmp/agentic-pycache-check python3 -m py_compile scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_prompts.py --strict
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/sync_workflow_diagrams.py --check
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/build_docs_catalog.py --validate --output /tmp/agentic-catalog-check.json
+	$(MAKE) check-no-pycache
 
 fmt:
 	@printf '%s\n' "No formatter configured."
@@ -151,8 +161,8 @@ clean:
 	rm -f reports/area-quality.json reports/area-quality.md
 
 build:
-	python3 scripts/sync_workflow_diagrams.py --check
-	python3 scripts/build_docs_catalog.py --output docs/site/catalog.json --validate
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/sync_workflow_diagrams.py --check
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/build_docs_catalog.py --output docs/site/catalog.json --validate
 
 sync-diagrams:
 	python3 scripts/sync_workflow_diagrams.py
