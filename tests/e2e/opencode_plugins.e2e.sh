@@ -114,6 +114,7 @@ PROFILE_MENU_LOG="$TMP_ROOT/profile-menu.log"
 PROFILE_OPENAI_LOG="$TMP_ROOT/profile-openai.log"
 PROFILE_COPILOT_LOG="$TMP_ROOT/profile-copilot.log"
 PROFILE_USER_LOG="$TMP_ROOT/profile-user.log"
+PROFILE_XDG_CONFIG_HOME="$TMP_ROOT/profile-xdg-config"
 mkdir -p "$PROFILE_HOME/.config/agentic/opencode/profiles/DT" "$PROFILE_HOME/.config/agentic/opencode/profiles/GH"
 cat > "$PROFILE_HOME/.config/agentic/opencode/profiles/DT/opencode.json" <<'JSON'
 {
@@ -136,7 +137,7 @@ cat > "$PROFILE_HOME/.config/agentic/opencode/profiles/GH/opencode.json" <<'JSON
 }
 JSON
 printf '%s\n' "n" "3" "n" "n" | \
-  env HOME="$PROFILE_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 AGENTIC_DOCTOR=0 "$ROOT_DIR/agentic" install \
+  env HOME="$PROFILE_HOME" XDG_CONFIG_HOME="$PROFILE_XDG_CONFIG_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 AGENTIC_DOCTOR=0 "$ROOT_DIR/agentic" install \
     --project-dir "$PROFILE_MENU_PROJECT" \
     --agent-os opencode \
     --areas software \
@@ -150,7 +151,7 @@ assert_file_contains "$PROFILE_MENU_PROJECT/.opencode/opencode.json" '"model": "
 assert_file_contains "$PROFILE_MENU_PROJECT/.agentic.json" '"opencode_profile": "openai"'
 
 printf '%s\n' "n" "5" "n" "n" | \
-  env HOME="$PROFILE_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 AGENTIC_DOCTOR=0 "$ROOT_DIR/agentic" install \
+  env HOME="$PROFILE_HOME" XDG_CONFIG_HOME="$PROFILE_XDG_CONFIG_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_AGENT_MODEL_MAPPER_NO_FZF=1 AGENTIC_DOCTOR=0 "$ROOT_DIR/agentic" install \
     --project-dir "$PROFILE_USER_PROJECT" \
     --agent-os opencode \
     --areas software \
@@ -163,7 +164,7 @@ assert_file_contains "$PROFILE_USER_PROJECT/.opencode/opencode.json" '"user/dt-f
 assert_file_contains "$PROFILE_USER_PROJECT/.agentic.json" '"opencode_profile": "DT"'
 assert_not_exists "$PROFILE_USER_PROJECT/.opencode/profiles"
 
-HOME="$PROFILE_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_DOCTOR=0 AGENTIC_OPENCODE_PROFILE=openai "$ROOT_DIR/agentic" install \
+HOME="$PROFILE_HOME" XDG_CONFIG_HOME="$PROFILE_XDG_CONFIG_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_DOCTOR=0 AGENTIC_OPENCODE_PROFILE=openai "$ROOT_DIR/agentic" install \
   --project-dir "$PROFILE_OPENAI_PROJECT" \
   --agent-os opencode \
   --areas software \
@@ -175,7 +176,7 @@ assert_file_contains "$PROFILE_OPENAI_PROJECT/.opencode/opencode.json" '"plan"'
 assert_file_contains "$PROFILE_OPENAI_PROJECT/.agentic.json" '"opencode_profile": "openai"'
 assert_not_exists "$PROFILE_OPENAI_PROJECT/.opencode/profiles"
 
-HOME="$PROFILE_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_DOCTOR=0 AGENTIC_OPENCODE_PROFILE=githubcopilot "$ROOT_DIR/agentic" install \
+HOME="$PROFILE_HOME" XDG_CONFIG_HOME="$PROFILE_XDG_CONFIG_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_DOCTOR=0 AGENTIC_OPENCODE_PROFILE=githubcopilot "$ROOT_DIR/agentic" install \
   --project-dir "$PROFILE_COPILOT_PROJECT" \
   --agent-os opencode \
   --areas software \
