@@ -143,9 +143,27 @@ HOME="$PROFILE_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_DOCTOR=0 AGENTIC_
   --specializations software.backend >"$PROFILE_COPILOT_LOG" 2>&1
 assert_file_contains "$PROFILE_COPILOT_LOG" "Applied OpenCode profile: GitHub Copilot Model Profile"
 assert_file_contains "$PROFILE_COPILOT_PROJECT/.opencode/opencode.json" '"model": "github-copilot/gpt-5.3-codex"'
-assert_file_contains "$PROFILE_COPILOT_PROJECT/.opencode/opencode.json" '"model": "github-copilot/claude-opus-4.7"'
+assert_file_contains "$PROFILE_COPILOT_PROJECT/.opencode/opencode.json" '"model": "github-copilot/claude-opus-4.8"'
 assert_file_contains "$PROFILE_COPILOT_PROJECT/.agentic.json" '"opencode_profile": "githubcopilot"'
 assert_not_exists "$PROFILE_COPILOT_PROJECT/.opencode/profiles"
+
+NONE_HOME="$TMP_ROOT/none-home"
+NONE_PROJECT="$TMP_ROOT/none-project"
+NONE_LOG="$TMP_ROOT/none.log"
+printf '%s\n' "n" "" "n" "n" | \
+  env HOME="$NONE_HOME" PATH="$INSTALL_BIN:/usr/bin:/bin" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_DISABLE_FZF=1 AGENTIC_OPENCODE_PROFILE=none AGENTIC_DOCTOR=0 "$ROOT_DIR/agentic" install \
+    --project-dir "$NONE_PROJECT" \
+    --agent-os opencode \
+    --areas software \
+    --specializations software.backend >"$NONE_LOG" 2>&1
+assert_file_contains "$NONE_LOG" "Select optional OpenCode plugin(s):"
+assert_file_contains "$NONE_LOG" "Telegram Notifications"
+assert_file_contains "$NONE_LOG" "Agent Model Mapping"
+assert_file_contains "$NONE_LOG" "OpenAI Model Profile"
+assert_file_contains "$NONE_LOG" "GitHub Copilot Model Profile"
+assert_not_exists "$NONE_PROJECT/.opencode/opencode.json"
+assert_not_exists "$NONE_PROJECT/.opencode/plugins/telegram-notification.ts"
+assert_file_contains "$NONE_PROJECT/.agentic.json" '"opencode_plugins"'
 
 TELEGRAM_PLUGIN="$ROOT_DIR/extensions/opencode/plugins/telegram-notification.ts"
 assert_file_contains "$TELEGRAM_PLUGIN" ".agentic.json"

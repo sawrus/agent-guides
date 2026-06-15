@@ -956,6 +956,15 @@ opencode_plugin_id_from_label() {
   esac
 }
 
+opencode_profile_is_none() {
+  local profile_id
+  profile_id="$(trim "${1:-}")"
+  case "$profile_id" in
+    ""|none|None|skip|Skip|no|No) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 selected_agent_os_contains() {
   local expected="$1"
   local agent
@@ -1597,6 +1606,7 @@ ensure_bin_dir_in_shell_path() {
 copy_dir_contents() {
   local src="$1"
   local dest="$2"
+  local skip_opencode_base_config="${3:-false}"
   ensure_dir "$dest"
   if [[ "$DRY_RUN" == true ]]; then
     log "DRY-RUN copy managed contents $src -> $dest"
@@ -1606,7 +1616,7 @@ copy_dir_contents() {
 
   local event kind value events_file
   events_file="$(mktemp "${TMPDIR:-/tmp}/agentic-copy-events.XXXXXX")"
-  python3 - "$src" "$dest" "$REPO_ROOT" "$PROJECT_DIR" "$(project_manifest_path)" "$APP_REPO_LINK" "$(app_version_label)" > "$events_file" <<'PY'
+  python3 - "$src" "$dest" "$REPO_ROOT" "$PROJECT_DIR" "$(project_manifest_path)" "$APP_REPO_LINK" "$(app_version_label)" "$skip_opencode_base_config" > "$events_file" <<'PY'
 import hashlib
 import json
 import re
@@ -1620,6 +1630,7 @@ project_dir = Path(sys.argv[4])
 manifest = Path(sys.argv[5])
 repo = sys.argv[6]
 version = sys.argv[7]
+skip_opencode_base_config = sys.argv[8].lower() == "true"
 
 
 def emit(kind: str, value: str) -> None:
@@ -1726,6 +1737,10 @@ emit("DIR", str(dest_root))
 for file_path in sorted(p for p in src.rglob("*") if p.is_file()):
     rel = file_path.relative_to(src)
     if str(src).endswith("/extensions/opencode") and rel.parts and rel.parts[0] == "profiles":
+        continue
+    if str(src).endswith("/extensions/opencode") and skip_opencode_base_config and rel == Path("opencode.json"):
+        continue
+    if str(src).endswith("/extensions/opencode") and skip_opencode_base_config and rel == Path("plugins/telegram-notification.ts"):
         continue
     target = dest_root / rel
     project_rel = rel_to_project(target)
@@ -3605,7 +3620,17 @@ copy_extension_for_agent() {
     return
   fi
 
-  copy_dir_contents "$src" "$dest"
+  local skip_opencode_base_config=false
+  if [[ "$agent_os" == "opencode" ]]; then
+    local profile_id="${AGENTIC_OPENCODE_PROFILE:-$SELECTED_OPENCODE_PROFILE}"
+    if opencode_profile_is_none "$profile_id" \
+      && [[ "$OPENCODE_TELEGRAM_ENABLED" != "true" ]] \
+      && [[ "$OPENCODE_AGENT_MODEL_MAPPER_ENABLED" != "true" ]]; then
+      skip_opencode_base_config=true
+    fi
+  fi
+
+  copy_dir_contents "$src" "$dest" "$skip_opencode_base_config"
 }
 
 copy_extensions() {

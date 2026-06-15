@@ -205,10 +205,20 @@ project/.agent/
 
 ### OpenCode Plugins
 
-- `telegram-opencode-notifier`: sends Telegram notifications when an OpenCode session becomes idle, including the final
-  response or an attachment for long output.
-- `agent-model-mapper`: maps `.opencode/agents/*.md` roles to main and fallback OpenCode models during interactive
-  `agentic install`/`agentic tui`. OpenCode startup never prompts or writes project files.
+- `Telegram Notifications`: sends Telegram notifications when an OpenCode session becomes idle, including the final
+  response or an attachment for long output. Stored internally as `telegram-notification`.
+- `Agent Model Mapping`: maps `.opencode/agents/*.md` roles to main and fallback OpenCode models during interactive
+  `agentic install`/`agentic tui`. Stored internally as `agent-model-mapper`; OpenCode startup never prompts or writes
+  project files.
+
+### OpenCode Model Profiles
+
+- `OpenAI Model Profile`: applies the bundled OpenAI model mapping from `extensions/opencode/profiles/openai/`.
+- `GitHub Copilot Model Profile`: applies the bundled GitHub Copilot model mapping from
+  `extensions/opencode/profiles/githubcopilot/`.
+- `none`: applies no model profile and does not copy the baseline `extensions/opencode/opencode.json` just for profile
+  selection. OpenCode MCPs, Telegram notifications, and model mapping may still create or update `.opencode/opencode.json`
+  when those options are selected.
 
 ---
 

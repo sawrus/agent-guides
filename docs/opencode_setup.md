@@ -56,6 +56,8 @@ extensions/opencode/profiles/
 
 The current profiles are `OpenAI Model Profile` (`openai/opencode.json`) and `GitHub Copilot Model Profile` (`githubcopilot/opencode.json`). They appear in the same optional OpenCode selection menu as the plugin choices. Selecting one merges its agent model mapping into `.opencode/opencode.json`; later MCP configuration is merged on top, so profile selection does not block future MCP sections.
 
+Selecting `none` applies no model profile and does not copy the baseline `extensions/opencode/opencode.json` just for profile selection. If OpenCode MCPs, Telegram notifications, or agent model mapping are selected, `agentic` may still create or update `.opencode/opencode.json` for those explicit options.
+
 For MCP servers, OpenCode uses top-level `mcp` entries. Agentic migrates legacy `mcpServers` in OpenCode configs to `mcp` and removes the invalid key.
 
 For OpenCode targets, `agentic` writes generated operating guidance to `.opencode/AGENTS.md`. If OpenCode is installed
