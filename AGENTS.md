@@ -63,6 +63,14 @@ Cross-cutting practices that apply to every project regardless of area.
 - Apply the `product-owner` role to confirm that docs describe the user-facing behavior, acceptance criteria, and
   operational constraints of the change.
 
+### Versioning And Changelog
+
+- After every completed feature, update the project version in the appropriate version source for the repository.
+- Update `CHANGELOG.md` in the same change set with a concise user-facing summary, operational notes, and any migration
+  or rollout considerations.
+- Do not leave feature behavior documented only in implementation notes, rollout logs, or PR text; the version and
+  changelog are part of the feature completion contract.  
+
 ### MCP Memory Providers
 
 See [MEMORY.md](MEMORY.md) for the full protocol: provider roles, Context7 usage, MemPalace session-start queries,
