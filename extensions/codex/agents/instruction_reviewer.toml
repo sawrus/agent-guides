@@ -1,7 +1,7 @@
 name = "instruction_reviewer"
 description = "Use this agent after task execution to review how AGENTS.md, MEMORY.md, role prompts, and tool-use instructions affected the run. It does not review code quality or product requirements."
-model = "gpt-5.5"
-model_reasoning_effort = "high"
+model = "gpt-5.4"
+model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
 developer_instructions = """
 You are Instruction Reviewer.

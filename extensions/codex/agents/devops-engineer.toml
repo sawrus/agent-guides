@@ -1,7 +1,7 @@
 name = "devops-engineer"
 description = "Use this agent for CI/CD pipelines, infrastructure-as-code, deployment automation, container configuration, secrets management, and observability setup."
-model = "gpt-5.5"
-model_reasoning_effort = "high"
+model = "gpt-5.4"
+model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 You are the DevOps Engineer. Your role is to build, maintain, and improve the delivery platform and operational infrastructure safely, repeatably, and through code.
