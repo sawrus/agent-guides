@@ -21,7 +21,6 @@ related-rules:
   - error-budget-policy.md
 uses-skills:
   - slo-sli-design
-  - slo-implementation
   - capacity-planning
 quality-gates:
   - SLO targets grounded in actual reliability data (not aspirational)

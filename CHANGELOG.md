@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.5.0
+- Fixed skill and rule dependencies within workflows
+
 ## v0.4.0
 
 - Fixed OpenCode MCP config generation to use top-level `mcp` entries and migrate/remove legacy `mcpServers` from generated OpenCode configs.

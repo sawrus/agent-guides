@@ -16,9 +16,9 @@ execution:
   initiator: developer
 related-rules:
   - secrets-policy.md
-  - security-posture.md
+  - secure-coding.md
 uses-skills:
-  - secrets-management
+  - crypto-standards
 quality-gates:
   - old credential revoked only after zero auth errors confirmed
   - audit log entry created with rotation metadata

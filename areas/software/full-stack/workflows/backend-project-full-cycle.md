@@ -18,13 +18,12 @@ roles:
 execution:
   initiator: team-lead
 related-rules:
-  - project-setup-guide.md
+  - project-guide.md
   - backend-architecture-rule.md
   - code-quality-guide.md
   - env-settings-guide.md
   - testing-ci-guide.md
   - e2e-test-guide.md
-  - ci-cd-deployment-guide.md
 uses-skills:
   - prompt-project-planner
   - app-builder
