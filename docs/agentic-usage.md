@@ -99,6 +99,15 @@ When Codex is selected, `agentic` creates or updates the project-local `.codex/c
 memories = true
 ```
 
+When selected MCP servers need outbound network access, generated Codex config also enables project-scoped workspace network access:
+
+```toml
+[sandbox_workspace_write]
+network_access = true
+```
+
+Generated Codex MCP entries include non-interactive `npx -y` arguments where needed and startup/tool timeouts so first-run package startup does not fail before the MCP server initializes.
+
 This config file follows the same manifest-managed safeguards as other generated project files.
 
 After the project files are generated, `agentic` starts timestamped operational logging and mirrors install output to a temporary log file such as:
@@ -184,7 +193,7 @@ Non-interactive installs create a disabled config when no config exists. Interac
 
 OpenCode model profiles are stored in `extensions/opencode/profiles` and appear in the same optional OpenCode selection menu as the plugin choices. The built-in choices are `OpenAI Model Profile` and `GitHub Copilot Model Profile`; non-interactive installs can choose them with `AGENTIC_OPENCODE_PROFILE=openai` or `AGENTIC_OPENCODE_PROFILE=githubcopilot`. Users can add local profiles under `$HOME/.config/agentic/opencode/profiles/<profile-id>/opencode.json`; for example, `DT/opencode.json` appears as `DT profile` and `GH/opencode.json` appears as `GH profile`. Profile selection merges agent model mappings into `.opencode/opencode.json`, then MCP configuration is merged afterward.
 
-OpenCode MCP config uses top-level `mcp`, not `mcpServers`. Agentic migrates legacy OpenCode `mcpServers` entries into `mcp` during install. Codex continues to use `.codex/config.toml` with `[mcp_servers.*]` sections.
+OpenCode MCP config uses top-level `mcp`, not `mcpServers`. Agentic migrates legacy OpenCode `mcpServers` entries into `mcp` during install. Codex continues to use `.codex/config.toml` with `[mcp_servers.*]` sections. For selected network-backed Codex MCP servers, agentic writes `[sandbox_workspace_write] network_access = true` in the project config so the generated MCPs can start and reach their upstream services in workspace-write mode.
 
 For selected Kubernetes and Docker MCP integrations, `agentic` performs non-fatal local checks after config generation: `kubectl version` for Kubernetes and `docker mcp --version` for Docker MCP. Failed checks appear as warnings in the final install report with official setup links. Docker MCP server entries are generated under the server name `docker`.
 

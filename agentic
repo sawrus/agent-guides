@@ -967,14 +967,14 @@ selected_mcps_csv() {
 mcp_registry_json() {
   cat <<'JSON'
 {
-  "opencode-docs": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"opencode", "command":"npx", "args":["-y", "opencode-docs-mcp"]},
-  "playwright": {"security":"sensitive", "default_enabled":false, "target":"mcpServers", "server":"playwright", "command":"npx", "args":["@playwright/mcp@latest"]},
-  "kubernetes": {"security":"dangerous", "default_enabled":false, "target":"mcpServers", "server":"kubernetes", "command":"npx", "args":["-y", "kubernetes-mcp-server"]},
-  "youtube-transcript": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"youtube-transcript", "command":"npx", "args":["-y", "@kimtaeyoon83/mcp-server-youtube-transcript"]},
-  "docker-mcp": {"security":"dangerous", "default_enabled":false, "target":"mcp", "server":"docker", "opencode":{"type":"local", "command":["docker", "mcp", "gateway", "run"], "enabled":true}, "generic":{"command":"docker", "args":["mcp", "gateway", "run"]}},
-  "context7": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"context7", "command":"npx", "args":["-y", "@upstash/context7-mcp"], "remote":"https://mcp.context7.com/mcp"},
-  "mempalace": {"security":"sensitive", "default_enabled":false, "target":"mcpServers", "server":"mempalace", "command":"mempalace-mcp", "args":[]},
-  "anydb": {"security":"dangerous", "default_enabled":false, "target":"mcpServers", "server":"anydb", "command":"npx", "args":["-y", "anydb-mcp"]}
+  "opencode-docs": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"opencode", "command":"npx", "args":["-y", "opencode-docs-mcp"], "codex_network":true, "codex_startup_timeout_sec":60},
+  "playwright": {"security":"sensitive", "default_enabled":false, "target":"mcpServers", "server":"playwright", "command":"npx", "args":["-y", "@playwright/mcp@latest"], "codex_network":true, "codex_startup_timeout_sec":60},
+  "kubernetes": {"security":"dangerous", "default_enabled":false, "target":"mcpServers", "server":"kubernetes", "command":"npx", "args":["-y", "kubernetes-mcp-server"], "codex_network":true, "codex_startup_timeout_sec":60},
+  "youtube-transcript": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"youtube-transcript", "command":"npx", "args":["-y", "@kimtaeyoon83/mcp-server-youtube-transcript"], "codex_network":true, "codex_startup_timeout_sec":60},
+  "docker-mcp": {"security":"dangerous", "default_enabled":false, "target":"mcp", "server":"docker", "opencode":{"type":"local", "command":["docker", "mcp", "gateway", "run"], "enabled":true}, "generic":{"command":"docker", "args":["mcp", "gateway", "run"]}, "codex_startup_timeout_sec":30},
+  "context7": {"security":"safe", "default_enabled":false, "target":"mcpServers", "server":"context7", "command":"npx", "args":["-y", "@upstash/context7-mcp"], "remote":"https://mcp.context7.com/mcp", "codex_network":true, "codex_tool_timeout_sec":60},
+  "mempalace": {"security":"sensitive", "default_enabled":false, "target":"mcpServers", "server":"mempalace", "command":"mempalace-mcp", "args":[], "codex_startup_timeout_sec":30},
+  "anydb": {"security":"dangerous", "default_enabled":false, "target":"mcpServers", "server":"anydb", "command":"npx", "args":["-y", "anydb-mcp"], "codex_network":true, "codex_startup_timeout_sec":60}
 }
 JSON
 }
@@ -2196,16 +2196,50 @@ import json, re, sys
 from pathlib import Path
 path = Path(sys.argv[1]); selected = [x for x in sys.argv[2].split(",") if x]; registry = json.loads(sys.argv[3]); context7_api_key = sys.argv[4]
 text = path.read_text(encoding="utf-8") if path.exists() else ""
+
+def set_table_key(source, table, key, value):
+    pattern = re.compile(rf"(?ms)^(\[{re.escape(table)}\]\n)(.*?)(?=^\[|\Z)")
+    match = pattern.search(source)
+    if not match:
+        return f"[{table}]\n{key} = {value}\n\n" + source.lstrip()
+    header, body = match.group(1), match.group(2)
+    lines = body.splitlines(keepends=True)
+    output = []
+    found = False
+    for line in lines:
+        if re.match(rf"\s*{re.escape(key)}\s*=", line):
+            output.append(f"{key} = {value}" + ("\n" if line.endswith("\n") else ""))
+            found = True
+        else:
+            output.append(line)
+    if not found:
+        if output and not output[-1].endswith("\n"):
+            output[-1] += "\n"
+        output.append(f"{key} = {value}\n")
+    return source[:match.start()] + header + "".join(output) + source[match.end():]
+
+if any(registry.get(mcp_id, {}).get("codex_network") for mcp_id in selected):
+    text = set_table_key(text, "sandbox_workspace_write", "network_access", "true")
+
 for mcp_id in selected:
     entry = registry.get(mcp_id)
     if not entry: continue
     server = entry["server"]
     text = re.sub(rf"(?ms)^\[mcp_servers\.{re.escape(server)}\]\n.*?(?=^\[|\Z)", "", text).strip()
-    if mcp_id == "docker-mcp": command, args = "docker", ["mcp", "gateway", "run"]
-    else: command, args = entry["command"], entry.get("args", [])
-    block = f"[mcp_servers.{server}]\ncommand = {json.dumps(command)}\n"
-    if args: block += "args = [" + ", ".join(json.dumps(a) for a in args) + "]\n"
-    if mcp_id == "context7" and context7_api_key: block += 'env = { "CONTEXT7_API_KEY" = ' + json.dumps(context7_api_key) + ' }\n'
+    if entry.get("remote"):
+        block = f"[mcp_servers.{server}]\nurl = {json.dumps(entry['remote'])}\n"
+        if mcp_id == "context7" and context7_api_key:
+            block += 'http_headers = { "CONTEXT7_API_KEY" = ' + json.dumps(context7_api_key) + ' }\n'
+    else:
+        if mcp_id == "docker-mcp": command, args = "docker", ["mcp", "gateway", "run"]
+        else: command, args = entry["command"], entry.get("args", [])
+        block = f"[mcp_servers.{server}]\ncommand = {json.dumps(command)}\n"
+        if args: block += "args = [" + ", ".join(json.dumps(a) for a in args) + "]\n"
+        if mcp_id == "context7" and context7_api_key: block += 'env = { "CONTEXT7_API_KEY" = ' + json.dumps(context7_api_key) + ' }\n'
+    if entry.get("codex_startup_timeout_sec"):
+        block += f"startup_timeout_sec = {int(entry['codex_startup_timeout_sec'])}\n"
+    if entry.get("codex_tool_timeout_sec"):
+        block += f"tool_timeout_sec = {int(entry['codex_tool_timeout_sec'])}\n"
     text = (text.rstrip() + "\n\n" + block).strip() if text else block.strip()
 print(text.rstrip() + "\n", end="")
 PY
@@ -2357,8 +2391,31 @@ from pathlib import Path
 path = Path(sys.argv[1])
 api_key = sys.argv[2]
 text = path.read_text(encoding="utf-8") if path.exists() else ""
+
+def set_table_key(source, table, key, value):
+    pattern = re.compile(rf"(?ms)^(\[{re.escape(table)}\]\n)(.*?)(?=^\[|\Z)")
+    match = pattern.search(source)
+    if not match:
+        return f"[{table}]\n{key} = {value}\n\n" + source.lstrip()
+    header, body = match.group(1), match.group(2)
+    lines = body.splitlines(keepends=True)
+    output = []
+    found = False
+    for line in lines:
+        if re.match(rf"\s*{re.escape(key)}\s*=", line):
+            output.append(f"{key} = {value}" + ("\n" if line.endswith("\n") else ""))
+            found = True
+        else:
+            output.append(line)
+    if not found:
+        if output and not output[-1].endswith("\n"):
+            output[-1] += "\n"
+        output.append(f"{key} = {value}\n")
+    return source[:match.start()] + header + "".join(output) + source[match.end():]
+
+text = set_table_key(text, "sandbox_workspace_write", "network_access", "true")
 text = re.sub(r"(?ms)^\[mcp_servers\.context7\]\n.*?(?=^\[|\Z)", "", text).strip()
-block = '[mcp_servers.context7]\nurl = "https://mcp.context7.com/mcp"\n'
+block = '[mcp_servers.context7]\nurl = "https://mcp.context7.com/mcp"\ntool_timeout_sec = 60\n'
 if api_key:
     escaped = api_key.replace("\\", "\\\\").replace('"', '\\"')
     block += f'http_headers = {{ "CONTEXT7_API_KEY" = "{escaped}" }}\n'
@@ -2587,7 +2644,7 @@ import sys
 
 path = pathlib.Path(sys.argv[1])
 text = path.read_text(encoding='utf-8') if path.exists() else ''
-block = "[mcp_servers.mempalace]\ncommand = \"mempalace-mcp\"\n"
+block = "[mcp_servers.mempalace]\ncommand = \"mempalace-mcp\"\nstartup_timeout_sec = 30\n"
 text = re.sub(r"(?ms)^\[mcp_servers\.mempalace\]\n.*?(?=^\[|\Z)", "", text).strip()
 if text:
     print(text.rstrip() + "\n\n" + block, end="")
