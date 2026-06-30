@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.2
+- Updated Codex MCP config generation so selected network-backed MCPs enable project sandbox network access, use non-interactive `npx -y` startup, and include startup/tool timeouts for reliable first-run startup.
+- Extended deterministic MCP and doctor e2e coverage for all selected Codex MCP entries.
+
 ## v0.5.1
 - Moved OpenCode Telegram notification credentials to `$HOME/.config/agentic/config.json` and added interactive reuse of saved credentials.
 - Kept project `.agentic.json` limited to Telegram enablement so project manifests no longer store raw Telegram secrets.

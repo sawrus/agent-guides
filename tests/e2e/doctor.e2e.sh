@@ -229,6 +229,12 @@ assert_file_contains "$P1B/.codex/config.toml" "[mcp_servers.docker]"
 assert_file_contains "$P1B/.codex/config.toml" "[mcp_servers.context7]"
 assert_file_contains "$P1B/.codex/config.toml" "[mcp_servers.mempalace]"
 assert_file_contains "$P1B/.codex/config.toml" "[mcp_servers.anydb]"
+assert_file_contains "$P1B/.codex/config.toml" "[sandbox_workspace_write]"
+assert_file_contains "$P1B/.codex/config.toml" "network_access = true"
+assert_file_contains "$P1B/.codex/config.toml" 'args = ["-y", "@playwright/mcp@latest"]'
+assert_file_contains "$P1B/.codex/config.toml" "tool_timeout_sec = 60"
+assert_file_contains "$P1B/.codex/config.toml" "startup_timeout_sec = 60"
+assert_file_contains "$P1B/.codex/config.toml" "startup_timeout_sec = 30"
 assert_file_contains "$P1B/opencode.json" '"mcp"'
 assert_file_not_contains "$P1B/opencode.json" '"mcpServers"'
 assert_file_contains "$P1B/.opencode/opencode.json" '"mcp"'

@@ -53,7 +53,13 @@ assert_file_not_contains "$PROJECT/opencode.json" '"mcpServers"'
 assert_file_contains "$PROJECT/.opencode/opencode.json" '"mcp"'
 assert_file_not_contains "$PROJECT/.opencode/opencode.json" '"mcpServers"'
 assert_file_contains "$PROJECT/.codex/config.toml" '[mcp_servers.opencode]'
+assert_file_contains "$PROJECT/.codex/config.toml" '[sandbox_workspace_write]'
+assert_file_contains "$PROJECT/.codex/config.toml" 'network_access = true'
+assert_file_contains "$PROJECT/.codex/config.toml" 'args = ["-y", "opencode-docs-mcp"]'
+assert_file_contains "$PROJECT/.codex/config.toml" 'args = ["-y", "@playwright/mcp@latest"]'
+assert_file_contains "$PROJECT/.codex/config.toml" 'startup_timeout_sec = 60'
 assert_file_contains "$PROJECT/.codex/config.toml" 'args = ["mcp", "gateway", "run"]'
+assert_file_contains "$PROJECT/.codex/config.toml" 'startup_timeout_sec = 30'
 assert_file_contains "$PROJECT/.mcp.json" '"playwright"'
 assert_file_contains "$PROJECT/.cursor/mcp.json" '"youtube-transcript"'
 assert_file_contains "$PROJECT/.gemini/settings.json" '"anydb"'
@@ -120,7 +126,7 @@ if "mcpServers" in data:
 mcp = data.get("mcp", {})
 if mcp.get("existing", {}).get("command") != ["keep-me"]:
     raise SystemExit("legacy existing server was not migrated to mcp")
-if mcp.get("playwright", {}).get("command") != ["npx", "@playwright/mcp@latest"]:
+if mcp.get("playwright", {}).get("command") != ["npx", "-y", "@playwright/mcp@latest"]:
     raise SystemExit("selected playwright server was not rewritten in mcp")
 PY
 
