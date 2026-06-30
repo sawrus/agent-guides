@@ -1,9 +1,16 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import { homedir } from "node:os"
 
 type AgenticPluginConfig = {
   settings?: any
+}
+
+type TelegramConfig = {
+  enabled?: boolean
+  botToken?: string
+  chatId?: string
 }
 
 function telegramApiBaseUrl(): string {
@@ -31,16 +38,29 @@ function readAgenticConfig(directory: string): AgenticPluginConfig {
   }
 }
 
+function readGlobalTelegramConfig() {
+  const home = process.env.HOME || homedir()
+  const configPath = join(home, ".config", "agentic", "config.json")
+  try {
+    const config = JSON.parse(readFileSync(configPath, "utf-8"))
+    return config?.opencode?.plugins?.telegram || {}
+  } catch {
+    return {}
+  }
+}
+
 let currentTelegramConfig
 
 export const TelegramNotificationPlugin: Plugin = async ({ $, client, directory }) => {
   const config = readAgenticConfig(directory)
-  const telegram = config.settings?.opencode_plugins?.telegram
+  const projectTelegram = config.settings?.opencode_plugins?.telegram || {}
+  const globalTelegram = readGlobalTelegramConfig()
+  const telegram = { ...projectTelegram, ...globalTelegram, enabled: projectTelegram.enabled }
   currentTelegramConfig = telegram
   const botToken = telegram?.botToken
   const chatId = telegram?.chatId
 
-  if (!telegram?.enabled || !botToken || !chatId) {
+  if (!projectTelegram?.enabled || !botToken || !chatId) {
     return {}
   }
 

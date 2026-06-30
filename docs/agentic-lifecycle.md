@@ -10,6 +10,7 @@ This guide describes how an installed `agentic` binary resolves and updates its 
 - Data home: `${XDG_DATA_HOME:-$HOME/.local/share}`
 - Config directory: `~/.config/agentic`
 - Config file: `~/.config/agentic/config`
+- JSON config file: `~/.config/agentic/config.json`
 - OpenCode plugin config: `~/.config/agentic/opencode-plugins.json`
 - Knowledge base data directory: `~/.local/share/agentic`
 - Knowledge base checkout: `~/.local/share/agentic/repo`
@@ -22,7 +23,7 @@ theme=auto
 
 Supported values are `auto`, `dark`, and `light`.
 
-Target projects receive `.agentic.json`. It stores selected install settings, optional project-level OpenCode plugin configuration, managed file paths, source paths, hashes, generated marker type, and skipped files from the latest rerun. When Telegram notifications are enabled, `.agentic.json` includes plaintext `botToken` and `chatId`; keep that file out of public repositories.
+Target projects receive `.agentic.json`. It stores selected install settings, optional project-level OpenCode plugin enablement, managed file paths, source paths, hashes, generated marker type, and skipped files from the latest rerun. When Telegram notifications are enabled, raw `botToken` and `chatId` values are stored in `$HOME/.config/agentic/config.json`, while `.agentic.json` stores enablement only.
 
 ## Repository modes
 

@@ -11,7 +11,7 @@
 - No runtime OpenCode plugin is shipped for `agent-model-mapper`, so OpenCode startup never opens `fzf`, asks questions, or writes project files.
 - Context7 offers an interactive key mode: configure without a key or enter `CONTEXT7_API_KEY` for the selected target configs.
 - OpenCode MemPalace setup writes `mempalace-mcp` config and initializes/mines project memory into a project-specific wing without LLM calls.
-- Telegram notification credentials are read from project `.agentic.json` when the plugin is enabled.
+- Telegram notification credentials are read from `$HOME/.config/agentic/config.json` when the plugin is enabled in project `.agentic.json`.
 - MemPalace-enabled installs create a managed `.mempalaceignore` unless the target project already has one.
 - `make test` runs the fast deterministic e2e suite; longer deterministic checks, real blackbox, and coverage checks are explicit targets.
 - `make test-all` runs the full local suite including longer deterministic checks, install/evidence blackbox, and coverage.

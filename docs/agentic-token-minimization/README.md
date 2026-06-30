@@ -34,14 +34,15 @@ When installing for OpenCode, `agentic` writes optional plugin state to:
 
 Interactive installs ask whether to enable Telegram notifications and model mapping. Non-interactive installs default optional plugins to disabled when no config exists.
 
-The OpenCode plugins read project `.agentic.json` at startup and return no hooks when disabled. When Telegram is enabled, credentials are stored in plaintext at:
+The OpenCode plugins read project `.agentic.json` at startup and return no hooks when disabled. When Telegram is enabled, credentials are stored in plaintext in the user config at:
 
 ```text
-settings.opencode_plugins.telegram.botToken
-settings.opencode_plugins.telegram.chatId
+$HOME/.config/agentic/config.json
+opencode.plugins.telegram.botToken
+opencode.plugins.telegram.chatId
 ```
 
-Do not commit a Telegram-enabled `.agentic.json` to public repositories.
+The project `.agentic.json` records enablement only and should not contain raw Telegram secrets.
 
 ## Context7
 

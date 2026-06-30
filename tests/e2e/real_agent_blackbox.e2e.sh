@@ -331,12 +331,20 @@ run_telegram_blackbox() {
   mkdir -p "$home/.config/agentic"
   cat > "$home/.config/agentic/opencode-plugins.json" <<JSON
 {
-  "telegram": {
-    "enabled": true,
-    "botToken": "${OPENCODE_TELEGRAM_BOT_TOKEN:-}",
-    "chatId": "${OPENCODE_TELEGRAM_CHAT_ID:-}"
-  },
+  "telegram": {"enabled": true},
   "agentModelMapper": {"enabled": false}
+}
+JSON
+  cat > "$home/.config/agentic/config.json" <<JSON
+{
+  "opencode": {
+    "plugins": {
+      "telegram": {
+        "botToken": "${OPENCODE_TELEGRAM_BOT_TOKEN:-}",
+        "chatId": "${OPENCODE_TELEGRAM_CHAT_ID:-}"
+      }
+    }
+  }
 }
 JSON
 

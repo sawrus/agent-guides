@@ -30,6 +30,7 @@ XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 APP_CONFIG_DIR="$XDG_CONFIG_HOME/$APP_NAME"
 APP_CONFIG_FILE="$APP_CONFIG_DIR/config"
+APP_CONFIG_JSON_FILE="$HOME/.config/$APP_NAME/config.json"
 OPENCODE_PLUGIN_CONFIG_FILE="$APP_CONFIG_DIR/opencode-plugins.json"
 OPENCODE_USER_PROFILES_DIR="$HOME/.config/$APP_NAME/opencode/profiles"
 APP_DATA_DIR="$XDG_DATA_HOME/$APP_NAME"
@@ -641,6 +642,72 @@ save_user_config() {
 theme=$THEME
 CONFIG
   unique_append "$APP_CONFIG_FILE" COPIED_PATHS
+}
+
+load_global_telegram_credentials() {
+  [[ -f "$APP_CONFIG_JSON_FILE" ]] || return 1
+  local values=()
+  readlines values < <(python3 - "$APP_CONFIG_JSON_FILE" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+telegram = data.get("opencode", {}).get("plugins", {}).get("telegram", {}) if isinstance(data, dict) else {}
+if not isinstance(telegram, dict):
+    telegram = {}
+print(telegram.get("botToken") or "")
+print(telegram.get("chatId") or "")
+PY
+)
+  OPENCODE_TELEGRAM_BOT_TOKEN="${values[0]:-}"
+  OPENCODE_TELEGRAM_CHAT_ID="${values[1]:-}"
+  [[ -n "$OPENCODE_TELEGRAM_BOT_TOKEN" && -n "$OPENCODE_TELEGRAM_CHAT_ID" ]]
+}
+
+save_global_telegram_credentials() {
+  local bot_token="$1"
+  local chat_id="$2"
+  [[ -n "$bot_token" && -n "$chat_id" ]] || return 1
+  ensure_dir "$(dirname -- "$APP_CONFIG_JSON_FILE")"
+  if [[ "$DRY_RUN" == true ]]; then
+    log "DRY-RUN write Telegram credentials to $APP_CONFIG_JSON_FILE"
+    return
+  fi
+  python3 - "$APP_CONFIG_JSON_FILE" "$bot_token" "$chat_id" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+bot_token = sys.argv[2]
+chat_id = sys.argv[3]
+try:
+    data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+except Exception:
+    data = {}
+if not isinstance(data, dict):
+    data = {}
+opencode = data.setdefault("opencode", {})
+if not isinstance(opencode, dict):
+    opencode = {}
+    data["opencode"] = opencode
+plugins = opencode.setdefault("plugins", {})
+if not isinstance(plugins, dict):
+    plugins = {}
+    opencode["plugins"] = plugins
+telegram = plugins.setdefault("telegram", {})
+if not isinstance(telegram, dict):
+    telegram = {}
+    plugins["telegram"] = telegram
+telegram["botToken"] = bot_token
+telegram["chatId"] = chat_id
+path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+PY
+  unique_append "$APP_CONFIG_JSON_FILE" COPIED_PATHS
 }
 
 # Agent-specific directory mappings using case statements for Bash 3.2 compatibility
@@ -1393,8 +1460,6 @@ agent_model_mapper = opencode_plugins.get("agentModelMapper", {}) if isinstance(
 if telegram_enabled is not None:
     telegram = {
         "enabled": telegram_enabled,
-        "botToken": telegram_bot_token,
-        "chatId": telegram_chat_id,
     }
 if mapper_enabled is not None:
     agent_model_mapper = {"enabled": mapper_enabled}
@@ -1552,6 +1617,11 @@ PY
     OPENCODE_TELEGRAM_ENABLED="$loaded_telegram_enabled"
     OPENCODE_TELEGRAM_BOT_TOKEN="$loaded_telegram_bot_token"
     OPENCODE_TELEGRAM_CHAT_ID="$loaded_telegram_chat_id"
+    if [[ -z "$OPENCODE_TELEGRAM_BOT_TOKEN" || -z "$OPENCODE_TELEGRAM_CHAT_ID" ]]; then
+      load_global_telegram_credentials || true
+    else
+      save_global_telegram_credentials "$OPENCODE_TELEGRAM_BOT_TOKEN" "$OPENCODE_TELEGRAM_CHAT_ID" || true
+    fi
     OPENCODE_PLUGINS_CONFIGURED=true
   fi
   if [[ -n "$loaded_mapper_enabled" ]]; then
@@ -3176,15 +3246,46 @@ configure_opencode_plugins_if_needed() {
   done
 
   if [[ "$enable_telegram" =~ ^[Yy]$ ]]; then
-    OPENCODE_TELEGRAM_BOT_TOKEN="$(prompt_text_interactive "Telegram botToken" "$OPENCODE_TELEGRAM_BOT_TOKEN")"
-    OPENCODE_TELEGRAM_CHAT_ID="$(prompt_text_interactive "Telegram chatId" "$OPENCODE_TELEGRAM_CHAT_ID")"
-    if [[ -z "$OPENCODE_TELEGRAM_BOT_TOKEN" || -z "$OPENCODE_TELEGRAM_CHAT_ID" ]]; then
-      warn "Telegram plugin credentials are incomplete; disabling telegram-notification"
-      enable_telegram="n"
-      OPENCODE_TELEGRAM_BOT_TOKEN=""
-      OPENCODE_TELEGRAM_CHAT_ID=""
+    local saved_telegram_bot_token="" saved_telegram_chat_id=""
+    if load_global_telegram_credentials; then
+      saved_telegram_bot_token="$OPENCODE_TELEGRAM_BOT_TOKEN"
+      saved_telegram_chat_id="$OPENCODE_TELEGRAM_CHAT_ID"
+      local telegram_credential_choice
+      if [[ "$use_fzf_plugins" == true ]]; then
+        telegram_credential_choice="$(choose_single_fzf "Telegram credentials:" "Use saved Telegram credentials" "Enter new Telegram credentials" "Disable Telegram Notifications" || true)"
+      else
+        telegram_credential_choice="$(choose_single_by_index "Telegram credentials:" "Use saved Telegram credentials" "Enter new Telegram credentials" "Disable Telegram Notifications")"
+      fi
+      case "$telegram_credential_choice" in
+        ""|"Use saved Telegram credentials")
+          OPENCODE_TELEGRAM_BOT_TOKEN="$saved_telegram_bot_token"
+          OPENCODE_TELEGRAM_CHAT_ID="$saved_telegram_chat_id"
+          log "Telegram plugin enabled; using credentials from $APP_CONFIG_JSON_FILE"
+          ;;
+        "Disable Telegram Notifications")
+          enable_telegram="n"
+          OPENCODE_TELEGRAM_BOT_TOKEN=""
+          OPENCODE_TELEGRAM_CHAT_ID=""
+          ;;
+        *)
+          OPENCODE_TELEGRAM_BOT_TOKEN="$(prompt_text_interactive "Telegram botToken" "")"
+          OPENCODE_TELEGRAM_CHAT_ID="$(prompt_text_interactive "Telegram chatId" "")"
+          ;;
+      esac
     else
-      log "Telegram plugin enabled; credentials will be stored in project .agentic.json"
+      OPENCODE_TELEGRAM_BOT_TOKEN="$(prompt_text_interactive "Telegram botToken" "$OPENCODE_TELEGRAM_BOT_TOKEN")"
+      OPENCODE_TELEGRAM_CHAT_ID="$(prompt_text_interactive "Telegram chatId" "$OPENCODE_TELEGRAM_CHAT_ID")"
+    fi
+    if [[ "$enable_telegram" =~ ^[Yy]$ ]]; then
+      if [[ -z "$OPENCODE_TELEGRAM_BOT_TOKEN" || -z "$OPENCODE_TELEGRAM_CHAT_ID" ]]; then
+        warn "Telegram plugin credentials are incomplete; disabling telegram-notification"
+        enable_telegram="n"
+        OPENCODE_TELEGRAM_BOT_TOKEN=""
+        OPENCODE_TELEGRAM_CHAT_ID=""
+      else
+        save_global_telegram_credentials "$OPENCODE_TELEGRAM_BOT_TOKEN" "$OPENCODE_TELEGRAM_CHAT_ID"
+        log "Telegram plugin enabled; credentials stored in $APP_CONFIG_JSON_FILE"
+      fi
     fi
   fi
   OPENCODE_TELEGRAM_ENABLED=$([[ "$enable_telegram" =~ ^[Yy]$ ]] && echo "true" || echo "false")
@@ -3939,6 +4040,7 @@ print_report() {
   out "Project dir: $PROJECT_DIR"
   out "Knowledge base repo: $REPO_ROOT"
   out "Config file: $APP_CONFIG_FILE"
+  out "JSON config file: $APP_CONFIG_JSON_FILE"
   out "Agent OS targets: ${SELECTED_AGENT_OS[*]}"
   out "Areas: ${SELECTED_AREAS[*]}"
   out "Specializations: ${SELECTED_SPECS[*]}"
