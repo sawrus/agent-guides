@@ -35,14 +35,15 @@ When `agentic` installs the OpenCode extension, it configures optional plugins i
 
 Telegram notifications and agent model mapping are opt-in. Interactive `agentic install` and `agentic tui` ask for OpenCode plugin selection whenever `opencode` is selected. The menu uses readable labels (`Telegram Notifications` and `Agent Model Mapping`) while keeping the stored internal ids `telegram-notification` and `agent-model-mapper`. The answer rewrites this config. During manifest-based upgrade/re-install sync, existing plugin settings are kept so automated refreshes do not open prompts. If the config is absent or a plugin is disabled, the plugin returns no hooks and OpenCode continues without that behavior.
 
-When `telegram-notification` is selected interactively, `agentic` asks for `botToken` and `chatId` and stores them in the target project's `.agentic.json`:
+When `telegram-notification` is selected interactively for the first time, `agentic` asks for `botToken` and `chatId` and stores them in the user config file:
 
 ```text
-settings.opencode_plugins.telegram.botToken
-settings.opencode_plugins.telegram.chatId
+$HOME/.config/agentic/config.json
+opencode.plugins.telegram.botToken
+opencode.plugins.telegram.chatId
 ```
 
-The runtime plugin reads credentials from the project `.agentic.json`; it does not read Telegram credentials from environment variables. This file stores credentials in plaintext, so do not commit a Telegram-enabled `.agentic.json` to public repositories.
+On later interactive `agentic install` and `agentic tui` runs, selecting `Telegram Notifications` offers to reuse those saved credentials before prompting for new values. The runtime plugin reads credentials from `$HOME/.config/agentic/config.json`; the target project `.agentic.json` stores Telegram enablement only and should not contain raw Telegram secrets.
 
 Non-interactive `agentic install` defaults optional plugins to disabled when no config exists.
 

@@ -28,7 +28,7 @@ PROJECT="$TMP_ROOT/project"
 HOME_DIR="$TMP_ROOT/home"
 XDG_CONFIG_DIR="$TMP_ROOT/xdg-config"
 XDG_DATA_DIR="$TMP_ROOT/xdg-data"
-mkdir -p "$PROJECT/.opencode" "$XDG_CONFIG_DIR/agentic"
+mkdir -p "$PROJECT/.opencode" "$HOME_DIR/.config/agentic" "$XDG_CONFIG_DIR/agentic"
 TOKEN="123456:super-secret-token"
 CHAT="987654321"
 cat > "$XDG_CONFIG_DIR/agentic/opencode-plugins.json" <<'JSON'
@@ -36,14 +36,21 @@ cat > "$XDG_CONFIG_DIR/agentic/opencode-plugins.json" <<'JSON'
   "telegram": {"enabled": true, "botToken": "must-not-be-read", "chatId": "must-not-be-read"}
 }
 JSON
+cat > "$HOME_DIR/.config/agentic/config.json" <<JSON
+{
+  "opencode": {
+    "plugins": {
+      "telegram": {"botToken": "$TOKEN", "chatId": "$CHAT"}
+    }
+  }
+}
+JSON
 cat > "$PROJECT/.agentic.json" <<JSON
 {
   "settings": {
     "opencode_plugins": {
       "telegram": {
-        "enabled": true,
-        "botToken": "$TOKEN",
-        "chatId": "$CHAT"
+        "enabled": true
       }
     }
   }

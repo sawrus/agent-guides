@@ -565,7 +565,7 @@ assert_not_exists "$P1_OC_PLUGINS/.opencode/plugins/agent-model-mapper.ts"
 assert_file_contains "$P1_OC_PLUGINS/.agentic.json" '"opencode_plugins"'
 assert_file_contains "$P1_OC_PLUGINS/.agentic.json" '"agentModelMapper"'
 
-echo "[e2e] Scenario 1b3b: interactive OpenCode telegram plugin stores credentials in project manifest"
+echo "[e2e] Scenario 1b3b: interactive OpenCode telegram plugin stores credentials in global config"
 P1_OC_TELEGRAM="$TMP_ROOT/project-opencode-telegram"
 HOME_OC_TELEGRAM="$TMP_ROOT/home-opencode-telegram"
 OUT1A_OC_TELEGRAM="$TMP_ROOT/project-opencode-telegram.log"
@@ -578,14 +578,31 @@ printf '%s\n' "n" "1" "$TELEGRAM_TOKEN" "$TELEGRAM_CHAT" "n" "n" | \
     --areas software \
     --specializations software.backend \
     --theme=light >"$OUT1A_OC_TELEGRAM" 2>&1
-assert_file_contains "$P1_OC_TELEGRAM/.agentic.json" '"botToken": "123456:test-token"'
-assert_file_contains "$P1_OC_TELEGRAM/.agentic.json" '"chatId": "987654321"'
+assert_exists "$HOME_OC_TELEGRAM/.config/agentic/config.json"
+assert_file_contains "$HOME_OC_TELEGRAM/.config/agentic/config.json" '"botToken": "123456:test-token"'
+assert_file_contains "$HOME_OC_TELEGRAM/.config/agentic/config.json" '"chatId": "987654321"'
+assert_file_not_contains "$P1_OC_TELEGRAM/.agentic.json" "$TELEGRAM_TOKEN"
+assert_file_not_contains "$P1_OC_TELEGRAM/.agentic.json" "$TELEGRAM_CHAT"
 assert_file_not_contains "$HOME_OC_TELEGRAM/.config/agentic/opencode-plugins.json" "$TELEGRAM_TOKEN"
 assert_file_not_contains "$HOME_OC_TELEGRAM/.config/agentic/opencode-plugins.json" "$TELEGRAM_CHAT"
 if [[ -z "${AGENTIC_COVERAGE_TRACE_FILE:-}" ]]; then
   assert_file_not_contains "$OUT1A_OC_TELEGRAM" "$TELEGRAM_TOKEN"
   assert_file_not_contains "$OUT1A_OC_TELEGRAM" "$TELEGRAM_CHAT"
 fi
+
+P1_OC_TELEGRAM_REUSE="$TMP_ROOT/project-opencode-telegram-reuse"
+OUT1A_OC_TELEGRAM_REUSE="$TMP_ROOT/project-opencode-telegram-reuse.log"
+printf '%s\n' "n" "1" "1" "n" "n" | \
+  env HOME="$HOME_OC_TELEGRAM" AGENTIC_FORCE_INTERACTIVE=1 AGENTIC_OPENCODE_PROFILE=none AGENTIC_DOCTOR=0 PATH="$FAKE_GIT_BIN:$PYTHON_ONLY_BIN:/usr/bin:/bin" "$CLI" install \
+    --project-dir "$P1_OC_TELEGRAM_REUSE" \
+    --agent-os opencode \
+    --areas software \
+    --specializations software.backend \
+    --theme=light >"$OUT1A_OC_TELEGRAM_REUSE" 2>&1
+assert_file_contains "$OUT1A_OC_TELEGRAM_REUSE" "Telegram credentials:"
+assert_file_contains "$OUT1A_OC_TELEGRAM_REUSE" "using credentials from"
+assert_file_not_contains "$P1_OC_TELEGRAM_REUSE/.agentic.json" "$TELEGRAM_TOKEN"
+assert_file_not_contains "$P1_OC_TELEGRAM_REUSE/.agentic.json" "$TELEGRAM_CHAT"
 
 echo "[e2e] Scenario 1b4: interactive OpenCode plugin multi-select with no selection does not request Telegram credentials"
 P1_OC_NO_PLUGINS="$TMP_ROOT/project-opencode-no-plugins"

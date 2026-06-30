@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.1
+- Moved OpenCode Telegram notification credentials to `$HOME/.config/agentic/config.json` and added interactive reuse of saved credentials.
+- Kept project `.agentic.json` limited to Telegram enablement so project manifests no longer store raw Telegram secrets.
+
 ## v0.5.0
 - Fixed skill and rule dependencies within workflows
 
