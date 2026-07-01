@@ -4303,10 +4303,51 @@ doctor_copy_project() {
   fi
 }
 
+doctor_copy_path_if_present() {
+  local src="$1"
+  local dest="$2"
+  if [[ -d "$src" ]]; then
+    mkdir -p "$(dirname -- "$dest")"
+    cp -R "$src" "$dest"
+  elif [[ -f "$src" ]]; then
+    mkdir -p "$(dirname -- "$dest")"
+    cp "$src" "$dest"
+  fi
+}
+
+prepare_opencode_doctor_runtime() {
+  local doctor_root="$1"
+  local isolated_home="$doctor_root/opencode-home"
+  local isolated_config_home="$isolated_home/.config"
+  local isolated_data_home="$isolated_home/.local/share"
+  local isolated_cache_home="$isolated_home/.cache"
+  local source_config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+  local source_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+  local source_cache_home="${XDG_CACHE_HOME:-$HOME/.cache}"
+
+  mkdir -p "$isolated_config_home" "$isolated_data_home" "$isolated_cache_home"
+
+  doctor_copy_path_if_present \
+    "$source_config_home/opencode" \
+    "$isolated_config_home/opencode"
+  doctor_copy_path_if_present \
+    "$source_data_home/opencode/auth.json" \
+    "$isolated_data_home/opencode/auth.json"
+  doctor_copy_path_if_present \
+    "$source_cache_home/opencode/models.json" \
+    "$isolated_cache_home/opencode/models.json"
+
+  printf '%s\n' "$isolated_home"
+  printf '%s\n' "$isolated_config_home"
+  printf '%s\n' "$isolated_data_home"
+  printf '%s\n' "$isolated_cache_home"
+}
+
 run_doctor_command() {
   local agent_os="$1"
   local work_dir="$2"
   local output_file="$3"
+  local doctor_root="$4"
   local prompt
   prompt="$(doctor_prompt_for_agent "$agent_os")"
 
@@ -4315,7 +4356,18 @@ run_doctor_command() {
       codex exec --skip-git-repo-check --ephemeral --sandbox workspace-write -C "$work_dir" "$prompt" </dev/null >"$output_file" 2>&1
       ;;
     opencode)
-      OPENCODE_DISABLE_AUTOUPDATE=1 opencode run --pure --dir "$work_dir" --dangerously-skip-permissions --format json --log-level ERROR "$prompt" >"$output_file" 2>&1
+      local runtime_paths=()
+      readlines runtime_paths < <(prepare_opencode_doctor_runtime "$doctor_root")
+      local isolated_home="${runtime_paths[0]:-}"
+      local isolated_config_home="${runtime_paths[1]:-}"
+      local isolated_data_home="${runtime_paths[2]:-}"
+      local isolated_cache_home="${runtime_paths[3]:-}"
+      HOME="$isolated_home" \
+      XDG_CONFIG_HOME="$isolated_config_home" \
+      XDG_DATA_HOME="$isolated_data_home" \
+      XDG_CACHE_HOME="$isolated_cache_home" \
+      OPENCODE_DISABLE_AUTOUPDATE=1 \
+        opencode run --pure --dir "$work_dir" --dangerously-skip-permissions --format json --log-level ERROR "$prompt" >"$output_file" 2>&1
       ;;
     claude)
       (cd "$work_dir" && claude -p --permission-mode bypassPermissions --output-format stream-json "$prompt") >"$output_file" 2>&1
@@ -4349,7 +4401,7 @@ run_doctor_for_agent() {
 
   set +e
   started_at="$(date +%s)"
-  run_with_doctor_timeout "$timeout_seconds" run_doctor_command "$agent_os" "$work_dir" "$output_file"
+  run_with_doctor_timeout "$timeout_seconds" run_doctor_command "$agent_os" "$work_dir" "$output_file" "$doctor_root"
   status=$?
   elapsed=$(( $(date +%s) - started_at ))
   set -e

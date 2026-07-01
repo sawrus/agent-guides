@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.3
+- Isolated install-time OpenCode doctor runs into a temporary XDG home so doctor no longer reuses or pollutes the user's persistent OpenCode session database.
+- Extended doctor e2e coverage to assert isolated OpenCode HOME/XDG paths and prevent `opencode.db` leaks into the caller home.
+
 ## v0.5.2
 - Updated Codex MCP config generation so selected network-backed MCPs enable project sandbox network access, use non-interactive `npx -y` startup, and include startup/tool timeouts for reliable first-run startup.
 - Extended deterministic MCP and doctor e2e coverage for all selected Codex MCP entries.

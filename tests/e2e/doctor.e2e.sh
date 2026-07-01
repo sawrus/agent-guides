@@ -75,6 +75,10 @@ cat > "$FAKE_BIN/opencode" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'opencode args: %s\n' "$*"
+printf 'opencode HOME: %s\n' "${HOME:-}"
+printf 'opencode XDG_CONFIG_HOME: %s\n' "${XDG_CONFIG_HOME:-}"
+printf 'opencode XDG_DATA_HOME: %s\n' "${XDG_DATA_HOME:-}"
+printf 'opencode XDG_CACHE_HOME: %s\n' "${XDG_CACHE_HOME:-}"
 work_dir=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -89,6 +93,10 @@ while [[ $# -gt 0 ]]; do
 done
 mkdir -p "$work_dir/src"
 echo "opencode doctor touched" > "$work_dir/src/doctor-touched.txt"
+mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/opencode"
+mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/opencode"
+echo "temporary doctor session" > "${XDG_DATA_HOME:-$HOME/.local/share}/opencode/opencode.db"
+echo '{"models":[]}' > "${XDG_CACHE_HOME:-$HOME/.cache}/opencode/models.json"
 echo '{"type":"message","text":"opencode ok"}'
 EOS
 
@@ -151,6 +159,10 @@ echo "[doctor-e2e] Scenario 1: selected codex,opencode runs exactly two doctor c
 P1="$TMP_ROOT/project-codex-opencode"
 OUT1="$TMP_ROOT/codex-opencode.log"
 HOME1="$TMP_ROOT/home-1"
+mkdir -p "$HOME1/.config/opencode" "$HOME1/.local/share/opencode" "$HOME1/.cache/opencode"
+echo '{"agent":{"developer":{"model":"doctor/test"}}}' > "$HOME1/.config/opencode/opencode.json"
+echo '{"providers":{"openai":{"token":"test-token"}}}' > "$HOME1/.local/share/opencode/auth.json"
+echo '{"models":["doctor-model"]}' > "$HOME1/.cache/opencode/models.json"
 PATH="$FAKE_BIN:/usr/bin:/bin" \
   HOME="$HOME1" \
   TMPDIR="$TMP_ROOT" \
@@ -184,6 +196,10 @@ assert_file_contains "$LOG1" "opencode ok"
 assert_file_contains "$LOG1" "Reply with exactly: AGENTIC_DOCTOR_OK"
 assert_file_contains "$LOG1" "codex args: exec --skip-git-repo-check --ephemeral --sandbox workspace-write"
 assert_file_contains "$LOG1" "opencode args: run --pure --dir"
+assert_file_matches "$LOG1" "opencode HOME: $TMP_ROOT/agentic-doctor\\.[^/]+/opencode-home"
+assert_file_matches "$LOG1" "opencode XDG_CONFIG_HOME: $TMP_ROOT/agentic-doctor\\.[^/]+/opencode-home/\\.config"
+assert_file_matches "$LOG1" "opencode XDG_DATA_HOME: $TMP_ROOT/agentic-doctor\\.[^/]+/opencode-home/\\.local/share"
+assert_file_matches "$LOG1" "opencode XDG_CACHE_HOME: $TMP_ROOT/agentic-doctor\\.[^/]+/opencode-home/\\.cache"
 assert_file_contains "$LOG1" "--log-level ERROR Reply with exactly: AGENTIC_DOCTOR_OK"
 assert_file_not_contains "$LOG1" "--command develop-feature"
 
@@ -202,6 +218,9 @@ PY
 
 if [[ -e "$P1/src/doctor-touched.txt" ]]; then
   fail "Doctor wrote into the target project"
+fi
+if [[ -e "$HOME1/.local/share/opencode/opencode.db" ]]; then
+  fail "Doctor wrote OpenCode session DB into the caller home"
 fi
 
 echo "[doctor-e2e] Scenario 1b: all MCP selections keep Codex deterministic and OpenCode valid"

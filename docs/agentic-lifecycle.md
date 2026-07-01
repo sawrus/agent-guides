@@ -25,6 +25,8 @@ Supported values are `auto`, `dark`, and `light`.
 
 Target projects receive `.agentic.json`. It stores selected install settings, optional project-level OpenCode plugin enablement, managed file paths, source paths, hashes, generated marker type, and skipped files from the latest rerun. When Telegram notifications are enabled, raw `botToken` and `chatId` values are stored in `$HOME/.config/agentic/config.json`, while `.agentic.json` stores enablement only.
 
+The install-time OpenCode doctor smoke check does not reuse the user's live OpenCode session state. Instead, Agentic creates a temporary XDG home for that doctor run, copies only the OpenCode config directory plus `auth.json` and cached `models.json`, and lets any temporary OpenCode session database live only inside the doctor temp root.
+
 ## Repository modes
 
 `agentic` supports two repository source modes:
