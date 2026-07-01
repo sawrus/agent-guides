@@ -122,7 +122,7 @@ The final install line prints the exact path:
 Agentic log file: /tmp/agentic-20260512-114203.ABC123
 ```
 
-`agentic` also runs a final doctor smoke check for selected real agent targets (`codex`, `opencode`, `claude`, `gemini`). The doctor runs in a temporary copy of the project and prints one status row per selected agent. All supported doctor targets use a lightweight pure smoke prompt, so install-time doctor checks do not start a long SDLC workflow. Each agent has an independent timeout controlled by `AGENTIC_DOCTOR_TIMEOUT_SECONDS` and defaults to `10` seconds. Doctor failures and timeouts are reported but do not roll back or fail the install. Disable doctor for cheap checks with:
+`agentic` also runs a final doctor smoke check for selected real agent targets (`codex`, `opencode`, `claude`, `gemini`). The doctor runs in a temporary copy of the project and prints one status row per selected agent. All supported doctor targets use a lightweight pure smoke prompt, so install-time doctor checks do not start a long SDLC workflow. OpenCode doctor also runs inside an isolated temporary XDG home: Agentic copies only OpenCode config, `auth.json`, and cached `models.json` into that temp state and does not reuse the user's persistent OpenCode session database. Each agent has an independent timeout controlled by `AGENTIC_DOCTOR_TIMEOUT_SECONDS` and defaults to `10` seconds. Doctor failures and timeouts are reported but do not roll back or fail the install. Disable doctor for cheap checks with:
 
 ```bash
 AGENTIC_DOCTOR=0 agentic install ...

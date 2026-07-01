@@ -5,6 +5,7 @@
 - Post-install doctor checks run independently for `codex`, `opencode`, `claude`, and `gemini`.
 - `AGENTIC_DOCTOR_TIMEOUT_SECONDS` defaults to `10`; a timeout is reported as a doctor failure and install continues.
 - Codex doctor runs non-interactively with `--ephemeral`, `--sandbox workspace-write`, and the same lightweight smoke prompt as other supported doctor targets.
+- OpenCode doctor runs in an isolated temporary XDG home, seeded only with OpenCode config/auth/model-cache inputs needed for the smoke run, so persistent OpenCode session DB state is not reused or polluted.
 - OpenCode uses an install-time `agent-model-mapper` flow instead of the removed `model-checker` artifacts.
 - `agent-model-mapper` writes `.opencode/opencode.json` during interactive install only after confirmation.
 - `agent-model-mapper` uses `fzf` for install-time model dropdowns when available.
