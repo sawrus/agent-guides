@@ -14,7 +14,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: team-lead
+  initiator: product-owner
 related-rules:
   - data_access.md
   - architecture.md
@@ -30,7 +30,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Risk & Compatibility Analysis — `@team-lead`
+1. Risk & Compatibility Analysis — `@product-owner` + `@team-lead`
 - **Input:** schema change request + list of affected services
 - **Actions:**
   - classify change: non-breaking (add nullable column, add index) vs. breaking (rename/drop column, change type, add NOT NULL)
@@ -78,10 +78,11 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /add-migration"])
-  role_1["team-lead"]
-  role_2["developer"]
-  role_3["qa"]
-  role_4["pm"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["developer"]
+  role_4["qa"]
+  role_5["pm"]
   step_1["1. Risk & Compatibility Analysis"]
   step_2["2. Migration Implementation"]
   step_3["3. Test DB Validation & Data Checks"]
@@ -95,12 +96,13 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_3 -. owns .-> step_3
-  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_3
   role_2 -. owns .-> step_4
-  role_4 -. owns .-> step_5
-  role_1 -. owns .-> step_5
+  role_3 -. owns .-> step_4
+  role_5 -. owns .-> step_5
+  role_2 -. owns .-> step_5
   step_5 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->

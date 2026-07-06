@@ -18,7 +18,7 @@ roles:
   - pm
   - qa
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - pipeline-standards.md
   - quality-gates.md
@@ -37,7 +37,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Release Readiness and Freeze Check — `@team-lead` + `@pm`
+1. Release Readiness and Freeze Check — `@product-owner` + `@team-lead` + `@pm`
 - **Actions:**
   - Confirm no active P0/P1 incidents.
   - Confirm release window is approved (freeze policy respected).
@@ -116,11 +116,12 @@ helm upgrade --install order-service charts/order-service \
 ```mermaid
 flowchart TD
   start(["Start /release-pipeline"])
-  role_1["team-lead"]
-  role_2["pm"]
-  role_3["developer"]
-  role_4["devops-engineer"]
-  role_5["qa"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["pm"]
+  role_4["developer"]
+  role_5["devops-engineer"]
+  role_6["qa"]
   step_1["1. Release Readiness and Freeze Check"]
   step_2["2. Database Compatibility Gate"]
   step_3["3. Tag Release"]
@@ -143,22 +144,24 @@ flowchart TD
   step_9 --> exit
   role_1 -. owns .-> step_1
   role_2 -. owns .-> step_1
-  role_3 -. owns .-> step_2
+  role_3 -. owns .-> step_1
   role_4 -. owns .-> step_2
-  role_3 -. owns .-> step_3
-  role_3 -. owns .-> step_4
-  role_4 -. owns .-> step_4
+  role_5 -. owns .-> step_2
+  role_4 -. owns .-> step_3
   role_1 -. owns .-> step_4
-  role_2 -. owns .-> step_4
   role_5 -. owns .-> step_4
-  role_4 -. owns .-> step_5
-  role_1 -. owns .-> step_6
-  role_5 -. owns .-> step_6
-  role_4 -. owns .-> step_7
-  role_3 -. owns .-> step_8
-  role_5 -. owns .-> step_8
-  role_5 -. owns .-> step_9
-  role_2 -. owns .-> step_9
+  role_4 -. owns .-> step_4
+  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_4
+  role_6 -. owns .-> step_4
+  role_5 -. owns .-> step_5
+  role_2 -. owns .-> step_6
+  role_6 -. owns .-> step_6
+  role_5 -. owns .-> step_7
+  role_4 -. owns .-> step_8
+  role_6 -. owns .-> step_8
+  role_6 -. owns .-> step_9
+  role_3 -. owns .-> step_9
   step_9 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->

@@ -14,7 +14,7 @@ roles:
   - developer
   - team-lead
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - quality-gates.md
   - test-strategy.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Collect & Compare Metrics — `@qa`
+1. Collect & Compare Metrics — `@product-owner` + `@qa`
 - **Input:** coverage artifacts, threshold
 - **Actions:** collect coverage report from CI (line, branch, function coverage); compare to previous sprint/release; identify regressions (coverage dropped) and improvements; segment by module/service for targeted analysis
 - **Output:** coverage metrics with delta vs. previous; per-module breakdown
@@ -59,9 +59,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /test-coverage-report"])
-  role_1["qa"]
-  role_2["team-lead"]
-  role_3["developer"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["team-lead"]
+  role_4["developer"]
   step_1["1. Collect & Compare Metrics"]
   step_2["2. Identify High-Risk Gaps"]
   step_3["3. Implement Targeted Tests & Fixes"]
@@ -73,11 +74,12 @@ flowchart TD
   step_3 --> step_4
   step_4 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_1
   role_2 -. owns .-> step_2
-  role_3 -. owns .-> step_3
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_3
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
 ```
 <!-- agent-diagram:end -->
 

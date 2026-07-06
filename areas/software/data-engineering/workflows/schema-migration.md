@@ -14,7 +14,7 @@ roles:
   - team-lead
   - qa
 execution:
-  initiator: team-lead
+  initiator: product-owner
 related-rules:
   - schema-management.md
   - pipeline-integrity.md
@@ -30,7 +30,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Change Classification — `@team-lead`
+1. Change Classification — `@product-owner` + `@team-lead`
 - **Input:** table name, change type (rename-column / add-column / change-type / drop-column)
 - **Actions:** classify as non-breaking (add nullable column → proceed to Step 3) or breaking (requires full impact assessment)
 - **Output:** classification decision
@@ -69,9 +69,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /schema-migration"])
-  role_1["team-lead"]
-  role_2["developer"]
-  role_3["qa"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["developer"]
+  role_4["qa"]
   step_1["1. Change Classification"]
   step_2["2. Impact Assessment"]
   step_3["3. Migration Strategy"]
@@ -85,10 +86,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_3 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_4 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

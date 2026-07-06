@@ -14,7 +14,7 @@ roles:
   - qa
   - team-lead
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - testing-ci-guide.md
   - code-quality-guide.md
@@ -28,7 +28,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Code Quality Check — `@developer`
+1. Code Quality Check — `@product-owner` + `@developer`
 - **Input:** current branch
 - **Actions:** run linters and formatters using project-standard tools (e.g. `ruff` for Python, `eslint` + `prettier` for JS/TS); fix all errors — do not suppress
 - **Output:** lint/format clean
@@ -67,9 +67,10 @@ If any step fails: pipeline halts. Fix the violation before proceeding. Do not s
 ```mermaid
 flowchart TD
   start(["Start /testing-ci-pipeline"])
-  role_1["developer"]
-  role_2["qa"]
-  role_3["team-lead"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["qa"]
+  role_4["team-lead"]
   step_1["1. Code Quality Check"]
   step_2["2. Unit Tests"]
   step_3["3. Build / Prepare"]
@@ -83,11 +84,12 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_4 -. owns .-> step_5
   role_3 -. owns .-> step_5
-  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

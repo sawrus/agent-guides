@@ -13,7 +13,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - platform-compliance.md
   - offline-first.md
@@ -26,7 +26,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Validate OTA Eligibility — `@developer`
+1. Validate OTA Eligibility — `@product-owner` + `@developer`
 - **Input:** change description
 - **Actions:** confirm change is JS-only — no native module changes; check for any new native dependencies → if found: HALT and use `/store-submission`
 - **Output:** eligibility confirmed
@@ -56,8 +56,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /ota-update"])
-  role_1["developer"]
-  role_2["qa"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["qa"]
   step_1["1. Validate OTA Eligibility"]
   step_2["2. Build Bundle"]
   step_3["3. Staged Rollout"]
@@ -69,9 +70,10 @@ flowchart TD
   step_3 --> step_4
   step_4 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
 ```
 <!-- agent-diagram:end -->
 

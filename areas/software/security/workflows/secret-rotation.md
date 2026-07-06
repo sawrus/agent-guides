@@ -13,7 +13,7 @@ roles:
   - developer
   - team-lead
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - secrets-policy.md
   - secure-coding.md
@@ -27,7 +27,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Prepare New Secret — `@developer`
+1. Prepare New Secret — `@product-owner` + `@developer`
 - **Input:** secret name
 - **Actions:** generate new credential (strong, random); store in Secrets Manager as new version — old version stays active
 - **Output:** new secret version created; old version still active
@@ -69,8 +69,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /secret-rotation"])
-  role_1["developer"]
-  role_2["team-lead"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["team-lead"]
   step_1["1. Prepare New Secret"]
   step_2["2. Dual-Read Window"]
   step_3["3. Deploy New Secret"]
@@ -86,11 +87,12 @@ flowchart TD
   step_5 --> step_6
   step_6 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_1 -. owns .-> step_5
-  role_1 -. owns .-> step_6
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_2 -. owns .-> step_6
 ```
 <!-- agent-diagram:end -->
 

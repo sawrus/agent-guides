@@ -12,7 +12,7 @@ outputs:
 roles:
   - devops-engineer
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - pipeline-standards.md
 uses-skills:
@@ -24,7 +24,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Classify Failure — `@devops-engineer`
+1. Classify Failure — `@product-owner` + `@devops-engineer`
 - Fetch full logs; identify failing stage and step
 - Categories: dependency install failure / test failure / auth failure / build failure / deploy timeout
 - Check: is this a flaky test or a real regression? (re-run once to distinguish)
@@ -68,8 +68,8 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /pipeline-debug"])
-  role_1["devops-engineer"]
-  role_2["developer"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
   step_1["1. Classify Failure"]
   step_2["2. Diagnose by Category"]
   step_3["3. Fix & Verify"]
@@ -81,10 +81,11 @@ flowchart TD
   step_3 --> step_4
   step_4 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_1
   role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
 ```
 <!-- agent-diagram:end -->
 

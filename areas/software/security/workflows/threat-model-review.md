@@ -13,7 +13,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: team-lead
+  initiator: product-owner
 related-rules:
   - secure-coding.md
   - compliance-baseline.md
@@ -28,7 +28,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Parse Feature — `@team-lead`
+1. Parse Feature — `@product-owner` + `@team-lead`
 - **Input:** feature description
 - **Actions:** extract: data processed, actors, trust boundaries crossed, entry points (APIs, file inputs, queues)
 - **Output:** feature decomposition note
@@ -64,9 +64,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /threat-model-review"])
-  role_1["team-lead"]
-  role_2["developer"]
-  role_3["qa"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["developer"]
+  role_4["qa"]
   step_1["1. Parse Feature"]
   step_2["2. Data Flow Diagram"]
   step_3["3. STRIDE Analysis"]
@@ -80,11 +81,12 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_3 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_2 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_4 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

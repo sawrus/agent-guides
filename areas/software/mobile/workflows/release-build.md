@@ -15,7 +15,7 @@ roles:
   - qa
   - team-lead
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - platform-compliance.md
   - security-mobile.md
@@ -31,7 +31,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Version Validation — `@developer`
+1. Version Validation — `@product-owner` + `@developer`
 - **Input:** version string
 - **Actions:** confirm semver format; increment build number (versionCode / CFBundleVersion); verify git tag does not already exist
 - **Output:** version confirmed; git tag reserved
@@ -69,9 +69,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /release-build"])
-  role_1["developer"]
-  role_2["qa"]
-  role_3["team-lead"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["qa"]
+  role_4["team-lead"]
   step_1["1. Version Validation"]
   step_2["2. Environment Check"]
   step_3["3. Build"]
@@ -85,11 +86,12 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_1 -. owns .-> step_5
-  role_3 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_4 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

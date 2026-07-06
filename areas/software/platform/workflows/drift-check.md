@@ -14,7 +14,7 @@ roles:
   - team-lead
   - developer
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - immutability.md
   - security-posture.md
@@ -27,7 +27,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Fetch Live State — `@qa`
+1. Fetch Live State — `@product-owner` + `@qa`
 - **Input:** target environment
 - **Actions:** `terraform refresh` for target environment; ensure state backend is up to date
 - **Output:** refreshed state
@@ -63,9 +63,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /drift-check"])
-  role_1["qa"]
-  role_2["team-lead"]
-  role_3["developer"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["team-lead"]
+  role_4["developer"]
   step_1["1. Fetch Live State"]
   step_2["2. Compute Diff"]
   step_3["3. Classify Drift"]
@@ -79,10 +80,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_2 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_3 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_4 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

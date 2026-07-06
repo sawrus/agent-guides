@@ -15,7 +15,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: pm
+  initiator: product-owner
 related-rules:
   - architecture.md
   - security.md
@@ -31,7 +31,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Triage & Impact Classification — `@pm` + `@team-lead`
+1. Triage & Impact Classification — `@product-owner` + `@pm` + `@team-lead`
 - **Input:** bug report or incident alert
 - **Actions:** confirm business impact and affected users; classify severity (P0 critical / P1 high / P2 normal); assign owner; set expected resolution time
 - **Output:** severity label + assigned owner + ETA in ticket
@@ -79,10 +79,11 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /debug-issue"])
-  role_1["pm"]
-  role_2["team-lead"]
-  role_3["developer"]
-  role_4["qa"]
+  role_1["product-owner"]
+  role_2["pm"]
+  role_3["team-lead"]
+  role_4["developer"]
+  role_5["qa"]
   step_1["1. Triage & Impact Classification"]
   step_2["2. Reproduce & Isolate"]
   step_3["3. Fix Implementation"]
@@ -97,10 +98,11 @@ flowchart TD
   step_5 --> exit
   role_1 -. owns .-> step_1
   role_2 -. owns .-> step_1
-  role_3 -. owns .-> step_2
-  role_3 -. owns .-> step_3
-  role_4 -. owns .-> step_4
-  role_2 -. owns .-> step_5
+  role_3 -. owns .-> step_1
+  role_4 -. owns .-> step_2
+  role_4 -. owns .-> step_3
+  role_5 -. owns .-> step_4
+  role_3 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

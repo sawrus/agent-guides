@@ -15,7 +15,7 @@ outputs:
 roles:
   - devops-engineer
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - cluster-standards.md
   - workload-security.md
@@ -31,7 +31,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Node Pre-Flight — `@devops-engineer`
+1. Node Pre-Flight — `@product-owner` + `@devops-engineer`
 - **Actions (all nodes via Ansible or manual):**
   ```bash
   # Disable swap (K8s requirement)
@@ -196,7 +196,8 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /cluster-bootstrap"])
-  role_1["devops-engineer"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
   step_1["1. Node Pre-Flight"]
   step_2["2. Bootstrap First Control Plane"]
   step_3["3. Install CNI (Cilium)"]
@@ -216,13 +217,14 @@ flowchart TD
   step_7 --> step_8
   step_8 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
-  role_1 -. owns .-> step_6
-  role_1 -. owns .-> step_7
-  role_1 -. owns .-> step_8
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_2 -. owns .-> step_6
+  role_2 -. owns .-> step_7
+  role_2 -. owns .-> step_8
 ```
 <!-- agent-diagram:end -->
 

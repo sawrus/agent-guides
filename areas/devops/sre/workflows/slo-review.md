@@ -15,7 +15,7 @@ roles:
   - team-lead
   - product-owner
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - slo-policy.md
   - error-budget-policy.md
@@ -30,7 +30,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Pull Reliability Data — `@devops-engineer`
+1. Pull Reliability Data — `@product-owner` + `@devops-engineer`
 ```promql
 -- 90-day availability per service
 avg_over_time(
@@ -96,9 +96,9 @@ kubectl apply -f rules/slo-${SERVICE}-generated.yaml -n monitoring
 ```mermaid
 flowchart TD
   start(["Start /slo-review"])
-  role_1["devops-engineer"]
-  role_2["team-lead"]
-  role_3["product-owner"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
+  role_3["team-lead"]
   step_1["1. Pull Reliability Data"]
   step_2["2. Classify Services"]
   step_3["3. SLO Adjustment Workshop"]
@@ -114,14 +114,15 @@ flowchart TD
   step_5 --> step_6
   step_6 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
   role_2 -. owns .-> step_3
   role_3 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_2 -. owns .-> step_5
+  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_4
   role_3 -. owns .-> step_5
-  role_1 -. owns .-> step_6
+  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_6
 ```
 <!-- agent-diagram:end -->
 

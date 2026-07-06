@@ -15,7 +15,7 @@ roles:
   - team-lead
   - developer (technical lead for RCA)
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - on-call-standards.md
   - error-budget-policy.md
@@ -30,7 +30,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Collect Data (within 2h of resolution) — `@devops-engineer`
+1. Collect Data (within 2h of resolution) — `@product-owner` + `@devops-engineer`
 - Export timeline from scribe doc / Slack thread
 - Pull metrics from Prometheus: error rate, latency, pod events during incident window
 - Download relevant log excerpts from Loki
@@ -92,8 +92,9 @@ done
 ```mermaid
 flowchart TD
   start(["Start /postmortem"])
-  role_1["devops-engineer"]
-  role_2["team-lead"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
+  role_3["team-lead"]
   step_1["1. Collect Data (within 2h of resolution)"]
   step_2["2. Draft Postmortem"]
   step_3["3. 5-Whys Facilitation Meeting (within 48h)"]
@@ -109,12 +110,13 @@ flowchart TD
   step_5 --> step_6
   step_6 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
   role_2 -. owns .-> step_5
-  role_2 -. owns .-> step_6
+  role_3 -. owns .-> step_5
+  role_3 -. owns .-> step_6
 ```
 <!-- agent-diagram:end -->
 

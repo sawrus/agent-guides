@@ -14,7 +14,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: team-lead
+  initiator: product-owner
 related-rules:
   - architecture.md
   - testing.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Refactor Plan & Boundaries — `@team-lead`
+1. Refactor Plan & Boundaries — `@product-owner` + `@team-lead`
 - **Input:** refactor goal (e.g. extract service layer, reduce coupling, eliminate duplication)
 - **Actions:** define exact scope boundaries — what changes and what does NOT change; identify all callers/consumers of the module being refactored; define "behavior baseline" — the set of tests that must still pass after refactor; flag risk areas (shared state, async flows, external integrations)
 - **Output:** `docs/<refactor>/refactor_plan.md` — scope, boundaries, baseline test list, risk notes
@@ -75,9 +75,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /refactor-module"])
-  role_1["team-lead"]
-  role_2["qa"]
-  role_3["developer"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["qa"]
+  role_4["developer"]
   step_1["1. Refactor Plan & Boundaries"]
   step_2["2. Baseline Test Coverage"]
   step_3["3. Incremental Refactor Implementation"]
@@ -93,14 +94,15 @@ flowchart TD
   step_5 --> step_6
   step_6 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_1
   role_3 -. owns .-> step_2
-  role_3 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_1 -. owns .-> step_5
-  role_3 -. owns .-> step_5
+  role_4 -. owns .-> step_2
+  role_4 -. owns .-> step_3
+  role_3 -. owns .-> step_4
   role_2 -. owns .-> step_5
-  role_1 -. owns .-> step_6
+  role_4 -. owns .-> step_5
+  role_3 -. owns .-> step_5
+  role_2 -. owns .-> step_6
 ```
 <!-- agent-diagram:end -->
 

@@ -14,7 +14,7 @@ roles:
   - developer
   - team-lead
 execution:
-  initiator: team-lead
+  initiator: product-owner
 related-rules:
   - secure-coding.md
   - compliance-baseline.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Scope Confirmation — `@team-lead`
+1. Scope Confirmation — `@product-owner` + `@team-lead`
 - **Input:** target URL
 - **Actions:** verify target is staging/preview — NEVER production; log test start time for audit correlation; confirm scope (OWASP Top-10 or custom)
 - **Output:** scope confirmation logged
@@ -65,8 +65,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /pen-test-sim"])
-  role_1["team-lead"]
-  role_2["qa"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["qa"]
   step_1["1. Scope Confirmation"]
   step_2["2. Passive Recon"]
   step_3["3. Active Scanning"]
@@ -80,10 +81,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_2 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

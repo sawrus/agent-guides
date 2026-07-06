@@ -14,7 +14,7 @@ roles:
   - developer
   - team-lead
 execution:
-  initiator: team-lead
+  initiator: product-owner
 related-rules:
   - production-safety.md
   - model-governance.md
@@ -30,7 +30,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Immediate Response — `@team-lead`
+1. Immediate Response — `@product-owner` + `@team-lead`
 - **Input:** incident alert
 - **Actions:** assess impact (users affected? incorrect decisions made?); decide: tolerate degraded predictions or rollback NOW?; if critical → rollback to previous champion (< 5 min target)
 - **Output:** rollback decision; incident severity classification
@@ -66,9 +66,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /model-incident"])
-  role_1["team-lead"]
-  role_2["qa"]
-  role_3["developer"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["qa"]
+  role_4["developer"]
   step_1["1. Immediate Response"]
   step_2["2. Diagnose"]
   step_3["3. Scope Affected Predictions"]
@@ -82,10 +83,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_3 -. owns .-> step_3
-  role_3 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_3
+  role_4 -. owns .-> step_4
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

@@ -14,7 +14,7 @@ roles:
   - developer
   - team-lead
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - quality-gates.md
   - test-strategy.md
@@ -31,7 +31,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Scope Selection & Environment Readiness — `@qa`
+1. Scope Selection & Environment Readiness — `@product-owner` + `@qa`
 - **Input:** environment, regression scope
 - **Actions:** confirm environment health (services up, test data seeded); select test scope based on change surface (smoke / targeted / full regression); ensure no flaky tests in scope without quarantine decision
 - **Output:** confirmed scope + environment health check
@@ -61,9 +61,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /regression-suite"])
-  role_1["qa"]
-  role_2["developer"]
-  role_3["team-lead"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["developer"]
+  role_4["team-lead"]
   step_1["1. Scope Selection & Environment Readiness"]
   step_2["2. Suite Execution & Evidence Capture"]
   step_3["3. Failure Triage & Fixes"]
@@ -75,11 +76,12 @@ flowchart TD
   step_3 --> step_4
   step_4 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
   role_2 -. owns .-> step_3
-  role_1 -. owns .-> step_3
-  role_3 -. owns .-> step_4
-  role_1 -. owns .-> step_4
+  role_4 -. owns .-> step_4
+  role_2 -. owns .-> step_4
 ```
 <!-- agent-diagram:end -->
 

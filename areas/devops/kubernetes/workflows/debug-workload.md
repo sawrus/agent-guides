@@ -14,7 +14,7 @@ roles:
   - developer
   - devops-engineer
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - workload-security.md
   - resource-governance.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Classify Symptom — `@devops-engineer`
+1. Classify Symptom — `@product-owner` + `@devops-engineer`
 - **Input:** workload name, namespace, symptom description
 - **Actions:**
   - `kubectl get pods -n <ns> -l app=<name> -o wide` — check pod statuses
@@ -110,8 +110,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /debug-workload"])
-  role_1["devops-engineer"]
-  role_2["developer"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
+  role_3["developer"]
   step_1["1. Classify Symptom"]
   step_2["2. Deep Diagnosis"]
   step_3["3. Apply Fix"]
@@ -125,11 +126,12 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
   role_2 -. owns .-> step_3
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

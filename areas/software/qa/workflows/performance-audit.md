@@ -16,7 +16,7 @@ roles:
   - team-lead
   - pm
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - quality-gates.md
   - test-strategy.md
@@ -31,7 +31,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Scenario Definition & Baseline Alignment — `@qa`
+1. Scenario Definition & Baseline Alignment — `@product-owner` + `@qa`
 - **Input:** target, test type, SLO baseline
 - **Actions:** define test scenarios (load / stress / soak / spike) matching production traffic patterns; confirm SLO baseline values (p50, p99 latency; error rate; throughput); align on success/failure thresholds with `@team-lead`
 - **Output:** test plan with scenarios and thresholds
@@ -61,10 +61,11 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /performance-audit"])
-  role_1["qa"]
-  role_2["developer"]
-  role_3["team-lead"]
-  role_4["pm"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["developer"]
+  role_4["team-lead"]
+  role_5["pm"]
   step_1["1. Scenario Definition & Baseline Alignment"]
   step_2["2. Load/Stress Execution & Monitoring Capture"]
   step_3["3. Bottleneck Analysis & Fix Proposal"]
@@ -76,11 +77,12 @@ flowchart TD
   step_3 --> step_4
   step_4 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
   role_2 -. owns .-> step_3
-  role_1 -. owns .-> step_3
-  role_3 -. owns .-> step_4
   role_4 -. owns .-> step_4
+  role_5 -. owns .-> step_4
 ```
 <!-- agent-diagram:end -->
 

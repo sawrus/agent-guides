@@ -35,7 +35,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Scope & Contract — `@product-owner` + `@pm`
+1. Scope & Contract — `@product-owner` + `@pm`
 - **Input:** endpoint request
 - **Actions:** define HTTP method, path, request/response schema, error codes, auth requirements, non-goals
 - **Output:** API contract doc or OpenAPI snippet in `docs/<feature>/api-contract.md`

@@ -14,7 +14,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: team-lead
+  initiator: product-owner
 related-rules:
   - compliance-baseline.md
   - secrets-policy.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Map Controls — `@team-lead`
+1. Map Controls — `@product-owner` + `@team-lead`
 - **Input:** compliance standard, period
 - **Actions:** load control framework for requested standard; map each control to evidence sources (automated logs, documents, manual evidence)
 - **Output:** control mapping table
@@ -59,9 +59,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /compliance-report"])
-  role_1["team-lead"]
-  role_2["developer"]
-  role_3["qa"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["developer"]
+  role_4["qa"]
   step_1["1. Map Controls"]
   step_2["2. Collect Evidence"]
   step_3["3. Evaluate Compliance"]
@@ -73,10 +74,11 @@ flowchart TD
   step_3 --> step_4
   step_4 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_1
   role_3 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
+  role_4 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
 ```
 <!-- agent-diagram:end -->
 

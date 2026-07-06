@@ -15,7 +15,7 @@ roles:
   - developer (technical lead)
   - pm (comms)
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - on-call-standards.md
   - error-budget-policy.md
@@ -30,7 +30,7 @@ quality-gates:
 
 ## Steps
 
-### T+0–5: Acknowledge & Scope — `@devops-engineer`
+1. T+0–5: Acknowledge & Scope — `@product-owner` + `@devops-engineer`
 - Post to #incidents: "I'm on this. War room: [link]"
 - Scope: `kubectl get pods -A | grep -v Running`; check Grafana golden signals
 - Declare severity; page secondary if P0
@@ -68,13 +68,14 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /incident-response"])
-  role_1["devops-engineer"]
-  role_2["developer"]
-  role_3["pm"]
-  role_4["devops-engineer (IC)"]
-  role_5["developer (technical lead)"]
-  role_6["pm (comms)"]
-  step_1["T+0–5: Acknowledge & Scope"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
+  role_3["developer"]
+  role_4["pm"]
+  role_5["devops-engineer (IC)"]
+  role_6["developer (technical lead)"]
+  role_7["pm (comms)"]
+  step_1["1. T+0–5: Acknowledge & Scope"]
   step_2["T+5–15: Mitigate"]
   step_3["T+10: Communicate"]
   step_4["T+15–30: Stabilize"]
@@ -91,22 +92,23 @@ flowchart TD
   step_6 --> step_7
   step_7 --> exit
   role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
   role_2 -. owns .-> step_2
-  role_1 -. owns .-> step_2
-  role_3 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_2 -. owns .-> step_5
-  role_4 -. owns .-> step_5
+  role_4 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_1 -. owns .-> step_5
   role_5 -. owns .-> step_5
   role_6 -. owns .-> step_5
-  role_2 -. owns .-> step_6
-  role_4 -. owns .-> step_6
+  role_7 -. owns .-> step_5
+  role_1 -. owns .-> step_6
   role_5 -. owns .-> step_6
   role_6 -. owns .-> step_6
-  role_2 -. owns .-> step_7
-  role_4 -. owns .-> step_7
+  role_7 -. owns .-> step_6
+  role_1 -. owns .-> step_7
   role_5 -. owns .-> step_7
   role_6 -. owns .-> step_7
+  role_7 -. owns .-> step_7
 ```
 <!-- agent-diagram:end -->
 

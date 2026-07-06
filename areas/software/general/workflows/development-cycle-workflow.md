@@ -33,7 +33,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Requirements Framing — `@product-owner` + `@pm`
+1. Requirements Framing — `@product-owner` + `@pm`
 - **Input:** task or issue description
 - **Actions:** define acceptance criteria; clarify scope and non-goals; if larger than 1 day of work — break into sub-tasks
 - **Output:** confirmed acceptance criteria added to the ticket

@@ -13,7 +13,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - reproducibility.md
   - data-integrity.md
@@ -28,7 +28,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Prerequisites Validation — `@developer`
+1. Prerequisites Validation — `@product-owner` + `@developer`
 - **Input:** model name, config YAML
 - **Actions:** confirm data version exists and quality checks passed; verify training config YAML is valid; check compute resource budget
 - **Output:** validation confirmation
@@ -58,8 +58,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /train-experiment"])
-  role_1["developer"]
-  role_2["qa"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["qa"]
   step_1["1. Prerequisites Validation"]
   step_2["2. Environment Snapshot"]
   step_3["3. Training Run"]
@@ -71,9 +72,10 @@ flowchart TD
   step_3 --> step_4
   step_4 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
 ```
 <!-- agent-diagram:end -->
 

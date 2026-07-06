@@ -17,7 +17,7 @@ roles:
   - "@frontend-dev"
   - "@qa-engineer"
 execution:
-  initiator: team-lead
+  initiator: product-owner
 related-rules:
   - backend-architecture-rule.md
   - api-design-guide.md
@@ -36,7 +36,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Design — `@team-lead`
+1. Design — `@product-owner` + `@team-lead`
 - **Input:** feature description, acceptance criteria
 - **Actions:** clarify domain model changes; draft API contract (endpoint, request/response schema, error codes); identify DB schema changes needed; flag breaking changes
 - **Output:** `design/feature-<name>.md` — API contract + data model
@@ -84,10 +84,11 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /develop-feature"])
-  role_1["team-lead"]
-  role_2["backend-dev"]
-  role_3["frontend-dev"]
-  role_4["qa-engineer"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["backend-dev"]
+  role_4["frontend-dev"]
+  role_5["qa-engineer"]
   step_1["1. Design"]
   step_2["2. DB Model & Migration"]
   step_3["3. Repository Layer"]
@@ -105,13 +106,14 @@ flowchart TD
   step_6 --> step_7
   step_7 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_2 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_2 -. owns .-> step_5
-  role_3 -. owns .-> step_6
-  role_4 -. owns .-> step_7
-  role_1 -. owns .-> step_7
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_3 -. owns .-> step_5
+  role_4 -. owns .-> step_6
+  role_5 -. owns .-> step_7
+  role_2 -. owns .-> step_7
   step_7 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->

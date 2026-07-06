@@ -15,7 +15,7 @@ roles:
   - devops-engineer
   - developer
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - pipeline-standards.md
   - quality-gates.md
@@ -32,7 +32,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Assess & Plan — `@devops-engineer`
+1. Assess & Plan — `@product-owner` + `@devops-engineer`
 - **Actions:**
   - Confirm language, build tool, test framework
   - Identify external dependencies (registry, cloud, K8s cluster)
@@ -75,8 +75,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /onboard-repo"])
-  role_1["devops-engineer"]
-  role_2["developer"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
+  role_3["developer"]
   step_1["1. Assess & Plan"]
   step_2["2. Secrets & Environments Setup"]
   step_3["3. Write Pipeline Config"]
@@ -90,11 +91,12 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
   role_2 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_3 -. owns .-> step_4
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

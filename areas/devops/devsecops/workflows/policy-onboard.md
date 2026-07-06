@@ -14,7 +14,7 @@ outputs:
 roles:
   - devops-engineer
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - policy-as-code.md
   - container-security.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Design Policy — `@devops-engineer`
+1. Design Policy — `@product-owner` + `@devops-engineer`
 - What is the policy checking? (privilege escalation / missing limits / bad image tag)
 - Which resource types and namespaces does it apply to?
 - What is the enforcement mode for each environment?
@@ -106,9 +106,10 @@ kubectl get constraint ${POLICY} -o jsonpath='{.status.byPod}'
 ```mermaid
 flowchart TD
   start(["Start /policy-onboard"])
-  role_1["devops-engineer"]
-  role_2["developer"]
-  role_3["team-lead"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
+  role_3["developer"]
+  role_4["team-lead"]
   step_1["1. Design Policy"]
   step_2["2. Unit Test"]
   step_3["3. Dryrun in Staging"]
@@ -124,13 +125,14 @@ flowchart TD
   step_5 --> step_6
   step_6 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
   role_2 -. owns .-> step_4
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
-  role_3 -. owns .-> step_5
-  role_1 -. owns .-> step_6
+  role_2 -. owns .-> step_5
+  role_4 -. owns .-> step_5
+  role_2 -. owns .-> step_6
 ```
 <!-- agent-diagram:end -->
 

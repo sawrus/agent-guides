@@ -15,7 +15,7 @@ roles:
   - devops-engineer
   - developer
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - golden-signals.md
   - alerting-standards.md
@@ -32,7 +32,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Metrics Instrumentation — `@developer`
+1. Metrics Instrumentation — `@product-owner` + `@developer`
 - Add Prometheus client library to service
 - Expose standard HTTP metrics (requests_total, duration histogram, active_requests)
 - Expose `/metrics` endpoint on port 9090 (or sidecar annotation)
@@ -85,8 +85,9 @@ spec:
 ```mermaid
 flowchart TD
   start(["Start /onboard-service-monitoring"])
-  role_1["developer"]
-  role_2["devops-engineer"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["devops-engineer"]
   step_1["1. Metrics Instrumentation"]
   step_2["2. ServiceMonitor"]
   step_3["3. Tracing Instrumentation"]
@@ -102,11 +103,12 @@ flowchart TD
   step_5 --> step_6
   step_6 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_2 -. owns .-> step_5
-  role_2 -. owns .-> step_6
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_3 -. owns .-> step_5
+  role_3 -. owns .-> step_6
 ```
 <!-- agent-diagram:end -->
 

@@ -13,7 +13,7 @@ roles:
   - devops-engineer
   - team-lead
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - immutability.md
   - iac-standards.md
@@ -27,7 +27,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Detect Drift — `@devops-engineer`
+1. Detect Drift — `@product-owner` + `@devops-engineer`
 ```bash
 # Run plan across all components; capture exit code
 # Exit 0 = no changes, Exit 2 = changes detected
@@ -68,8 +68,9 @@ terraform apply remediation.plan
 ```mermaid
 flowchart TD
   start(["Start /drift-remediation"])
-  role_1["devops-engineer"]
-  role_2["team-lead"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
+  role_3["team-lead"]
   step_1["1. Detect Drift"]
   step_2["2. Classify Findings"]
   step_3["3. Remediate (if REMEDIATE class)"]
@@ -83,11 +84,12 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_1
   role_2 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_3 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

@@ -14,7 +14,7 @@ roles:
   - developer
   - team-lead
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - pipeline-integrity.md
   - data-governance.md
@@ -30,7 +30,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Scope & Triage — `@qa`
+1. Scope & Triage — `@product-owner` + `@qa`
 - **Input:** incident alert or report
 - **Actions:** check row count and freshness on affected model; compare to expected values from monitoring baselines; identify when anomaly started and which partitions are affected; classify type: duplicate / missing / wrong_values / sla_breach
 - **Output:** incident scope note — affected partitions, anomaly window, classification
@@ -66,9 +66,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /data-quality-incident"])
-  role_1["qa"]
-  role_2["developer"]
-  role_3["team-lead"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["developer"]
+  role_4["team-lead"]
   step_1["1. Scope & Triage"]
   step_2["2. Quarantine"]
   step_3["3. Root Cause Isolation"]
@@ -82,12 +83,13 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
   role_2 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_3 -. owns .-> step_5
-  role_1 -. owns .-> step_5
+  role_3 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_4 -. owns .-> step_5
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

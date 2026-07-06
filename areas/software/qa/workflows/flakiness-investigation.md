@@ -14,7 +14,7 @@ roles:
   - developer
   - team-lead
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - flakiness-policy.md
   - test-strategy.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Collect Failure Signals & Patterns — `@qa`
+1. Collect Failure Signals & Patterns — `@product-owner` + `@qa`
 - **Input:** flaky test name, CI history
 - **Actions:** pull last 20 CI runs; calculate flake rate; identify patterns: time-of-day, parallel vs. serial, specific test data, resource contention signals; quarantine the test immediately per flakiness policy
 - **Output:** flake rate + pattern analysis; test quarantined
@@ -65,9 +65,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /flakiness-investigation"])
-  role_1["qa"]
-  role_2["developer"]
-  role_3["team-lead"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["developer"]
+  role_4["team-lead"]
   step_1["1. Collect Failure Signals & Patterns"]
   step_2["2. Reproduce & Classify Root Cause"]
   step_3["3. Stabilization Fix"]
@@ -81,11 +82,12 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
+  role_2 -. owns .-> step_1
   role_2 -. owns .-> step_2
-  role_2 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_3 -. owns .-> step_5
+  role_3 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_4 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

@@ -14,7 +14,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: team-lead
+  initiator: product-owner
 related-rules:
   - immutability.md
   - cost-governance.md
@@ -31,7 +31,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Validate Prerequisites — `@team-lead`
+1. Validate Prerequisites — `@product-owner` + `@team-lead`
 - **Input:** environment type, branch
 - **Actions:** check cloud credentials active; verify Terraform state backend accessible; confirm no active locks on target environment state
 - **Output:** prerequisites confirmed
@@ -79,10 +79,11 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /provision-env"])
-  role_1["team-lead"]
-  role_2["developer"]
-  role_3["qa"]
-  role_4["pm"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["developer"]
+  role_4["qa"]
+  role_5["pm"]
   step_1["1. Validate Prerequisites"]
   step_2["2. Plan Infrastructure"]
   step_3["3. Estimate Cost"]
@@ -100,12 +101,13 @@ flowchart TD
   step_6 --> step_7
   step_7 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_2 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_2 -. owns .-> step_5
-  role_3 -. owns .-> step_6
-  role_4 -. owns .-> step_7
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_3 -. owns .-> step_5
+  role_4 -. owns .-> step_6
+  role_5 -. owns .-> step_7
 ```
 <!-- agent-diagram:end -->
 

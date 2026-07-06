@@ -14,7 +14,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - code-style-guide.md
   - git-workflow-guide.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Automated Pre-check — `@developer` (author)
+1. Automated Pre-check — `@product-owner` + `@developer` (author)
 - **Input:** feature branch with changes
 - **Actions:** confirm CI passes (lint / tests / build); no merge conflicts; branch up to date with target
 - **Output:** CI-green PR
@@ -83,9 +83,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /code-review-workflow"])
-  role_1["developer"]
-  role_2["team-lead"]
-  role_3["qa"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["team-lead"]
+  role_4["qa"]
   step_1["1. Automated Pre-check"]
   step_2["2. Context Understanding"]
   step_3["3. Code Review"]
@@ -99,11 +100,12 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
   role_3 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_2 -. owns .-> step_5
+  role_4 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_5
   step_5 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->

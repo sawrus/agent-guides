@@ -16,7 +16,7 @@ roles:
   - "@qa-engineer"
   - "@team-lead"
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - backend-architecture-rule.md
   - testing-ci-guide.md
@@ -33,7 +33,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Triage — `@backend-dev`
+1. Triage — `@product-owner` + `@backend-dev`
 - **Input:** issue description, error logs, environment context
 - **Actions:** classify severity (P1 data loss/outage, P2 functional break, P3 cosmetic); identify affected component from stack trace; check if reproducible in staging; check recent deploys and migrations that could have caused this
 - **Output:** triage note — severity, affected layer, reproduction status
@@ -69,8 +69,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /debug-issue"])
-  role_1["backend-dev"]
-  role_2["team-lead"]
+  role_1["product-owner"]
+  role_2["backend-dev"]
+  role_3["team-lead"]
   step_1["1. Triage"]
   step_2["2. Reproduce"]
   step_3["3. Root Cause Analysis"]
@@ -84,10 +85,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_2 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_5
   step_5 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->

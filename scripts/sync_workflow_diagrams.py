@@ -13,7 +13,7 @@ AREAS_DIR = ROOT / "areas"
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 TRIGGER_RE = re.compile(r"^trigger:\s*(.+)$", re.MULTILINE)
 INITIATOR_RE = re.compile(r"^\s{2}initiator:\s*(.+)$", re.MULTILINE)
-H3_RE = re.compile(r"^###\s+(.+)$", re.MULTILINE)
+STEP_HEADING_RE = re.compile(r"^(?:###\s+|(?=\d+\.\s+))(.*)$", re.MULTILINE)
 H2_RE = re.compile(r"^##\s+(.+)$", re.MULTILINE)
 ROLE_MENTION_RE = re.compile(r"`@([^`]+)`")
 GENERATED_SECTION_RE = re.compile(
@@ -54,7 +54,7 @@ def _clean_step_label(raw: str) -> str:
 
 def _extract_steps(text: str, fallback_roles: list[str]) -> list[Step]:
     steps: list[Step] = []
-    for match in H3_RE.finditer(text):
+    for match in STEP_HEADING_RE.finditer(text):
         heading = match.group(1).strip()
         roles = [_clean_role(role) for role in ROLE_MENTION_RE.findall(heading)]
         roles = [role for role in roles if role]

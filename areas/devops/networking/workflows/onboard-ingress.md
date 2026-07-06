@@ -14,7 +14,7 @@ outputs:
 roles:
   - devops-engineer
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - ingress-standards.md
   - tls-policy.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Write Ingress Manifest — `@devops-engineer`
+1. Write Ingress Manifest — `@product-owner` + `@devops-engineer`
 - Include all mandatory annotations (ssl-redirect, rate-limit, security headers, timeouts)
 - Set cert-manager annotation matching chosen issuer
 - **Done when:** `kubectl apply --dry-run=server` passes
@@ -66,7 +66,8 @@ done | sort | uniq -c
 ```mermaid
 flowchart TD
   start(["Start /onboard-ingress"])
-  role_1["devops-engineer"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
   step_1["1. Write Ingress Manifest"]
   step_2["2. Apply & Wait for Certificate"]
   step_3["3. Verify HTTPS"]
@@ -80,10 +81,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

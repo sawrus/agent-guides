@@ -15,7 +15,7 @@ roles:
   - devops-engineer
   - developer
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - golden-signals.md
   - alerting-standards.md
@@ -31,7 +31,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Acknowledge & Classify — `@devops-engineer`
+1. Acknowledge & Classify — `@product-owner` + `@devops-engineer`
 - Open Grafana: navigate to service dashboard for the affected service
 - Check: is this a real user-impact alert or a false positive?
   - Real: error rate / latency / saturation affecting users
@@ -100,8 +100,9 @@ Saturation?
 ```mermaid
 flowchart TD
   start(["Start /alert-investigation"])
-  role_1["devops-engineer"]
-  role_2["developer"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
+  role_3["developer"]
   step_1["1. Acknowledge & Classify"]
   step_2["2. Correlate Signals"]
   step_3["3. Identify Root Cause"]
@@ -115,11 +116,12 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
   role_2 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_3 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

@@ -35,7 +35,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Requirements & Value Framing — `@product-owner` + `@pm`
+1. Requirements & Value Framing — `@product-owner` + `@pm`
 - **Input:** feature request from stakeholder or backlog
 - **Actions:** define problem statement, expected outcomes, acceptance criteria, non-goals; confirm scope is implementation-ready
 - **Output:** `docs/<feature>/README.md` with acceptance criteria

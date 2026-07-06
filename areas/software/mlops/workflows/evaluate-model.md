@@ -13,7 +13,7 @@ roles:
   - qa
   - team-lead
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - model-governance.md
   - data-integrity.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Load Model & Test Data — `@qa`
+1. Load Model & Test Data — `@product-owner` + `@qa`
 - **Input:** MLflow run ID
 - **Actions:** retrieve model artifact from MLflow run; load held-out test set from the data version recorded in the run; confirm test set was NOT used during any training iteration
 - **Output:** model and test data loaded
@@ -65,8 +65,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /evaluate-model"])
-  role_1["qa"]
-  role_2["team-lead"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["team-lead"]
   step_1["1. Load Model & Test Data"]
   step_2["2. Compute Core Metrics"]
   step_3["3. Business Impact Translation"]
@@ -80,10 +81,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_2 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

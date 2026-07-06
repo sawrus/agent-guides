@@ -13,7 +13,7 @@ roles:
   - qa
   - team-lead
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - platform-compliance.md
   - performance-budget.md
@@ -26,7 +26,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Select Device Matrix — `@qa`
+1. Select Device Matrix — `@product-owner` + `@qa`
 - **Input:** platform (ios / android / all)
 - **Actions:** iOS: latest 2 iOS versions × [iPhone SE, iPhone 15, iPad]; Android: latest 2 Android versions × [low-end, mid-range, high-end]
 - **Output:** confirmed device matrix
@@ -56,9 +56,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /device-testing"])
-  role_1["qa"]
-  role_2["developer"]
-  role_3["team-lead"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["developer"]
+  role_4["team-lead"]
   step_1["1. Select Device Matrix"]
   step_2["2. Upload Build"]
   step_3["3. Execute Test Suite"]
@@ -70,10 +71,11 @@ flowchart TD
   step_3 --> step_4
   step_4 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_3 -. owns .-> step_4
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_4 -. owns .-> step_4
 ```
 <!-- agent-diagram:end -->
 

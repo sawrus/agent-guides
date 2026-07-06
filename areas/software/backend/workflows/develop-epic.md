@@ -35,7 +35,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Epic Decomposition & Milestone Planning — `@product-owner` + `@pm`
+1. Epic Decomposition & Milestone Planning — `@product-owner` + `@pm`
 - **Input:** epic goals and high-level backlog
 - **Actions:** decompose epic into independently deliverable increments (max 1–2 weeks each); define milestone acceptance criteria; prioritize increments by value and risk; identify inter-increment dependencies
 - **Output:** `docs/<epic>/epic_plan.md` — increment list, acceptance criteria per increment, dependency map

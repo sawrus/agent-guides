@@ -14,7 +14,7 @@ roles:
   - developer
   - team-lead
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - accessibility.md
   - quality.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Audit & Severity Classification — `@qa`
+1. Audit & Severity Classification — `@product-owner` + `@qa`
 - **Input:** target route or component
 - **Actions:** run automated audit (axe, Lighthouse, jest-axe); classify each finding by WCAG level (A / AA / AAA) and user impact; identify keyboard navigation and screen reader critical paths
 - **Output:** `a11y_audit.md` — finding list with WCAG criterion, severity, and affected element
@@ -65,10 +65,11 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /a11y-fix"])
-  role_1["qa"]
-  role_2["designer"]
-  role_3["developer"]
-  role_4["team-lead"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["designer"]
+  role_4["developer"]
+  role_5["team-lead"]
   step_1["1. Audit & Severity Classification"]
   step_2["2. UX Decision for Ambiguous Fixes"]
   step_3["3. Implement Fixes"]
@@ -82,10 +83,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_3 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_4 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_5 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

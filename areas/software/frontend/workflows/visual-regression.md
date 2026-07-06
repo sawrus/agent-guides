@@ -15,7 +15,7 @@ roles:
   - designer
   - team-lead
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - quality.md
   - accessibility.md
@@ -31,7 +31,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Determine Visual Test Scope — `@developer`
+1. Determine Visual Test Scope — `@product-owner` + `@developer`
 - **Input:** changed UI components or routes
 - **Actions:** identify which components and routes are affected by current changes; confirm baseline snapshots are up to date for the scope
 - **Output:** test scope list
@@ -67,10 +67,11 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /visual-regression"])
-  role_1["developer"]
-  role_2["qa"]
-  role_3["designer"]
-  role_4["team-lead"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["qa"]
+  role_4["designer"]
+  role_5["team-lead"]
   step_1["1. Determine Visual Test Scope"]
   step_2["2. Run Capture & Comparison Suite"]
   step_3["3. Classify Diffs"]
@@ -84,12 +85,13 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_3
   role_3 -. owns .-> step_3
-  role_2 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_3 -. owns .-> step_4
-  role_4 -. owns .-> step_5
+  role_2 -. owns .-> step_4
+  role_4 -. owns .-> step_4
+  role_5 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

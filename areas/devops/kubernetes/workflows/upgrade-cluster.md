@@ -14,7 +14,7 @@ roles:
   - devops-engineer
   - team-lead
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - upgrade-policy.md
   - cluster-standards.md
@@ -30,7 +30,7 @@ quality-gates:
 ## Pre-Upgrade Checklist — `@devops-engineer` (1–2 days before)
 
 ```bash
-# 1. Audit deprecated APIs (kubent = kube-no-trouble)
+1. Audit deprecated APIs (kubent = kube-no-trouble) — `@product-owner`
 kubent --target-version <target>
 
 # 2. Check component compatibility matrix
@@ -152,27 +152,31 @@ kubectl get pdb -A
 ```mermaid
 flowchart TD
   start(["Start /upgrade-cluster"])
-  role_1["devops-engineer"]
-  role_2["team-lead"]
-  step_1["1. etcd Backup"]
-  step_2["2. Upgrade Control Plane (kubeadm)"]
-  step_3["3. Validate Control Plane"]
-  step_4["4. Upgrade Worker Nodes (rolling)"]
-  step_5["5. Post-Upgrade Validation"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
+  role_3["team-lead"]
+  step_1["1. Audit deprecated APIs (kubent = kube-no-trouble)"]
+  step_2["1. etcd Backup"]
+  step_3["2. Upgrade Control Plane (kubeadm)"]
+  step_4["3. Validate Control Plane"]
+  step_5["4. Upgrade Worker Nodes (rolling)"]
+  step_6["5. Post-Upgrade Validation"]
   exit(["All nodes on target version + Tier 1 services healthy + upgrade report comm..."])
   start --> step_1
   step_1 --> step_2
   step_2 --> step_3
   step_3 --> step_4
   step_4 --> step_5
-  step_5 --> exit
+  step_5 --> step_6
+  step_6 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
   role_2 -. owns .-> step_5
-  step_5 -. iterate if blocked .-> step_1
+  role_2 -. owns .-> step_6
+  role_3 -. owns .-> step_6
+  step_6 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->
 

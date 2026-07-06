@@ -17,7 +17,7 @@ roles:
   - developer
   - team-lead
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - cluster-standards.md
   - workload-security.md
@@ -35,7 +35,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Namespace Setup — `@devops-engineer`
+1. Namespace Setup — `@product-owner` + `@devops-engineer`
 - **Input:** service_name, team_name, environment
 - **Actions:**
   ```bash
@@ -126,8 +126,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /onboard-service"])
-  role_1["devops-engineer"]
-  role_2["developer"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
+  role_3["developer"]
   step_1["1. Namespace Setup"]
   step_2["2. RBAC Setup"]
   step_3["3. Network Policies"]
@@ -145,13 +146,14 @@ flowchart TD
   step_6 --> step_7
   step_7 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
   role_2 -. owns .-> step_4
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
-  role_2 -. owns .-> step_6
-  role_1 -. owns .-> step_7
+  role_2 -. owns .-> step_5
+  role_3 -. owns .-> step_6
+  role_2 -. owns .-> step_7
 ```
 <!-- agent-diagram:end -->
 

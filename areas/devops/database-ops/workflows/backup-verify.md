@@ -12,7 +12,7 @@ outputs:
 roles:
   - devops-engineer
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - backup-policy.md
 uses-skills:
@@ -27,7 +27,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Pre-Check: Backup Catalog — `@devops-engineer`
+1. Pre-Check: Backup Catalog — `@product-owner` + `@devops-engineer`
 ```bash
 # pgBackRest
 pgbackrest --stanza=main info
@@ -109,7 +109,8 @@ curl -X POST $SLACK_WEBHOOK \
 ```mermaid
 flowchart TD
   start(["Start /backup-verify"])
-  role_1["devops-engineer"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
   step_1["1. Pre-Check: Backup Catalog"]
   step_2["2. Provision Test Environment"]
   step_3["3. Restore Latest Backup"]
@@ -123,10 +124,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

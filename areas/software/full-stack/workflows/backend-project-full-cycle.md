@@ -16,7 +16,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: team-lead
+  initiator: product-owner
 related-rules:
   - project-guide.md
   - backend-architecture-rule.md
@@ -39,7 +39,7 @@ quality-gates:
 **Active skill:** `prompt-project-planner`  
 **Owner:** `@pm` (gather requirements) → `@team-lead` (create architecture plan) → `@pm` (present to user)
 
-### Step 1.1 — Define Tech Stack — `@team-lead`
+1. Define Tech Stack — `@product-owner` + `@team-lead`
 - **Input:** business logic description
 - **Actions:** confirm language, framework, database, messaging system; if not provided — ask user to select from available options
 - **Output:** confirmed tech stack in plan header
@@ -130,11 +130,12 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /backend-project-full-cycle"])
-  role_1["team-lead"]
-  role_2["pm"]
-  role_3["developer"]
-  role_4["qa"]
-  step_1["1.1 — Define Tech Stack"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["pm"]
+  role_4["developer"]
+  role_5["qa"]
+  step_1["1. Define Tech Stack"]
   step_2["1.2 — Requirements Clarification"]
   step_3["1.3 — Architecture Plan"]
   step_4["1.4 — Plan Approval"]
@@ -155,17 +156,18 @@ flowchart TD
   step_8 --> step_9
   step_9 --> exit
   role_1 -. owns .-> step_1
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
   role_2 -. owns .-> step_2
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_3 -. owns .-> step_5
-  role_3 -. owns .-> step_6
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_4 -. owns .-> step_5
   role_4 -. owns .-> step_6
-  role_1 -. owns .-> step_7
-  role_4 -. owns .-> step_8
-  role_1 -. owns .-> step_9
+  role_5 -. owns .-> step_6
+  role_2 -. owns .-> step_7
+  role_5 -. owns .-> step_8
   role_2 -. owns .-> step_9
+  role_3 -. owns .-> step_9
   step_9 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->

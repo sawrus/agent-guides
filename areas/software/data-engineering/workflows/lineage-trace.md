@@ -13,7 +13,7 @@ roles:
   - developer
   - team-lead
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - data-governance.md
   - schema-management.md
@@ -28,7 +28,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Parse Target — `@developer`
+1. Parse Target — `@product-owner` + `@developer`
 - **Input:** target column or table, direction (upstream / downstream / both)
 - **Actions:** identify table and optional column in warehouse catalog; load dbt `manifest.json` for lineage graph
 - **Output:** confirmed target node in lineage graph
@@ -58,8 +58,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /lineage-trace"])
-  role_1["developer"]
-  role_2["team-lead"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["team-lead"]
   step_1["1. Parse Target"]
   step_2["2. Trace Lineage"]
   step_3["3. Impact Assessment"]
@@ -71,9 +72,10 @@ flowchart TD
   step_3 --> step_4
   step_4 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_2 -. owns .-> step_3
-  role_1 -. owns .-> step_4
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_2 -. owns .-> step_4
 ```
 <!-- agent-diagram:end -->
 

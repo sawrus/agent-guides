@@ -15,7 +15,7 @@ roles:
   - team-lead
   - pm
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - quality-gates.md
   - test-strategy.md
@@ -30,7 +30,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Prepare Environment & Test Data — `@qa`
+1. Prepare Environment & Test Data — `@product-owner` + `@qa`
 - **Input:** deployed environment
 - **Actions:** confirm services responding; seed or verify required test data; confirm smoke suite targets correct environment (not staging vs. production mix)
 - **Output:** environment ready; test data confirmed
@@ -66,10 +66,11 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /smoke-test"])
-  role_1["qa"]
-  role_2["developer"]
-  role_3["team-lead"]
-  role_4["pm"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["developer"]
+  role_4["team-lead"]
+  role_5["pm"]
   step_1["1. Prepare Environment & Test Data"]
   step_2["2. Run Critical Smoke Scenarios"]
   step_3["3. Defect Triage & Fix"]
@@ -83,11 +84,12 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_2 -. owns .-> step_3
-  role_3 -. owns .-> step_4
-  role_4 -. owns .-> step_5
-  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_4 -. owns .-> step_4
+  role_5 -. owns .-> step_5
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

@@ -16,7 +16,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: pm
+  initiator: product-owner
 related-rules:
   - backend-architecture-rule.md
   - code-quality-guide.md
@@ -31,7 +31,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Requirement Analysis & Models — `@pm` + `@team-lead`
+1. Requirement Analysis & Models — `@product-owner` + `@pm` + `@team-lead`
 - **Input:** feature request
 - **Actions:** `@pm` captures requirements; `@team-lead` identifies impacted domain entities and determines if schema changes are needed; `@designer` provides UX/interaction specs if UI is involved
 - **Output:** confirmed feature spec with data model notes
@@ -80,11 +80,12 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /feature-implementation-flow"])
-  role_1["pm"]
-  role_2["team-lead"]
-  role_3["designer"]
-  role_4["developer"]
-  role_5["qa"]
+  role_1["product-owner"]
+  role_2["pm"]
+  role_3["team-lead"]
+  role_4["designer"]
+  role_5["developer"]
+  role_6["qa"]
   step_1["1. Requirement Analysis & Models"]
   step_2["2. Design & Planning"]
   step_3["3. Implementation — Inner to Outer"]
@@ -101,14 +102,15 @@ flowchart TD
   step_6 --> exit
   role_1 -. owns .-> step_1
   role_2 -. owns .-> step_1
-  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_1
   role_3 -. owns .-> step_2
-  role_4 -. owns .-> step_3
-  role_4 -. owns .-> step_4
+  role_4 -. owns .-> step_2
+  role_5 -. owns .-> step_3
   role_5 -. owns .-> step_4
-  role_2 -. owns .-> step_5
-  role_4 -. owns .-> step_6
+  role_6 -. owns .-> step_4
+  role_3 -. owns .-> step_5
   role_5 -. owns .-> step_6
+  role_6 -. owns .-> step_6
 ```
 <!-- agent-diagram:end -->
 

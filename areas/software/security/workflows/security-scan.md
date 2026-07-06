@@ -14,7 +14,7 @@ roles:
   - team-lead
   - qa
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - secure-coding.md
   - dependency-policy.md
@@ -30,7 +30,7 @@ quality-gates:
 
 ## Steps
 
-### 1. SAST Scan — `@developer`
+1. SAST Scan — `@product-owner` + `@developer`
 - **Input:** codebase
 - **Actions:** `semgrep --config=p/security-audit`; `snyk code test`
 - **Output:** SAST finding list
@@ -66,9 +66,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /security-scan"])
-  role_1["developer"]
-  role_2["qa"]
-  role_3["team-lead"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["qa"]
+  role_4["team-lead"]
   step_1["1. SAST Scan"]
   step_2["2. Dependency Audit"]
   step_3["3. Secret Scanning"]
@@ -82,10 +83,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_2 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_3 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_4 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

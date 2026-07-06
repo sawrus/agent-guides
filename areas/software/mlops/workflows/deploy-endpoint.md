@@ -15,7 +15,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: team-lead
+  initiator: product-owner
 related-rules:
   - production-safety.md
   - model-governance.md
@@ -30,7 +30,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Pre-flight — `@team-lead`
+1. Pre-flight — `@product-owner` + `@team-lead`
 - **Input:** model run ID
 - **Actions:** confirm model passed `/evaluate-model` with PROMOTE recommendation; verify human approval recorded in model registry; check production endpoint health; confirm no active P0/P1 incidents
 - **Output:** pre-flight sign-off
@@ -69,9 +69,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /deploy-endpoint"])
-  role_1["team-lead"]
-  role_2["developer"]
-  role_3["qa"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["developer"]
+  role_4["qa"]
   step_1["1. Pre-flight"]
   step_2["2. Shadow Deployment"]
   step_3["3. Canary Rollout"]
@@ -85,10 +86,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_2 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_3 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_4 -. owns .-> step_5
   step_5 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->

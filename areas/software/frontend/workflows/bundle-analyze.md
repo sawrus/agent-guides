@@ -15,7 +15,7 @@ roles:
   - team-lead
   - pm
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - performance.md
   - architecture.md
@@ -28,7 +28,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Generate & Compare Bundle Metrics — `@developer`
+1. Generate & Compare Bundle Metrics — `@product-owner` + `@developer`
 - **Input:** build artifacts, baseline metrics
 - **Actions:** run bundle analyzer (webpack-bundle-analyzer, vite-bundle-visualizer, source-map-explorer); compare current bundle sizes vs. baseline; flag any chunk exceeding performance budget; identify top contributors to size regression
 - **Output:** bundle diff with size delta per chunk; budget violations flagged
@@ -58,10 +58,11 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /bundle-analyze"])
-  role_1["developer"]
-  role_2["qa"]
-  role_3["team-lead"]
-  role_4["pm"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["qa"]
+  role_4["team-lead"]
+  role_5["pm"]
   step_1["1. Generate & Compare Bundle Metrics"]
   step_2["2. Validate Measurement Reliability"]
   step_3["3. Prioritize Optimization Candidates"]
@@ -73,10 +74,11 @@ flowchart TD
   step_3 --> step_4
   step_4 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_3 -. owns .-> step_3
-  role_1 -. owns .-> step_3
-  role_4 -. owns .-> step_4
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_3
+  role_2 -. owns .-> step_3
+  role_5 -. owns .-> step_4
 ```
 <!-- agent-diagram:end -->
 

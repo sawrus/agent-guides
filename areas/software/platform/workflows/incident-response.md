@@ -14,7 +14,7 @@ roles:
   - developer
   - qa
 execution:
-  initiator: team-lead
+  initiator: product-owner
 related-rules:
   - reliability.md
   - security-posture.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Triage — `@team-lead`
+1. Triage — `@product-owner` + `@team-lead`
 - **Input:** incident alert, severity
 - **Actions:** fetch last 30 min of metrics for named service; check recent deployments (last 2 hours); identify correlated alerts; confirm severity classification
 - **Output:** severity confirmed; initial impact summary
@@ -71,9 +71,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /incident-response"])
-  role_1["team-lead"]
-  role_2["developer"]
-  role_3["pm"]
+  role_1["product-owner"]
+  role_2["team-lead"]
+  role_3["developer"]
+  role_4["pm"]
   step_1["1. Triage"]
   step_2["2. Establish Incident Channel"]
   step_3["3. Generate Hypothesis List"]
@@ -89,12 +90,13 @@ flowchart TD
   step_5 --> step_6
   step_6 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
   role_2 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_1 -. owns .-> step_5
-  role_3 -. owns .-> step_6
+  role_3 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_4 -. owns .-> step_6
 ```
 <!-- agent-diagram:end -->
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.4
+- Standardized workflow initiators on the Product Owner role across area workflows.
+- Added Product Owner participation to every first workflow step while preserving existing role owners.
+
 ## v0.5.3
 - Isolated install-time OpenCode doctor runs into a temporary XDG home so doctor no longer reuses or pollutes the user's persistent OpenCode session database.
 - Extended doctor e2e coverage to assert isolated OpenCode HOME/XDG paths and prevent `opencode.db` leaks into the caller home.

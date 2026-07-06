@@ -14,7 +14,7 @@ roles:
   - qa
   - team-lead
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - platform-compliance.md
   - security-mobile.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Gather & Symbolicate — `@developer`
+1. Gather & Symbolicate — `@product-owner` + `@developer`
 - **Input:** platform (ios/android), version
 - **Actions:** fetch crash-free rate by version from Firebase/Crashlytics; pull crash logs for target version; identify top 3 crash signatures; iOS → download dSYM from App Store Connect, symbolicate; Android → use ProGuard mapping to deobfuscate
 - **Output:** symbolicated crash report; top 3 signatures identified
@@ -65,8 +65,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /crash-triage"])
-  role_1["developer"]
-  role_2["qa"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["qa"]
   step_1["1. Gather & Symbolicate"]
   step_2["2. Reproduce"]
   step_3["3. Root Cause"]
@@ -80,10 +81,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_2 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

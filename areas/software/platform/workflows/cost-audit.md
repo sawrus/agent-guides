@@ -13,7 +13,7 @@ roles:
   - qa
   - team-lead
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - cost-governance.md
   - immutability.md
@@ -27,7 +27,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Fetch Billing Data — `@qa`
+1. Fetch Billing Data — `@product-owner` + `@qa`
 - **Input:** audit period, account scope
 - **Actions:** query AWS Cost Explorer for target period; group by: service, environment tag, team tag
 - **Output:** billing data grouped by service and tag
@@ -63,8 +63,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /cost-audit"])
-  role_1["qa"]
-  role_2["team-lead"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["team-lead"]
   step_1["1. Fetch Billing Data"]
   step_2["2. Analyze Spend Patterns"]
   step_3["3. Detect Waste"]
@@ -78,10 +79,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_2 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_3 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

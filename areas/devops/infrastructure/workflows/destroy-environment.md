@@ -13,7 +13,7 @@ roles:
   - devops-engineer
   - team-lead
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - state-management.md
   - immutability.md
@@ -28,7 +28,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Confirm Scope — `@devops-engineer`
+1. Confirm Scope — `@product-owner` + `@devops-engineer`
 - List all resources to be destroyed: `terraform plan -destroy -var-file=terraform.tfvars`
 - Verify: is there **production data** in this environment? (databases, object storage)
 - Confirm no active traffic or dependent services
@@ -98,8 +98,9 @@ aws dynamodb delete-item \
 ```mermaid
 flowchart TD
   start(["Start /destroy-environment"])
-  role_1["devops-engineer"]
-  role_2["team-lead"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
+  role_3["team-lead"]
   step_1["1. Confirm Scope"]
   step_2["2. Approval"]
   step_3["3. Pre-Destroy Backup"]
@@ -115,11 +116,12 @@ flowchart TD
   step_5 --> step_6
   step_6 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
-  role_1 -. owns .-> step_6
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_2 -. owns .-> step_6
 ```
 <!-- agent-diagram:end -->
 

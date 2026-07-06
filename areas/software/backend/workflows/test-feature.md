@@ -14,7 +14,7 @@ roles:
   - developer
   - team-lead
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - testing.md
   - architecture.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Coverage Gap Analysis — `@qa`
+1. Coverage Gap Analysis — `@product-owner` + `@qa`
 - **Input:** feature scope + acceptance criteria + current test suite
 - **Actions:** map acceptance criteria to existing tests; identify untested critical paths, failure paths, and edge cases; prioritize gaps by business risk (data integrity > performance > UX)
 - **Output:** `test_coverage_gaps.md` — gap list with risk classification per gap
@@ -69,9 +69,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /test-feature"])
-  role_1["qa"]
-  role_2["developer"]
-  role_3["team-lead"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["developer"]
+  role_4["team-lead"]
   step_1["1. Coverage Gap Analysis"]
   step_2["2. Testability Adjustments"]
   step_3["3. Automated Test Implementation"]
@@ -85,11 +86,12 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_1 -. owns .-> step_3
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
   role_2 -. owns .-> step_3
-  role_3 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_3 -. owns .-> step_3
+  role_4 -. owns .-> step_4
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

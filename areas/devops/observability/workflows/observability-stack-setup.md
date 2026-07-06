@@ -15,7 +15,7 @@ outputs:
 roles:
   - devops-engineer
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - golden-signals.md
   - alerting-standards.md
@@ -34,7 +34,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Namespace & Prerequisites — `@devops-engineer`
+1. Namespace & Prerequisites — `@product-owner` + `@devops-engineer`
 ```bash
 kubectl create namespace monitoring
 kubectl create namespace logging
@@ -158,7 +158,8 @@ done
 ```mermaid
 flowchart TD
   start(["Start /observability-stack-setup"])
-  role_1["devops-engineer"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
   step_1["1. Namespace & Prerequisites"]
   step_2["2. kube-prometheus-stack (Prometheus + Grafana + Alertmanager)"]
   step_3["3. Loki + Promtail (Logs)"]
@@ -176,12 +177,13 @@ flowchart TD
   step_6 --> step_7
   step_7 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
-  role_1 -. owns .-> step_6
-  role_1 -. owns .-> step_7
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_2 -. owns .-> step_6
+  role_2 -. owns .-> step_7
 ```
 <!-- agent-diagram:end -->
 

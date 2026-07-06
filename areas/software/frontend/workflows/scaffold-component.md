@@ -33,7 +33,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Component Intent & Acceptance Criteria — `@product-owner` + `@designer`
+1. Component Intent & Acceptance Criteria — `@product-owner` + `@designer`
 - **Input:** component request
 - **Actions:** define component purpose, consumer context, and expected states (loading / empty / error / success / permission-denied); `@designer` specifies interaction design, token usage, and accessibility requirements
 - **Output:** component spec with acceptance criteria and design reference

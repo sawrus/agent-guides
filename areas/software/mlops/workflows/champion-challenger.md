@@ -15,7 +15,7 @@ roles:
   - qa
   - team-lead
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - production-safety.md
   - model-governance.md
@@ -31,7 +31,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Experiment Design — `@developer`
+1. Experiment Design — `@product-owner` + `@developer`
 - **Input:** champion, challenger, duration
 - **Actions:** define primary metric (business outcome); calculate required sample size (80% power, α=0.05); define guardrail metrics (latency, error rate); document in experiment tracker
 - **Output:** experiment design doc with sample size and guardrails
@@ -67,9 +67,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /champion-challenger"])
-  role_1["developer"]
-  role_2["qa"]
-  role_3["team-lead"]
+  role_1["product-owner"]
+  role_2["developer"]
+  role_3["qa"]
+  role_4["team-lead"]
   step_1["1. Experiment Design"]
   step_2["2. Configure Traffic Split"]
   step_3["3. Run & Monitor"]
@@ -83,10 +84,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_2 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_3 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_3 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_4 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

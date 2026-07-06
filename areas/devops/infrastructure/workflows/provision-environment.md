@@ -14,7 +14,7 @@ roles:
   - devops-engineer
   - team-lead
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - iac-standards.md
   - state-management.md
@@ -31,7 +31,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Plan & Review — `@devops-engineer` + `@team-lead`
+1. Plan & Review — `@product-owner` + `@devops-engineer` + `@team-lead`
 - **Actions:**
   ```bash
   cd terraform/environments/${ENV}
@@ -98,8 +98,9 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /provision-environment"])
-  role_1["devops-engineer"]
-  role_2["team-lead"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
+  role_3["team-lead"]
   step_1["1. Plan & Review"]
   step_2["2. Apply Infrastructure"]
   step_3["3. Configure Nodes (Ansible)"]
@@ -114,10 +115,11 @@ flowchart TD
   step_5 --> exit
   role_1 -. owns .-> step_1
   role_2 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_3 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

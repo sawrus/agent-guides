@@ -14,7 +14,7 @@ roles:
   - qa
   - team-lead
 execution:
-  initiator: qa
+  initiator: product-owner
 related-rules:
   - platform-compliance.md
   - security-mobile.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Validate Build — `@qa`
+1. Validate Build — `@product-owner` + `@qa`
 - **Input:** build artifact
 - **Actions:** confirm all quality gates passed; physical device tests passed; crash-free rate in pre-release track ≥ 99.5%; run `app-store-prep` skill compliance checklist
 - **Output:** quality gate sign-off
@@ -65,9 +65,10 @@ quality-gates:
 ```mermaid
 flowchart TD
   start(["Start /store-submission"])
-  role_1["qa"]
-  role_2["developer"]
-  role_3["team-lead"]
+  role_1["product-owner"]
+  role_2["qa"]
+  role_3["developer"]
+  role_4["team-lead"]
   step_1["1. Validate Build"]
   step_2["2. Prepare Metadata"]
   step_3["3. Compliance Check"]
@@ -81,10 +82,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_3 -. owns .-> step_3
-  role_2 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
+  role_4 -. owns .-> step_3
+  role_3 -. owns .-> step_4
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

@@ -32,7 +32,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Confirm Release Scope & Success Criteria — `@product-owner` + `@pm`
+1. Confirm Release Scope & Success Criteria — `@product-owner` + `@pm`
 - **Input:** release scope, target version
 - **Actions:** confirm what's in and out of the release; define success criteria for release (metrics, feature flags to enable); align on rollback trigger conditions
 - **Output:** confirmed release scope + success criteria

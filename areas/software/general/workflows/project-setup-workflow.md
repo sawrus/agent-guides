@@ -34,7 +34,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Scope & Decisions — `@product-owner` + `@pm`
+1. Scope & Decisions — `@product-owner` + `@pm`
 - **Input:** project name, purpose, team constraints
 - **Actions:** confirm language/framework/platform; define team conventions (branch model, merge strategy); confirm initial milestone
 - **Output:** brief project charter note (README draft or ADR-0)

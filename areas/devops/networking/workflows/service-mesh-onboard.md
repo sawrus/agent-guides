@@ -14,7 +14,7 @@ outputs:
 roles:
   - devops-engineer
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - network-segmentation.md
   - tls-policy.md
@@ -29,7 +29,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Pre-Check Mesh Health — `@devops-engineer`
+1. Pre-Check Mesh Health — `@product-owner` + `@devops-engineer`
 ```bash
 # Linkerd
 linkerd check
@@ -124,7 +124,8 @@ kubectl -n istio-system port-forward svc/kiali 20001:20001 &
 ```mermaid
 flowchart TD
   start(["Start /service-mesh-onboard"])
-  role_1["devops-engineer"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
   step_1["1. Pre-Check Mesh Health"]
   step_2["2. Enable Injection"]
   step_3["3. Verify mTLS"]
@@ -138,10 +139,11 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
 ```
 <!-- agent-diagram:end -->
 

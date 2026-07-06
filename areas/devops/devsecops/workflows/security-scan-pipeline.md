@@ -15,7 +15,7 @@ roles:
   - devops-engineer
   - developer
 execution:
-  initiator: developer
+  initiator: product-owner
 related-rules:
   - shift-left-policy.md
   - container-security.md
@@ -32,7 +32,7 @@ quality-gates:
 
 ## Steps
 
-### 1. Secrets Scan — `@devops-engineer`
+1. Secrets Scan — `@product-owner` + `@devops-engineer`
 ```bash
 # Scan git history for secrets
 trufflehog git file://. \
@@ -157,7 +157,8 @@ echo "SBOM:         attached to registry"
 ```mermaid
 flowchart TD
   start(["Start /security-scan-pipeline"])
-  role_1["devops-engineer"]
+  role_1["product-owner"]
+  role_2["devops-engineer"]
   step_1["1. Secrets Scan"]
   step_2["2. SAST (Static Analysis)"]
   step_3["3. Dependency CVE Scan"]
@@ -175,12 +176,13 @@ flowchart TD
   step_6 --> step_7
   step_7 --> exit
   role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
-  role_1 -. owns .-> step_6
-  role_1 -. owns .-> step_7
+  role_2 -. owns .-> step_1
+  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_3
+  role_2 -. owns .-> step_4
+  role_2 -. owns .-> step_5
+  role_2 -. owns .-> step_6
+  role_2 -. owns .-> step_7
 ```
 <!-- agent-diagram:end -->
 
