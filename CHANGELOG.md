@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.2
+
+- Simplified the static docs site header by removing the install command block and shortened sidebar workflow labels by dropping the leading slash from triggers.
+
 ## v0.6.1
 
 - Improved the static docs site navigation with compact expandable devops/software sections, nested area menus, active workflow state, independent sidebar/content scrolling, and a full-width search field under the install command.
