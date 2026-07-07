@@ -84,7 +84,7 @@ function renderMenu(areas, filteredIds = null) {
         const btn = document.createElement('button');
         btn.className = 'wf-btn';
         btn.dataset.workflowId = workflow.id;
-        btn.textContent = `${formatWorkflowTrigger(workflow.trigger)} — ${workflow.name}`;
+        btn.textContent = `${workflow.name}`;
         btn.onclick = () => renderWorkflow(workflow.id);
         workflowList.appendChild(btn);
       }
