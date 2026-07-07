@@ -88,3 +88,5 @@ flowchart TD
 
 ## Exit
 Drift report published + Category A resolved (if --fix) + B/C/D tracked = drift check complete.
+
+**Next:** terminal — no follow-up workflow.

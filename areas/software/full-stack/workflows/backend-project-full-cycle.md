@@ -54,7 +54,7 @@ quality-gates:
 ### Step 1.3 — Architecture Plan — `@team-lead`
 - **Input:** clarified requirements
 - **Actions:** produce plan following `output.schema.md` from `prompt-project-planner` skill; include: module layout inside `src/`, applied rules, selected skills, this workflow reference; do NOT write code
-- **Output:** `artifacts/plan_<task_id>.md`
+- **Output:** `docs/plans/plan_<task_id>.md`
 - **Done when:** plan complete per schema
 
 ### Step 1.4 — Plan Approval — `@pm`
@@ -120,9 +120,9 @@ quality-gates:
 
 ### Step 3.2 — Results Review & Report — `@team-lead` + `@pm`
 - **Input:** E2E results
-- **Actions:** `@team-lead` reviews test coverage and quality signal; `@pm` produces final delivery report
-- **Output:** `artifacts/delivery_report_<task_id>.md` — plan vs. delivered, test evidence, known gaps
-- **Done when:** `@team-lead` signs off; report complete
+- **Actions:** `@team-lead` reviews test coverage and quality signal; `@pm` produces final delivery report; add a `CHANGELOG.md` entry and bump the project version
+- **Output:** `docs/delivery/delivery_report_<task_id>.md` — plan vs. delivered, test evidence, known gaps
+- **Done when:** `@team-lead` signs off; report complete; `CHANGELOG.md` and version bump committed
 
 ## Agent Interaction Diagram
 
@@ -171,7 +171,9 @@ flowchart TD
 <!-- agent-diagram:end -->
 
 ## Iteration Loop
-Phase 2 Steps 2.1–2.3 repeat until `@team-lead` approves. Phase 3 failure loops back to Phase 2 for fixes.
+Phase 2 Steps 2.1–2.3 repeat until `@team-lead` approves (maximum 3 revision cycles). Phase 3 failure loops back to Phase 2 for fixes (maximum 2 returns). Exceeding either bound stops the loop and escalates to `@product-owner` for a scope decision.
 
 ## Exit
 Green E2E tests + `@team-lead` sign-off + delivery report = production-ready service.
+
+**Next:** terminal — no follow-up workflow.

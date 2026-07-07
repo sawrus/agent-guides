@@ -38,7 +38,7 @@ quality-gates:
 - **Done when:** severity agreed; `@developer` assigned and briefed
 
 ### 2. Reproduce & Isolate — `@developer`
-- **Input:** bug report + logs/metrics/traces (use `observability` skill to query)
+- **Input:** triaged ticket from step 1 (bug report + severity + owner) + logs/metrics/traces (use `observability` skill to query)
 - **Actions:**
   - reproduce the issue in a local or staging environment — do not fix without reproducing first
   - narrow to the smallest reproducible case
@@ -58,7 +58,7 @@ quality-gates:
 - **Done when:** regression test passes; full suite green; fix is minimal and safe
 
 ### 4. Verification & Regression Checks — `@qa`
-- **Input:** fix branch
+- **Input:** fix branch with regression test from step 3
 - **Actions:**
   - reproduce original issue with fix applied — confirm resolved
   - run regression test suite on affected module
@@ -68,9 +68,9 @@ quality-gates:
 - **Done when:** issue resolved in all tested environments; no new failures introduced
 
 ### 5. Technical Review & Closure — `@team-lead`
-- **Input:** fix branch + verification report
-- **Actions:** review fix for correctness and side effects; confirm root cause analysis is complete; check that regression test is sufficient; write or approve `root_cause_summary.md` with prevention note
-- **Output:** `root_cause_summary.md` — what failed, why, how fixed, how to prevent
+- **Input:** fix branch + `verification_report.md` from step 4
+- **Actions:** review fix for correctness and side effects; confirm root cause analysis is complete; check that regression test is sufficient; write or approve `root_cause_summary.md` with prevention note; for P0/P1 issues, save the summary as `docs/incidents/<date>-<issue-id>-root-cause.md`
+- **Output:** `root_cause_summary.md` — what failed, why, how fixed, how to prevent (for P0/P1: `docs/incidents/<date>-<issue-id>-root-cause.md`)
 - **Done when:** `@team-lead` approves fix; root cause documented; ticket closed
 
 ## Agent Interaction Diagram
@@ -106,3 +106,5 @@ flowchart TD
 
 ## Exit
 Merged fix + verified resolution + root cause documented = incident closed.
+
+**Next:** terminal — no follow-up workflow.

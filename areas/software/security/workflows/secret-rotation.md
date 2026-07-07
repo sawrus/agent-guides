@@ -29,7 +29,7 @@ quality-gates:
 
 ### 1. Prepare New Secret — `@developer`
 - **Input:** secret name
-- **Actions:** generate new credential (strong, random); store in Secrets Manager as new version — old version stays active
+- **Actions:** generate new credential (strong, random); store in Secrets Manager as new version — old version stays active; retain the previous secret version (do not delete it) until the new version is verified in Step 4
 - **Output:** new secret version created; old version still active
 - **Done when:** both versions active in Secrets Manager
 
@@ -42,6 +42,7 @@ quality-gates:
 ### 3. Deploy New Secret — `@developer`
 - **Input:** dual-read service
 - **Actions:** trigger rolling restart to pick up new version; monitor pod restarts and error rates for 5 minutes
+- **Failure path:** if authentication errors appear after rotation, immediately re-enable the previous credential version (versioned secret store / dual-secret window); verify service recovery against the baseline error rate; then retry the rotation at most once — a second failure escalates to `@team-lead` and triggers `/service-incident` if there is user-facing impact
 - **Output:** all pods using new secret
 - **Done when:** zero auth errors post-restart
 
@@ -96,3 +97,5 @@ flowchart TD
 
 ## Exit
 Old secret revoked + audit record updated = rotation complete.
+
+**Next:** terminal — no follow-up workflow.

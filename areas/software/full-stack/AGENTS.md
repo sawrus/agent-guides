@@ -44,8 +44,8 @@ End-to-end product feature development spanning backend services and frontend in
 │   ├── blackbox-test/SKILL.md           ← external API testing, contract validation
 │   └── prompt-project-planner/SKILL.md  ← project planning, milestone scoping
 ├── workflows/
-│   ├── develop-feature.md              ← /develop-feature
-│   ├── debug-issue.md                  ← /debug-issue
+│   ├── develop-feature-fullstack.md    ← /develop-feature-fullstack
+│   ├── debug-issue-fullstack.md        ← /debug-issue-fullstack
 │   ├── backend-project-full-cycle.md   ← /backend-project-full-cycle
 │   ├── feature-implementation-flow.md  ← /feature-implementation-flow
 │   └── testing-ci-pipeline.md          ← /testing-ci-pipeline

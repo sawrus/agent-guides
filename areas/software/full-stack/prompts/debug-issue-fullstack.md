@@ -1,8 +1,8 @@
 ---
-workflow: debug-issue
+workflow: debug-issue-fullstack
 ---
 
-# Prompt: `/debug-issue`
+# Prompt: `/debug-issue-fullstack`
 
 Use when: diagnosing a bug in a FastAPI / SQLAlchemy service — from stack trace or symptom through to root cause, fix, and regression test.
 
@@ -12,7 +12,7 @@ Use when: diagnosing a bug in a FastAPI / SQLAlchemy service — from stack trac
 
 **EN:**
 ```
-/debug-issue
+/debug-issue-fullstack
 
 Service: order-service (FastAPI + SQLAlchemy async)
 Error: 500 Internal Server Error on POST /api/v1/orders
@@ -32,7 +32,7 @@ Suspected cause: discount service returns Decimal amount but order_service expec
 
 **RU:**
 ```
-/debug-issue
+/debug-issue-fullstack
 
 Сервис: order-service (FastAPI + SQLAlchemy async)
 Ошибка: 500 Internal Server Error на POST /api/v1/orders
@@ -56,7 +56,7 @@ Stack trace:
 
 **EN:**
 ```
-/debug-issue
+/debug-issue-fullstack
 
 Service: product-service
 Symptom: GET /api/v1/products p99 latency went from 85ms to 4 200ms after migration PR #198
@@ -70,7 +70,7 @@ Reproduce: run EXPLAIN ANALYZE on GET /products with tags; count SELECT statemen
 
 **RU:**
 ```
-/debug-issue
+/debug-issue-fullstack
 
 Сервис: product-service
 Симптом: p99 задержка GET /api/v1/products выросла с 85ms до 4 200ms после миграции PR #198
@@ -88,7 +88,7 @@ Reproduce: run EXPLAIN ANALYZE on GET /products with tags; count SELECT statemen
 
 **EN:**
 ```
-/debug-issue
+/debug-issue-fullstack
 
 Service: payment-service
 Symptom: ~2% of payments marked as FAILED despite Stripe confirming payment succeeded
@@ -102,7 +102,7 @@ Test: write test that sends two concurrent requests with same idempotency key; v
 
 **RU:**
 ```
-/debug-issue
+/debug-issue-fullstack
 
 Сервис: payment-service
 Симптом: ~2% платежей помечаются как FAILED несмотря на то что Stripe подтверждает успешную оплату

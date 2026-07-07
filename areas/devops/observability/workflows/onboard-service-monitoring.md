@@ -33,12 +33,14 @@ quality-gates:
 ## Steps
 
 ### 1. Metrics Instrumentation — `@developer`
+- **Input:** service_name, namespace, language/framework from trigger inputs
 - Add Prometheus client library to service
 - Expose standard HTTP metrics (requests_total, duration histogram, active_requests)
 - Expose `/metrics` endpoint on port 9090 (or sidecar annotation)
 - **Done when:** `curl http://<pod-ip>:9090/metrics` returns Prometheus format
 
 ### 2. ServiceMonitor — `@devops-engineer`
+- **Input:** instrumented service branch with `/metrics` endpoint from step 1
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -53,27 +55,32 @@ spec:
       interval: 15s
       path: /metrics
 ```
+- If the metrics endpoint fails scraping after deploy: fix Service labels/port names to match the ServiceMonitor; maximum 2 retries, then stop and escalate to `@team-lead`
 - **Done when:** Prometheus targets page shows service as UP
 
 ### 3. Tracing Instrumentation — `@developer`
+- **Input:** scrape-verified service (Prometheus target UP) from step 2
 - Add OpenTelemetry SDK (or use K8s operator auto-injection)
 - Configure OTLP exporter → otel-collector:4317
 - Verify trace_id appears in application logs
 - **Done when:** traces visible in Tempo; trace_id in logs
 
 ### 4. Log Labels — `@devops-engineer`
+- **Input:** trace_id-enriched application logs from step 3
 - Verify Promtail/Fluent Bit picks up pod logs
 - Confirm JSON parsing works: `{namespace="${NS}", app="${SERVICE}"} | json`
 - Add log-based alert if service emits structured error logs
 - **Done when:** logs searchable in Loki with level + trace_id fields
 
 ### 5. Alert Rules — `@devops-engineer`
+- **Input:** live metrics and Loki-searchable logs from steps 2–4
 - Create `PrometheusRule` with golden signal alerts (HighErrorRate, HighP99Latency, PodMemoryPressure)
 - Write runbook for each alert in `docs/runbooks/`
 - Test alert firing: temporarily lower threshold, verify Alertmanager receives it
 - **Done when:** all alerts show in Prometheus rules page; test fire works
 
 ### 6. Grafana Dashboard — `@devops-engineer`
+- **Input:** deployed alert rules from step 5; standard dashboard JSON template
 - Import standard service overview dashboard template
 - Customize: add service-specific panels (queue depth, custom business metrics)
 - Link trace panel (Tempo datasource) to request duration panel
@@ -112,3 +119,5 @@ flowchart TD
 
 ## Exit
 Golden signals in Prometheus + logs in Loki + traces in Tempo + alerts deployed + dashboard live = service monitored.
+
+**Next:** terminal — no follow-up workflow.

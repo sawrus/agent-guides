@@ -99,3 +99,5 @@ flowchart TD
 
 ## Exit
 Passing dbt tests + complete YAML docs + `@team-lead` approval = model production-ready.
+
+**Next:** terminal — no follow-up workflow.

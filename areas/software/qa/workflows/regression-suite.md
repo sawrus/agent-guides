@@ -85,3 +85,5 @@ flowchart TD
 
 ## Exit
 Go recommendation + regression report = release confidence confirmed.
+
+**Next:** terminal — no follow-up workflow.

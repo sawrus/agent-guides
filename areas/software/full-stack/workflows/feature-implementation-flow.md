@@ -2,7 +2,7 @@
 name: feature-implementation-flow
 type: workflow
 trigger: /feature-implementation-flow
-description: Implement a single feature into an existing full-stack service with strict layered architecture.
+description: Implement a single feature into an existing full-stack service with strict layered architecture. Use for stack-agnostic feature increments; use /develop-feature-fullstack for the FastAPI-specific end-to-end feature workflow.
 inputs:
   - feature_request
   - existing_codebase
@@ -33,8 +33,8 @@ quality-gates:
 
 ### 1. Requirement Analysis & Models — `@pm` + `@team-lead`
 - **Input:** feature request
-- **Actions:** `@pm` captures requirements; `@team-lead` identifies impacted domain entities and determines if schema changes are needed; `@designer` provides UX/interaction specs if UI is involved
-- **Output:** confirmed feature spec with data model notes
+- **Actions:** `@pm` captures requirements; `@team-lead` identifies impacted domain entities and determines if schema changes are needed; if UI is involved, `@designer` delivers the UI spec/mockup artifact (`docs/<feature>/ui_spec.md` or linked mockup)
+- **Output:** confirmed feature spec with data model notes (+ `@designer` UI spec/mockup when UI is involved)
 - **Done when:** impacted layers identified; `@developer` briefed
 
 ### 2. Design & Planning — `@team-lead` + `@designer`
@@ -71,8 +71,9 @@ quality-gates:
 
 ### 6. Fix / Retest Loop — `@developer` + `@qa`
 - **Input:** blocking feedback
-- **Actions:** fix; re-run checks; re-request review
-- **Done when:** zero blocking issues; all checks green
+- **Actions:** fix; re-run checks; re-request review; maximum 3 fix/retest cycles — if still blocked after the third, stop and escalate to `@team-lead` with the open blocker list for a decision; once approved, update feature docs under `docs/**`, add a `CHANGELOG.md` entry, and bump the project version
+- **Output:** green test run + review-ready branch
+- **Done when:** zero blocking issues; all checks green; docs, `CHANGELOG.md`, and version bump committed
 
 ## Agent Interaction Diagram
 
@@ -114,3 +115,5 @@ flowchart TD
 
 ## Exit
 `@team-lead` approval + passing checks = feature ready to merge.
+
+**Next:** terminal — no follow-up workflow.

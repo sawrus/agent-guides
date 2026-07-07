@@ -69,9 +69,12 @@ Skills are technical capabilities loaded on demand. Each skill:
 ### 6. Author workflows using `workflow.tmpl.md`
 
 Workflows are orchestrated processes. Each workflow:
-- Maps to a `/command` trigger
+- Maps to a `/command` trigger — unique across ALL areas (check the trigger registry in the area-level `AGENTS.md`)
 - Has 3–8 steps with explicit roles, inputs, actions, and done-when criteria
+- Names the handed-over artifact in `Input:` whenever the step role changes
 - Includes at least one failure path
+- Bounds every loop or retry (max iterations + escalation path) — "loop until done" is a defect
+- Ends with a "Document & Version" step (delivery) or a `docs/incidents/` root-cause doc (incident), and an explicit `Next: /<trigger>` or `Next: terminal` handoff
 - Has measurable quality gates in the frontmatter
 
 ### 7. Author prompts using `prompt.tmpl.md`
@@ -83,7 +86,7 @@ Prompts are bilingual (EN + RU) templates for humans to copy-paste. Each prompt:
 
 ### 8. Update the parent area's `AGENTS.md`
 
-Add the new spec to the spec map. If this is the first spec in a new area, create the area-level `AGENTS.md` using `AGENTS-area.tmpl.md`.
+Add the new spec to the spec map and register every workflow trigger in the area's trigger registry. If this is the first spec in a new area, create the area-level `AGENTS.md` using `AGENTS-area.tmpl.md`.
 
 ### 9. Test before submitting
 
@@ -99,4 +102,6 @@ A spec is ready to submit when:
 - All `{{PLACEHOLDER}}` values are replaced with real content.
 - All code examples are runnable without modification.
 - File lengths are within guidelines: rules ≤ 150, skills 150–350, workflows 60–200 lines.
+- Every workflow trigger is unique across all areas and registered in the area-level `AGENTS.md`.
+- Every workflow loop is bounded and every cross-workflow reference is acyclic (or carries a circuit breaker).
 - The spec has been tested in a real agent session.

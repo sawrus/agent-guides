@@ -51,13 +51,14 @@ quality-gates:
 ### 4. Root Cause & Remediation — `@developer`
 - **Input:** affected window + diagnosis
 - **Actions:** data drift → schedule retraining with `/train-experiment`; model rot → `/train-experiment` with recent data; infrastructure → fix pipeline, verify feature consistency; code bug → implement fix, run `/evaluate-model` before re-deploying
+- **Circuit breaker:** the incident → `/train-experiment` → `/evaluate-model` → `/deploy-endpoint` chain may be traversed at most once automatically per incident; if the redeployed model breaches again, keep the endpoint rolled back and escalate to `@team-lead` for human review
 - **Output:** remediation action taken
 - **Done when:** root cause fixed; new model validated or pipeline restored
 
 ### 5. Post-Incident — `@team-lead`
 - **Input:** resolved incident
 - **Actions:** add monitoring rule to catch pattern earlier; write postmortem; update model card with known failure modes
-- **Output:** postmortem at `.mlops/incidents/<date>-<model>-incident.md`; monitoring updated; model card updated
+- **Output:** postmortem at `docs/incidents/<date>-<model>-root-cause.md`; monitoring updated; model card updated
 - **Done when:** postmortem reviewed; prevention measures in place
 
 ## Agent Interaction Diagram
@@ -91,3 +92,5 @@ flowchart TD
 
 ## Exit
 System restored + postmortem published + monitoring improved = incident closed.
+
+**Next:** /train-experiment — when retraining is the remediation (bounded by the Step 4 circuit breaker); otherwise terminal — no follow-up workflow.

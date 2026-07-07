@@ -33,6 +33,7 @@ quality-gates:
 ## Steps
 
 ### 1. Assess & Plan — `@devops-engineer`
+- **Input:** repo_name, language/framework, ci_platform, and deploy_target from the workflow inputs.
 - **Actions:**
   - Confirm language, build tool, test framework
   - Identify external dependencies (registry, cloud, K8s cluster)
@@ -42,6 +43,7 @@ quality-gates:
 - **Done when:** design approved by developer and team-lead
 
 ### 2. Secrets & Environments Setup — `@devops-engineer`
+- **Input:** approved pipeline design doc from step 1.
 - **Actions:**
   - Create OIDC cloud role (preferred) or minimal-privilege service account
   - Configure CI secrets: registry login, kubeconfig (base64), vault token
@@ -49,6 +51,7 @@ quality-gates:
 - **Done when:** secrets configured; OIDC trust policy in place
 
 ### 3. Write Pipeline Config — `@devops-engineer`
+- **Input:** configured secrets and environment definitions from step 2.
 - **Actions:**
   - Create `.github/workflows/ci.yml` or `.gitlab-ci.yml`
   - Implement all mandatory stages (lint → test → build → scan → deploy)
@@ -59,6 +62,7 @@ quality-gates:
 - **Done when:** `yamllint` passes; no syntax errors
 
 ### 4. First Run & Debug — `@devops-engineer` + `@developer`
+- **Input:** pipeline config committed to the feature branch in step 3.
 - **Actions:**
   - Open PR to trigger pipeline
   - Fix any failing stages (missing deps, wrong paths, auth issues)
@@ -66,6 +70,7 @@ quality-gates:
 - **Done when:** all stages green on PR; deployment to staging succeeds
 
 ### 5. Document — `@devops-engineer`
+- **Input:** green pipeline and staging deployment from step 4.
 - Write `docs/ci-cd.md`: stages, how to run locally, how to add a new secret
 - **Done when:** documentation committed
 
@@ -100,3 +105,5 @@ flowchart TD
 
 ## Exit
 Green pipeline + staging deploy + documentation = repo onboarded.
+
+**Next:** terminal — no follow-up workflow.

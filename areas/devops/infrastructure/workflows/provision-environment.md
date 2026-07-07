@@ -14,7 +14,7 @@ roles:
   - devops-engineer
   - team-lead
 execution:
-  initiator: developer
+  initiator: devops-engineer
 related-rules:
   - iac-standards.md
   - state-management.md
@@ -32,6 +32,7 @@ quality-gates:
 ## Steps
 
 ### 1. Plan & Review — `@devops-engineer` + `@team-lead`
+- **Input:** environment_name, cloud_provider, component_scope from trigger inputs; `terraform.tfvars` for the target environment
 - **Actions:**
   ```bash
   cd terraform/environments/${ENV}
@@ -49,15 +50,18 @@ quality-gates:
 - **Done when:** `@team-lead` approves plan; no unexpected destroys
 
 ### 2. Apply Infrastructure — `@devops-engineer`
+- **Input:** approved `tfplan.binary` from step 1
 - **Actions:**
   ```bash
   terraform apply tfplan.binary
   # Save outputs for Ansible
   terraform output -json > environments/${ENV}/tf-outputs.json
   ```
+- If `terraform apply` fails: do not retry blindly — fix the plan and re-run step 1; maximum 2 re-plans, then stop and escalate to `@team-lead` with the open blocker list
 - **Done when:** apply exits 0; all resources in state
 
 ### 3. Configure Nodes (Ansible) — `@devops-engineer`
+- **Input:** `tf-outputs.json` from step 2
 - **Actions:**
   ```bash
   # Generate dynamic inventory from Terraform outputs
@@ -76,6 +80,7 @@ quality-gates:
 - **Done when:** all plays complete with 0 failures
 
 ### 4. Smoke Tests — `@devops-engineer`
+- **Input:** configured inventory `inventory/${ENV}/hosts.ini` from step 3
 - **Actions:**
   - For cloud environments: verify VPC, subnets, security groups via AWS/GCP CLI
   - For K8s-destined nodes: run `kubeadm init phase preflight` (pre-check only)
@@ -87,9 +92,10 @@ quality-gates:
 - **Done when:** all nodes reachable; containerd/kubelet running
 
 ### 5. Document & Store Outputs — `@devops-engineer`
+- **Input:** smoke test results from step 4; `tf-outputs.json` from step 2
 - Commit any generated inventory/config to Git
 - Store node IPs in SSM / Consul KV for downstream use
-- Write `provision_report.md`: environment, resources created, cost estimate, next steps
+- Write `docs/environments/<env>-provision-report.md`: environment, resources created, cost estimate, next steps
 - **Done when:** report committed; outputs stored
 
 ## Agent Interaction Diagram
@@ -123,3 +129,5 @@ flowchart TD
 
 ## Exit
 Terraform apply clean + Ansible 0 failures + smoke tests pass = environment provisioned.
+
+**Next:** /onboard-service-monitoring if the environment hosts services needing monitoring; otherwise terminal — no follow-up workflow.

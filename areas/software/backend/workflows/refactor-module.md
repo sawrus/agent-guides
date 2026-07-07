@@ -24,7 +24,7 @@ uses-skills:
 quality-gates:
   - behavior baseline captured before refactor begins
   - no regressions on critical flows
-  - complexity reduced or maintainability measurably improved
+  - cyclomatic complexity of the touched functions is equal or lower (measured with radon/ruff) and code duplication does not increase
 ---
 
 ## Steps
@@ -59,7 +59,7 @@ quality-gates:
 
 ### 5. Review / Fix Loop — `@team-lead` + `@developer` + `@qa`
 - **Input:** refactored branch + parity evidence
-- **Actions:** `@team-lead` reviews structural improvements against plan goals; flags any remaining issues; `@developer` fixes; `@qa` re-verifies
+- **Actions:** `@team-lead` reviews structural improvements against plan goals; flags any remaining issues; `@developer` fixes; `@qa` re-verifies; maximum 3 review/fix cycles — if still blocked after the third, stop and escalate to `@team-lead` with the open issue list for a decision
 - **Output:** approved refactor
 - **Done when:** `@team-lead` confirms improvement is achieved; no open issues
 
@@ -106,3 +106,5 @@ flowchart TD
 
 ## Exit
 Merged refactor + behavior parity confirmed + improvement goal achieved = refactor complete.
+
+**Next:** terminal — no follow-up workflow.

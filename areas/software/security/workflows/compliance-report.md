@@ -82,3 +82,5 @@ flowchart TD
 
 ## Exit
 Complete control matrix + gap analysis + human review flag = report ready for review.
+
+**Next:** terminal — no follow-up workflow.

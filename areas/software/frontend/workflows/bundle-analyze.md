@@ -82,3 +82,5 @@ flowchart TD
 
 ## Exit
 Report published + backlog items created = bundle analysis complete.
+
+**Next:** terminal — no follow-up workflow.

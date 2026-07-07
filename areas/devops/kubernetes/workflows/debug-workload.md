@@ -135,3 +135,5 @@ flowchart TD
 
 ## Exit
 Pod Running + metrics stable + root cause documented = workload debug complete.
+
+**Next:** terminal — root-cause doc filed in `docs/incidents/`; no follow-up workflow.

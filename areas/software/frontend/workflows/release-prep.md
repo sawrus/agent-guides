@@ -58,9 +58,9 @@ quality-gates:
 
 ### 5. Publish Release Notes & Decision — `@pm` + `@product-owner`
 - **Input:** go decision
-- **Actions:** `@pm` drafts release notes (features, fixes, known issues); `@product-owner` approves notes; publish to stakeholders; hand off to deployment process
+- **Actions:** `@pm` drafts release notes (features, fixes, known issues); `@product-owner` approves notes; update `CHANGELOG.md` with user-facing changes and bump the version source — required before handoff; publish to stakeholders; hand off to `/deploy-production`
 - **Output:** approved release notes; team informed
-- **Done when:** notes approved; deployment team has green light
+- **Done when:** notes approved; CHANGELOG and version updated; deployment team has green light
 
 ## Agent Interaction Diagram
 
@@ -97,3 +97,5 @@ flowchart TD
 
 ## Exit
 Go decision + approved release notes + all checks passed = release ready to deploy.
+
+**Next:** /deploy-production — deploy the prepared release.

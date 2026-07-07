@@ -97,3 +97,5 @@ flowchart TD
 
 ## Exit
 Accepted component + passing tests + a11y clear = ready to merge and publish to design system.
+
+**Next:** terminal — no follow-up workflow.

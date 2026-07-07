@@ -1,8 +1,8 @@
 ---
-workflow: develop-feature
+workflow: develop-feature-fullstack
 ---
 
-# Prompt: `/develop-feature`
+# Prompt: `/develop-feature-fullstack`
 
 Use when: implementing a feature end-to-end in an existing full-stack Python/FastAPI + Next.js project — DB model through API to UI.
 
@@ -12,7 +12,7 @@ Use when: implementing a feature end-to-end in an existing full-stack Python/Fas
 
 **EN:**
 ```
-/develop-feature
+/develop-feature-fullstack
 
 Feature: "Product wishlists"
 Stack: FastAPI (Python 3.12) + SQLAlchemy async + Next.js (App Router) + Tailwind
@@ -29,7 +29,7 @@ Tests: service unit tests (add duplicate = 409, over limit = 400) + API integrat
 
 **RU:**
 ```
-/develop-feature
+/develop-feature-fullstack
 
 Фича: "Списки желаний продуктов"
 Стек: FastAPI (Python 3.12) + SQLAlchemy async + Next.js (App Router) + Tailwind
@@ -50,7 +50,7 @@ Tests: service unit tests (add duplicate = 409, over limit = 400) + API integrat
 
 **EN:**
 ```
-/develop-feature
+/develop-feature-fullstack
 
 Feature: "Bulk order status update (admin API)"
 Stack: FastAPI + SQLAlchemy async (no UI changes)
@@ -69,7 +69,7 @@ Tests: test partial failure scenario; test tenant isolation; test unauthorised a
 
 **RU:**
 ```
-/develop-feature
+/develop-feature-fullstack
 
 Фича: "Массовое обновление статуса заказов (admin API)"
 Стек: FastAPI + SQLAlchemy async (без изменений UI)
@@ -92,7 +92,7 @@ Auth: требуется роль admin (scope: admin:orders:write)
 
 **EN:**
 ```
-/develop-feature
+/develop-feature-fullstack
 
 Feature: "Archive products (soft-delete)"
 Change scope: small — adds 'archived' status and filters
@@ -106,7 +106,7 @@ Tests: verify archived products hidden from public listing; visible to admin wit
 
 **RU:**
 ```
-/develop-feature
+/develop-feature-fullstack
 
 Фича: "Архивирование продуктов (soft-delete)"
 Скоуп изменения: небольшой — добавляет статус 'archived' и фильтры

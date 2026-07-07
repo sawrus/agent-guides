@@ -53,7 +53,7 @@ quality-gates:
 - **Done when:** all scenarios pass; or failures are classified (blocker vs. known flake)
 
 ### 5. Results Review & Report — `@team-lead` + `@qa`
-- **Input:** all step outputs
+- **Input:** lint/format results (step 1), unit test results + coverage report (step 2), build artifact (step 3), E2E/integration test results (step 4)
 - **Actions:** `@qa` produces `test_report.md` — step results, coverage delta, failure details; `@team-lead` reviews and makes pipeline pass/fail decision; blocker failures must be fixed before merge
 - **Output:** `test_report.md`; pipeline status: PASS / FAIL / CONDITIONAL
 - **Done when:** report complete; status communicated to `@developer`
@@ -75,7 +75,7 @@ flowchart TD
   step_3["3. Build / Prepare"]
   step_4["4. E2E / Integration Tests"]
   step_5["5. Results Review & Report"]
-  exit(["All steps green + test_report.md produced = pipeline passed."])
+  exit(["All steps green + test_report.md produced = pipeline passed. This pipeline..."])
   start --> step_1
   step_1 --> step_2
   step_2 --> step_3
@@ -92,4 +92,6 @@ flowchart TD
 <!-- agent-diagram:end -->
 
 ## Exit
-All steps green + `test_report.md` produced = pipeline passed.
+All steps green + `test_report.md` produced = pipeline passed. This pipeline is the reusable quality path that delivery workflows invoke for their verification phase.
+
+**Next:** terminal — no follow-up workflow.

@@ -14,7 +14,7 @@ outputs:
 roles:
   - devops-engineer
 execution:
-  initiator: developer
+  initiator: devops-engineer
 related-rules:
   - network-segmentation.md
   - tls-policy.md
@@ -30,6 +30,7 @@ quality-gates:
 ## Steps
 
 ### 1. Pre-Check Mesh Health — `@devops-engineer`
+- **Input:** service_name, namespace, mesh from trigger inputs
 ```bash
 # Linkerd
 linkerd check
@@ -42,6 +43,7 @@ istioctl analyze -n ${NAMESPACE}
 - **Done when:** mesh healthy with no data plane issues
 
 ### 2. Enable Injection — `@devops-engineer`
+- **Input:** mesh health confirmation from step 1
 ```bash
 # Linkerd: annotate namespace (all new pods get sidecar)
 kubectl annotate namespace ${NAMESPACE} linkerd.io/inject=enabled
@@ -55,6 +57,7 @@ kubectl rollout restart deployment/${SERVICE} -n ${NAMESPACE}
 - **Done when:** `kubectl get pods -n ${NAMESPACE}` shows 2/2 (or 3/3 for Istio) containers
 
 ### 3. Verify mTLS — `@devops-engineer`
+- **Input:** sidecar-injected pods from step 2
 ```bash
 # Linkerd: check edges (shows whether traffic is mTLS)
 linkerd viz edges deployment/${SERVICE} -n ${NAMESPACE}
@@ -78,9 +81,11 @@ spec:
     mode: STRICT
 YAML
 ```
+- If mTLS enforcement breaks live traffic: roll back the injection label immediately, re-test in permissive mode; maximum 1 retry of enforcement, then stop and escalate to `@team-lead`
 - **Done when:** `linkerd viz edges` shows SECURED=true or Istio PeerAuthentication=STRICT
 
 ### 4. Apply Traffic Policies — `@devops-engineer`
+- **Input:** mTLS-verified service from step 3
 ```bash
 # Linkerd ServiceProfile: retries + timeouts
 kubectl apply -f - << 'YAML'
@@ -102,8 +107,10 @@ spec:
         ttl: 10s
 YAML
 ```
+- **Done when:** ServiceProfile/policy applied; retry and timeout behavior visible in mesh route metrics
 
 ### 5. Validate in Mesh Dashboard — `@devops-engineer`
+- **Input:** applied traffic policies from step 4
 ```bash
 # Linkerd: open viz dashboard
 linkerd viz dashboard &
@@ -116,7 +123,8 @@ linkerd viz dashboard &
 # Istio: check Kiali or Grafana Istio dashboards
 kubectl -n istio-system port-forward svc/kiali 20001:20001 &
 ```
-- **Done when:** service visible in mesh dashboard; no unmeshed traffic warnings
+- Record mesh onboarding in `docs/networking/mesh-<service>.md` (mesh, mTLS mode, policies applied)
+- **Done when:** service visible in mesh dashboard; no unmeshed traffic warnings; onboarding recorded in `docs/networking/mesh-<service>.md`
 
 ## Agent Interaction Diagram
 
@@ -147,3 +155,5 @@ flowchart TD
 
 ## Exit
 Sidecar injected + mTLS verified + policies applied + dashboard shows service = onboarded.
+
+**Next:** terminal — no follow-up workflow.

@@ -11,6 +11,7 @@ outputs:
   - release_recommendation
 roles:
   - qa
+  - developer
   - team-lead
 execution:
   initiator: qa
@@ -79,3 +80,5 @@ flowchart TD
 
 ## Exit
 Device matrix report + explicit go/no-go = device testing complete.
+
+**Next:** terminal — no follow-up workflow.

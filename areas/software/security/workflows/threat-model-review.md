@@ -23,7 +23,7 @@ uses-skills:
 quality-gates:
   - all trust boundary crossings evaluated for all 6 STRIDE categories
   - required mitigations mapped to controls before implementation
-  - threat model saved to .security/threat-models/
+  - threat model saved to docs/security/threat-models/
 ---
 
 ## Steps
@@ -37,6 +37,7 @@ quality-gates:
 ### 2. Data Flow Diagram — `@developer`
 - **Input:** feature decomposition
 - **Actions:** map: External Entities → Processes → Data Stores → Trust Boundaries
+- **Failure path:** if data-flow diagrams or component inventory are missing or stale, block the review and request updated architecture docs from `@team-lead`; do not model from assumptions
 - **Output:** DFD (Mermaid or draw.io)
 - **Done when:** all entry points visible in diagram
 
@@ -55,7 +56,7 @@ quality-gates:
 ### 5. Generate Mitigations — `@developer`
 - **Input:** prioritized risks
 - **Actions:** map each Required threat to a control from `auth-patterns` or `crypto-standards` skills; document in threat model
-- **Output:** `.security/threat-models/threat-model-<feature>.md` — DFD + STRIDE table + mitigations
+- **Output:** `docs/security/threat-models/threat-model-<feature>.md` — DFD + STRIDE table + mitigations
 - **Done when:** all Required findings have assigned controls; document complete
 
 ## Agent Interaction Diagram
@@ -90,3 +91,5 @@ flowchart TD
 
 ## Exit
 Published threat model + Required mitigations assigned = secure implementation can proceed.
+
+**Next:** terminal — no follow-up workflow.

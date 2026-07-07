@@ -83,3 +83,5 @@ flowchart TD
 
 ## Exit
 Critical paths at threshold + trend published + gaps assigned = coverage cycle complete.
+
+**Next:** terminal — no follow-up workflow.

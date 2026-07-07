@@ -75,15 +75,15 @@ quality-gates:
 
 ### 6. Fix / Retest Loop — `@developer` + `@qa`
 - **Input:** blocking feedback
-- **Actions:** fix issues; re-run tests; re-request review
+- **Actions:** fix issues; re-run tests; re-request review; maximum 3 fix/retest cycles — if still blocked after the third, stop and escalate to `@team-lead` with the open blocker list for a decision
 - **Output:** updated branch
 - **Done when:** zero blocking issues; tests green
 
 ### 7. Acceptance — `@product-owner` + `@pm`
 - **Input:** verified endpoint + test evidence
-- **Actions:** `@product-owner` confirms endpoint meets business need; `@pm` records delivery notes
+- **Actions:** `@product-owner` confirms endpoint meets business need; `@pm` records delivery notes; update endpoint docs under `docs/**`, add a `CHANGELOG.md` entry, and bump the project version
 - **Output:** endpoint accepted; delivery note in `docs/<feature>/delivery_summary.md`
-- **Done when:** `@product-owner` signs off
+- **Done when:** `@product-owner` signs off; docs, `CHANGELOG.md`, and version bump committed
 
 ## Agent Interaction Diagram
 
@@ -127,3 +127,5 @@ flowchart TD
 
 ## Exit
 Accepted endpoint + passing tests + `@team-lead` sign-off = ready to merge.
+
+**Next:** terminal — no follow-up workflow.

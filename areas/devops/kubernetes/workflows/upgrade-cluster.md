@@ -14,7 +14,7 @@ roles:
   - devops-engineer
   - team-lead
 execution:
-  initiator: developer
+  initiator: devops-engineer
 related-rules:
   - upgrade-policy.md
   - cluster-standards.md
@@ -134,6 +134,7 @@ kubectl get pdb -A
 - **Done when:** all nodes show new version in `kubectl get nodes`
 
 ### 5. Post-Upgrade Validation — `@devops-engineer` + `@team-lead`
+- **Input:** fully upgraded node pool from step 4.
 - **Actions:**
   ```bash
   kubectl get nodes -o wide
@@ -143,7 +144,7 @@ kubectl get pdb -A
   - Run smoke tests against all Tier 1 services
   - Verify ArgoCD, Cert-Manager, Prometheus Operator pods healthy
   - Check monitoring dashboards for anomalies
-- **Output:** `upgrade_report.md` — versions before/after, issues found, time taken
+- **Output:** upgrade report at `docs/upgrades/<cluster>-<version>-upgrade-report.md` — versions before/after, issues found, time taken
 - **Done when:** all Tier 1 services healthy; no unexpected pod restarts
 
 ## Agent Interaction Diagram
@@ -191,5 +192,9 @@ ETCDCTL_API=3 etcdctl snapshot restore /backup/etcd-pre-upgrade.db \
 # 4. Restart control plane
 ```
 
+- At most one rollback-and-retry cycle per maintenance window; a second post-upgrade validation failure freezes the upgrade and escalates to `@team-lead`.
+
 ## Exit
 All nodes on target version + Tier 1 services healthy + upgrade report committed = upgrade complete.
+
+**Next:** terminal — no follow-up workflow.

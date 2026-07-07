@@ -95,3 +95,5 @@ flowchart TD
 
 ## Exit
 Zero unexpected diffs + all baseline updates designer-approved + `@team-lead` sign-off = visual review complete.
+
+**Next:** terminal — no follow-up workflow.

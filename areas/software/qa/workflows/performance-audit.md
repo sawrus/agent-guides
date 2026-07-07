@@ -86,3 +86,5 @@ flowchart TD
 
 ## Exit
 Published report + prioritized remediation plan + backlog items created = audit complete.
+
+**Next:** terminal — no follow-up workflow.

@@ -79,3 +79,5 @@ flowchart TD
 
 ## Exit
 Published lineage report + migration checklist = ready to plan the change safely.
+
+**Next:** terminal — no follow-up workflow.

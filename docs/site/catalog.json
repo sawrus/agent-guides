@@ -120,7 +120,7 @@
             }
           ],
           "quality_gates": [],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /pipeline-debug\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Classify Failure\"]\n  step_2[\"2. Diagnose by Category\"]\n  step_3[\"3. Fix & Verify\"]\n  step_4[\"4. Merge & Monitor\"]\n  exit([\"Pipeline green + root cause documented in ticket = debug complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /pipeline-debug\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Classify Failure\"]\n  step_2[\"2. Diagnose by Category\"]\n  step_3[\"3. Fix & Verify\"]\n  step_4[\"4. Merge & Monitor\"]\n  exit([\"Pipeline green + root cause documented in ticket = debug complete. Recurrin...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -201,7 +201,7 @@
             "staging deploy healthy >= 15 min before production gate",
             "manual approval from team-lead for production"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /release-pipeline\"])\n  role_1[\"team-lead\"]\n  role_2[\"pm\"]\n  role_3[\"developer\"]\n  role_4[\"devops-engineer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Release Readiness and Freeze Check\"]\n  step_2[\"2. Database Compatibility Gate\"]\n  step_3[\"3. Tag Release\"]\n  step_4[\"4. CI Release Pipeline (automated) — CI system\"]\n  step_5[\"5. Deploy Staging\"]\n  step_6[\"6. Production Gate\"]\n  step_7[\"7. Canary Deployment\"]\n  step_8[\"8. Feature Flag Progression\"]\n  step_9[\"9. Post-Deploy Validation\"]\n  exit([\"Release is complete when 100% traffic is healthy, post-deploy checks pass,...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> step_9\n  step_9 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_4 -. owns .-> step_4\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_4\n  role_5 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_1 -. owns .-> step_6\n  role_5 -. owns .-> step_6\n  role_4 -. owns .-> step_7\n  role_3 -. owns .-> step_8\n  role_5 -. owns .-> step_8\n  role_5 -. owns .-> step_9\n  role_2 -. owns .-> step_9\n  step_9 -. iterate if blocked .-> step_1",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /release-pipeline\"])\n  role_1[\"team-lead\"]\n  role_2[\"pm\"]\n  role_3[\"developer\"]\n  role_4[\"devops-engineer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Release Readiness and Freeze Check\"]\n  step_2[\"2. Database Compatibility Gate\"]\n  step_3[\"3. Tag Release\"]\n  step_4[\"4. CI Release Pipeline (automated)\"]\n  step_5[\"5. Deploy Staging\"]\n  step_6[\"6. Production Gate\"]\n  step_7[\"7. Canary Deployment\"]\n  step_8[\"8. Feature Flag Progression\"]\n  step_9[\"9. Post-Deploy Validation\"]\n  exit([\"Release is complete when 100% traffic is healthy, post-deploy checks pass,...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> step_9\n  step_9 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_1 -. owns .-> step_6\n  role_5 -. owns .-> step_6\n  role_4 -. owns .-> step_7\n  role_3 -. owns .-> step_8\n  role_5 -. owns .-> step_8\n  role_5 -. owns .-> step_9\n  role_2 -. owns .-> step_9\n  step_9 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -327,9 +327,9 @@
             }
           ],
           "quality_gates": [
-            "backup verified before any destructive action"
+            "backup verified before any destructive action — if backup verification itself failed, do not re-trigger /backup-verify; escalate the restore decision to a human (`@team-lead`)"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /db-incident\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Triage\"]\n  step_2[\"2. Immediate Mitigation by Type\"]\n  step_3[\"3. Root Cause\"]\n  step_4[\"4. Fix & Verify\"]\n  step_5[\"5. Document\"]\n  exit([\"Metrics normal + root cause documented = db incident resolved.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /db-incident\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Triage\"]\n  step_2[\"2. Immediate Mitigation by Type\"]\n  step_3[\"3. Root Cause\"]\n  step_4[\"4. Fix & Verify\"]\n  step_5[\"5. Document\"]\n  exit([\"Metrics normal + root cause documented = db incident resolved.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -379,7 +379,9 @@
             "test_results"
           ],
           "roles": [
-            "devops-engineer"
+            "devops-engineer",
+            "developer",
+            "team-lead"
           ],
           "related_rules": [
             "policy-as-code.md",
@@ -442,8 +444,7 @@
             "sbom"
           ],
           "roles": [
-            "devops-engineer",
-            "developer"
+            "devops-engineer"
           ],
           "related_rules": [
             "shift-left-policy.md",
@@ -526,7 +527,8 @@
           ],
           "roles": [
             "devops-engineer",
-            "team-lead"
+            "team-lead",
+            "product-owner"
           ],
           "related_rules": [
             "state-management.md",
@@ -550,7 +552,7 @@
             "explicit team-lead approval required before any destroy",
             "backup of state file taken before destroy"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /destroy-environment\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Confirm Scope\"]\n  step_2[\"2. Approval\"]\n  step_3[\"3. Pre-Destroy Backup\"]\n  step_4[\"4. Ordered Teardown\"]\n  step_5[\"5. Verify & Cleanup\"]\n  step_6[\"6. Document\"]\n  exit([\"Terraform state empty + cloud console clean + documentation filed = environ...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /destroy-environment\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  role_3[\"product-owner\"]\n  step_1[\"1. Confirm Scope\"]\n  step_2[\"2. Approval\"]\n  step_3[\"3. Pre-Destroy Backup\"]\n  step_4[\"4. Ordered Teardown\"]\n  step_5[\"5. Verify & Cleanup\"]\n  step_6[\"6. Document\"]\n  exit([\"Terraform state empty + cloud console clean + documentation filed = environ...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -922,12 +924,11 @@
           "outputs": [
             "running_service",
             "argocd_app",
-            "monitoring_dashboard"
+            "monitoring_onboarded"
           ],
           "roles": [
             "devops-engineer",
-            "developer",
-            "team-lead"
+            "developer"
           ],
           "related_rules": [
             "cluster-standards.md",
@@ -1445,9 +1446,10 @@
             "preliminary_postmortem"
           ],
           "roles": [
-            "devops-engineer (IC)",
-            "developer (technical lead)",
-            "pm (comms)"
+            "devops-engineer",
+            "developer",
+            "pm",
+            "team-lead"
           ],
           "related_rules": [
             "on-call-standards.md",
@@ -1469,9 +1471,9 @@
           ],
           "quality_gates": [
             "status page updated within 10 min of P0 declaration",
-            "mitigation applied before root cause fully known (if available)"
+            "a mitigation from the runbook was attempted and its result recorded before deep root-cause work began"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /incident-response\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  role_3[\"pm\"]\n  role_4[\"devops-engineer (IC)\"]\n  role_5[\"developer (technical lead)\"]\n  role_6[\"pm (comms)\"]\n  step_1[\"T+0–5: Acknowledge & Scope\"]\n  step_2[\"T+5–15: Mitigate\"]\n  step_3[\"T+10: Communicate\"]\n  step_4[\"T+15–30: Stabilize\"]\n  step_5[\"T+30: Resolve or Escalate\"]\n  step_6[\"T+60: Preliminary Postmortem\"]\n  step_7[\"T+24h: Full Postmortem\"]\n  exit([\"Service healthy + stakeholders informed + postmortem published = incident c...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_4 -. owns .-> step_5\n  role_5 -. owns .-> step_5\n  role_6 -. owns .-> step_5\n  role_2 -. owns .-> step_6\n  role_4 -. owns .-> step_6\n  role_5 -. owns .-> step_6\n  role_6 -. owns .-> step_6\n  role_2 -. owns .-> step_7\n  role_4 -. owns .-> step_7\n  role_5 -. owns .-> step_7\n  role_6 -. owns .-> step_7",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /incident-response\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  role_3[\"pm\"]\n  role_4[\"team-lead\"]\n  step_1[\"T+0–5: Acknowledge & Scope\"]\n  step_2[\"T+5–15: Mitigate\"]\n  step_3[\"T+10: Communicate\"]\n  step_4[\"T+15–30: Stabilize\"]\n  step_5[\"T+30: Resolve or Escalate\"]\n  step_6[\"T+60: Preliminary Postmortem\"]\n  step_7[\"T+24h: Full Postmortem\"]\n  exit([\"Service healthy + stakeholders informed + preliminary postmortem filed = in...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_4 -. owns .-> step_6\n  role_4 -. owns .-> step_7",
           "examples": {
             "both": [
               {
@@ -1515,9 +1517,9 @@
             "action_items_in_tracker"
           ],
           "roles": [
-            "devops-engineer (facilitator)",
+            "devops-engineer",
             "team-lead",
-            "developer (technical lead for RCA)"
+            "developer"
           ],
           "related_rules": [
             "on-call-standards.md",
@@ -1541,7 +1543,7 @@
             "postmortem published within 48h of incident resolution",
             "every action item has an owner and a due date"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /postmortem\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Collect Data (within 2h of resolution)\"]\n  step_2[\"2. Draft Postmortem\"]\n  step_3[\"3. 5-Whys Facilitation Meeting (within 48h)\"]\n  step_4[\"4. Finalize Document\"]\n  step_5[\"5. Publish & Track\"]\n  step_6[\"6. Follow-Up (2 weeks later)\"]\n  exit([\"Postmortem published + all action items in tracker + team notified = postmo...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_2 -. owns .-> step_5\n  role_2 -. owns .-> step_6",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /postmortem\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Collect Data (within 2h of resolution)\"]\n  step_2[\"2. Draft Postmortem\"]\n  step_3[\"3. 5-Whys Facilitation Meeting (within 48h)\"]\n  step_4[\"4. Finalize Document\"]\n  step_5[\"5. Publish & Track\"]\n  step_6[\"6. Follow-Up (2 weeks later)\"]\n  exit([\"Postmortem published + all action items in tracker + team notified = postmo...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_3 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -1579,7 +1581,7 @@
             "error_budget_policy_changes"
           ],
           "roles": [
-            "devops-engineer (SRE)",
+            "devops-engineer",
             "team-lead",
             "product-owner"
           ],
@@ -1589,7 +1591,6 @@
           ],
           "uses_skills": [
             "slo-sli-design",
-            "slo-implementation",
             "capacity-planning"
           ],
           "skill_refs": [
@@ -1598,16 +1599,12 @@
               "path": "areas/devops/sre/skills/slo-sli-design/SKILL.md"
             },
             {
-              "name": "slo-implementation",
-              "path": null
-            },
-            {
               "name": "capacity-planning",
               "path": "areas/devops/sre/skills/capacity-planning/SKILL.md"
             }
           ],
           "quality_gates": [
-            "SLO targets grounded in actual reliability data (not aspirational)",
+            "every proposed SLO target cites ≥ 30 days of measured SLI data",
             "every changed SLO has product-owner sign-off"
           ],
           "workflow_diagram": "flowchart TD\n  start([\"Start /slo-review\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  role_3[\"product-owner\"]\n  step_1[\"1. Pull Reliability Data\"]\n  step_2[\"2. Classify Services\"]\n  step_3[\"3. SLO Adjustment Workshop\"]\n  step_4[\"4. Update SLO Definitions\"]\n  step_5[\"5. Error Budget Policy Review\"]\n  step_6[\"6. Publish SLO Review Report\"]\n  exit([\"Report published + SLO changes applied + action items in tracker = review c...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
@@ -1658,6 +1655,7 @@
             "validation_report"
           ],
           "roles": [
+            "pm",
             "team-lead",
             "developer",
             "qa"
@@ -1685,7 +1683,7 @@
             "forward migration validated on test DB",
             "rollback or mitigation strategy documented"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /add-migration\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  role_4[\"pm\"]\n  step_1[\"1. Risk & Compatibility Analysis\"]\n  step_2[\"2. Migration Implementation\"]\n  step_3[\"3. Test DB Validation & Data Checks\"]\n  step_4[\"4. Review & Remediation Loop\"]\n  step_5[\"5. Readiness Report\"]\n  exit([\"Validated migration + readiness report + @team-lead approval = ready to dep...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_1 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /add-migration\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  role_4[\"pm\"]\n  step_1[\"1. Risk & Compatibility Analysis\"]\n  step_2[\"2. Migration Implementation\"]\n  step_3[\"3. Test DB Validation & Data Checks\"]\n  step_4[\"4. Review & Remediation Loop\"]\n  step_5[\"5. Readiness Report\"]\n  exit([\"Validated migration + readiness report + @team-lead approval = ready to dep...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -2203,7 +2201,7 @@
             "single-partition validated before full run",
             "no duplicates on unique key post-backfill"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /backfill-data\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  step_1[\"1. Impact Assessment\"]\n  step_2[\"2. Dry Run\"]\n  step_3[\"3. Execute Backfill\"]\n  step_4[\"4. Post-Backfill Validation\"]\n  exit([\"Validated backfill + notified consumers + @team-lead sign-off = backfill co...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /backfill-data\"])\n  role_1[\"developer\"]\n  role_2[\"team-lead\"]\n  role_3[\"qa\"]\n  step_1[\"1. Impact Assessment\"]\n  step_2[\"2. Dry Run\"]\n  step_3[\"3. Execute Backfill\"]\n  step_4[\"4. Post-Backfill Validation\"]\n  exit([\"Validated backfill + notified consumers + @team-lead sign-off = backfill co...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_3 -. owns .-> step_4",
           "examples": {
             "both": [
               {
@@ -2872,13 +2870,12 @@
             "qa"
           ],
           "related_rules": [
-            "project-setup-guide.md",
+            "project-guide.md",
             "backend-architecture-rule.md",
             "code-quality-guide.md",
             "env-settings-guide.md",
             "testing-ci-guide.md",
-            "e2e-test-guide.md",
-            "ci-cd-deployment-guide.md"
+            "e2e-test-guide.md"
           ],
           "uses_skills": [
             "prompt-project-planner",
@@ -2928,13 +2925,13 @@
           }
         },
         {
-          "trigger": "/debug-issue",
-          "name": "debug-issue",
+          "trigger": "/debug-issue-fullstack",
+          "name": "debug-issue-fullstack",
           "description": "Systematically diagnose and fix a bug in a full-stack Python/FastAPI + Next.js application.",
-          "workflow_path": "areas/software/full-stack/workflows/debug-issue.md",
-          "prompt_path": "areas/software/full-stack/prompts/debug-issue.md",
+          "workflow_path": "areas/software/full-stack/workflows/debug-issue-fullstack.md",
+          "prompt_path": "areas/software/full-stack/prompts/debug-issue-fullstack.md",
           "prompt_command_refs": [
-            "debug-issue"
+            "debug-issue-fullstack"
           ],
           "use_when": "diagnosing a bug in a FastAPI / SQLAlchemy service — from stack trace or symptom through to root cause, fix, and regression test.",
           "inputs": [
@@ -2948,9 +2945,8 @@
             "regression_test_added"
           ],
           "roles": [
-            "@backend-dev",
-            "@qa-engineer",
-            "@team-lead"
+            "developer",
+            "team-lead"
           ],
           "related_rules": [
             "backend-architecture-rule.md",
@@ -2976,38 +2972,38 @@
             "regression test fails before fix, passes after",
             "no mypy/ruff errors introduced"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /debug-issue\"])\n  role_1[\"backend-dev\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Triage\"]\n  step_2[\"2. Reproduce\"]\n  step_3[\"3. Root Cause Analysis\"]\n  step_4[\"4. Fix\"]\n  step_5[\"5. Review & Document\"]\n  exit([\"Merged fix + regression test + root cause documented in ticket.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /debug-issue-fullstack\"])\n  role_1[\"developer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Triage\"]\n  step_2[\"2. Reproduce\"]\n  step_3[\"3. Root Cause Analysis\"]\n  step_4[\"4. Fix\"]\n  step_5[\"5. Review & Document\"]\n  exit([\"Merged fix + regression test + root cause documented in ticket (and docs/in...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
                 "number": 1,
                 "title": "Production error with stack trace",
-                "en": "/debug-issue\n\nService: order-service (FastAPI + SQLAlchemy async)\nError: 500 Internal Server Error on POST /api/v1/orders\nAffected users: 100% of users who apply a discount code; 0% for regular checkout\nFirst seen: 2024-09-13 14:30 UTC (correlates with v2.4.1 deploy at 14:22 UTC)\nStack trace:\n  File \"src/services/order_service.py\", line 147, in create_order\n    total = subtotal - order_data['discount_amount']\n  KeyError: 'discount_amount'\nLogs (request_id=req_abc123):\n  INFO  order.validation_passed user_id=42 discount_code=SUMMER20\n  INFO  discount.applied code=SUMMER20 amount=15.00\n  ERROR order.creation_failed KeyError: 'discount_amount'\nSuspected cause: discount service returns Decimal amount but order_service expects field 'discount_amount';\n  PR #204 renamed field from 'discount' to 'discount_amount' in discount-service but order-service not updated",
-                "ru": "/debug-issue\n\nСервис: order-service (FastAPI + SQLAlchemy async)\nОшибка: 500 Internal Server Error на POST /api/v1/orders\nЗатронутые пользователи: 100% пользователей применяющих код скидки; 0% при обычном оформлении\nПервое появление: 2024-09-13 14:30 UTC (совпадает с деплоем v2.4.1 в 14:22 UTC)\nStack trace:\n  File \"src/services/order_service.py\", line 147, in create_order\n    total = subtotal - order_data['discount_amount']\n  KeyError: 'discount_amount'\nЛоги (request_id=req_abc123):\n  INFO  order.validation_passed user_id=42 discount_code=SUMMER20\n  INFO  discount.applied code=SUMMER20 amount=15.00\n  ERROR order.creation_failed KeyError: 'discount_amount'\nПредполагаемая причина: discount сервис возвращает Decimal сумму но order-service ожидает поле 'discount_amount';\n  PR #204 переименовал поле с 'discount' на 'discount_amount' в discount-service но order-service не обновлён"
+                "en": "/debug-issue-fullstack\n\nService: order-service (FastAPI + SQLAlchemy async)\nError: 500 Internal Server Error on POST /api/v1/orders\nAffected users: 100% of users who apply a discount code; 0% for regular checkout\nFirst seen: 2024-09-13 14:30 UTC (correlates with v2.4.1 deploy at 14:22 UTC)\nStack trace:\n  File \"src/services/order_service.py\", line 147, in create_order\n    total = subtotal - order_data['discount_amount']\n  KeyError: 'discount_amount'\nLogs (request_id=req_abc123):\n  INFO  order.validation_passed user_id=42 discount_code=SUMMER20\n  INFO  discount.applied code=SUMMER20 amount=15.00\n  ERROR order.creation_failed KeyError: 'discount_amount'\nSuspected cause: discount service returns Decimal amount but order_service expects field 'discount_amount';\n  PR #204 renamed field from 'discount' to 'discount_amount' in discount-service but order-service not updated",
+                "ru": "/debug-issue-fullstack\n\nСервис: order-service (FastAPI + SQLAlchemy async)\nОшибка: 500 Internal Server Error на POST /api/v1/orders\nЗатронутые пользователи: 100% пользователей применяющих код скидки; 0% при обычном оформлении\nПервое появление: 2024-09-13 14:30 UTC (совпадает с деплоем v2.4.1 в 14:22 UTC)\nStack trace:\n  File \"src/services/order_service.py\", line 147, in create_order\n    total = subtotal - order_data['discount_amount']\n  KeyError: 'discount_amount'\nЛоги (request_id=req_abc123):\n  INFO  order.validation_passed user_id=42 discount_code=SUMMER20\n  INFO  discount.applied code=SUMMER20 amount=15.00\n  ERROR order.creation_failed KeyError: 'discount_amount'\nПредполагаемая причина: discount сервис возвращает Decimal сумму но order-service ожидает поле 'discount_amount';\n  PR #204 переименовал поле с 'discount' на 'discount_amount' в discount-service но order-service не обновлён"
               },
               {
                 "number": 2,
                 "title": "Performance regression (no error)",
-                "en": "/debug-issue\n\nService: product-service\nSymptom: GET /api/v1/products p99 latency went from 85ms to 4 200ms after migration PR #198\nNo errors in logs — just extreme latency\nMigration PR #198 added: products_tags junction table (many-to-many between products and tags)\nObserved: slow queries only when tags are present; products without tags still fast (85ms)\nDB metrics: PostgreSQL CPU 8% (not saturated); query count per request jumped from 3 to ~47\nDiagnosis direction: N+1 query — each product loads its tags in a separate query; need joinedload()\nReproduce: run EXPLAIN ANALYZE on GET /products with tags; count SELECT statements in a single request",
-                "ru": "/debug-issue\n\nСервис: product-service\nСимптом: p99 задержка GET /api/v1/products выросла с 85ms до 4 200ms после миграции PR #198\nОшибок в логах нет — только экстремальная задержка\nМиграция PR #198 добавила: junction таблицу products_tags (many-to-many между products и tags)\nНаблюдение: медленные запросы только когда есть теги; продукты без тегов по-прежнему быстрые (85ms)\nМетрики БД: PostgreSQL CPU 8% (не насыщен); количество запросов на запрос выросло с 3 до ~47\nНаправление диагностики: N+1 запрос — каждый продукт загружает теги отдельным запросом; нужен joinedload()\nВоспроизвести: запустить EXPLAIN ANALYZE на GET /products с тегами; подсчитать SELECT операторы в одном запросе"
+                "en": "/debug-issue-fullstack\n\nService: product-service\nSymptom: GET /api/v1/products p99 latency went from 85ms to 4 200ms after migration PR #198\nNo errors in logs — just extreme latency\nMigration PR #198 added: products_tags junction table (many-to-many between products and tags)\nObserved: slow queries only when tags are present; products without tags still fast (85ms)\nDB metrics: PostgreSQL CPU 8% (not saturated); query count per request jumped from 3 to ~47\nDiagnosis direction: N+1 query — each product loads its tags in a separate query; need joinedload()\nReproduce: run EXPLAIN ANALYZE on GET /products with tags; count SELECT statements in a single request",
+                "ru": "/debug-issue-fullstack\n\nСервис: product-service\nСимптом: p99 задержка GET /api/v1/products выросла с 85ms до 4 200ms после миграции PR #198\nОшибок в логах нет — только экстремальная задержка\nМиграция PR #198 добавила: junction таблицу products_tags (many-to-many между products и tags)\nНаблюдение: медленные запросы только когда есть теги; продукты без тегов по-прежнему быстрые (85ms)\nМетрики БД: PostgreSQL CPU 8% (не насыщен); количество запросов на запрос выросло с 3 до ~47\nНаправление диагностики: N+1 запрос — каждый продукт загружает теги отдельным запросом; нужен joinedload()\nВоспроизвести: запустить EXPLAIN ANALYZE на GET /products с тегами; подсчитать SELECT операторы в одном запросе"
               },
               {
                 "number": 3,
                 "title": "Intermittent / Race condition",
-                "en": "/debug-issue\n\nService: payment-service\nSymptom: ~2% of payments marked as FAILED despite Stripe confirming payment succeeded\nPattern: only happens when user clicks \"Pay\" twice quickly (double-submit)\nError log: \"IntegrityError: duplicate key value violates unique constraint payments_idempotency_key\"\nThe payment actually succeeds on first attempt; second attempt raises IntegrityError which is propagated as 500\nRoot issue: IntegrityError not caught — should return 200 with existing payment, not 500\nFix direction: catch IntegrityError on idempotency key collision → query existing payment → return it\nTest: write test that sends two concurrent requests with same idempotency key; verify both return 200 with same payment_id",
-                "ru": "/debug-issue\n\nСервис: payment-service\nСимптом: ~2% платежей помечаются как FAILED несмотря на то что Stripe подтверждает успешную оплату\nПаттерн: происходит только когда пользователь быстро дважды нажимает \"Оплатить\" (двойная отправка)\nЛог ошибки: \"IntegrityError: duplicate key value violates unique constraint payments_idempotency_key\"\nПлатёж фактически проходит с первой попытки; вторая попытка вызывает IntegrityError которая возвращается как 500\nКорневая проблема: IntegrityError не перехватывается — должен возвращать 200 с существующим платежом, не 500\nНаправление исправления: перехватить IntegrityError при коллизии idempotency key → запросить существующий платёж → вернуть его\nТест: написать тест отправляющий два одновременных запроса с одинаковым idempotency key; убедиться что оба возвращают 200 с одинаковым payment_id"
+                "en": "/debug-issue-fullstack\n\nService: payment-service\nSymptom: ~2% of payments marked as FAILED despite Stripe confirming payment succeeded\nPattern: only happens when user clicks \"Pay\" twice quickly (double-submit)\nError log: \"IntegrityError: duplicate key value violates unique constraint payments_idempotency_key\"\nThe payment actually succeeds on first attempt; second attempt raises IntegrityError which is propagated as 500\nRoot issue: IntegrityError not caught — should return 200 with existing payment, not 500\nFix direction: catch IntegrityError on idempotency key collision → query existing payment → return it\nTest: write test that sends two concurrent requests with same idempotency key; verify both return 200 with same payment_id",
+                "ru": "/debug-issue-fullstack\n\nСервис: payment-service\nСимптом: ~2% платежей помечаются как FAILED несмотря на то что Stripe подтверждает успешную оплату\nПаттерн: происходит только когда пользователь быстро дважды нажимает \"Оплатить\" (двойная отправка)\nЛог ошибки: \"IntegrityError: duplicate key value violates unique constraint payments_idempotency_key\"\nПлатёж фактически проходит с первой попытки; вторая попытка вызывает IntegrityError которая возвращается как 500\nКорневая проблема: IntegrityError не перехватывается — должен возвращать 200 с существующим платежом, не 500\nНаправление исправления: перехватить IntegrityError при коллизии idempotency key → запросить существующий платёж → вернуть его\nТест: написать тест отправляющий два одновременных запроса с одинаковым idempotency key; убедиться что оба возвращают 200 с одинаковым payment_id"
               }
             ]
           }
         },
         {
-          "trigger": "/develop-feature",
-          "name": "develop-feature",
+          "trigger": "/develop-feature-fullstack",
+          "name": "develop-feature-fullstack",
           "description": "Implement a feature end-to-end in a full-stack Python/FastAPI project following the layered architecture.",
-          "workflow_path": "areas/software/full-stack/workflows/develop-feature.md",
-          "prompt_path": "areas/software/full-stack/prompts/develop-feature.md",
+          "workflow_path": "areas/software/full-stack/workflows/develop-feature-fullstack.md",
+          "prompt_path": "areas/software/full-stack/prompts/develop-feature-fullstack.md",
           "prompt_command_refs": [
-            "develop-feature"
+            "develop-feature-fullstack"
           ],
           "use_when": "implementing a feature end-to-end in an existing full-stack Python/FastAPI + Next.js project — DB model through API to UI.",
           "inputs": [
@@ -3021,10 +3017,9 @@
             "pr_ready"
           ],
           "roles": [
-            "@team-lead",
-            "@backend-dev",
-            "@frontend-dev",
-            "@qa-engineer"
+            "team-lead",
+            "developer",
+            "qa"
           ],
           "related_rules": [
             "backend-architecture-rule.md",
@@ -3052,26 +3047,26 @@
             "no mypy/ruff errors",
             "architecture layer boundaries respected (no cross-layer imports)"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-feature\"])\n  role_1[\"team-lead\"]\n  role_2[\"backend-dev\"]\n  role_3[\"frontend-dev\"]\n  role_4[\"qa-engineer\"]\n  step_1[\"1. Design\"]\n  step_2[\"2. DB Model & Migration\"]\n  step_3[\"3. Repository Layer\"]\n  step_4[\"4. Service Layer\"]\n  step_5[\"5. API Endpoint\"]\n  step_6[\"6. Frontend / UI\"]\n  step_7[\"7. QA & PR\"]\n  exit([\"Merged PR with passing CI. Feature accessible in target environment.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_4 -. owns .-> step_7\n  role_1 -. owns .-> step_7\n  step_7 -. iterate if blocked .-> step_1",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-feature-fullstack\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  step_1[\"1. Design\"]\n  step_2[\"2. DB Model & Migration\"]\n  step_3[\"3. Repository Layer\"]\n  step_4[\"4. Service Layer\"]\n  step_5[\"5. API Endpoint\"]\n  step_6[\"6. Frontend / UI\"]\n  step_7[\"7. QA & PR\"]\n  step_8[\"8. Document & Version\"]\n  exit([\"Merged PR with passing CI, docs and CHANGELOG updated, version bumped. Feat...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_2 -. owns .-> step_6\n  role_3 -. owns .-> step_7\n  role_1 -. owns .-> step_7\n  role_2 -. owns .-> step_8\n  step_8 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
                 "number": 1,
                 "title": "Full-stack feature with DB and UI",
-                "en": "/develop-feature\n\nFeature: \"Product wishlists\"\nStack: FastAPI (Python 3.12) + SQLAlchemy async + Next.js (App Router) + Tailwind\nAcceptance criteria:\n  - Users can add / remove products from their wishlist (POST/DELETE /api/v1/wishlist/{product_id})\n  - GET /api/v1/wishlist returns user's wishlist (paginated, cursor-based)\n  - Product detail page shows \"Add to wishlist\" / \"Remove\" button (heart icon) — auth required to use\n  - Wishlist page (/wishlist) lists all saved products with thumbnail, name, price\n  - Wishlist count shown in navigation header (badge)\nDB changes: create wishlist_items table (user_id, product_id, created_at); unique constraint\nConstraints: wishlist is user-scoped (cannot see others'); limit 500 items per user\nTests: service unit tests (add duplicate = 409, over limit = 400) + API integration + E2E (add → see on page)",
-                "ru": "/develop-feature\n\nФича: \"Списки желаний продуктов\"\nСтек: FastAPI (Python 3.12) + SQLAlchemy async + Next.js (App Router) + Tailwind\nКритерии приёмки:\n  - Пользователи могут добавлять / удалять продукты из списка желаний (POST/DELETE /api/v1/wishlist/{product_id})\n  - GET /api/v1/wishlist возвращает список желаний пользователя (пагинация, cursor-based)\n  - Страница продукта показывает кнопку \"Добавить в список желаний\" / \"Убрать\" (иконка сердца) — для использования требуется auth\n  - Страница /wishlist перечисляет все сохранённые продукты с миниатюрой, названием, ценой\n  - Количество в списке желаний отображается в навигационном заголовке (badge)\nИзменения БД: создать таблицу wishlist_items (user_id, product_id, created_at); уникальное ограничение\nОграничения: список желаний привязан к пользователю (нельзя видеть чужие); лимит 500 позиций на пользователя\nТесты: unit тесты сервиса (добавить дубликат = 409, превышение лимита = 400) + API интеграция + E2E (добавить → увидеть на странице)"
+                "en": "/develop-feature-fullstack\n\nFeature: \"Product wishlists\"\nStack: FastAPI (Python 3.12) + SQLAlchemy async + Next.js (App Router) + Tailwind\nAcceptance criteria:\n  - Users can add / remove products from their wishlist (POST/DELETE /api/v1/wishlist/{product_id})\n  - GET /api/v1/wishlist returns user's wishlist (paginated, cursor-based)\n  - Product detail page shows \"Add to wishlist\" / \"Remove\" button (heart icon) — auth required to use\n  - Wishlist page (/wishlist) lists all saved products with thumbnail, name, price\n  - Wishlist count shown in navigation header (badge)\nDB changes: create wishlist_items table (user_id, product_id, created_at); unique constraint\nConstraints: wishlist is user-scoped (cannot see others'); limit 500 items per user\nTests: service unit tests (add duplicate = 409, over limit = 400) + API integration + E2E (add → see on page)",
+                "ru": "/develop-feature-fullstack\n\nФича: \"Списки желаний продуктов\"\nСтек: FastAPI (Python 3.12) + SQLAlchemy async + Next.js (App Router) + Tailwind\nКритерии приёмки:\n  - Пользователи могут добавлять / удалять продукты из списка желаний (POST/DELETE /api/v1/wishlist/{product_id})\n  - GET /api/v1/wishlist возвращает список желаний пользователя (пагинация, cursor-based)\n  - Страница продукта показывает кнопку \"Добавить в список желаний\" / \"Убрать\" (иконка сердца) — для использования требуется auth\n  - Страница /wishlist перечисляет все сохранённые продукты с миниатюрой, названием, ценой\n  - Количество в списке желаний отображается в навигационном заголовке (badge)\nИзменения БД: создать таблицу wishlist_items (user_id, product_id, created_at); уникальное ограничение\nОграничения: список желаний привязан к пользователю (нельзя видеть чужие); лимит 500 позиций на пользователя\nТесты: unit тесты сервиса (добавить дубликат = 409, превышение лимита = 400) + API интеграция + E2E (добавить → увидеть на странице)"
               },
               {
                 "number": 2,
                 "title": "API-only feature (no frontend)",
-                "en": "/develop-feature\n\nFeature: \"Bulk order status update (admin API)\"\nStack: FastAPI + SQLAlchemy async (no UI changes)\nEndpoint: PATCH /api/v1/admin/orders/bulk-status\nAuth: admin role required (scope: admin:orders:write)\nRequest: { order_ids: list[int] (max 100), status: OrderStatus, reason: str }\nBusiness rules:\n  - All order_ids must belong to the same tenant (400 if mixed tenants)\n  - Only allowed transitions: PENDING → PROCESSING, PROCESSING → SHIPPED\n  - Invalid transition returns 422 with per-order error detail\n  - Successful updates emit OrderStatusChanged event per order\n  - Returns: { updated: int, failed: list[{order_id, error}] } (partial success allowed)\nDB: bulk UPDATE with RETURNING; wrap in single transaction (all-or-nothing if any fail: configurable)\nTests: test partial failure scenario; test tenant isolation; test unauthorised access (403)",
-                "ru": "/develop-feature\n\nФича: \"Массовое обновление статуса заказов (admin API)\"\nСтек: FastAPI + SQLAlchemy async (без изменений UI)\nЭндпоинт: PATCH /api/v1/admin/orders/bulk-status\nAuth: требуется роль admin (scope: admin:orders:write)\nЗапрос: { order_ids: list[int] (макс 100), status: OrderStatus, reason: str }\nБизнес правила:\n  - Все order_ids должны принадлежать одному tenant (400 если смешанные tenants)\n  - Разрешённые переходы только: PENDING → PROCESSING, PROCESSING → SHIPPED\n  - Недопустимый переход возвращает 422 с детализацией ошибок по заказу\n  - Успешные обновления отправляют событие OrderStatusChanged на каждый заказ\n  - Возвращает: { updated: int, failed: list[{order_id, error}] } (частичный успех допускается)\nБД: массовый UPDATE с RETURNING; обернуть в одну транзакцию (всё или ничего при любом сбое: настраивается)\nТесты: тест сценария частичного сбоя; тест изоляции tenant; тест несанкционированного доступа (403)"
+                "en": "/develop-feature-fullstack\n\nFeature: \"Bulk order status update (admin API)\"\nStack: FastAPI + SQLAlchemy async (no UI changes)\nEndpoint: PATCH /api/v1/admin/orders/bulk-status\nAuth: admin role required (scope: admin:orders:write)\nRequest: { order_ids: list[int] (max 100), status: OrderStatus, reason: str }\nBusiness rules:\n  - All order_ids must belong to the same tenant (400 if mixed tenants)\n  - Only allowed transitions: PENDING → PROCESSING, PROCESSING → SHIPPED\n  - Invalid transition returns 422 with per-order error detail\n  - Successful updates emit OrderStatusChanged event per order\n  - Returns: { updated: int, failed: list[{order_id, error}] } (partial success allowed)\nDB: bulk UPDATE with RETURNING; wrap in single transaction (all-or-nothing if any fail: configurable)\nTests: test partial failure scenario; test tenant isolation; test unauthorised access (403)",
+                "ru": "/develop-feature-fullstack\n\nФича: \"Массовое обновление статуса заказов (admin API)\"\nСтек: FastAPI + SQLAlchemy async (без изменений UI)\nЭндпоинт: PATCH /api/v1/admin/orders/bulk-status\nAuth: требуется роль admin (scope: admin:orders:write)\nЗапрос: { order_ids: list[int] (макс 100), status: OrderStatus, reason: str }\nБизнес правила:\n  - Все order_ids должны принадлежать одному tenant (400 если смешанные tenants)\n  - Разрешённые переходы только: PENDING → PROCESSING, PROCESSING → SHIPPED\n  - Недопустимый переход возвращает 422 с детализацией ошибок по заказу\n  - Успешные обновления отправляют событие OrderStatusChanged на каждый заказ\n  - Возвращает: { updated: int, failed: list[{order_id, error}] } (частичный успех допускается)\nБД: массовый UPDATE с RETURNING; обернуть в одну транзакцию (всё или ничего при любом сбое: настраивается)\nТесты: тест сценария частичного сбоя; тест изоляции tenant; тест несанкционированного доступа (403)"
               },
               {
                 "number": 3,
                 "title": "Quick / Small change",
-                "en": "/develop-feature\n\nFeature: \"Archive products (soft-delete)\"\nChange scope: small — adds 'archived' status and filters\nEndpoints affected:\n  - PATCH /api/v1/products/{id}: add {\"status\": \"archived\"} as valid transition (admin only)\n  - GET /api/v1/products: exclude archived by default; add ?include_archived=true param for admin\nDB: add archived_at TIMESTAMP column to products (nullable; non-breaking migration)\nNo frontend changes needed (admin uses API directly)\nTests: verify archived products hidden from public listing; visible to admin with param",
-                "ru": "/develop-feature\n\nФича: \"Архивирование продуктов (soft-delete)\"\nСкоуп изменения: небольшой — добавляет статус 'archived' и фильтры\nЗатронутые эндпоинты:\n  - PATCH /api/v1/products/{id}: добавить {\"status\": \"archived\"} как допустимый переход (только admin)\n  - GET /api/v1/products: исключать archived по умолчанию; добавить параметр ?include_archived=true для admin\nБД: добавить столбец archived_at TIMESTAMP в products (nullable; non-breaking миграция)\nИзменений frontend не нужно (admin использует API напрямую)\nТесты: убедиться что архивированные продукты скрыты из публичного листинга; видны admin с параметром"
+                "en": "/develop-feature-fullstack\n\nFeature: \"Archive products (soft-delete)\"\nChange scope: small — adds 'archived' status and filters\nEndpoints affected:\n  - PATCH /api/v1/products/{id}: add {\"status\": \"archived\"} as valid transition (admin only)\n  - GET /api/v1/products: exclude archived by default; add ?include_archived=true param for admin\nDB: add archived_at TIMESTAMP column to products (nullable; non-breaking migration)\nNo frontend changes needed (admin uses API directly)\nTests: verify archived products hidden from public listing; visible to admin with param",
+                "ru": "/develop-feature-fullstack\n\nФича: \"Архивирование продуктов (soft-delete)\"\nСкоуп изменения: небольшой — добавляет статус 'archived' и фильтры\nЗатронутые эндпоинты:\n  - PATCH /api/v1/products/{id}: добавить {\"status\": \"archived\"} как допустимый переход (только admin)\n  - GET /api/v1/products: исключать archived по умолчанию; добавить параметр ?include_archived=true для admin\nБД: добавить столбец archived_at TIMESTAMP в products (nullable; non-breaking миграция)\nИзменений frontend не нужно (admin использует API напрямую)\nТесты: убедиться что архивированные продукты скрыты из публичного листинга; видны admin с параметром"
               }
             ]
           }
@@ -3079,7 +3074,7 @@
         {
           "trigger": "/feature-implementation-flow",
           "name": "feature-implementation-flow",
-          "description": "Implement a single feature into an existing full-stack service with strict layered architecture.",
+          "description": "Implement a single feature into an existing full-stack service with strict layered architecture. Use for stack-agnostic feature increments; use /develop-feature-fullstack for the FastAPI-specific end-to-end feature workflow.",
           "workflow_path": "areas/software/full-stack/workflows/feature-implementation-flow.md",
           "prompt_path": "areas/software/full-stack/prompts/feature-implementation-flow.md",
           "prompt_command_refs": [
@@ -3183,7 +3178,7 @@
             "lint and format clean",
             "all tests in selected scope pass"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /testing-ci-pipeline\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Code Quality Check\"]\n  step_2[\"2. Unit Tests\"]\n  step_3[\"3. Build / Prepare\"]\n  step_4[\"4. E2E / Integration Tests\"]\n  step_5[\"5. Results Review & Report\"]\n  exit([\"All steps green + test_report.md produced = pipeline passed.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_2 -. owns .-> step_5",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /testing-ci-pipeline\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Code Quality Check\"]\n  step_2[\"2. Unit Tests\"]\n  step_3[\"3. Build / Prepare\"]\n  step_4[\"4. E2E / Integration Tests\"]\n  step_5[\"5. Results Review & Report\"]\n  exit([\"All steps green + test_report.md produced = pipeline passed. This pipeline...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_2 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -3253,7 +3248,7 @@
             "CI pipeline passes before manual review begins",
             "all blocking comments resolved before approval"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /code-review-workflow\"])\n  role_1[\"developer\"]\n  role_2[\"team-lead\"]\n  role_3[\"qa\"]\n  step_1[\"1. Automated Pre-check\"]\n  step_2[\"2. Context Understanding\"]\n  step_3[\"3. Code Review\"]\n  step_4[\"4. Feedback Resolution\"]\n  step_5[\"5. Approval & Merge\"]\n  exit([\"Approved and merged PR = review complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /code-review-workflow\"])\n  role_1[\"developer\"]\n  role_2[\"team-lead\"]\n  role_3[\"qa\"]\n  step_1[\"1. Automated Pre-check\"]\n  step_2[\"2. Context Understanding\"]\n  step_3[\"3. Code Review\"]\n  step_4[\"4. Feedback Resolution\"]\n  step_5[\"5. Approval & Merge\"]\n  exit([\"Approved and merged PR = review complete. This workflow is the reusable rev...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -3322,7 +3317,7 @@
             "acceptance criteria confirmed before implementation starts",
             "all checks pass (lint / test / build)"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /development-cycle-workflow\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Requirements Framing\"]\n  step_2[\"2. Technical Design\"]\n  step_3[\"3. Implementation\"]\n  step_4[\"4. Verification\"]\n  step_5[\"5. Pull Request\"]\n  step_6[\"6. Review & Merge\"]\n  exit([\"Merged PR + acceptance criteria validated in staging = task complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_2 -. owns .-> step_6\n  step_6 -. iterate if blocked .-> step_1",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /development-cycle-workflow\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Requirements Framing\"]\n  step_2[\"2. Technical Design\"]\n  step_3[\"3. Implementation\"]\n  step_4[\"4. Verification\"]\n  step_5[\"5. Pull Request\"]\n  step_6[\"6. Review & Merge\"]\n  exit([\"Merged PR + acceptance criteria validated in staging = task complete. Spec-...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_2 -. owns .-> step_6\n  step_6 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -3789,7 +3784,7 @@
             "crash reproduced before fix is written",
             "fix verified on physical device"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /crash-triage\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  step_1[\"1. Gather & Symbolicate\"]\n  step_2[\"2. Reproduce\"]\n  step_3[\"3. Root Cause\"]\n  step_4[\"4. Fix & Regression Test\"]\n  step_5[\"5. Verification\"]\n  exit([\"Device-verified fix + passing regression test + crash-free rate restored =...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /crash-triage\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Gather & Symbolicate\"]\n  step_2[\"2. Reproduce\"]\n  step_3[\"3. Root Cause\"]\n  step_4[\"4. Fix & Regression Test\"]\n  step_5[\"5. Verification\"]\n  step_6[\"6. Document Root Cause\"]\n  exit([\"Device-verified fix + passing regression test + crash-free rate restored +...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_6",
           "examples": {
             "both": [
               {
@@ -3827,6 +3822,7 @@
           ],
           "roles": [
             "qa",
+            "developer",
             "team-lead"
           ],
           "related_rules": [
@@ -4140,7 +4136,8 @@
           "roles": [
             "team-lead",
             "developer",
-            "qa"
+            "qa",
+            "pm"
           ],
           "related_rules": [
             "reliability.md",
@@ -4253,75 +4250,6 @@
           }
         },
         {
-          "trigger": "/incident-response",
-          "name": "incident-response",
-          "description": "Guide on-call engineer through structured incident response — triage, mitigation, and postmortem.",
-          "workflow_path": "areas/software/platform/workflows/incident-response.md",
-          "prompt_path": "areas/software/platform/prompts/incident-response.md",
-          "prompt_command_refs": [
-            "incident-response"
-          ],
-          "use_when": "a production incident is active — to coordinate triage, mitigation, communication, and postmortem.",
-          "inputs": [
-            "severity",
-            "service"
-          ],
-          "outputs": [
-            "resolved_incident",
-            "postmortem_draft"
-          ],
-          "roles": [
-            "team-lead",
-            "developer",
-            "qa"
-          ],
-          "related_rules": [
-            "reliability.md",
-            "security-posture.md"
-          ],
-          "uses_skills": [
-            "incident-response",
-            "observability-setup"
-          ],
-          "skill_refs": [
-            {
-              "name": "incident-response",
-              "path": "areas/software/platform/skills/incident-response/SKILL.md"
-            },
-            {
-              "name": "observability-setup",
-              "path": "areas/software/platform/skills/observability-setup/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "incident channel created within 5 minutes of P0/P1 alert",
-            "mitigation attempted per runbook before ad-hoc debugging"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /incident-response\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"pm\"]\n  step_1[\"1. Triage\"]\n  step_2[\"2. Establish Incident Channel\"]\n  step_3[\"3. Generate Hypothesis List\"]\n  step_4[\"4. Execute Mitigation\"]\n  step_5[\"5. Draft Postmortem\"]\n  step_6[\"6. Communicate Resolution\"]\n  exit([\"Services healthy + postmortem scheduled + stakeholders notified = incident...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_3 -. owns .-> step_6",
-          "examples": {
-            "both": [
-              {
-                "number": 1,
-                "title": "P1 service outage",
-                "en": "/incident-response\n\nSeverity: P1 — complete service outage\nAffected: checkout flow (POST /api/v1/orders returns 503 for 100% of requests)\nStarted: 14:32 UTC (23 minutes ago)\nAlert source: PagerDuty alert \"order-service error rate 100%\" + customer reports in Slack #support\nInitial observations:\n  - order-service pods restarting every 30 seconds (CrashLoopBackOff)\n  - Last deploy: order-service v2.6.1 — deployed 14:28 UTC (4 min before incident)\n  - DB: PostgreSQL healthy (no alerts), connection pool normal\n  - Error in logs: \"FATAL: relation 'order_status_history' does not exist\"\nIncident channel: #inc-2024-09-15-orders (already created)\nOn-call: @alice (primary), @bob (secondary)\nStatus page: needs update — \"investigating checkout issues\"",
-                "ru": "/incident-response\n\nСерьёзность: P1 — полный отказ сервиса\nЗатронуто: поток оформления заказа (POST /api/v1/orders возвращает 503 для 100% запросов)\nНачало: 14:32 UTC (23 минуты назад)\nИсточник алерта: PagerDuty алерт \"order-service error rate 100%\" + жалобы клиентов в Slack #support\nНачальные наблюдения:\n  - Поды order-service перезапускаются каждые 30 секунд (CrashLoopBackOff)\n  - Последний деплой: order-service v2.6.1 — задеплоен в 14:28 UTC (за 4 мин до инцидента)\n  - БД: PostgreSQL здоров (нет алертов), connection pool в норме\n  - Ошибка в логах: \"FATAL: relation 'order_status_history' does not exist\"\nКанал инцидента: #inc-2024-09-15-orders (уже создан)\nДежурные: @alice (основной), @bob (вторичный)\nStatus page: требует обновления — \"расследуем проблемы с оформлением заказов\""
-              },
-              {
-                "number": 2,
-                "title": "P2 performance degradation",
-                "en": "/incident-response\n\nSeverity: P2 — severe performance degradation (not full outage)\nAffected: product search — p99 latency 8s (baseline: 120ms); timeout errors at 12%\nStarted: ~11:00 UTC (gradual, no single deploy triggered it)\nObservations:\n  - Only search endpoints affected; orders, auth, payments normal\n  - Elasticsearch CPU at 94% (normal: 30%)\n  - Spike in search traffic: 3x normal (Monday morning, promotional email sent at 10:45 UTC)\n  - No recent code changes to search module\nHypothesis: Elasticsearch overwhelmed by traffic spike; may need circuit breaker\nWorkaround available: disable real-time index refresh (performance mode) — data lag 60s acceptable\nImpact: users see slow search results; purchase flow unaffected\nCommunication: notify #product (not public status page — not full outage)",
-                "ru": "/incident-response\n\nСерьёзность: P2 — серьёзная деградация производительности (не полный отказ)\nЗатронуто: поиск продуктов — p99 задержка 8s (baseline: 120ms); ошибки таймаута 12%\nНачало: ~11:00 UTC (постепенное, не вызвано одним деплоем)\nНаблюдения:\n  - Затронуты только эндпоинты поиска; заказы, auth, платежи в норме\n  - CPU Elasticsearch на 94% (норма: 30%)\n  - Всплеск поискового трафика: 3x нормального (утро понедельника, промо email отправлен в 10:45 UTC)\n  - Нет недавних изменений кода в модуле поиска\nГипотеза: Elasticsearch перегружен всплеском трафика; возможно нужен circuit breaker\nВременное решение: отключить real-time обновление индекса (режим производительности) — задержка данных 60s приемлема\nВлияние: пользователи видят медленные результаты поиска; поток покупки не затронут\nКоммуникация: уведомить #product (не публичная status page — не полный отказ)"
-              },
-              {
-                "number": 3,
-                "title": "Quick / Post-incident postmortem",
-                "en": "/incident-response\n\nMode: postmortem (incident resolved — INC-2024-142 checkout outage, duration 34 min)\nTimeline: already documented in incident channel\nRoot cause: DB migration in v2.6.1 created new table but deploy ran before migration (race condition in CI)\nAction items needed:\n  - Pre-deploy migration check (block deploy if pending migrations)\n  - Smoke test in canary phase checks table existence\n  - Runbook update: rollback procedure for failed migrations\nFormat: blameless postmortem per Google SRE template\nDue: draft to team within 48h",
-                "ru": "/incident-response\n\nРежим: postmortem (инцидент разрешён — INC-2024-142 отказ оформления заказа, длительность 34 мин)\nТаймлайн: уже задокументирован в канале инцидента\nКорневая причина: миграция БД в v2.6.1 создала новую таблицу но деплой запустился до миграции (race condition в CI)\nНеобходимые action items:\n  - Проверка миграции перед деплоем (блокировать деплой если есть ожидающие миграции)\n  - Smoke test на этапе canary проверяет существование таблицы\n  - Обновление runbook: процедура отката для неудачных миграций\nФормат: blameless postmortem по шаблону Google SRE\nСрок: черновик команде в течение 48ч"
-              }
-            ]
-          }
-        },
-        {
           "trigger": "/provision-env",
           "name": "provision-env",
           "description": "Spin up a complete, isolated environment for a branch or initialize a standing environment using Terraform.",
@@ -4342,7 +4270,8 @@
           "roles": [
             "team-lead",
             "developer",
-            "qa"
+            "qa",
+            "pm"
           ],
           "related_rules": [
             "immutability.md",
@@ -4392,6 +4321,75 @@
                 "title": "Quick / DR environment verification",
                 "en": "/provision-env\n\nPurpose: disaster recovery drill — spin up DR environment in us-east-1 from prod snapshots\nSource: RDS snapshot rds:prod-postgres-2024-09-15, S3 sync from prod-assets bucket\nTarget region: us-east-1 (DR region)\nValidation: verify app boots and read queries work; write operations disabled (DR = read-only)\nTime limit: DR environment must be ready within 2 hours (RTO target)\nDestroy after: 4 hours (drill complete, document RTO achieved)",
                 "ru": "/provision-env\n\nНазначение: учения по аварийному восстановлению — развернуть DR окружение в us-east-1 из prod снапшотов\nИсточник: RDS снапшот rds:prod-postgres-2024-09-15, S3 sync из bucket prod-assets\nЦелевой регион: us-east-1 (DR регион)\nВалидация: убедиться что приложение запускается и read запросы работают; операции записи отключены (DR = read-only)\nОграничение времени: DR окружение должно быть готово в течение 2 часов (цель RTO)\nУничтожить после: 4 часа (учения завершены, задокументировать достигнутый RTO)"
+              }
+            ]
+          }
+        },
+        {
+          "trigger": "/service-incident",
+          "name": "service-incident",
+          "description": "Guide on-call engineer through structured application incident response — triage, mitigation, and postmortem.",
+          "workflow_path": "areas/software/platform/workflows/service-incident.md",
+          "prompt_path": "areas/software/platform/prompts/service-incident.md",
+          "prompt_command_refs": [
+            "service-incident"
+          ],
+          "use_when": "a production incident is active — to coordinate triage, mitigation, communication, and postmortem.",
+          "inputs": [
+            "severity",
+            "service"
+          ],
+          "outputs": [
+            "resolved_incident",
+            "postmortem_draft"
+          ],
+          "roles": [
+            "team-lead",
+            "developer",
+            "pm"
+          ],
+          "related_rules": [
+            "reliability.md",
+            "security-posture.md"
+          ],
+          "uses_skills": [
+            "incident-response",
+            "observability-setup"
+          ],
+          "skill_refs": [
+            {
+              "name": "incident-response",
+              "path": "areas/software/platform/skills/incident-response/SKILL.md"
+            },
+            {
+              "name": "observability-setup",
+              "path": "areas/software/platform/skills/observability-setup/SKILL.md"
+            }
+          ],
+          "quality_gates": [
+            "incident channel created within 5 minutes of P0/P1 alert",
+            "mitigation attempted per runbook before ad-hoc debugging"
+          ],
+          "workflow_diagram": "flowchart TD\n  start([\"Start /service-incident\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"pm\"]\n  step_1[\"1. Triage\"]\n  step_2[\"2. Establish Incident Channel\"]\n  step_3[\"3. Generate Hypothesis List\"]\n  step_4[\"4. Execute Mitigation\"]\n  step_5[\"5. Draft Postmortem\"]\n  step_6[\"6. Communicate Resolution\"]\n  exit([\"Services healthy + postmortem scheduled + stakeholders notified = incident...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_3 -. owns .-> step_6",
+          "examples": {
+            "both": [
+              {
+                "number": 1,
+                "title": "P1 service outage",
+                "en": "/service-incident\n\nSeverity: P1 — complete service outage\nAffected: checkout flow (POST /api/v1/orders returns 503 for 100% of requests)\nStarted: 14:32 UTC (23 minutes ago)\nAlert source: PagerDuty alert \"order-service error rate 100%\" + customer reports in Slack #support\nInitial observations:\n  - order-service pods restarting every 30 seconds (CrashLoopBackOff)\n  - Last deploy: order-service v2.6.1 — deployed 14:28 UTC (4 min before incident)\n  - DB: PostgreSQL healthy (no alerts), connection pool normal\n  - Error in logs: \"FATAL: relation 'order_status_history' does not exist\"\nIncident channel: #inc-2024-09-15-orders (already created)\nOn-call: @alice (primary), @bob (secondary)\nStatus page: needs update — \"investigating checkout issues\"",
+                "ru": "/service-incident\n\nСерьёзность: P1 — полный отказ сервиса\nЗатронуто: поток оформления заказа (POST /api/v1/orders возвращает 503 для 100% запросов)\nНачало: 14:32 UTC (23 минуты назад)\nИсточник алерта: PagerDuty алерт \"order-service error rate 100%\" + жалобы клиентов в Slack #support\nНачальные наблюдения:\n  - Поды order-service перезапускаются каждые 30 секунд (CrashLoopBackOff)\n  - Последний деплой: order-service v2.6.1 — задеплоен в 14:28 UTC (за 4 мин до инцидента)\n  - БД: PostgreSQL здоров (нет алертов), connection pool в норме\n  - Ошибка в логах: \"FATAL: relation 'order_status_history' does not exist\"\nКанал инцидента: #inc-2024-09-15-orders (уже создан)\nДежурные: @alice (основной), @bob (вторичный)\nStatus page: требует обновления — \"расследуем проблемы с оформлением заказов\""
+              },
+              {
+                "number": 2,
+                "title": "P2 performance degradation",
+                "en": "/service-incident\n\nSeverity: P2 — severe performance degradation (not full outage)\nAffected: product search — p99 latency 8s (baseline: 120ms); timeout errors at 12%\nStarted: ~11:00 UTC (gradual, no single deploy triggered it)\nObservations:\n  - Only search endpoints affected; orders, auth, payments normal\n  - Elasticsearch CPU at 94% (normal: 30%)\n  - Spike in search traffic: 3x normal (Monday morning, promotional email sent at 10:45 UTC)\n  - No recent code changes to search module\nHypothesis: Elasticsearch overwhelmed by traffic spike; may need circuit breaker\nWorkaround available: disable real-time index refresh (performance mode) — data lag 60s acceptable\nImpact: users see slow search results; purchase flow unaffected\nCommunication: notify #product (not public status page — not full outage)",
+                "ru": "/service-incident\n\nСерьёзность: P2 — серьёзная деградация производительности (не полный отказ)\nЗатронуто: поиск продуктов — p99 задержка 8s (baseline: 120ms); ошибки таймаута 12%\nНачало: ~11:00 UTC (постепенное, не вызвано одним деплоем)\nНаблюдения:\n  - Затронуты только эндпоинты поиска; заказы, auth, платежи в норме\n  - CPU Elasticsearch на 94% (норма: 30%)\n  - Всплеск поискового трафика: 3x нормального (утро понедельника, промо email отправлен в 10:45 UTC)\n  - Нет недавних изменений кода в модуле поиска\nГипотеза: Elasticsearch перегружен всплеском трафика; возможно нужен circuit breaker\nВременное решение: отключить real-time обновление индекса (режим производительности) — задержка данных 60s приемлема\nВлияние: пользователи видят медленные результаты поиска; поток покупки не затронут\nКоммуникация: уведомить #product (не публичная status page — не полный отказ)"
+              },
+              {
+                "number": 3,
+                "title": "Quick / Post-incident postmortem",
+                "en": "/service-incident\n\nMode: postmortem (incident resolved — INC-2024-142 checkout outage, duration 34 min)\nTimeline: already documented in incident channel\nRoot cause: DB migration in v2.6.1 created new table but deploy ran before migration (race condition in CI)\nAction items needed:\n  - Pre-deploy migration check (block deploy if pending migrations)\n  - Smoke test in canary phase checks table existence\n  - Runbook update: rollback procedure for failed migrations\nFormat: blameless postmortem per Google SRE template\nDue: draft to team within 48h",
+                "ru": "/service-incident\n\nРежим: postmortem (инцидент разрешён — INC-2024-142 отказ оформления заказа, длительность 34 мин)\nТаймлайн: уже задокументирован в канале инцидента\nКорневая причина: миграция БД в v2.6.1 создала новую таблицу но деплой запустился до миграции (race condition в CI)\nНеобходимые action items:\n  - Проверка миграции перед деплоем (блокировать деплой если есть ожидающие миграции)\n  - Smoke test на этапе canary проверяет существование таблицы\n  - Обновление runbook: процедура отката для неудачных миграций\nФормат: blameless postmortem по шаблону Google SRE\nСрок: черновик команде в течение 48ч"
               }
             ]
           }
@@ -4892,15 +4890,15 @@
           ],
           "related_rules": [
             "secrets-policy.md",
-            "security-posture.md"
+            "secure-coding.md"
           ],
           "uses_skills": [
-            "secrets-management"
+            "crypto-standards"
           ],
           "skill_refs": [
             {
-              "name": "secrets-management",
-              "path": null
+              "name": "crypto-standards",
+              "path": "areas/software/security/skills/crypto-standards/SKILL.md"
             }
           ],
           "quality_gates": [
@@ -4977,7 +4975,7 @@
             "no critical findings unaddressed before merge",
             "high findings have 72-hour SLA assigned"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /security-scan\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. SAST Scan\"]\n  step_2[\"2. Dependency Audit\"]\n  step_3[\"3. Secret Scanning\"]\n  step_4[\"4. Infrastructure Scan\"]\n  step_5[\"5. Synthesize & Report\"]\n  exit([\"No unaddressed Critical findings + report saved = scan complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_3 -. owns .-> step_5",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /security-scan\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. SAST Scan\"]\n  step_2[\"2. Dependency Audit\"]\n  step_3[\"3. Secret Scanning\"]\n  step_4[\"4. Infrastructure Scan\"]\n  step_5[\"5. Synthesize & Report\"]\n  exit([\"No unaddressed Critical findings + report saved = scan complete. The pr_rev...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_3 -. owns .-> step_5",
           "examples": {
             "both": [
               {

@@ -91,3 +91,5 @@ flowchart TD
 
 ## Exit
 Stable test in CI + root cause documented + log updated = investigation closed.
+
+**Next:** terminal — no follow-up workflow.
