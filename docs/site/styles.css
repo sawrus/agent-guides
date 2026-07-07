@@ -11,7 +11,9 @@
   --code-fg: #0f172a;
   --mermaid-bg: rgba(226, 232, 240, 0.45);
   --header-offset: 0px;
+  --sidebar-width: 250px;
 }
+
 * {
   box-sizing: border-box;
 }
@@ -43,32 +45,29 @@ body {
   position: sticky;
   top: 0;
   z-index: 20;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 0;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   backdrop-filter: blur(14px);
 }
 .site-header__inner {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(160px, max-content);
-  gap: 0.9rem;
-  align-items: start;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) max-content;
+  gap: 0;
+  align-items: center;
 }
 .site-header__summary {
-  display: grid;
-  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
-  gap: 0.9rem;
-  align-items: center;
-  min-width: 0;
+  display: contents;
 }
 .site-header__brand {
   display: flex;
   gap: 0.75rem;
-  align-items: flex-start;
+  align-items: center;
   min-width: 0;
+  padding: 0 1rem;
 }
 .site-header__eyebrow {
-  margin: 0.2rem 0 0;
+  margin: 0;
   font-size: 0.68rem;
   line-height: 1;
   letter-spacing: 0.12em;
@@ -103,7 +102,7 @@ body {
 .search-row {
   display: grid;
   gap: 0.25rem;
-  margin-top: 0.25rem;
+  margin: 0;
 }
 .search-row__label {
   font-size: 0.7rem;
@@ -138,7 +137,7 @@ main {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   overflow: hidden;
 }
 #menu {
@@ -159,6 +158,7 @@ main {
   gap: 0.5rem;
   align-items: center;
   justify-content: flex-end;
+  padding: 0 1rem 0 0.5rem;
 }
 .toolbar select {
   flex: 0 0 auto;
@@ -287,22 +287,30 @@ code, pre { background: var(--code-bg); color: var(--code-fg); border-radius: 8p
 @media (max-width: 980px) {
   .site-header__inner {
     grid-template-columns: 1fr;
+    gap: 0.6rem;
+    padding: 0 1rem;
   }
   .site-header__summary {
+    display: grid;
     grid-template-columns: 1fr;
+    gap: 0.6rem;
     align-items: start;
+  }
+  .site-header__brand,
+  .toolbar {
+    padding: 0;
   }
   .toolbar {
     justify-content: stretch;
   }
   main {
-    grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   }
 }
 
 @media (max-width: 720px) {
   .site-header {
-    padding: 0.7rem 0.8rem;
+    padding: 0.7rem 0;
   }
   .toolbar {
     flex-wrap: wrap;
