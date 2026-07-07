@@ -45,7 +45,7 @@ For deep platform specialization, prefer the dedicated DevOps area specs:
 │   ├── provision-env.md        ← /provision-env
 │   ├── deploy-production.md    ← /deploy-production
 │   ├── drift-check.md          ← /drift-check
-│   ├── incident-response.md    ← /incident-response
+│   ├── service-incident.md     ← /service-incident
 │   └── cost-audit.md           ← /cost-audit
 └── prompts/
     └── *.md

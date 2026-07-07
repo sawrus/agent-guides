@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.6.0
+
+- Added area-level `AGENTS.md` indices for `areas/devops/` and `areas/software/` with spec selection, cross-cutting constraints, and a global workflow trigger registry.
+- Renamed colliding workflow triggers: full-stack `/develop-feature` → `/develop-feature-fullstack`, full-stack `/debug-issue` → `/debug-issue-fullstack`, platform `/incident-response` → `/service-incident` (devops/sre keeps `/incident-response`; backend keeps `/develop-feature` and `/debug-issue`). Update any saved prompts that used the old full-stack/platform commands.
+- Extended the workflow template contract: `devops-engineer` is now a standard role; every loop/retry must state a maximum iteration count and an escalation path; cross-workflow trigger chains must be acyclic or carry a circuit breaker; every workflow Exit ends with an explicit `Next: /trigger` or `Next: terminal` handoff.
+- Bounded all previously unbounded fix/retest, review, and mitigation loops across devops and software workflows, and added circuit breakers to the backup-verify ↔ db-incident, crash-triage ↔ store-submission, smoke-test ↔ deploy-production, and mlops incident→retrain→redeploy cycles.
+- Added the missing rollback failure path to `/secret-rotation` (previous credential retained until the new one is verified).
+- Standardized completion contracts: delivery workflows end with docs + CHANGELOG + version updates; incident workflows file root causes at `docs/incidents/<date>-<slug>-root-cause.md` (replacing wiki/ticket/`.data`/`.mlops`/`.security` destinations).
+- Normalized workflow role hygiene repo-wide: initiators declared in their own roles list, no undeclared or unused step roles, no parenthetical role annotations, and named handoff artifacts in step Inputs.
+- Regenerated workflow diagrams, the docs site catalog, and area quality reports (net −102 quality warnings).
+
 ## v0.5.3
 - Isolated install-time OpenCode doctor runs into a temporary XDG home so doctor no longer reuses or pollutes the user's persistent OpenCode session database.
 - Extended doctor e2e coverage to assert isolated OpenCode HOME/XDG paths and prevent `opencode.db` leaks into the caller home.

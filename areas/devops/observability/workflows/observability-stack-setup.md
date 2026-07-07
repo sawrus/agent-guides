@@ -15,7 +15,7 @@ outputs:
 roles:
   - devops-engineer
 execution:
-  initiator: developer
+  initiator: devops-engineer
 related-rules:
   - golden-signals.md
   - alerting-standards.md
@@ -35,6 +35,7 @@ quality-gates:
 ## Steps
 
 ### 1. Namespace & Prerequisites — `@devops-engineer`
+- **Input:** cluster_name, storage_class, retention_days_metrics, retention_days_logs from trigger inputs
 ```bash
 kubectl create namespace monitoring
 kubectl create namespace logging
@@ -45,8 +46,10 @@ helm repo add prometheus-community https://prometheus-community.github.io/helm-c
 helm repo add grafana              https://grafana.github.io/helm-charts
 helm repo update
 ```
+- **Done when:** namespaces Active; Helm repos added and updated
 
 ### 2. kube-prometheus-stack (Prometheus + Grafana + Alertmanager) — `@devops-engineer`
+- **Input:** namespaces and Helm repos from step 1
 ```bash
 helm upgrade --install kube-prometheus-stack \
   prometheus-community/kube-prometheus-stack \
@@ -71,8 +74,11 @@ helm upgrade --install kube-prometheus-stack \
 ```
 - Verify: `kubectl get pods -n monitoring` — all Running
 - Check Prometheus targets: `kubectl port-forward svc/kube-prometheus-stack-prometheus 9090:9090 -n monitoring`
+- If Prometheus targets stay DOWN: check scrape configs and network policies; maximum 2 fixes, then stop and escalate to `@team-lead`
+- **Done when:** all monitoring pods Running; Prometheus targets UP
 
 ### 3. Loki + Promtail (Logs) — `@devops-engineer`
+- **Input:** running kube-prometheus-stack (Grafana) from step 2
 ```bash
 helm upgrade --install loki grafana/loki-stack \
   -n logging \
@@ -85,8 +91,10 @@ helm upgrade --install loki grafana/loki-stack \
 ```
 - Add Loki datasource in Grafana: `http://loki.logging:3100`
 - Verify: `{job="loki"}` returns logs in Grafana Explore
+- **Done when:** logs queryable in Grafana Explore via the Loki datasource
 
 ### 4. Tempo (Traces) — `@devops-engineer`
+- **Input:** Grafana with Loki datasource from step 3
 ```bash
 helm upgrade --install tempo grafana/tempo \
   -n tracing \
@@ -100,8 +108,10 @@ helm upgrade --install tempo grafana/tempo \
 ```
 - Add Tempo datasource in Grafana: `http://tempo.tracing:3100`
 - Configure trace-to-log correlation: set Loki derived field `traceID` → Tempo URL
+- **Done when:** Tempo datasource saved; trace-to-log correlation configured
 
 ### 5. OpenTelemetry Collector (DaemonSet) — `@devops-engineer`
+- **Input:** Tempo OTLP endpoint from step 4
 ```bash
 helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
   -n monitoring \
@@ -109,8 +119,10 @@ helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
 ```
 - Accepts OTLP from apps (port 4317 gRPC, 4318 HTTP)
 - Forwards to Tempo
+- **Done when:** collector pods Running on all nodes; OTLP endpoints (4317/4318) reachable
 
 ### 6. Validate Stack — `@devops-engineer`
+- **Input:** deployed stack components from steps 2–5
 ```bash
 # Test Prometheus query
 kubectl exec -n monitoring deploy/prometheus -- \
@@ -138,8 +150,10 @@ YAML
 kubectl port-forward svc/grafana 3000:80 -n monitoring
 # Open Grafana → Explore → Loki → {job="monitoring"} → should show logs
 ```
+- **Done when:** `up` query returns targets; test alert visible in Alertmanager; logs visible in Grafana Explore
 
 ### 7. Import Dashboards — `@devops-engineer`
+- **Input:** validated stack from step 6; dashboard JSONs from `infra/observability/dashboards/`
 ```bash
 # Apply standard dashboard ConfigMaps (GitOps)
 kubectl apply -f infra/observability/dashboards/ -n monitoring
@@ -151,6 +165,8 @@ for dashboard in infra/observability/dashboards/*.json; do
     -d "{\"dashboard\": $(cat $dashboard), \"overwrite\": true}"
 done
 ```
+- Write `docs/observability/stack-setup-report.md` — components, versions, retention settings, datasources, Grafana URL
+- **Done when:** dashboards imported and final end-to-end validation passes — metrics flowing, dashboards render live data, test alert fires and routes to the receiver; setup report committed to `docs/observability/stack-setup-report.md`
 
 ## Agent Interaction Diagram
 
@@ -187,3 +203,5 @@ flowchart TD
 
 ## Exit
 All 4 components healthy + test alert fired + dashboards showing data = stack deployed.
+
+**Next:** /onboard-service-monitoring — instrument and monitor services on the new stack.

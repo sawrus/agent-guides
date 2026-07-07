@@ -10,6 +10,7 @@ outputs:
   - migration_artifacts
   - validation_report
 roles:
+  - pm
   - team-lead
   - developer
   - qa
@@ -66,9 +67,9 @@ quality-gates:
 - **Output:** approved migration
 - **Done when:** `@team-lead` approves; no open issues in validation report
 
-### 5. Readiness Report — `@pm` (or `@team-lead` if PM absent)
+### 5. Readiness Report — `@pm`
 - **Input:** approved migration + validation report
-- **Actions:** confirm deployment sequence (migrate before or after app rollout); document rollback command; note monitoring signals to watch post-deploy
+- **Actions:** confirm deployment sequence (migrate before or after app rollout); document rollback command; note monitoring signals to watch post-deploy; if no PM is assigned, `@team-lead` performs this step
 - **Output:** `migration_readiness.md` with deployment steps, rollback command, monitoring checklist
 - **Done when:** ops/release team has everything needed to deploy safely
 
@@ -100,13 +101,14 @@ flowchart TD
   role_1 -. owns .-> step_4
   role_2 -. owns .-> step_4
   role_4 -. owns .-> step_5
-  role_1 -. owns .-> step_5
   step_5 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->
 
 ## Iteration Loop
-If validation reveals data issues or compatibility risks → return to Step 1 for strategy revision.
+If validation reveals data issues or compatibility risks → return to Step 1 for strategy revision. Maximum 2 returns to Step 1; a third validation failure halts the migration and escalates to `@team-lead` with the open issue list for a decision.
 
 ## Exit
 Validated migration + readiness report + `@team-lead` approval = ready to deploy.
+
+**Next:** terminal — no follow-up workflow.

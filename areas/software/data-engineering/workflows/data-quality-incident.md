@@ -56,7 +56,7 @@ quality-gates:
 
 ### 5. Post-Incident — `@team-lead` + `@qa`
 - **Input:** remediated incident
-- **Actions:** add monitoring rule to catch this pattern earlier; update dbt tests to prevent regression; write postmortem: `.data/incidents/<date>-<model>-incident.md`
+- **Actions:** add monitoring rule to catch this pattern earlier; update dbt tests to prevent regression; write postmortem: `docs/incidents/<date>-<model>-root-cause.md`
 - **Output:** postmortem; monitoring updated; dbt tests updated
 - **Done when:** postmortem reviewed; prevention measures in place
 
@@ -93,3 +93,5 @@ flowchart TD
 
 ## Exit
 Clean model + postmortem published + prevention measures added = incident closed.
+
+**Next:** /backfill-data — when corrupted partitions must be rebuilt; otherwise terminal — no follow-up workflow.

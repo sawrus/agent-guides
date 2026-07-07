@@ -29,11 +29,11 @@ quality-gates:
 
 ## Steps
 
-### 1. Impact Assessment — `@developer`
+### 1. Impact Assessment — `@developer` + `@team-lead`
 - **Input:** model name, date range
 - **Actions:** identify all downstream models depending on target; estimate row count and processing time; check if model consumed by real-time dashboards or SLA-critical flows; calculate optimal batch size to avoid OOM; estimate compute cost (Snowflake credits, BigQuery bytes)
 - **Output:** impact assessment note with batch plan and cost estimate
-- **Done when:** `@team-lead` approves plan; cost within budget
+- **Done when:** `@team-lead` approves plan (written approval recorded); cost within budget
 
 ### 2. Dry Run — `@qa`
 - **Input:** approved batch plan
@@ -62,7 +62,8 @@ quality-gates:
 flowchart TD
   start(["Start /backfill-data"])
   role_1["developer"]
-  role_2["qa"]
+  role_2["team-lead"]
+  role_3["qa"]
   step_1["1. Impact Assessment"]
   step_2["2. Dry Run"]
   step_3["3. Execute Backfill"]
@@ -74,11 +75,14 @@ flowchart TD
   step_3 --> step_4
   step_4 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
+  role_2 -. owns .-> step_1
+  role_3 -. owns .-> step_2
   role_1 -. owns .-> step_3
-  role_2 -. owns .-> step_4
+  role_3 -. owns .-> step_4
 ```
 <!-- agent-diagram:end -->
 
 ## Exit
 Validated backfill + notified consumers + `@team-lead` sign-off = backfill complete.
+
+**Next:** terminal — no follow-up workflow.

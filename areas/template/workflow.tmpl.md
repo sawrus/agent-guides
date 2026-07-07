@@ -13,7 +13,7 @@ roles:
   - {{role-1 — function name, e.g. "copywriter", "campaign-manager"}}
   - {{role-2}}
 execution:
-  initiator: {{role — must be one of: product-owner | pm | team-lead | developer | qa | designer}}
+  initiator: {{role — must be one of: product-owner | pm | team-lead | developer | qa | designer | devops-engineer}}
 related-rules:
   - {{rule-filename.md}}
 uses-skills:
@@ -27,15 +27,38 @@ quality-gates:
 AGENT INSTRUCTIONS:
 1. Fill all frontmatter fields. Missing fields cause the workflow to be skipped.
 2. "trigger" must start with / and match the prompt filename exactly.
+   It must be unique across ALL areas — check the trigger registry in the
+   area-level AGENTS.md (areas/<area>/AGENTS.md) before choosing a name.
 3. "roles" are who performs steps — use function names, not seniority titles.
-4. "execution.initiator" must be one of the six standard roles.
+   No parenthetical annotations (write "pm", not "pm (comms)").
+   Every role used in a step heading must appear in "roles"; every declared
+   role must own at least one step.
+4. "execution.initiator" must be one of the seven standard roles and must
+   also appear in the workflow's own "roles" list.
 5. "quality-gates" must be objectively checkable. "Looks good" is NOT a gate.
    Good gate: "All copy variants pass brand-voice rule 2 and score ≥ 70 on Flesch-Kincaid."
 6. Every step MUST have: @role, Input, Actions (specific), Done when (checkable criterion).
+   When the @role changes between steps, the Input MUST name the artifact
+   handed over (e.g. "implementation_plan.md from step 2"), never just
+   "output of step N".
 7. Use imperative voice: "Create", "Check", "Verify", "Ask" — not "You should" or "Consider".
 8. Include a failure path for at least one step.
-9. Target: 60–200 lines total. Over 200 lines = split into two workflows.
-10. Delete all AGENT INSTRUCTIONS comments before finalising.
+9. Every loop or retry (in steps, failure paths, or an "Iteration Loop"
+   section) MUST be bounded: state the maximum iterations (default: 3) and
+   the escalation path when the bound is hit (e.g. "escalate to @team-lead
+   with the open blocker list"). "Loop until done" without a bound is a defect.
+10. If this workflow triggers another workflow (by /trigger name), the
+    combined chain must be acyclic. If two workflows can trigger each other,
+    add a circuit-breaker clause (e.g. "at most one automatic re-trigger;
+    afterwards escalate to a human decision").
+11. Delivery workflows MUST end with a "Document & Version" step: update the
+    affected docs under docs/**, CHANGELOG.md, and the version source.
+    Incident workflows MUST end with a root-cause document at
+    docs/incidents/<date>-<slug>-root-cause.md.
+12. End the Exit section with an explicit handoff: "Next: /<trigger>" for the
+    follow-up workflow, or "Next: terminal — no follow-up workflow."
+13. Target: 60–200 lines total. Over 200 lines = split into two workflows.
+14. Delete all AGENT INSTRUCTIONS comments before finalising.
 -->
 
 ## Steps
@@ -102,3 +125,5 @@ More than 8 steps = split into two workflows.
 ## Exit
 
 {{ONE_SENTENCE: when the workflow is complete and what was produced.}}
+
+**Next:** {{/follow-up-trigger — or "terminal — no follow-up workflow"}}

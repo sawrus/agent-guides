@@ -15,7 +15,7 @@ outputs:
 roles:
   - devops-engineer
 execution:
-  initiator: developer
+  initiator: devops-engineer
 related-rules:
   - cluster-standards.md
   - workload-security.md
@@ -32,16 +32,15 @@ quality-gates:
 ## Steps
 
 ### 1. Node Pre-Flight — `@devops-engineer`
+- **Input:** node_inventory, cluster_name, pod_cidr, service_cidr from trigger inputs
 - **Actions (all nodes via Ansible or manual):**
+  - Confirm requirements BEFORE installing: cluster size (node count/roles), Kubernetes version, network CIDRs (no overlap with existing networks), and security baseline sign-off from `@team-lead`
   ```bash
   # Disable swap (K8s requirement)
   swapoff -a && sed -i '/swap/d' /etc/fstab
 
   # Load required kernel modules
-  cat > /etc/modules-load.d/k8s.conf << EOF
-  overlay
-  br_netfilter
-  EOF
+  printf 'overlay\nbr_netfilter\n' > /etc/modules-load.d/k8s.conf
   modprobe overlay && modprobe br_netfilter
 
   # Kernel parameters
@@ -52,11 +51,10 @@ quality-gates:
   EOF
   sysctl --system
 
-  # Install containerd
+  # Install containerd; enable SystemdCgroup
   apt-get install -y containerd
   mkdir -p /etc/containerd
   containerd config default > /etc/containerd/config.toml
-  # Enable SystemdCgroup in containerd config
   sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
   systemctl restart containerd
 
@@ -95,6 +93,7 @@ quality-gates:
 - **Done when:** `kubectl get nodes` shows first control plane node (NotReady — CNI not yet installed)
 
 ### 3. Install CNI (Cilium) — `@devops-engineer`
+- **Input:** initialized control plane and kubeconfig from step 2
 - **Actions:**
   ```bash
   # Install Cilium CLI
@@ -108,9 +107,11 @@ quality-gates:
   # Verify
   cilium status --wait
   ```
+- If `cilium status` reports failures: check kernel modules and node connectivity; maximum 3 iterations, then stop and escalate to `@team-lead` with the open blocker list
 - **Done when:** `kubectl get nodes` shows control plane `Ready`; `cilium status` shows OK
 
 ### 4. Join Remaining Control Plane Nodes — `@devops-engineer`
+- **Input:** control-plane join command (token, CA hash, certificate key) from step 2 output
 - **Actions (on each additional CP node):**
   ```bash
   # Use join command from `kubeadm init` output (includes --control-plane --certificate-key)
@@ -123,6 +124,7 @@ quality-gates:
 - **Done when:** `kubectl get nodes` shows 3 control plane nodes `Ready`
 
 ### 5. Join Worker Nodes — `@devops-engineer`
+- **Input:** worker join command from step 2 output; HA control plane from step 4
 - **Actions (on each worker):**
   ```bash
   kubeadm join ${VIP}:6443 \
@@ -133,6 +135,7 @@ quality-gates:
 - **Done when:** all workers `Ready` in `kubectl get nodes`
 
 ### 6. etcd Encryption at Rest — `@devops-engineer`
+- **Input:** fully joined cluster (all nodes Ready) from step 5
 - **Actions:**
   ```bash
   # Create EncryptionConfiguration
@@ -155,8 +158,10 @@ quality-gates:
   # Re-encrypt all existing secrets
   kubectl get secrets -A -o json | kubectl replace -f -
   ```
+- **Done when:** apiserver restarts with encryption config; secrets re-encrypted (etcd read shows `k8s:enc:aescbc` prefix)
 
 ### 7. Core Platform Components — `@devops-engineer`
+- **Input:** encrypted, HA cluster from step 6
 - **Install in order:**
   ```bash
   # MetalLB (bare-metal load balancer)
@@ -181,14 +186,17 @@ quality-gates:
   helm upgrade --install external-secrets external-secrets/external-secrets \
     -n external-secrets --create-namespace
   ```
+- **Done when:** all component pods Running; MetalLB assigns an external IP to a test LoadBalancer Service
 
 ### 8. Apply Security Baselines — `@devops-engineer`
+- **Input:** cluster with core platform components from step 7
 - **Actions:**
   - Apply OPA/Gatekeeper or Kyverno policies from `infra/policies/`
   - Create default namespace deny-all NetworkPolicy template
   - Configure etcd backup CronJob
   - Set up `kube-prometheus-stack` for cluster monitoring
-- **Output:** `bootstrap_report.md` — cluster version, node IPs, installed components, kubeconfig location
+- **Output:** `docs/clusters/<name>-bootstrap-report.md` — cluster version, node IPs, installed components, kubeconfig location
+- **Done when:** full cluster validation passes after baselines are applied — all nodes Ready, a smoke workload deploys successfully, and policies are enforced
 
 ## Agent Interaction Diagram
 
@@ -228,3 +236,5 @@ flowchart TD
 
 ## Exit
 All nodes Ready + core components Running + etcd encrypted + monitoring live = cluster bootstrapped.
+
+**Next:** /onboard-service — deploy the first workloads onto the bootstrapped cluster.

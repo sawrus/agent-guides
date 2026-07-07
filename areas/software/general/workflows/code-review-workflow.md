@@ -91,7 +91,7 @@ flowchart TD
   step_3["3. Code Review"]
   step_4["4. Feedback Resolution"]
   step_5["5. Approval & Merge"]
-  exit(["Approved and merged PR = review complete."])
+  exit(["Approved and merged PR = review complete. This workflow is the reusable rev..."])
   start --> step_1
   step_1 --> step_2
   step_2 --> step_3
@@ -109,7 +109,9 @@ flowchart TD
 <!-- agent-diagram:end -->
 
 ## Iteration Loop
-If fixes introduce new issues → reviewer re-raises blocking comments; loop repeats until clean.
+If fixes introduce new issues → reviewer re-raises blocking comments. Maximum 3 review rounds; if blocking issues remain after the third, `@team-lead` decides between merging with follow-up tasks and rejecting the change.
 
 ## Exit
-Approved and merged PR = review complete.
+Approved and merged PR = review complete. This workflow is the reusable review phase invoked by delivery workflows (e.g. `/development-cycle-workflow` Step 6 and their spec equivalents).
+
+**Next:** terminal — no follow-up workflow.

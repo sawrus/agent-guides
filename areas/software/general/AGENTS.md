@@ -56,7 +56,7 @@ Specializations reference general guidance and keep only domain-specific overrid
 ├── skills/
 │   └── general-dev-tools/SKILL.md     ← cross-stack dev tooling patterns
 └── workflows/
-    ├── project-setup-workflow.md       ← /project-setup
-    ├── code-review-workflow.md         ← /code-review
-    └── development-cycle-workflow.md   ← /dev-cycle
+    ├── project-setup-workflow.md       ← /project-setup-workflow
+    ├── code-review-workflow.md         ← /code-review-workflow
+    └── development-cycle-workflow.md   ← /development-cycle-workflow
 ```

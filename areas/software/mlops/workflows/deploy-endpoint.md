@@ -94,7 +94,9 @@ flowchart TD
 <!-- agent-diagram:end -->
 
 ## Iteration Loop
-Auto-rollback on SLO breach returns to Step 2 (shadow) or Step 1 (full re-review).
+Auto-rollback on SLO breach returns to Step 2 (shadow) or Step 1 (full re-review). At most 2 automatic rollback-and-retry cycles per model version; a third SLO breach freezes the deployment and escalates to `@team-lead`.
 
 ## Exit
 100% traffic on new champion + stable monitoring + deployment report = endpoint promoted.
+
+**Next:** /model-incident — if the endpoint breaches SLO in production; otherwise terminal — no follow-up workflow.

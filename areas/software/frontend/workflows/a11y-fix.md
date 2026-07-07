@@ -91,3 +91,5 @@ flowchart TD
 
 ## Exit
 Zero WCAG A issues + screen reader path validated + `@team-lead` approval = a11y fix complete.
+
+**Next:** terminal — no follow-up workflow.

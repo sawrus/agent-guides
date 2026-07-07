@@ -94,3 +94,5 @@ flowchart TD
 
 ## Exit
 Post-migration tests green + catalog updated + owners notified = migration complete.
+
+**Next:** terminal — no follow-up workflow.

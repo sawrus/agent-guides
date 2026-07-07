@@ -13,6 +13,7 @@ roles:
   - team-lead
   - developer
   - qa
+  - pm
 execution:
   initiator: team-lead
 related-rules:
@@ -59,7 +60,7 @@ quality-gates:
 
 ### 5. Complete — `@pm`
 - **Input:** validated deployment
-- **Actions:** post success to `#deployments` and status page; if rollback was triggered — create P1 incident, preserve logs, assign postmortem
+- **Actions:** post success to `#deployments` and status page; if rollback was triggered — trigger `/service-incident` (preserve logs; postmortem is assigned there); do not auto-redeploy after a rollback — redeploy requires a human go decision
 - **Output:** `deployment_report.md`
 - **Done when:** team and stakeholders informed
 
@@ -95,3 +96,5 @@ flowchart TD
 
 ## Exit
 Green smoke tests + stable metrics + deployment report = release complete.
+
+**Next:** /service-incident — if rollback was triggered; otherwise terminal — no follow-up workflow.

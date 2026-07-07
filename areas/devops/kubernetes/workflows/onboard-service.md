@@ -11,11 +11,10 @@ inputs:
 outputs:
   - running_service
   - argocd_app
-  - monitoring_dashboard
+  - monitoring_onboarded
 roles:
   - devops-engineer
   - developer
-  - team-lead
 execution:
   initiator: developer
 related-rules:
@@ -109,15 +108,15 @@ quality-gates:
   curl -f http://localhost:8080/health
   ```
 - **Output:** service health endpoint returns 200
+- If the health check fails or pods restart: trigger /debug-workload (at most one automatic trigger; if the failure recurs, stop and escalate to `@team-lead` for a decision)
 - **Done when:** health check passes; no pod restarts in 5 minutes
 
 ### 7. Monitoring — `@devops-engineer`
 - **Input:** running service
 - **Actions:**
-  - Add `ServiceMonitor` for Prometheus scraping
-  - Import standard dashboard from `infra/dashboards/service-overview.json` into Grafana
-  - Set up basic alerts: HighErrorRate, HighLatency, PodRestarting
-- **Output:** metrics visible in Grafana; alerts configured
+  - Run `/onboard-service-monitoring` for instrumentation, scraping, dashboards, and alerts
+  - Verify the service appears on the standard service-overview dashboard
+- **Output:** monitoring onboarded via /onboard-service-monitoring
 - **Done when:** Grafana dashboard shows service metrics
 
 ## Agent Interaction Diagram
@@ -157,3 +156,5 @@ flowchart TD
 
 ## Exit
 Pod Running + health check passing + ArgoCD Healthy + metrics visible = service onboarded.
+
+**Next:** terminal — monitoring handled via /onboard-service-monitoring in step 7.

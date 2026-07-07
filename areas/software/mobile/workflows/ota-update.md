@@ -77,3 +77,5 @@ flowchart TD
 
 ## Exit
 100% adoption + stable error rate = OTA update complete.
+
+**Next:** terminal — post-release crash monitoring re-enters via /crash-triage (bounded by its circuit breaker).

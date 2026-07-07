@@ -48,6 +48,7 @@ quality-gates:
 - **Actions:**
   - iOS: `cd ios && pod install`; `xcodebuild archive -scheme MyApp -configuration Release`; export IPA with production signing profile
   - Android: `./gradlew clean`; `./gradlew bundleRelease`; sign with release keystore (credentials from CI secrets)
+  - if signing fails: verify certificates and provisioning profiles (validity, expiry, team ID); maximum 2 retries, then escalate to `@team-lead`
 - **Output:** IPA (iOS) / AAB (Android) artifact
 - **Done when:** build exits 0; artifact produced
 
@@ -95,3 +96,5 @@ flowchart TD
 
 ## Exit
 Signed artifact uploaded + smoke tests passed + `@team-lead` approval = release build complete.
+
+**Next:** /store-submission — pass `build_path` (the uploaded artifact) as input.

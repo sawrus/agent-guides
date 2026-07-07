@@ -22,13 +22,14 @@ uses-skills:
   - postgres-operations
   - db-performance
 quality-gates:
-  - backup verified before any destructive action
+  - backup verified before any destructive action — if backup verification itself failed, do not re-trigger /backup-verify; escalate the restore decision to a human (`@team-lead`)
   - connection pool not bypassed during incident
 ---
 
 ## Steps
 
 ### 1. Triage — `@devops-engineer`
+- **Input:** database_name, symptom, and severity from the workflow inputs.
 - Check: connection count, active queries, lock waits, replication lag
 ```sql
 SELECT count(*), state FROM pg_stat_activity GROUP BY state;
@@ -37,7 +38,8 @@ SELECT * FROM pg_stat_replication;
 - Check PgBouncer: `SHOW POOLS; SHOW STATS;`
 - **Done when:** failure mode classified (connection exhaustion / lock / slow query / replication)
 
-### 2. Immediate Mitigation by Type
+### 2. Immediate Mitigation by Type — `@devops-engineer`
+- **Input:** failure-mode classification from step 1.
 
 **Connection exhaustion (max_connections reached):**
 ```sql
@@ -68,19 +70,27 @@ SELECT pg_terminate_backend(<pid>); -- forceful
 - Check network between primary and replica
 - If lag growing: consider increasing `wal_sender_timeout`
 
+- **Done when:** immediate pressure relieved — symptom metric trending back to normal.
+
 ### 3. Root Cause — `@devops-engineer` + `@developer`
+- **Input:** triage classification from step 1 and applied mitigation state from step 2.
 - Check `pg_stat_statements` for query regressions (new slow query after deploy?)
 - Check recent schema migrations (new index missing? index not created concurrently?)
 - Review application logs for query pattern change
+- **Done when:** root cause identified with supporting evidence (query stats, migration diff, or app logs).
 
 ### 4. Fix & Verify — `@devops-engineer`
+- **Input:** root cause from step 3.
 - Apply fix (create missing index, kill leaked connections, tune pgbouncer)
 - Watch metrics stabilize over 5 min
 - **Done when:** connection count normal, query latency normal, no lock waits
 
 ### 5. Document — `@devops-engineer`
+- **Input:** verified fix and stable metrics from step 4.
 - Root cause + fix in incident ticket
+- File the root cause at `docs/incidents/<date>-db-<slug>-root-cause.md`
 - If query regression: create optimization ticket for development team
+- **Done when:** root-cause doc committed and follow-up tickets created.
 
 ## Agent Interaction Diagram
 
@@ -103,7 +113,6 @@ flowchart TD
   step_4 --> step_5
   step_5 --> exit
   role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
   role_1 -. owns .-> step_2
   role_1 -. owns .-> step_3
   role_2 -. owns .-> step_3
@@ -114,3 +123,5 @@ flowchart TD
 
 ## Exit
 Metrics normal + root cause documented = db incident resolved.
+
+**Next:** /postmortem — for P1/P2 incidents; otherwise terminal.

@@ -14,7 +14,7 @@ roles:
   - devops-engineer
   - team-lead
 execution:
-  initiator: developer
+  initiator: devops-engineer
 related-rules:
   - iac-standards.md
   - state-management.md
@@ -31,6 +31,7 @@ quality-gates:
 ## Steps
 
 ### 1. Design Interface — `@devops-engineer` + `@team-lead`
+- **Input:** module_name, module_purpose, cloud_targets from trigger inputs
 - Define: what problem does this module solve?
 - Map all input variables (required vs optional with defaults)
 - Map all outputs callers will need
@@ -38,6 +39,7 @@ quality-gates:
 - **Done when:** interface design reviewed and signed off
 
 ### 2. Implement Module — `@devops-engineer`
+- **Input:** signed-off interface design from step 1
 ```
 modules/<module-name>/
 ├── main.tf         ← resource definitions
@@ -52,6 +54,7 @@ modules/<module-name>/
 - **Done when:** `terraform validate` passes; `terraform fmt -check` passes
 
 ### 3. Write Examples — `@devops-engineer`
+- **Input:** module implementation from step 2
 ```
 modules/<module-name>/examples/
 ├── basic/          ← minimal config, happy path
@@ -66,6 +69,7 @@ modules/<module-name>/examples/
 - **Done when:** both examples produce a clean plan
 
 ### 4. Test — `@devops-engineer`
+- **Input:** module and examples from steps 2–3
 ```bash
 # Terratest (Go)
 cd modules/<module-name>/test
@@ -78,8 +82,11 @@ checkov -d modules/<module-name>/ --quiet
 terraform-docs markdown table modules/<module-name>/ \
   > modules/<module-name>/README.md
 ```
+- If tests fail: fix the module and re-run; maximum 3 iterations, then stop and escalate to `@team-lead` with the open blocker list
+- **Done when:** Terratest passes; checkov reports no failed checks; README regenerated
 
 ### 5. Code Review — `@team-lead`
+- **Input:** module PR with implementation, examples, test results, and generated README from steps 2–4
 - Interface is minimal (no unnecessary variables)
 - No provider config in module
 - Examples clean
@@ -87,6 +94,8 @@ terraform-docs markdown table modules/<module-name>/ \
 - **Done when:** PR approved
 
 ### 6. Release — `@devops-engineer`
+- **Input:** approved PR from step 5
+- Update the module `CHANGELOG.md` before tagging
 ```bash
 # Semantic version tag
 git tag -a modules/<module-name>/v1.0.0 \
@@ -96,6 +105,8 @@ git push origin modules/<module-name>/v1.0.0
 # Update module registry / internal docs
 # Reference in other modules: ?ref=v1.0.0 (never ?ref=main)
 ```
+- Post-release check: verify consumption — `terraform init` + plan against the basic example root referencing the published tag
+- **Done when:** CHANGELOG updated and semver tag pushed; post-release consumption check produces a clean plan
 
 ## Agent Interaction Diagram
 
@@ -131,3 +142,5 @@ flowchart TD
 
 ## Exit
 Module published + examples tested + documentation complete = module released.
+
+**Next:** terminal — no follow-up workflow.

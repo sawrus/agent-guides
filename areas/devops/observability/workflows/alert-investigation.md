@@ -32,6 +32,7 @@ quality-gates:
 ## Steps
 
 ### 1. Acknowledge & Classify — `@devops-engineer`
+- **Input:** alert_name, alert_labels, firing_since from trigger inputs
 - Open Grafana: navigate to service dashboard for the affected service
 - Check: is this a real user-impact alert or a false positive?
   - Real: error rate / latency / saturation affecting users
@@ -40,6 +41,7 @@ quality-gates:
 - **Done when:** alert classified (real/false-positive) and current status known
 
 ### 2. Correlate Signals — `@devops-engineer`
+- **Input:** classified alert (real/false-positive) from step 1
 
 **Metrics (Prometheus):**
 ```promql
@@ -64,7 +66,10 @@ increase(kube_pod_container_status_restarts_total{namespace="$ns"}[30m])
 - Search by trace_id from logs → view full request trace
 - Filter by `duration > 1s AND status=error` to find slow/failing requests
 
+- **Done when:** correlated evidence (metrics, logs, traces) collected for the firing window
+
 ### 3. Identify Root Cause — `@devops-engineer` + `@developer`
+- **Input:** correlated signal evidence from step 2
 
 Decision tree:
 ```
@@ -84,15 +89,23 @@ Saturation?
   → Connections: check PgBouncer, connection leak
 ```
 
+- **Done when:** root cause identified (or narrowed to a rollback/scale decision) before any silence is applied
+
 ### 4. Mitigate — `@devops-engineer`
+- **Input:** root cause from step 3
 - Apply fix (rollback, scale, restart, config change)
 - Watch: is the alert resolving? (usually auto-resolves within `for:` duration after fix)
-- If not resolving: escalate to P1
+- If not resolving: trigger /incident-response (at most one automatic trigger; if the condition recurs, stop and escalate to a human decision)
+- **Done when:** alert resolved, or /incident-response triggered
 
 ### 5. Post-Investigation Notes — `@devops-engineer`
+- **Input:** mitigation outcome from step 4
 - Was the runbook adequate? (could a junior follow it to resolution?)
 - Is the alert threshold correct? (too sensitive = toil; too loose = misses real issues)
 - Create ticket if: runbook needs update, threshold needs tuning, or root cause needs a code fix
+- For P1-class alerts: write `docs/incidents/<date>-<alert>-root-cause.md`
+- Always update the service runbook if the alert was actionable
+- **Done when:** notes recorded; P1 root-cause doc written when applicable; runbook updated if the alert was actionable
 
 ## Agent Interaction Diagram
 
@@ -125,3 +138,5 @@ flowchart TD
 
 ## Exit
 Alert resolved or escalated + root cause noted + runbook quality assessed = investigation complete.
+
+**Next:** /incident-response when escalated in step 4; otherwise terminal — no follow-up workflow.

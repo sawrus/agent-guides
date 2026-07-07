@@ -89,3 +89,5 @@ flowchart TD
 
 ## Exit
 Signed scorecard + promotion recommendation = evaluation complete; feed into `/deploy-endpoint` or `/champion-challenger`.
+
+**Next:** /deploy-endpoint or /champion-challenger — depending on evaluation outcome; otherwise terminal.

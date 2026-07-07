@@ -56,7 +56,7 @@ quality-gates:
 
 ### 5. Communicate Go/No-Go — `@pm` + `@qa`
 - **Input:** risk assessment
-- **Actions:** `@qa` produces `smoke_result_summary.md`; `@pm` communicates status to stakeholders; if rollback: trigger `/deploy-production` with previous version
+- **Actions:** `@qa` produces `smoke_result_summary.md`; `@pm` communicates status to stakeholders; if rollback: trigger `/deploy-production` with previous version — at most one automatic rollback deploy per release; if the rolled-back version also fails smoke, halt all automatic deploys, escalate to `@team-lead`, and trigger `/service-incident`
 - **Output:** `smoke_result_summary.md`; stakeholders informed
 - **Done when:** all parties notified; action taken if needed
 
@@ -92,4 +92,6 @@ flowchart TD
 <!-- agent-diagram:end -->
 
 ## Exit
-Go status + summary published = deployment validated. No-go + rollback triggered = incident response starts.
+Go status + summary published = deployment validated. No-go + rollback triggered = trigger `/service-incident`.
+
+**Next:** /service-incident — on no-go with rollback; otherwise terminal — no follow-up workflow.

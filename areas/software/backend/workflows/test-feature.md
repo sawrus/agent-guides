@@ -95,3 +95,5 @@ flowchart TD
 
 ## Exit
 Stable test suite + coverage threshold met + `@team-lead` approval = tests ready to merge.
+
+**Next:** terminal — no follow-up workflow.

@@ -12,7 +12,7 @@ outputs:
 roles:
   - devops-engineer
 execution:
-  initiator: developer
+  initiator: devops-engineer
 related-rules:
   - backup-policy.md
 uses-skills:
@@ -28,6 +28,7 @@ quality-gates:
 ## Steps
 
 ### 1. Pre-Check: Backup Catalog — `@devops-engineer`
+- **Input:** database_name and backup_tool from the workflow inputs.
 ```bash
 # pgBackRest
 pgbackrest --stanza=main info
@@ -43,6 +44,7 @@ fi
 - **Done when:** backup catalog exists, last backup < 26h old
 
 ### 2. Provision Test Environment — `@devops-engineer`
+- **Input:** healthy backup catalog from step 1.
 ```bash
 # Spin up isolated postgres pod for restore test
 kubectl run restore-test \
@@ -52,8 +54,10 @@ kubectl run restore-test \
   -n database-ops
 kubectl wait pod/restore-test --for=condition=Ready --timeout=60s
 ```
+- **Done when:** restore-test pod Ready in the `database-ops` namespace.
 
 ### 3. Restore Latest Backup — `@devops-engineer`
+- **Input:** running restore-test environment from step 2.
 ```bash
 # Restore to test pod (pgBackRest delta restore is faster if data dir pre-exists)
 pgbackrest --stanza=main restore \
@@ -68,6 +72,7 @@ psql -c "SELECT 1" postgres  # must succeed
 - **Done when:** postgres starts cleanly; no recovery errors in log
 
 ### 4. Row Count Validation — `@devops-engineer`
+- **Input:** restored database from step 3.
 ```bash
 # Compare critical table row counts: restored vs production
 TABLES="orders payments users products"
@@ -82,12 +87,13 @@ done
 - **Done when:** all critical tables within 1% row count of production
 
 ### 5. Report + Cleanup — `@devops-engineer`
+- **Input:** row count validation results from step 4.
 ```bash
 # Destroy test pod immediately after verification
 kubectl delete pod restore-test -n database-ops
 
-# Write report
-cat > backup-verify-$(date +%Y%m%d).txt << EOF
+# Write report and commit it to the repo
+cat > docs/db/backup-verification-$(date +%Y%m%d).md << EOF
 Date: $(date -u)
 Backup age: ${AGE_HOURS}h
 Restore: SUCCESS
@@ -101,7 +107,8 @@ curl -X POST $SLACK_WEBHOOK \
   -H 'Content-type: application/json' \
   --data "{\"text\":\"✅ DB backup verified $(date +%Y-%m-%d) — restore successful, all tables within 1%\"}"
 ```
-- **If any step fails:** post failure to Slack + page on-call → P1 incident
+- **Done when:** report committed to `docs/db/backup-verification-<date>.md`, result posted to Slack, and test env destroyed.
+- **If any step fails:** post failure to Slack + page on-call, and trigger /db-incident at most once per backup-verify run — mark the backup as UNVERIFIED in the incident. /db-incident must not gate on re-running this failed verification; restore decisions escalate to `@team-lead` (human) instead.
 
 ## Agent Interaction Diagram
 
@@ -132,3 +139,5 @@ flowchart TD
 
 ## Exit
 Restore successful + row counts validated + test env destroyed + report posted = backup verified.
+
+**Next:** terminal — no follow-up workflow.

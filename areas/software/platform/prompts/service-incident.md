@@ -1,8 +1,8 @@
 ---
-workflow: incident-response
+workflow: service-incident
 ---
 
-# Prompt: `/incident-response`
+# Prompt: `/service-incident`
 
 Use when: a production incident is active — to coordinate triage, mitigation, communication, and postmortem.
 
@@ -12,7 +12,7 @@ Use when: a production incident is active — to coordinate triage, mitigation, 
 
 **EN:**
 ```
-/incident-response
+/service-incident
 
 Severity: P1 — complete service outage
 Affected: checkout flow (POST /api/v1/orders returns 503 for 100% of requests)
@@ -30,7 +30,7 @@ Status page: needs update — "investigating checkout issues"
 
 **RU:**
 ```
-/incident-response
+/service-incident
 
 Серьёзность: P1 — полный отказ сервиса
 Затронуто: поток оформления заказа (POST /api/v1/orders возвращает 503 для 100% запросов)
@@ -52,7 +52,7 @@ Status page: требует обновления — "расследуем пр�
 
 **EN:**
 ```
-/incident-response
+/service-incident
 
 Severity: P2 — severe performance degradation (not full outage)
 Affected: product search — p99 latency 8s (baseline: 120ms); timeout errors at 12%
@@ -70,7 +70,7 @@ Communication: notify #product (not public status page — not full outage)
 
 **RU:**
 ```
-/incident-response
+/service-incident
 
 Серьёзность: P2 — серьёзная деградация производительности (не полный отказ)
 Затронуто: поиск продуктов — p99 задержка 8s (baseline: 120ms); ошибки таймаута 12%
@@ -92,7 +92,7 @@ Communication: notify #product (not public status page — not full outage)
 
 **EN:**
 ```
-/incident-response
+/service-incident
 
 Mode: postmortem (incident resolved — INC-2024-142 checkout outage, duration 34 min)
 Timeline: already documented in incident channel
@@ -107,7 +107,7 @@ Due: draft to team within 48h
 
 **RU:**
 ```
-/incident-response
+/service-incident
 
 Режим: postmortem (инцидент разрешён — INC-2024-142 отказ оформления заказа, длительность 34 мин)
 Таймлайн: уже задокументирован в канале инцидента

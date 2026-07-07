@@ -13,6 +13,7 @@ roles:
   - team-lead
   - developer
   - qa
+  - pm
 execution:
   initiator: team-lead
 related-rules:
@@ -111,3 +112,5 @@ flowchart TD
 
 ## Exit
 Smoke tests green + URL published = environment ready for use.
+
+**Next:** terminal — no follow-up workflow.

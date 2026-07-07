@@ -89,3 +89,5 @@ flowchart TD
 
 ## Exit
 Published report + Critical/High findings assigned = pen-test complete.
+
+**Next:** terminal — no follow-up workflow.

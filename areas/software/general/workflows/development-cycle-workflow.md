@@ -56,7 +56,7 @@ quality-gates:
 - **Done when:** implementation covers all acceptance criteria
 
 ### 4. Verification — `@developer` → `@qa`
-- **Input:** code changes on branch
+- **Input:** feature branch with green local tests from step 3 (handed from `@developer` to `@qa`)
 - **Actions:**
   - `make test` — all tests pass
   - `make lint` — zero errors
@@ -74,9 +74,9 @@ quality-gates:
 
 ### 6. Review & Merge — `@team-lead` (coordinated by `@pm`)
 - **Input:** open PR
-- **Actions:** `@team-lead` reviews code quality, architecture, and tests; `@developer` addresses all blocking comments; squash or rebase per project convention; merge; delete feature branch
+- **Actions:** `@team-lead` reviews code quality, architecture, and tests; `@developer` addresses all blocking comments; squash or rebase per project convention; merge; delete feature branch; update docs under `docs/**`, add a `CHANGELOG.md` entry, and bump the project version (root completion contract)
 - **Output:** merged PR; feature branch deleted
-- **Done when:** PR is merged and change is verified in staging/preview
+- **Done when:** PR is merged and change is verified in staging/preview; docs, `CHANGELOG.md`, and version bump committed
 
 ## Agent Interaction Diagram
 
@@ -95,7 +95,7 @@ flowchart TD
   step_4["4. Verification"]
   step_5["5. Pull Request"]
   step_6["6. Review & Merge"]
-  exit(["Merged PR + acceptance criteria validated in staging = task complete."])
+  exit(["Merged PR + acceptance criteria validated in staging = task complete. Spec-..."])
   start --> step_1
   step_1 --> step_2
   step_2 --> step_3
@@ -117,7 +117,9 @@ flowchart TD
 <!-- agent-diagram:end -->
 
 ## Iteration Loop
-If verification (Step 4) or review (Step 6) reveals gaps → return to Step 3. `@pm` tracks blockers and timeline.
+If verification (Step 4) or review (Step 6) reveals gaps → return to Step 3. Maximum 3 returns; if still blocked after the third, stop and escalate to `@team-lead` with the open blocker list for a decision. `@pm` tracks blockers and timeline.
 
 ## Exit
-Merged PR + acceptance criteria validated in staging = task complete.
+Merged PR + acceptance criteria validated in staging = task complete. Spec-specific delivery workflows take precedence over this generic cycle when one exists for the domain.
+
+**Next:** terminal — no follow-up workflow.

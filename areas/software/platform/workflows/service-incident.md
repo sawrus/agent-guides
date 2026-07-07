@@ -1,8 +1,8 @@
 ---
-name: incident-response
+name: service-incident
 type: workflow
-trigger: /incident-response
-description: Guide on-call engineer through structured incident response — triage, mitigation, and postmortem.
+trigger: /service-incident
+description: Guide on-call engineer through structured application incident response — triage, mitigation, and postmortem.
 inputs:
   - severity
   - service
@@ -12,7 +12,7 @@ outputs:
 roles:
   - team-lead
   - developer
-  - qa
+  - pm
 execution:
   initiator: team-lead
 related-rules:
@@ -48,16 +48,16 @@ quality-gates:
 - **Done when:** top hypothesis identified; runbook commands ready
 
 ### 4. Execute Mitigation — `@developer`
-- **Input:** prioritized hypothesis + runbook
-- **Actions:** per hypothesis (most likely first): provide exact kubectl / aws / psql commands; execute; monitor 2 minutes; if metrics improve → STABILIZE; else → next hypothesis
-- **Output:** metrics stabilizing or next hypothesis attempted
+- **Input:** prioritized hypothesis list + runbook links from step 3
+- **Actions:** per hypothesis (most likely first): provide exact kubectl / aws / psql commands; execute; monitor 2 minutes; if metrics improve → STABILIZE; else → next hypothesis; if all listed hypotheses are exhausted without stabilization → stop, escalate to `@team-lead` to raise severity, engage the service owner or vendor support, and regenerate the hypothesis list once (step 3) — at most one regeneration
+- **Output:** metrics stabilizing or escalation with attempted-mitigation log
 - **Done when:** services healthy; error rate returned to baseline
 
 ### 5. Draft Postmortem — `@team-lead`
-- **Input:** resolved incident + timeline
-- **Actions:** auto-generate postmortem template with timeline from monitoring data; flag gaps requiring human input; schedule postmortem review within 48 hours
-- **Output:** `postmortem_draft.md`
-- **Done when:** draft complete; meeting scheduled
+- **Input:** resolved incident + timeline from the incident channel
+- **Actions:** auto-generate postmortem template with timeline from monitoring data; flag gaps requiring human input; save draft as `docs/incidents/<date>-<service>-root-cause.md`; schedule postmortem review within 48 hours
+- **Output:** `docs/incidents/<date>-<service>-root-cause.md` (draft)
+- **Done when:** draft committed; meeting scheduled
 
 ### 6. Communicate Resolution — `@pm`
 - **Input:** resolved incident
@@ -70,7 +70,7 @@ quality-gates:
 <!-- agent-diagram:start -->
 ```mermaid
 flowchart TD
-  start(["Start /incident-response"])
+  start(["Start /service-incident"])
   role_1["team-lead"]
   role_2["developer"]
   role_3["pm"]
@@ -100,3 +100,5 @@ flowchart TD
 
 ## Exit
 Services healthy + postmortem scheduled + stakeholders notified = incident resolved.
+
+**Next:** `/postmortem` (devops/sre) — consumes the draft at `docs/incidents/<date>-<service>-root-cause.md`.

@@ -24,14 +24,14 @@
   {
     "specialization": "areas/devops/ci-cd",
     "environment": "opencode",
-    "score": 99,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
       "documentation_readiness": 95
     },
@@ -40,6 +40,11 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/ci-cd/workflows/release-pipeline.md"
+      },
+      {
+        "severity": "warn",
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/devops/ci-cd"
       }
     ]
   },
@@ -134,7 +139,7 @@
   {
     "specialization": "areas/devops/database-ops",
     "environment": "codex",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -143,17 +148,12 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 95
+      "documentation_readiness": 100
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/database-ops/workflows/backup-verify.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/database-ops/workflows/backup-verify.md"
       },
       {
@@ -173,9 +173,9 @@
       "sdlc_coverage": 90,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
-      "documentation_readiness": 95
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -185,20 +185,20 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/database-ops/workflows/backup-verify.md"
+        "message": "workflow lacks `actions` step language",
+        "path": "areas/devops/database-ops/workflows/db-incident.md"
       },
       {
         "severity": "warn",
-        "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/database-ops/workflows/db-incident.md"
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/devops/database-ops"
       }
     ]
   },
   {
     "specialization": "areas/devops/database-ops",
     "environment": "claude",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -207,17 +207,12 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 95
+      "documentation_readiness": 100
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/database-ops/workflows/backup-verify.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/database-ops/workflows/backup-verify.md"
       },
       {
@@ -230,7 +225,7 @@
   {
     "specialization": "areas/devops/database-ops",
     "environment": "gemini",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -239,17 +234,12 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 95
+      "documentation_readiness": 100
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/database-ops/workflows/backup-verify.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/database-ops/workflows/backup-verify.md"
       },
       {
@@ -262,7 +252,7 @@
   {
     "specialization": "areas/devops/database-ops",
     "environment": "antigravity",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -271,17 +261,12 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 95
+      "documentation_readiness": 100
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/database-ops/workflows/backup-verify.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/database-ops/workflows/backup-verify.md"
       },
       {
@@ -294,7 +279,7 @@
   {
     "specialization": "areas/devops/database-ops",
     "environment": "cursor",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -303,17 +288,12 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 95
+      "documentation_readiness": 100
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/database-ops/workflows/backup-verify.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/database-ops/workflows/backup-verify.md"
       },
       {
@@ -353,14 +333,14 @@
   {
     "specialization": "areas/devops/devsecops",
     "environment": "opencode",
-    "score": 99,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
       "sdlc_coverage": 90,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
       "documentation_readiness": 100
     },
@@ -374,6 +354,11 @@
         "severity": "warn",
         "message": "workflow lacks `actions` step language",
         "path": "areas/devops/devsecops/workflows/security-scan-pipeline.md"
+      },
+      {
+        "severity": "warn",
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/devops/devsecops"
       }
     ]
   },
@@ -492,7 +477,7 @@
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
-      "sdlc_coverage": 80,
+      "sdlc_coverage": 85,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
@@ -508,11 +493,6 @@
       {
         "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/infrastructure/workflows/drift-remediation.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
         "path": "areas/devops/infrastructure/workflows/drift-remediation.md"
       },
       {
@@ -525,14 +505,14 @@
   {
     "specialization": "areas/devops/infrastructure",
     "environment": "opencode",
-    "score": 98,
+    "score": 97,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
-      "sdlc_coverage": 80,
+      "sdlc_coverage": 85,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
       "documentation_readiness": 100
     },
@@ -549,13 +529,13 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/infrastructure/workflows/drift-remediation.md"
+        "message": "workflow lacks `actions` step language",
+        "path": "areas/devops/infrastructure/workflows/module-development.md"
       },
       {
         "severity": "warn",
-        "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/infrastructure/workflows/module-development.md"
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/devops/infrastructure"
       }
     ]
   },
@@ -566,7 +546,7 @@
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
-      "sdlc_coverage": 80,
+      "sdlc_coverage": 85,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
@@ -582,11 +562,6 @@
       {
         "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/infrastructure/workflows/drift-remediation.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
         "path": "areas/devops/infrastructure/workflows/drift-remediation.md"
       },
       {
@@ -603,7 +578,7 @@
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
-      "sdlc_coverage": 80,
+      "sdlc_coverage": 85,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
@@ -619,11 +594,6 @@
       {
         "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/infrastructure/workflows/drift-remediation.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
         "path": "areas/devops/infrastructure/workflows/drift-remediation.md"
       },
       {
@@ -640,7 +610,7 @@
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
-      "sdlc_coverage": 80,
+      "sdlc_coverage": 85,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
@@ -656,11 +626,6 @@
       {
         "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/infrastructure/workflows/drift-remediation.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
         "path": "areas/devops/infrastructure/workflows/drift-remediation.md"
       },
       {
@@ -677,7 +642,7 @@
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
-      "sdlc_coverage": 80,
+      "sdlc_coverage": 85,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
@@ -697,11 +662,6 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/infrastructure/workflows/drift-remediation.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
         "path": "areas/devops/infrastructure/workflows/module-development.md"
       }
@@ -710,7 +670,7 @@
   {
     "specialization": "areas/devops/kubernetes",
     "environment": "codex",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -719,23 +679,13 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 85
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/kubernetes/workflows/cluster-bootstrap.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/kubernetes/workflows/onboard-service.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/kubernetes/workflows/upgrade-cluster.md"
       }
     ]
   },
@@ -749,16 +699,11 @@
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
-      "documentation_readiness": 85
+      "documentation_readiness": 95
     },
     "findings": [
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/kubernetes/workflows/cluster-bootstrap.md"
-      },
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
@@ -766,15 +711,15 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/kubernetes/workflows/upgrade-cluster.md"
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/devops/kubernetes"
       }
     ]
   },
   {
     "specialization": "areas/devops/kubernetes",
     "environment": "claude",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -783,30 +728,20 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 85
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/kubernetes/workflows/cluster-bootstrap.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/kubernetes/workflows/onboard-service.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/kubernetes/workflows/upgrade-cluster.md"
       }
     ]
   },
   {
     "specialization": "areas/devops/kubernetes",
     "environment": "gemini",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -815,30 +750,20 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 85
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/kubernetes/workflows/cluster-bootstrap.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/kubernetes/workflows/onboard-service.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/kubernetes/workflows/upgrade-cluster.md"
       }
     ]
   },
   {
     "specialization": "areas/devops/kubernetes",
     "environment": "antigravity",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -847,30 +772,20 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 85
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/kubernetes/workflows/cluster-bootstrap.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/kubernetes/workflows/onboard-service.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/kubernetes/workflows/upgrade-cluster.md"
       }
     ]
   },
   {
     "specialization": "areas/devops/kubernetes",
     "environment": "cursor",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -879,30 +794,20 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 85
+      "documentation_readiness": 95
     },
     "findings": [
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/kubernetes/workflows/cluster-bootstrap.md"
-      },
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/kubernetes/workflows/onboard-service.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/kubernetes/workflows/upgrade-cluster.md"
       }
     ]
   },
   {
     "specialization": "areas/devops/networking",
     "environment": "codex",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -911,7 +816,7 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -921,17 +826,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/networking/workflows/onboard-ingress.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/networking/workflows/service-mesh-onboard.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/networking/workflows/service-mesh-onboard.md"
       }
     ]
@@ -946,9 +841,9 @@
       "sdlc_coverage": 90,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -958,25 +853,20 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/networking/workflows/onboard-ingress.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
         "path": "areas/devops/networking/workflows/service-mesh-onboard.md"
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/networking/workflows/service-mesh-onboard.md"
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/devops/networking"
       }
     ]
   },
   {
     "specialization": "areas/devops/networking",
     "environment": "claude",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -985,7 +875,7 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -995,17 +885,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/networking/workflows/onboard-ingress.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/networking/workflows/service-mesh-onboard.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/networking/workflows/service-mesh-onboard.md"
       }
     ]
@@ -1013,7 +893,7 @@
   {
     "specialization": "areas/devops/networking",
     "environment": "gemini",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -1022,7 +902,7 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1032,17 +912,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/networking/workflows/onboard-ingress.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/networking/workflows/service-mesh-onboard.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/networking/workflows/service-mesh-onboard.md"
       }
     ]
@@ -1050,7 +920,7 @@
   {
     "specialization": "areas/devops/networking",
     "environment": "antigravity",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -1059,7 +929,7 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1069,17 +939,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/networking/workflows/onboard-ingress.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/networking/workflows/service-mesh-onboard.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/networking/workflows/service-mesh-onboard.md"
       }
     ]
@@ -1087,7 +947,7 @@
   {
     "specialization": "areas/devops/networking",
     "environment": "cursor",
-    "score": 98,
+    "score": 99,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -1096,7 +956,7 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1106,17 +966,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/networking/workflows/onboard-ingress.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/networking/workflows/service-mesh-onboard.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/networking/workflows/service-mesh-onboard.md"
       }
     ]
@@ -1124,16 +974,16 @@
   {
     "specialization": "areas/devops/observability",
     "environment": "codex",
-    "score": 96,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
-      "sdlc_coverage": 80,
+      "sdlc_coverage": 85,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1143,22 +993,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/observability/workflows/alert-investigation.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/observability/workflows/observability-stack-setup.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/observability/workflows/observability-stack-setup.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/observability/workflows/observability-stack-setup.md"
       },
       {
@@ -1171,16 +1006,16 @@
   {
     "specialization": "areas/devops/observability",
     "environment": "opencode",
-    "score": 96,
+    "score": 97,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
-      "sdlc_coverage": 80,
+      "sdlc_coverage": 85,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1190,44 +1025,34 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/observability/workflows/alert-investigation.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/observability/workflows/observability-stack-setup.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/observability/workflows/observability-stack-setup.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/observability/workflows/observability-stack-setup.md"
       },
       {
         "severity": "warn",
         "message": "workflow lacks `actions` step language",
         "path": "areas/devops/observability/workflows/onboard-service-monitoring.md"
+      },
+      {
+        "severity": "warn",
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/devops/observability"
       }
     ]
   },
   {
     "specialization": "areas/devops/observability",
     "environment": "claude",
-    "score": 96,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
-      "sdlc_coverage": 80,
+      "sdlc_coverage": 85,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1237,22 +1062,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/observability/workflows/alert-investigation.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/observability/workflows/observability-stack-setup.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/observability/workflows/observability-stack-setup.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/observability/workflows/observability-stack-setup.md"
       },
       {
@@ -1265,16 +1075,16 @@
   {
     "specialization": "areas/devops/observability",
     "environment": "gemini",
-    "score": 96,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
-      "sdlc_coverage": 80,
+      "sdlc_coverage": 85,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1284,22 +1094,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/observability/workflows/alert-investigation.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/observability/workflows/observability-stack-setup.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/observability/workflows/observability-stack-setup.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/observability/workflows/observability-stack-setup.md"
       },
       {
@@ -1312,16 +1107,16 @@
   {
     "specialization": "areas/devops/observability",
     "environment": "antigravity",
-    "score": 96,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
-      "sdlc_coverage": 80,
+      "sdlc_coverage": 85,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1331,22 +1126,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/observability/workflows/alert-investigation.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/observability/workflows/observability-stack-setup.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/observability/workflows/observability-stack-setup.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/observability/workflows/observability-stack-setup.md"
       },
       {
@@ -1359,16 +1139,16 @@
   {
     "specialization": "areas/devops/observability",
     "environment": "cursor",
-    "score": 96,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
-      "sdlc_coverage": 80,
+      "sdlc_coverage": 85,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1378,22 +1158,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/observability/workflows/alert-investigation.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/observability/workflows/observability-stack-setup.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/observability/workflows/observability-stack-setup.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/observability/workflows/observability-stack-setup.md"
       },
       {
@@ -1406,16 +1171,16 @@
   {
     "specialization": "areas/devops/sre",
     "environment": "codex",
-    "score": 95,
+    "score": 99,
     "dimensions": {
       "structure": 100,
-      "reference_integrity": 88,
-      "sdlc_coverage": 75,
+      "reference_integrity": 100,
+      "sdlc_coverage": 90,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 95
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1425,32 +1190,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/incident-response.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/postmortem.md"
-      },
-      {
-        "severity": "error",
-        "message": "uses missing skill `slo-implementation`",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/sre/workflows/slo-review.md"
       }
     ]
@@ -1458,16 +1198,16 @@
   {
     "specialization": "areas/devops/sre",
     "environment": "opencode",
-    "score": 95,
+    "score": 98,
     "dimensions": {
       "structure": 100,
-      "reference_integrity": 88,
-      "sdlc_coverage": 75,
+      "reference_integrity": 100,
+      "sdlc_coverage": 90,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
-      "documentation_readiness": 95
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1477,49 +1217,29 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/incident-response.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/postmortem.md"
-      },
-      {
-        "severity": "error",
-        "message": "uses missing skill `slo-implementation`",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
         "path": "areas/devops/sre/workflows/slo-review.md"
       },
       {
         "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/devops/sre/workflows/slo-review.md"
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/devops/sre"
       }
     ]
   },
   {
     "specialization": "areas/devops/sre",
     "environment": "claude",
-    "score": 95,
+    "score": 99,
     "dimensions": {
       "structure": 100,
-      "reference_integrity": 88,
-      "sdlc_coverage": 75,
+      "reference_integrity": 100,
+      "sdlc_coverage": 90,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 95
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1529,32 +1249,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/incident-response.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/postmortem.md"
-      },
-      {
-        "severity": "error",
-        "message": "uses missing skill `slo-implementation`",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/sre/workflows/slo-review.md"
       }
     ]
@@ -1562,16 +1257,16 @@
   {
     "specialization": "areas/devops/sre",
     "environment": "gemini",
-    "score": 95,
+    "score": 99,
     "dimensions": {
       "structure": 100,
-      "reference_integrity": 88,
-      "sdlc_coverage": 75,
+      "reference_integrity": 100,
+      "sdlc_coverage": 90,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 95
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1581,32 +1276,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/incident-response.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/postmortem.md"
-      },
-      {
-        "severity": "error",
-        "message": "uses missing skill `slo-implementation`",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/sre/workflows/slo-review.md"
       }
     ]
@@ -1614,16 +1284,16 @@
   {
     "specialization": "areas/devops/sre",
     "environment": "antigravity",
-    "score": 95,
+    "score": 99,
     "dimensions": {
       "structure": 100,
-      "reference_integrity": 88,
-      "sdlc_coverage": 75,
+      "reference_integrity": 100,
+      "sdlc_coverage": 90,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 95
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1633,32 +1303,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/incident-response.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/postmortem.md"
-      },
-      {
-        "severity": "error",
-        "message": "uses missing skill `slo-implementation`",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/sre/workflows/slo-review.md"
       }
     ]
@@ -1666,16 +1311,16 @@
   {
     "specialization": "areas/devops/sre",
     "environment": "cursor",
-    "score": 95,
+    "score": 99,
     "dimensions": {
       "structure": 100,
-      "reference_integrity": 88,
-      "sdlc_coverage": 75,
+      "reference_integrity": 100,
+      "sdlc_coverage": 90,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 95
+      "documentation_readiness": 100
     },
     "findings": [
       {
@@ -1685,32 +1330,7 @@
       },
       {
         "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/incident-response.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/postmortem.md"
-      },
-      {
-        "severity": "error",
-        "message": "uses missing skill `slo-implementation`",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
         "message": "workflow lacks `actions` step language",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks `done when` step language",
-        "path": "areas/devops/sre/workflows/slo-review.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/devops/sre/workflows/slo-review.md"
       }
     ]
@@ -1740,14 +1360,14 @@
   {
     "specialization": "areas/software/backend",
     "environment": "opencode",
-    "score": 99,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
       "documentation_readiness": 95
     },
@@ -1756,6 +1376,11 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/backend/workflows/test-feature.md"
+      },
+      {
+        "severity": "warn",
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/software/backend"
       }
     ]
   },
@@ -1882,14 +1507,14 @@
   {
     "specialization": "areas/software/data-engineering",
     "environment": "opencode",
-    "score": 98,
+    "score": 96,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 92,
       "documentation_readiness": 90
     },
@@ -1908,6 +1533,11 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/data-engineering/workflows/lineage-trace.md"
+      },
+      {
+        "severity": "warn",
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/software/data-engineering"
       }
     ]
   },
@@ -2069,14 +1699,14 @@
   {
     "specialization": "areas/software/frontend",
     "environment": "opencode",
-    "score": 97,
+    "score": 96,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 84,
       "documentation_readiness": 95
     },
@@ -2090,6 +1720,11 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/frontend/workflows/bundle-analyze.md"
+      },
+      {
+        "severity": "warn",
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/software/frontend"
       }
     ]
   },
@@ -2204,7 +1839,7 @@
   {
     "specialization": "areas/software/full-stack",
     "environment": "codex",
-    "score": 96,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -2213,23 +1848,13 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 85,
-      "documentation_readiness": 85
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "rule count is 17; consider consolidating always-loaded guidance",
         "path": "areas/software/full-stack"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/full-stack/workflows/develop-feature.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/full-stack/workflows/feature-implementation-flow.md"
       },
       {
         "severity": "warn",
@@ -2248,9 +1873,9 @@
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 85,
-      "documentation_readiness": 85
+      "documentation_readiness": 95
     },
     "findings": [
       {
@@ -2261,24 +1886,19 @@
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/full-stack/workflows/develop-feature.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/full-stack/workflows/feature-implementation-flow.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/full-stack/workflows/testing-ci-pipeline.md"
+      },
+      {
+        "severity": "warn",
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/software/full-stack"
       }
     ]
   },
   {
     "specialization": "areas/software/full-stack",
     "environment": "claude",
-    "score": 96,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -2287,23 +1907,13 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 85,
-      "documentation_readiness": 85
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "rule count is 17; consider consolidating always-loaded guidance",
         "path": "areas/software/full-stack"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/full-stack/workflows/develop-feature.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/full-stack/workflows/feature-implementation-flow.md"
       },
       {
         "severity": "warn",
@@ -2315,7 +1925,7 @@
   {
     "specialization": "areas/software/full-stack",
     "environment": "gemini",
-    "score": 96,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -2324,23 +1934,13 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 85,
-      "documentation_readiness": 85
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "rule count is 17; consider consolidating always-loaded guidance",
         "path": "areas/software/full-stack"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/full-stack/workflows/develop-feature.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/full-stack/workflows/feature-implementation-flow.md"
       },
       {
         "severity": "warn",
@@ -2352,7 +1952,7 @@
   {
     "specialization": "areas/software/full-stack",
     "environment": "antigravity",
-    "score": 96,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -2361,23 +1961,13 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 85,
-      "documentation_readiness": 85
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "rule count is 17; consider consolidating always-loaded guidance",
         "path": "areas/software/full-stack"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/full-stack/workflows/develop-feature.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/full-stack/workflows/feature-implementation-flow.md"
       },
       {
         "severity": "warn",
@@ -2389,7 +1979,7 @@
   {
     "specialization": "areas/software/full-stack",
     "environment": "cursor",
-    "score": 96,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
@@ -2398,23 +1988,13 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 85,
-      "documentation_readiness": 85
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "rule count is 17; consider consolidating always-loaded guidance",
         "path": "areas/software/full-stack"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/full-stack/workflows/develop-feature.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/full-stack/workflows/feature-implementation-flow.md"
       },
       {
         "severity": "warn",
@@ -2448,14 +2028,14 @@
   {
     "specialization": "areas/software/general",
     "environment": "opencode",
-    "score": 99,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
       "documentation_readiness": 95
     },
@@ -2464,6 +2044,11 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/general/workflows/code-review-workflow.md"
+      },
+      {
+        "severity": "warn",
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/software/general"
       }
     ]
   },
@@ -2585,14 +2170,14 @@
   {
     "specialization": "areas/software/mlops",
     "environment": "opencode",
-    "score": 99,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
       "documentation_readiness": 90
     },
@@ -2606,6 +2191,11 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/mlops/workflows/train-experiment.md"
+      },
+      {
+        "severity": "warn",
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/software/mlops"
       }
     ]
   },
@@ -2757,14 +2347,14 @@
   {
     "specialization": "areas/software/mobile",
     "environment": "opencode",
-    "score": 98,
+    "score": 96,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
       "documentation_readiness": 80
     },
@@ -2788,6 +2378,11 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/mobile/workflows/store-submission.md"
+      },
+      {
+        "severity": "warn",
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/software/mobile"
       }
     ]
   },
@@ -2951,7 +2546,7 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 92,
-      "documentation_readiness": 75
+      "documentation_readiness": 80
     },
     "findings": [
       {
@@ -2973,11 +2568,6 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/platform/workflows/drift-check.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/platform/workflows/incident-response.md"
       },
       {
         "severity": "warn",
@@ -2989,16 +2579,16 @@
   {
     "specialization": "areas/software/platform",
     "environment": "opencode",
-    "score": 96,
+    "score": 95,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 92,
-      "documentation_readiness": 75
+      "documentation_readiness": 80
     },
     "findings": [
       {
@@ -3024,12 +2614,12 @@
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/platform/workflows/incident-response.md"
+        "path": "areas/software/platform/workflows/provision-env.md"
       },
       {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/platform/workflows/provision-env.md"
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/software/platform"
       }
     ]
   },
@@ -3045,7 +2635,7 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 92,
-      "documentation_readiness": 75
+      "documentation_readiness": 80
     },
     "findings": [
       {
@@ -3067,11 +2657,6 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/platform/workflows/drift-check.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/platform/workflows/incident-response.md"
       },
       {
         "severity": "warn",
@@ -3092,7 +2677,7 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 92,
-      "documentation_readiness": 75
+      "documentation_readiness": 80
     },
     "findings": [
       {
@@ -3114,11 +2699,6 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/platform/workflows/drift-check.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/platform/workflows/incident-response.md"
       },
       {
         "severity": "warn",
@@ -3139,7 +2719,7 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 92,
-      "documentation_readiness": 75
+      "documentation_readiness": 80
     },
     "findings": [
       {
@@ -3161,11 +2741,6 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/platform/workflows/drift-check.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/platform/workflows/incident-response.md"
       },
       {
         "severity": "warn",
@@ -3186,7 +2761,7 @@
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 92,
-      "documentation_readiness": 75
+      "documentation_readiness": 80
     },
     "findings": [
       {
@@ -3208,11 +2783,6 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/platform/workflows/drift-check.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/platform/workflows/incident-response.md"
       },
       {
         "severity": "warn",
@@ -3251,14 +2821,14 @@
   {
     "specialization": "areas/software/qa",
     "environment": "opencode",
-    "score": 99,
+    "score": 98,
     "dimensions": {
       "structure": 100,
       "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
       "documentation_readiness": 90
     },
@@ -3272,6 +2842,11 @@
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/qa/workflows/test-coverage-report.md"
+      },
+      {
+        "severity": "warn",
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/software/qa"
       }
     ]
   },
@@ -3386,48 +2961,38 @@
   {
     "specialization": "areas/software/security",
     "environment": "codex",
-    "score": 97,
+    "score": 99,
     "dimensions": {
       "structure": 100,
-      "reference_integrity": 88,
+      "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/security/workflows/pen-test-sim.md"
-      },
-      {
-        "severity": "error",
-        "message": "uses missing skill `secrets-management`",
-        "path": "areas/software/security/workflows/secret-rotation.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/security/workflows/security-scan.md"
       }
     ]
   },
   {
     "specialization": "areas/software/security",
     "environment": "opencode",
-    "score": 97,
+    "score": 98,
     "dimensions": {
       "structure": 100,
-      "reference_integrity": 88,
+      "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
-      "environment_compatibility": 100,
+      "environment_compatibility": 90,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 95
     },
     "findings": [
       {
@@ -3436,142 +3001,97 @@
         "path": "areas/software/security/workflows/pen-test-sim.md"
       },
       {
-        "severity": "error",
-        "message": "uses missing skill `secrets-management`",
-        "path": "areas/software/security/workflows/secret-rotation.md"
-      },
-      {
         "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/security/workflows/security-scan.md"
+        "message": "AGENTS.md does not describe skill loading for opencode-compatible layouts",
+        "path": "areas/software/security"
       }
     ]
   },
   {
     "specialization": "areas/software/security",
     "environment": "claude",
-    "score": 97,
+    "score": 99,
     "dimensions": {
       "structure": 100,
-      "reference_integrity": 88,
+      "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/security/workflows/pen-test-sim.md"
-      },
-      {
-        "severity": "error",
-        "message": "uses missing skill `secrets-management`",
-        "path": "areas/software/security/workflows/secret-rotation.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/security/workflows/security-scan.md"
       }
     ]
   },
   {
     "specialization": "areas/software/security",
     "environment": "gemini",
-    "score": 97,
+    "score": 99,
     "dimensions": {
       "structure": 100,
-      "reference_integrity": 88,
+      "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/security/workflows/pen-test-sim.md"
-      },
-      {
-        "severity": "error",
-        "message": "uses missing skill `secrets-management`",
-        "path": "areas/software/security/workflows/secret-rotation.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/security/workflows/security-scan.md"
       }
     ]
   },
   {
     "specialization": "areas/software/security",
     "environment": "antigravity",
-    "score": 97,
+    "score": 99,
     "dimensions": {
       "structure": 100,
-      "reference_integrity": 88,
+      "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/security/workflows/pen-test-sim.md"
-      },
-      {
-        "severity": "error",
-        "message": "uses missing skill `secrets-management`",
-        "path": "areas/software/security/workflows/secret-rotation.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/security/workflows/security-scan.md"
       }
     ]
   },
   {
     "specialization": "areas/software/security",
     "environment": "cursor",
-    "score": 97,
+    "score": 99,
     "dimensions": {
       "structure": 100,
-      "reference_integrity": 88,
+      "reference_integrity": 100,
       "sdlc_coverage": 100,
       "role_quality_gates": 100,
       "prompt_usefulness": 100,
       "environment_compatibility": 100,
       "token_efficiency": 100,
-      "documentation_readiness": 90
+      "documentation_readiness": 95
     },
     "findings": [
       {
         "severity": "warn",
         "message": "workflow lacks documentation output or docs reference",
         "path": "areas/software/security/workflows/pen-test-sim.md"
-      },
-      {
-        "severity": "error",
-        "message": "uses missing skill `secrets-management`",
-        "path": "areas/software/security/workflows/secret-rotation.md"
-      },
-      {
-        "severity": "warn",
-        "message": "workflow lacks documentation output or docs reference",
-        "path": "areas/software/security/workflows/security-scan.md"
       }
     ]
   }

@@ -55,7 +55,7 @@ quality-gates:
 
 ### 5. Monitor Post-Release — `@qa`
 - **Input:** live release
-- **Actions:** watch for rating spike (negative reviews may indicate regression); monitor crash-free rate for first 48 hours; respond to App Review feedback if rejection; escalate to `/crash-triage` if crash-free rate drops
+- **Actions:** watch for rating spike (negative reviews may indicate regression); monitor crash-free rate for first 48 hours; respond to App Review feedback if rejection; escalate to `/crash-triage` if crash-free rate drops — at most one automatic `/crash-triage` trigger per submitted release; a repeat drop halts automation and escalates to `@team-lead`
 - **Output:** post-release monitoring report (48h window)
 - **Done when:** 48 hours stable; no new critical issues
 
@@ -90,3 +90,5 @@ flowchart TD
 
 ## Exit
 Submission live + stable 48h monitoring = release complete.
+
+**Next:** /crash-triage — only on crash-free regression (at most one automatic trigger per submitted release); otherwise terminal — no follow-up workflow.

@@ -92,3 +92,5 @@ flowchart TD
 
 ## Exit
 Decision recorded in registry + winner at 100% traffic + report published = experiment closed.
+
+**Next:** /deploy-endpoint — promote the winning model; otherwise terminal.

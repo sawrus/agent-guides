@@ -56,7 +56,7 @@ quality-gates:
 
 ### 5. Synthesize & Report — `@team-lead`
 - **Input:** all scan results
-- **Actions:** merge all findings; deduplicate by location; prioritize: Critical → High → Medium → Low; for Critical/High provide specific remediation code; post to PR as review comment; Critical → request changes (block merge); High → comment with 72-hour SLA; save full report: `.security/scan-results-<timestamp>.json`
+- **Actions:** merge all findings; deduplicate by location; prioritize: Critical → High → Medium → Low; for Critical/High provide specific remediation code; post to PR as review comment; Critical → request changes (block merge); High → comment with 72-hour SLA; save full report: `docs/security/scan-results-<timestamp>.json`
 - **Output:** `finding_report.md`; PR review comments
 - **Done when:** report published; PR status set per findings
 
@@ -74,7 +74,7 @@ flowchart TD
   step_3["3. Secret Scanning"]
   step_4["4. Infrastructure Scan"]
   step_5["5. Synthesize & Report"]
-  exit(["No unaddressed Critical findings + report saved = scan complete."])
+  exit(["No unaddressed Critical findings + report saved = scan complete. The pr_rev..."])
   start --> step_1
   step_1 --> step_2
   step_2 --> step_3
@@ -90,4 +90,6 @@ flowchart TD
 <!-- agent-diagram:end -->
 
 ## Exit
-No unaddressed Critical findings + report saved = scan complete.
+No unaddressed Critical findings + report saved = scan complete. The `pr_review_comments` output feeds the PR review (code-review phase) of the delivery workflow that triggered the scan.
+
+**Next:** terminal — no follow-up workflow.

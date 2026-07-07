@@ -49,7 +49,7 @@ quality-gates:
 
 ### 4. Fix & Regression Test — `@developer`
 - **Input:** confirmed root cause
-- **Actions:** implement fix with regression test; confirm fix on physical device before submitting; if crash-free rate < 99% → trigger `/ota-update` (JS change) or `/store-submission` (native change)
+- **Actions:** implement fix with regression test; confirm fix on physical device before submitting; if crash-free rate < 99% → trigger `/ota-update` (JS change) or `/store-submission` (native change) — at most one automatic re-trigger between `/crash-triage` and `/ota-update` or `/store-submission` per release; if crash-free rate is still below target after the re-shipped build, halt automatic loops and escalate to `@team-lead`
 - **Output:** fix + regression test on branch; device-verified
 - **Done when:** fix confirmed on device; regression test passes
 
@@ -59,6 +59,12 @@ quality-gates:
 - **Output:** verification report with device results
 - **Done when:** crash resolved on all tested devices; crash-free rate confirmed
 
+### 6. Document Root Cause — `@team-lead`
+- **Input:** verification report
+- **Actions:** write `docs/incidents/<date>-crash-<slug>-root-cause.md` covering root cause, fix, and prevention follow-ups
+- **Output:** root-cause doc committed
+- **Done when:** doc merged under `docs/incidents/`
+
 ## Agent Interaction Diagram
 
 <!-- agent-diagram:start -->
@@ -67,25 +73,31 @@ flowchart TD
   start(["Start /crash-triage"])
   role_1["developer"]
   role_2["qa"]
+  role_3["team-lead"]
   step_1["1. Gather & Symbolicate"]
   step_2["2. Reproduce"]
   step_3["3. Root Cause"]
   step_4["4. Fix & Regression Test"]
   step_5["5. Verification"]
-  exit(["Device-verified fix + passing regression test + crash-free rate restored =..."])
+  step_6["6. Document Root Cause"]
+  exit(["Device-verified fix + passing regression test + crash-free rate restored +..."])
   start --> step_1
   step_1 --> step_2
   step_2 --> step_3
   step_3 --> step_4
   step_4 --> step_5
-  step_5 --> exit
+  step_5 --> step_6
+  step_6 --> exit
   role_1 -. owns .-> step_1
   role_2 -. owns .-> step_2
   role_1 -. owns .-> step_3
   role_1 -. owns .-> step_4
   role_2 -. owns .-> step_5
+  role_3 -. owns .-> step_6
 ```
 <!-- agent-diagram:end -->
 
 ## Exit
-Device-verified fix + passing regression test + crash-free rate restored = triage complete.
+Device-verified fix + passing regression test + crash-free rate restored + root-cause doc committed = triage complete.
+
+**Next:** /ota-update or /store-submission — when a fix ships (one automatic pass per release); otherwise terminal — no follow-up workflow.

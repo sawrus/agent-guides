@@ -49,7 +49,7 @@ quality-gates:
 
 ### 3. Increment Implementation — `@developer`
 - **Input:** increment spec from epic plan + architecture notes
-- **Actions:** implement current increment per `/develop-feature` workflow (Steps 3–5 of that workflow); each increment must have its own branch, tests, and acceptance evidence; do not start next increment without current one passing verification
+- **Actions:** implement current increment per `/develop-feature` workflow (Steps 3–6 of that workflow); each increment must have its own branch, tests, and acceptance evidence; do not start next increment without current one passing verification
 - **Output:** implemented increment on branch with passing checks
 - **Done when:** increment passes local checks and is ready for QA
 
@@ -67,9 +67,9 @@ quality-gates:
 
 ### 6. Final Acceptance — `@product-owner`
 - **Input:** all increments delivered + complete risk summary
-- **Actions:** validate all epic acceptance criteria are met; review risk register for residual items; make go/defer decision on any remaining scope
+- **Actions:** validate all epic acceptance criteria are met; review risk register for residual items; make go/defer decision on any remaining scope; update epic docs under `docs/**`, add a `CHANGELOG.md` entry, and bump the project version
 - **Output:** `docs/<epic>/delivery_summary.md` — accepted items, deferred items, follow-up backlog
-- **Done when:** epic accepted; follow-up items logged
+- **Done when:** epic accepted; follow-up items logged; docs, `CHANGELOG.md`, and version bump committed
 
 ## Agent Interaction Diagram
 
@@ -109,7 +109,9 @@ flowchart TD
 <!-- agent-diagram:end -->
 
 ## Iteration Loop
-Steps 3–5 repeat for each increment. Replanning in Step 5 governs scope adjustments.
+Steps 3–5 repeat for each increment (bounded by the increment count from the epic plan in step 1; if a single increment fails review 3 times, escalate to `@team-lead`). Replanning in Step 5 governs scope adjustments.
 
 ## Exit
 All increments accepted by `@product-owner` + clean regression suite = epic delivered.
+
+**Next:** terminal — no follow-up workflow.

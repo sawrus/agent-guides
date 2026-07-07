@@ -79,3 +79,5 @@ flowchart TD
 
 ## Exit
 Logged artifact + evaluation scorecard + champion comparison = experiment complete.
+
+**Next:** /evaluate-model — evaluate the trained candidate.

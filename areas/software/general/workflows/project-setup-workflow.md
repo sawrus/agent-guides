@@ -130,3 +130,5 @@ flowchart TD
 
 ## Exit
 Green CI + QA sign-off = project is ready for first feature development.
+
+**Next:** /development-cycle-workflow — begin feature delivery on the initialized project.
