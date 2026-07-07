@@ -52,22 +52,110 @@ function buildIndex() {
 
 function renderMenu(areas, filteredIds = null) {
   menuEl.innerHTML = '';
-  for (const area of areas) {
-    const title = document.createElement('div');
-    title.className = 'area-title';
-    title.textContent = area.area;
-    menuEl.appendChild(title);
+  const groupedAreas = groupAreasBySection(areas, filteredIds);
 
-    for (const wf of area.workflows) {
-      const id = `${area.area}:${wf.trigger}`;
-      if (filteredIds && !filteredIds.has(id)) continue;
-      const btn = document.createElement('button');
-      btn.className = 'wf-btn';
-      btn.textContent = `${wf.trigger} — ${wf.name}`;
-      btn.onclick = () => renderWorkflow(id);
-      menuEl.appendChild(btn);
+  for (const group of groupedAreas) {
+    const groupNode = document.createElement('details');
+    groupNode.className = 'menu-group';
+    groupNode.open = isGroupOpen(group, filteredIds);
+
+    const groupSummary = document.createElement('summary');
+    groupSummary.className = 'menu-group__summary';
+    groupSummary.textContent = group.label;
+    groupNode.appendChild(groupSummary);
+
+    const sectionsNode = document.createElement('div');
+    sectionsNode.className = 'menu-group__sections';
+
+    for (const section of group.sections) {
+      const sectionNode = document.createElement('details');
+      sectionNode.className = 'menu-section';
+      sectionNode.open = isSectionOpen(section, filteredIds);
+
+      const sectionSummary = document.createElement('summary');
+      sectionSummary.className = 'menu-section__summary';
+      sectionSummary.textContent = section.label;
+      sectionNode.appendChild(sectionSummary);
+
+      const workflowList = document.createElement('div');
+      workflowList.className = 'menu-section__workflows';
+
+      for (const workflow of section.workflows) {
+        const btn = document.createElement('button');
+        btn.className = 'wf-btn';
+        btn.dataset.workflowId = workflow.id;
+        btn.textContent = `${workflow.trigger} — ${workflow.name}`;
+        btn.onclick = () => renderWorkflow(workflow.id);
+        workflowList.appendChild(btn);
+      }
+
+      sectionNode.appendChild(workflowList);
+      sectionsNode.appendChild(sectionNode);
+    }
+
+    groupNode.appendChild(sectionsNode);
+    menuEl.appendChild(groupNode);
+  }
+
+  updateActiveMenuItem();
+}
+
+function groupAreasBySection(areas, filteredIds) {
+  const groups = new Map();
+
+  for (const area of areas) {
+    const [groupName, ...sectionParts] = area.area.split('/');
+    const sectionName = sectionParts.join('/') || groupName;
+    const workflows = area.workflows
+      .map((wf) => ({
+        id: `${area.area}:${wf.trigger}`,
+        trigger: wf.trigger,
+        name: wf.name,
+      }))
+      .filter((wf) => !filteredIds || filteredIds.has(wf.id));
+
+    if (!workflows.length) continue;
+
+    if (!groups.has(groupName)) {
+      groups.set(groupName, { label: groupName, sections: [] });
+    }
+
+    groups.get(groupName).sections.push({
+      label: sectionName,
+      area: area.area,
+      workflows,
+    });
+  }
+
+  return [...groups.values()];
+}
+
+function isGroupOpen(group, filteredIds) {
+  if (filteredIds) return true;
+  return group.sections.some((section) => section.workflows.some((workflow) => workflow.id === current?.id));
+}
+
+function isSectionOpen(section, filteredIds) {
+  if (filteredIds) return true;
+  return section.workflows.some((workflow) => workflow.id === current?.id);
+}
+
+function updateActiveMenuItem() {
+  for (const btn of menuEl.querySelectorAll('.wf-btn')) {
+    const isActive = btn.dataset.workflowId === current?.id;
+    btn.classList.toggle('wf-btn--active', isActive);
+    if (isActive) {
+      btn.setAttribute('aria-current', 'page');
+      openActiveMenuParents(btn);
+    } else {
+      btn.removeAttribute('aria-current');
     }
   }
+}
+
+function openActiveMenuParents(btn) {
+  btn.closest('.menu-section')?.setAttribute('open', '');
+  btn.closest('.menu-group')?.setAttribute('open', '');
 }
 
 function renderWorkflow(id) {
@@ -113,6 +201,7 @@ ${examples || '_No examples_'}
 `;
 
   contentEl.innerHTML = marked.parse(md);
+  updateActiveMenuItem();
   renderMermaidBlocks();
 }
 

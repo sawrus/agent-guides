@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.1
+
+- Improved the static docs site navigation with compact expandable devops/software sections, nested area menus, active workflow state, independent sidebar/content scrolling, and a full-width search field under the install command.
+
 ## v0.6.0
 
 - Added area-level `AGENTS.md` indices for `areas/devops/` and `areas/software/` with spec selection, cross-cutting constraints, and a global workflow trigger registry.
