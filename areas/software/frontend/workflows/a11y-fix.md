@@ -15,6 +15,7 @@ roles:
   - team-lead
 execution:
   initiator: qa
+agent: qa
 related-rules:
   - accessibility.md
   - quality.md

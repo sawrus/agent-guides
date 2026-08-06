@@ -16,6 +16,7 @@ roles:
   - team-lead
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - backend-architecture-rule.md
   - testing-ci-guide.md

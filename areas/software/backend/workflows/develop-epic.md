@@ -17,6 +17,7 @@ roles:
   - qa
 execution:
   initiator: product-owner
+agent: product-owner
 related-rules:
   - architecture.md
   - data_access.md

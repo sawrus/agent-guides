@@ -15,6 +15,7 @@ roles:
   - team-lead
 execution:
   initiator: qa
+agent: qa
 related-rules:
   - flakiness-policy.md
   - test-strategy.md

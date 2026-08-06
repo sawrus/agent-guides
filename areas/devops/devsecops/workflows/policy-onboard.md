@@ -17,6 +17,7 @@ roles:
   - team-lead
 execution:
   initiator: devops-engineer
+agent: devops-engineer
 related-rules:
   - policy-as-code.md
   - container-security.md

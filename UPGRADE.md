@@ -34,7 +34,7 @@ Avoid adding:
 - `AGENTS.md` remains a navigation map, not a knowledge dump.
 - Rules use imperative language and contain enforceable constraints.
 - Skills explain when to load them and keep detailed references in separate files only when needed.
-- Workflows define roles, `execution.initiator`, inputs, outputs, `uses-skills`, quality gates, and a failure loop.
+- Workflows define roles, `execution.initiator`, a matching top-level `agent`, inputs, outputs, `uses-skills`, quality gates, and a failure loop.
 - Prompts include two or three realistic EN/RU examples with concrete systems, symptoms, constraints, and expected deliverables.
 - All `uses-skills` entries resolve to existing `skills/<name>/SKILL.md`.
 - Token budget is improved or justified: remove stale skills before adding new ones.

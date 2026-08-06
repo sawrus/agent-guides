@@ -17,6 +17,7 @@ roles:
   - qa
 execution:
   initiator: pm
+agent: pm
 related-rules:
   - backend-architecture-rule.md
   - code-quality-guide.md

@@ -15,6 +15,7 @@ roles:
   - team-lead
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - testing-ci-guide.md
   - code-quality-guide.md

@@ -15,6 +15,7 @@ roles:
   - team-lead
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - pipeline-integrity.md
   - data-governance.md

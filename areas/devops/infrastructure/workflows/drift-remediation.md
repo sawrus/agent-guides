@@ -14,6 +14,7 @@ roles:
   - team-lead
 execution:
   initiator: devops-engineer
+agent: devops-engineer
 related-rules:
   - immutability.md
   - iac-standards.md

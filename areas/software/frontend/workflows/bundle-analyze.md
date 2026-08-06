@@ -16,6 +16,7 @@ roles:
   - pm
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - performance.md
   - architecture.md

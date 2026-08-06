@@ -16,6 +16,7 @@ roles:
   - team-lead
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - platform-compliance.md
   - security-mobile.md

@@ -14,6 +14,7 @@ roles:
   - qa
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - reproducibility.md
   - data-integrity.md

@@ -14,6 +14,7 @@ roles:
   - qa
 execution:
   initiator: team-lead
+agent: team-lead
 related-rules:
   - secure-coding.md
   - compliance-baseline.md

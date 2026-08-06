@@ -15,6 +15,7 @@ roles:
   - qa
 execution:
   initiator: team-lead
+agent: team-lead
 related-rules:
   - compliance-baseline.md
   - secrets-policy.md

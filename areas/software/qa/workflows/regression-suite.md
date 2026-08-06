@@ -15,6 +15,7 @@ roles:
   - team-lead
 execution:
   initiator: qa
+agent: qa
 related-rules:
   - quality-gates.md
   - test-strategy.md

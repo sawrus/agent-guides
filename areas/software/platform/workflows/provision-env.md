@@ -16,6 +16,7 @@ roles:
   - pm
 execution:
   initiator: team-lead
+agent: team-lead
 related-rules:
   - immutability.md
   - cost-governance.md

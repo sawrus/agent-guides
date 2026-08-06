@@ -15,6 +15,7 @@ roles:
   - developer
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - backup-policy.md
   - access-control.md

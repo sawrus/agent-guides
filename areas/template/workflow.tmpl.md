@@ -14,6 +14,7 @@ roles:
   - {{role-2}}
 execution:
   initiator: {{role — must be one of: product-owner | pm | team-lead | developer | qa | designer | devops-engineer}}
+agent: {{same role as execution.initiator}}
 related-rules:
   - {{rule-filename.md}}
 uses-skills:
@@ -34,7 +35,8 @@ AGENT INSTRUCTIONS:
    Every role used in a step heading must appear in "roles"; every declared
    role must own at least one step.
 4. "execution.initiator" must be one of the seven standard roles and must
-   also appear in the workflow's own "roles" list.
+   also appear in the workflow's own "roles" list. The top-level "agent"
+   field must exactly match "execution.initiator".
 5. "quality-gates" must be objectively checkable. "Looks good" is NOT a gate.
    Good gate: "All copy variants pass brand-voice rule 2 and score ≥ 70 on Flesch-Kincaid."
 6. Every step MUST have: @role, Input, Actions (specific), Done when (checkable criterion).

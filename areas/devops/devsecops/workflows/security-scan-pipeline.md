@@ -15,6 +15,7 @@ roles:
   - devops-engineer
 execution:
   initiator: devops-engineer
+agent: devops-engineer
 related-rules:
   - shift-left-policy.md
   - container-security.md

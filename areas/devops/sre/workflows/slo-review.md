@@ -16,6 +16,7 @@ roles:
   - product-owner
 execution:
   initiator: devops-engineer
+agent: devops-engineer
 related-rules:
   - slo-policy.md
   - error-budget-policy.md

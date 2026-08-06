@@ -15,6 +15,7 @@ roles:
   - product-owner
 execution:
   initiator: devops-engineer
+agent: devops-engineer
 related-rules:
   - state-management.md
   - immutability.md

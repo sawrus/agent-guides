@@ -17,6 +17,7 @@ roles:
   - qa
 execution:
   initiator: team-lead
+agent: team-lead
 related-rules:
   - project-guide.md
   - backend-architecture-rule.md

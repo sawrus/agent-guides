@@ -16,6 +16,7 @@ roles:
   - qa
 execution:
   initiator: team-lead
+agent: team-lead
 related-rules:
   - data_access.md
   - architecture.md

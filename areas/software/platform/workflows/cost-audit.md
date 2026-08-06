@@ -14,6 +14,7 @@ roles:
   - team-lead
 execution:
   initiator: qa
+agent: qa
 related-rules:
   - cost-governance.md
   - immutability.md

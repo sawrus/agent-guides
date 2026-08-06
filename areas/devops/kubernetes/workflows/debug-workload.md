@@ -15,6 +15,7 @@ roles:
   - devops-engineer
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - workload-security.md
   - resource-governance.md

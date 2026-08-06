@@ -15,6 +15,7 @@ roles:
   - qa
 execution:
   initiator: team-lead
+agent: team-lead
 related-rules:
   - schema-management.md
   - pipeline-integrity.md

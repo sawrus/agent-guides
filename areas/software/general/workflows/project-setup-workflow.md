@@ -19,6 +19,7 @@ roles:
   - qa
 execution:
   initiator: product-owner
+agent: product-owner
 related-rules:
   - git-workflow-guide.md
   - makefile-guide.md

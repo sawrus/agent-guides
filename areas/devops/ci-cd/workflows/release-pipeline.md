@@ -19,6 +19,7 @@ roles:
   - qa
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - pipeline-standards.md
   - quality-gates.md

@@ -15,6 +15,7 @@ roles:
   - developer
 execution:
   initiator: qa
+agent: qa
 related-rules:
   - immutability.md
   - security-posture.md

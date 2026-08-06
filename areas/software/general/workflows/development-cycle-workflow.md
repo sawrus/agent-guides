@@ -18,6 +18,7 @@ roles:
   - qa
 execution:
   initiator: product-owner
+agent: product-owner
 related-rules:
   - git-workflow-guide.md
   - sdlc-methodology-guide.md

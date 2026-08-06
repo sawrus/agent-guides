@@ -16,6 +16,7 @@ roles:
   - qa
 execution:
   initiator: pm
+agent: pm
 related-rules:
   - architecture.md
   - security.md

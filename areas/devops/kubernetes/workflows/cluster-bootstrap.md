@@ -16,6 +16,7 @@ roles:
   - devops-engineer
 execution:
   initiator: devops-engineer
+agent: devops-engineer
 related-rules:
   - cluster-standards.md
   - workload-security.md

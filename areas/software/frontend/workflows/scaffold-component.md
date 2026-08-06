@@ -17,6 +17,7 @@ roles:
   - team-lead
 execution:
   initiator: product-owner
+agent: product-owner
 related-rules:
   - architecture.md
   - quality.md

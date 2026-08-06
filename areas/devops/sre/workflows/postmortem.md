@@ -16,6 +16,7 @@ roles:
   - developer
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - on-call-standards.md
   - error-budget-policy.md

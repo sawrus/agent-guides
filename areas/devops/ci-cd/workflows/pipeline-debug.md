@@ -13,6 +13,7 @@ roles:
   - devops-engineer
 execution:
   initiator: devops-engineer
+agent: devops-engineer
 related-rules:
   - pipeline-standards.md
 uses-skills:

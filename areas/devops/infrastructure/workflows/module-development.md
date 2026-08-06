@@ -15,6 +15,7 @@ roles:
   - team-lead
 execution:
   initiator: devops-engineer
+agent: devops-engineer
 related-rules:
   - iac-standards.md
   - state-management.md

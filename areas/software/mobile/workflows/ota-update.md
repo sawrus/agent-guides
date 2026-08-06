@@ -14,6 +14,7 @@ roles:
   - qa
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - platform-compliance.md
   - offline-first.md

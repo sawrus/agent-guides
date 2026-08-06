@@ -14,6 +14,7 @@ roles:
   - team-lead
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - secrets-policy.md
   - secure-coding.md

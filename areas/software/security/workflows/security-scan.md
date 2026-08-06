@@ -15,6 +15,7 @@ roles:
   - qa
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - secure-coding.md
   - dependency-policy.md

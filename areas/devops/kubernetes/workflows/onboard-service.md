@@ -17,6 +17,7 @@ roles:
   - developer
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - cluster-standards.md
   - workload-security.md

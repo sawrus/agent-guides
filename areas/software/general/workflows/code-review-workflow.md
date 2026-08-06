@@ -15,6 +15,7 @@ roles:
   - qa
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - code-style-guide.md
   - git-workflow-guide.md

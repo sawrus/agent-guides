@@ -18,6 +18,7 @@ roles:
   - qa
 execution:
   initiator: pm
+agent: pm
 related-rules:
   - schema-management.md
   - pipeline-integrity.md

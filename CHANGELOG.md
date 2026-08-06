@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.3
+
+- Added a top-level `agent` field to every workflow frontmatter, matching `execution.initiator`, and updated the workflow template to preserve the contract for newly created workflows.
+
 ## v0.6.2
 
 - Simplified the static docs site header by removing the install command block and shortened sidebar workflow labels by dropping the leading slash from triggers.

@@ -16,6 +16,7 @@ roles:
   - developer
 execution:
   initiator: developer
+agent: developer
 related-rules:
   - golden-signals.md
   - alerting-standards.md

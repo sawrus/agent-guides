@@ -15,6 +15,7 @@ roles:
   - team-lead
 execution:
   initiator: team-lead
+agent: team-lead
 related-rules:
   - production-safety.md
   - model-governance.md
