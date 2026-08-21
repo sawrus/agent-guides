@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.7.0
+
+- Rewrote the `agentic` CLI from Bash (5598 lines) to Rust: a single self-contained cross-platform binary with the knowledge base (`areas/`, `extensions/`, root guidance files) embedded at build time.
+- Removed all runtime dependencies: `git`, `curl`, `jq`, `python3` (for core flows), `fzf`, `sed`/`awk`, and `shasum` are no longer required. `python3`/`pip` are checked only when the optional MemPalace integration is enabled.
+- Replaced the fzf-based TUI with a fullscreen ratatui wizard preserving the exact linear flow: theme → project directory → agent OS multi-select → MCP servers (with `[x]` detection of already-configured servers) → areas → per-area specializations → install.
+- `agentic upgrade` now downloads the latest release binary from GitHub Releases and atomically self-replaces, then re-syncs the managed project in the current directory (replay install + MemPalace graph refresh).
+- New `install` bootstrap script downloads platform binaries (linux x86_64/aarch64 musl, macOS Intel/ARM) from GitHub Releases; Windows x86_64 binaries are published as zip assets.
+- Preserved 100% of the install pipeline semantics: manifest idempotency, managed-file protection (unmanaged/user-modified/config skips), marker injection with `created_by` preservation, MCP registry and per-agent config writers, OpenCode plugins/profiles/agent-model-mapper, codex TOML editing, doctor smoke checks with fatal-pattern classification.
+- Fixed an upstream validation bug: the documented `default` agent OS is now accepted by `--agent-os` validation.
+- `--install-fzf` is kept as a deprecated no-op for bootstrap compatibility.
+- Removed the npm distribution (`@jetrabbits/agentic`, `bin/agentic.js`) and the bash e2e suite; testing is now `cargo test` (unit + integration + real-run blackbox e2e with fake agent binaries) with an enforced 80% line-coverage gate (`make test-coverage`).
+- Added CI (`ci.yml`: fmt/clippy/tests on linux+macos+windows + coverage gate) and release automation (`release.yml`: 5-target build matrix publishing `agentic-<arch>-<os>` assets with SHA256SUMS).
+
 ## v0.6.3
 
 - Added a top-level `agent` field to every workflow frontmatter, matching `execution.initiator`, and updated the workflow template to preserve the contract for newly created workflows.

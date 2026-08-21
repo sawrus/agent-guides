@@ -6,3 +6,5 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+target/
+Cargo.lock.bak

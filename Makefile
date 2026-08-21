@@ -1,166 +1,83 @@
-.PHONY: help install dev test test-all test-cli test-tui test-mcp test-cross test-doctor test-markers test-opencode-plugins test-telegram-plugin test-ubuntu-blackbox test-real-agent-doctor test-real-blackbox test-real-blackbox-codex test-real-blackbox-opencode test-real-blackbox-telegram test-real-opencode-mapper test-coverage _test-coverage-steps check-no-pycache lint fmt clean build sync-diagrams assess-areas
+# Agentic (Rust) development Makefile.
+# Rust binary targets plus content-tooling targets for areas/docs.
 
-define timed_step
-	@label='$(1)'; \
-	start=$$(date +%s); \
-	timestamp=$$(date '+%Y-%m-%d %H:%M:%S'); \
-	printf '%s [make-timing] START %s\n' "$$timestamp" "$$label"; \
-	$(2); \
-	status=$$?; \
-	end=$$(date +%s); \
-	elapsed=$$((end - start)); \
-	timestamp=$$(date '+%Y-%m-%d %H:%M:%S'); \
-	if [ "$$status" -eq 0 ]; then \
-	  printf '%s [make-timing] OK %s elapsed=%ss\n' "$$timestamp" "$$label" "$$elapsed"; \
-	else \
-	  printf '%s [make-timing] FAIL %s elapsed=%ss exit=%s\n' "$$timestamp" "$$label" "$$elapsed" "$$status"; \
-	fi; \
-	exit "$$status"
-endef
+CARGO ?= cargo
+COVERAGE_MIN ?= 80
+
+.PHONY: help install dev build release-build test test-unit test-integration \
+	e2e test-coverage lint fmt clean check-no-pycache lint-content \
+	build-docs sync-diagrams assess-areas
 
 help:
-	@printf '%s\n' \
-		"Available targets:" \
-		"  install       Install local development prerequisites" \
-		"  dev           Show local development entrypoints" \
-		"  test          Run fast deterministic end-to-end tests" \
-		"  test-all      Run fast tests, real blackbox, and coverage" \
-		"  test-cli      Run CLI end-to-end tests" \
-		"  test-tui      Run TUI end-to-end tests" \
-		"  test-mcp      Run MCP selection/config end-to-end tests" \
-		"  test-cross    Run cross-mode end-to-end tests" \
-		"  test-doctor   Run deterministic doctor end-to-end tests" \
-		"  test-markers  Run generated marker and idempotency tests" \
-		"  test-opencode-plugins  Run OpenCode plugin deterministic tests" \
-		"  test-telegram-plugin   Run Telegram plugin deterministic tests" \
-		"  test-ubuntu-blackbox   Run make test in a clean Docker Ubuntu image" \
-		"  test-real-agent-doctor  Run real agent doctor checks" \
-		"  test-real-blackbox      Run real Codex/OpenCode/Telegram blackbox tests" \
-		"  test-real-blackbox-codex  Run real Codex blackbox test" \
-		"  test-real-blackbox-opencode  Run real OpenCode blackbox test" \
-		"  test-real-blackbox-telegram  Run real OpenCode Telegram blackbox test" \
-		"  test-real-opencode-mapper  Run real OpenCode mapper input blackbox" \
-		"  test-coverage  Run traced e2e coverage for agentic" \
-		"  check-no-pycache  Fail if Python bytecode/cache artifacts are present" \
-		"  lint          Run prompt and catalog validation" \
-		"  fmt           Check formatting hooks placeholder" \
-		"  clean         Remove generated reports" \
-		"  build         Build generated docs catalog" \
-		"  sync-diagrams Generate workflow agent interaction diagrams" \
-		"  assess-areas  Generate area quality scorecards"
+	@echo "Agentic Makefile targets:"
+	@echo "  build            - cargo build (debug)"
+	@echo "  release-build    - cargo build --release (self-contained binary)"
+	@echo "  test             - all tests: unit + integration + e2e blackbox"
+	@echo "  test-unit        - unit tests only (cargo test --bin agentic)"
+	@echo "  test-integration - CLI integration tests (tests/cli.rs)"
+	@echo "  e2e              - real-run blackbox e2e tests (tests/e2e_blackbox.rs)"
+	@echo "  test-coverage    - coverage with $(COVERAGE_MIN)% line gate (cargo llvm-cov)"
+	@echo "  lint             - cargo fmt --check + clippy -D warnings + content lint"
+	@echo "  fmt              - cargo fmt"
+	@echo "  clean            - cargo clean + report cleanup"
+	@echo "  install          - install release binary to ~/.local/bin"
+	@echo "  build-docs       - build docs catalog (content tooling)"
+	@echo "  sync-diagrams    - sync workflow diagrams (content tooling)"
+	@echo "  assess-areas     - area quality scorecards (content tooling)"
 
-install:
-	@printf '%s\n' "No install step required."
+build:
+	$(CARGO) build
+
+release-build:
+	$(CARGO) build --release
+
+install: release-build
+	./target/release/agentic self-install --force
 
 dev:
-	@printf '%s\n' "Use ./agentic tui or ./agentic install ..."
+	@echo "Run: cargo run -- tui"
 
-test:
-	$(call timed_step,test-cli,bash tests/e2e/cli.e2e.sh)
-	$(call timed_step,test-tui,bash tests/e2e/tui.e2e.sh)
-	$(call timed_step,test-mcp,bash tests/e2e/mcp.e2e.sh)
-	$(call timed_step,test-cross,bash tests/e2e/cross.e2e.sh)
-	$(call timed_step,test-opencode-plugins,bash tests/e2e/opencode_plugins.e2e.sh)
-	$(call timed_step,test-telegram-plugin,bash tests/e2e/telegram_plugin.e2e.sh)
+test: test-unit test-integration e2e
 
-test-all:
-	$(call timed_step,test,$(MAKE) test)
-	$(call timed_step,test-doctor,bash tests/e2e/doctor.e2e.sh)
-	$(call timed_step,test-markers,bash tests/e2e/markers.e2e.sh)
-	$(call timed_step,test-real-blackbox-codex,AGENTIC_REAL_BLACKBOX_ONLY=codex bash tests/e2e/real_agent_blackbox.e2e.sh)
-	$(call timed_step,test-real-blackbox-opencode,AGENTIC_REAL_BLACKBOX_ONLY=opencode bash tests/e2e/real_agent_blackbox.e2e.sh)
-	$(call timed_step,test-real-opencode-mapper,AGENTIC_REAL_BLACKBOX_ONLY=opencode-mapper bash tests/e2e/real_agent_blackbox.e2e.sh)
-	$(call timed_step,test-real-blackbox-telegram,AGENTIC_REAL_BLACKBOX_ONLY=telegram bash tests/e2e/real_agent_blackbox.e2e.sh)
-	$(call timed_step,test-coverage,$(MAKE) test-coverage)
+test-unit:
+	$(CARGO) test --bin agentic
 
-test-cli:
-	$(call timed_step,test-cli,bash tests/e2e/cli.e2e.sh)
+test-integration:
+	$(CARGO) test --test cli
 
-test-tui:
-	$(call timed_step,test-tui,bash tests/e2e/tui.e2e.sh)
-
-test-mcp:
-	$(call timed_step,test-mcp,bash tests/e2e/mcp.e2e.sh)
-
-test-cross:
-	$(call timed_step,test-cross,bash tests/e2e/cross.e2e.sh)
-
-test-doctor:
-	$(call timed_step,test-doctor,bash tests/e2e/doctor.e2e.sh)
-
-test-markers:
-	$(call timed_step,test-markers,bash tests/e2e/markers.e2e.sh)
-
-test-opencode-plugins:
-	$(call timed_step,test-opencode-plugins,bash tests/e2e/opencode_plugins.e2e.sh)
-
-test-telegram-plugin:
-	$(call timed_step,test-telegram-plugin,bash tests/e2e/telegram_plugin.e2e.sh)
-
-test-ubuntu-blackbox:
-	$(call timed_step,test-ubuntu-blackbox,bash tests/e2e/ubuntu_blackbox.e2e.sh)
-
-test-real-agent-doctor:
-	$(call timed_step,test-real-agent-doctor,bash tests/e2e/real_agent_doctor.e2e.sh)
-
-test-real-blackbox:
-	$(call timed_step,test-real-blackbox-codex,AGENTIC_REAL_BLACKBOX_ONLY=codex bash tests/e2e/real_agent_blackbox.e2e.sh)
-	$(call timed_step,test-real-blackbox-opencode,AGENTIC_REAL_BLACKBOX_ONLY=opencode bash tests/e2e/real_agent_blackbox.e2e.sh)
-	$(call timed_step,test-real-opencode-mapper,AGENTIC_REAL_BLACKBOX_ONLY=opencode-mapper bash tests/e2e/real_agent_blackbox.e2e.sh)
-	$(call timed_step,test-real-blackbox-telegram,AGENTIC_REAL_BLACKBOX_ONLY=telegram bash tests/e2e/real_agent_blackbox.e2e.sh)
-
-test-real-blackbox-codex:
-	$(call timed_step,test-real-blackbox-codex,AGENTIC_REAL_BLACKBOX_ONLY=codex bash tests/e2e/real_agent_blackbox.e2e.sh)
-
-test-real-blackbox-opencode:
-	$(call timed_step,test-real-blackbox-opencode,AGENTIC_REAL_BLACKBOX_ONLY=opencode bash tests/e2e/real_agent_blackbox.e2e.sh)
-
-test-real-blackbox-telegram:
-	$(call timed_step,test-real-blackbox-telegram,AGENTIC_REAL_BLACKBOX_ONLY=telegram bash tests/e2e/real_agent_blackbox.e2e.sh)
-
-test-real-opencode-mapper:
-	$(call timed_step,test-real-opencode-mapper,AGENTIC_REAL_BLACKBOX_ONLY=opencode-mapper bash tests/e2e/real_agent_blackbox.e2e.sh)
+e2e:
+	$(CARGO) test --test e2e_blackbox
 
 test-coverage:
-	@if [ -n "$${AGENTIC_COVERAGE_TRACE_FILE:-}" ]; then \
-	  trace_file="$$AGENTIC_COVERAGE_TRACE_FILE"; \
-	else \
-	  trace_file="$$(mktemp /tmp/agentic-coverage.XXXXXX)"; \
-	fi; \
-	$(MAKE) _test-coverage-steps AGENTIC_COVERAGE_TRACE_FILE="$$trace_file"
-
-_test-coverage-steps:
-	$(call timed_step,test-coverage-agentic,AGENTIC_COVERAGE_TRACE_FILE="$(AGENTIC_COVERAGE_TRACE_FILE)" AGENTIC_TEST_CLI="$(CURDIR)/tests/e2e/coverage_shim.sh" bash tests/e2e/agentic.e2e.sh >/tmp/agentic-coverage-agentic.log 2>&1)
-	$(call timed_step,test-coverage-tui,AGENTIC_COVERAGE_TRACE_FILE="$(AGENTIC_COVERAGE_TRACE_FILE)" AGENTIC_TEST_CLI="$(CURDIR)/tests/e2e/coverage_shim.sh" bash tests/e2e/tui.e2e.sh >/tmp/agentic-coverage-tui.log 2>&1)
-	$(call timed_step,test-coverage-cross,AGENTIC_COVERAGE_TRACE_FILE="$(AGENTIC_COVERAGE_TRACE_FILE)" AGENTIC_TEST_CLI="$(CURDIR)/tests/e2e/coverage_shim.sh" bash tests/e2e/cross.e2e.sh >/tmp/agentic-coverage-cross.log 2>&1)
-	$(call timed_step,test-coverage-markers,AGENTIC_COVERAGE_TRACE_FILE="$(AGENTIC_COVERAGE_TRACE_FILE)" AGENTIC_TEST_CLI="$(CURDIR)/tests/e2e/coverage_shim.sh" bash tests/e2e/markers.e2e.sh >/tmp/agentic-coverage-markers.log 2>&1)
-	$(call timed_step,test-coverage-cli,AGENTIC_COVERAGE_TRACE_FILE="$(AGENTIC_COVERAGE_TRACE_FILE)" AGENTIC_TEST_CLI="$(CURDIR)/tests/e2e/coverage_shim.sh" bash tests/e2e/cli.e2e.sh >/tmp/agentic-coverage-cli.log 2>&1)
-	$(call timed_step,test-coverage-doctor,AGENTIC_COVERAGE_TRACE_FILE="$(AGENTIC_COVERAGE_TRACE_FILE)" AGENTIC_TEST_CLI="$(CURDIR)/tests/e2e/coverage_shim.sh" bash tests/e2e/doctor.e2e.sh >/tmp/agentic-coverage-doctor.log 2>&1)
-	$(call timed_step,test-coverage-parse,bash tests/e2e/coverage_parse.sh "$(AGENTIC_COVERAGE_TRACE_FILE)")
-
-check-no-pycache:
-	@found="$$(find . -name .git -prune -o \( -type d -name __pycache__ -o -type f \( -name '*.pyc' -o -name '*.pyo' -o -name '*.pyd' \) \) -print)"; \
-	if [ -n "$$found" ]; then \
-	  printf '%s\n' "Python bytecode/cache artifacts are not allowed:"; \
-	  printf '%s\n' "$$found"; \
-	  exit 1; \
-	fi
+	$(CARGO) llvm-cov --fail-under-lines $(COVERAGE_MIN) --summary-only
 
 lint:
-	bash -n agentic
+	$(CARGO) fmt --check
+	$(CARGO) clippy --all-targets -- -D warnings
+	$(MAKE) lint-content
+
+fmt:
+	$(CARGO) fmt
+
+clean:
+	$(CARGO) clean
+	rm -f reports/area-quality.json reports/area-quality.md
+
+# --- Content tooling (areas/docs payload, unchanged from the bash era) ---
+
+lint-content:
 	PYTHONPYCACHEPREFIX=/tmp/agentic-pycache-check python3 -m py_compile scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_prompts.py --strict
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/sync_workflow_diagrams.py --check
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/build_docs_catalog.py --validate --output /tmp/agentic-catalog-check.json
 	$(MAKE) check-no-pycache
 
-fmt:
-	@printf '%s\n' "No formatter configured."
+check-no-pycache:
+	@if find . -path ./target -prune -o -name '__pycache__' -print -o -name '*.pyc' -print | grep -q .; then \
+		echo "[agentic][error] __pycache__/*.pyc artifacts found"; exit 1; \
+	fi
 
-clean:
-	rm -f reports/area-quality.json reports/area-quality.md
-
-build:
+build-docs:
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/sync_workflow_diagrams.py --check
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/build_docs_catalog.py --output docs/site/catalog.json --validate
 
