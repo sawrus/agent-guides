@@ -246,6 +246,14 @@ pub fn has_complete_mapping(roles: &[Role], config_path: &Path, state_path: &Pat
 }
 
 fn choose_model(app: &mut App, role: &Role, kind: &str, models: &[String]) -> String {
+    if app.tui_mode {
+        let title = format!(
+            "Select {kind} model for {} ({}) - {}",
+            role.name, role.mode, role.description
+        );
+        return crate::tui::screen_select_single(app, &title, models)
+            .unwrap_or_else(|| models[0].clone());
+    }
     eprintln!();
     eprintln!("{} ({}) - {}", role.name, role.mode, role.description);
     for (i, model) in models.iter().enumerate() {
@@ -415,7 +423,10 @@ pub fn configure_opencode_agent_model_mapper_if_needed(app: &mut App) -> crate::
             &format!("  - {name}: main={model} fallback={fallback}"),
         );
     }
-    if !prompt::confirm_action_interactive("Write .opencode/opencode.json agent model mapping?") {
+    if !prompt::confirm_action_interactive(
+        app,
+        "Write .opencode/opencode.json agent model mapping?",
+    ) {
         ui::log(app, "agent-model-mapper: skipped by user; no files changed");
         return Ok(());
     }

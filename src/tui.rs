@@ -47,7 +47,6 @@ impl SelectState {
         }
     }
 
-    #[cfg_attr(not(test), allow(dead_code))]
     pub fn preselect(&mut self, values: &[String]) {
         for (i, option) in self.options.iter().enumerate() {
             if values.iter().any(|v| v == option) {
@@ -154,25 +153,54 @@ impl InputState {
     }
 }
 
-fn theme_style(active_theme: &str) -> (Style, Style, Style) {
-    // (header, highlight, dim)
+/// Theme palette derived from the fzf colors of the bash version.
+struct Palette {
+    base: Style,
+    header: Style,
+    highlight: Style,
+    dim: Style,
+}
+
+fn theme_style(active_theme: &str) -> Palette {
     if active_theme == "light" {
-        (
-            Style::default()
-                .fg(Color::Blue)
+        // fzf light: fg #1f2937, bg #f8fafc, fg+ #111827, bg+ #dbeafe
+        Palette {
+            base: Style::default()
+                .fg(Color::Rgb(0x1f, 0x29, 0x37))
+                .bg(Color::Rgb(0xf8, 0xfa, 0xfc)),
+            header: Style::default()
+                .fg(Color::Rgb(0x25, 0x63, 0xeb))
+                .bg(Color::Rgb(0xf8, 0xfa, 0xfc))
                 .add_modifier(Modifier::BOLD),
-            Style::default().fg(Color::Black).bg(Color::LightBlue),
-            Style::default().fg(Color::DarkGray),
-        )
+            highlight: Style::default()
+                .fg(Color::Rgb(0x11, 0x18, 0x27))
+                .bg(Color::Rgb(0xdb, 0xea, 0xfe)),
+            dim: Style::default()
+                .fg(Color::Rgb(0x33, 0x41, 0x55))
+                .bg(Color::Rgb(0xf8, 0xfa, 0xfc)),
+        }
     } else {
-        (
-            Style::default()
-                .fg(Color::Cyan)
+        // fzf dark: fg #e5e7eb, bg #111827, fg+ #ffffff, bg+ #1f2937
+        Palette {
+            base: Style::default()
+                .fg(Color::Rgb(0xe5, 0xe7, 0xeb))
+                .bg(Color::Rgb(0x11, 0x18, 0x27)),
+            header: Style::default()
+                .fg(Color::Rgb(0x60, 0xa5, 0xfa))
+                .bg(Color::Rgb(0x11, 0x18, 0x27))
                 .add_modifier(Modifier::BOLD),
-            Style::default().fg(Color::White).bg(Color::DarkGray),
-            Style::default().fg(Color::Gray),
-        )
+            highlight: Style::default()
+                .fg(Color::Rgb(0xff, 0xff, 0xff))
+                .bg(Color::Rgb(0x1f, 0x29, 0x37)),
+            dim: Style::default()
+                .fg(Color::Rgb(0xd1, 0xd5, 0xdb))
+                .bg(Color::Rgb(0x11, 0x18, 0x27)),
+        }
     }
+}
+
+fn fill_background(frame: &mut Frame, base: Style) {
+    frame.render_widget(Block::default().style(base), frame.area());
 }
 
 fn layout_chunks(area: Rect) -> Vec<Rect> {
@@ -188,19 +216,21 @@ fn layout_chunks(area: Rect) -> Vec<Rect> {
 }
 
 pub fn render_banner(frame: &mut Frame, area: Rect, active_theme: &str, subtitle: &str) {
-    let (header, _, dim) = theme_style(active_theme);
+    let palette = theme_style(active_theme);
     let mut lines: Vec<Line> = ASCII_BANNER
         .lines()
-        .map(|l| Line::from(Span::styled(l.to_string(), header)))
+        .map(|l| Line::from(Span::styled(l.to_string(), palette.header)))
         .collect();
-    lines.push(Line::from(Span::styled(subtitle.to_string(), dim)));
-    frame.render_widget(Paragraph::new(lines), area);
+    lines.push(Line::from(Span::styled(subtitle.to_string(), palette.dim)));
+    frame.render_widget(Paragraph::new(lines).style(palette.base), area);
 }
 
 pub fn render_select(frame: &mut Frame, state: &SelectState, active_theme: &str, subtitle: &str) {
+    let palette = theme_style(active_theme);
+    fill_background(frame, palette.base);
     let chunks = layout_chunks(frame.area());
     render_banner(frame, chunks[0], active_theme, subtitle);
-    let (header, highlight, dim) = theme_style(active_theme);
+    let (header, highlight, dim) = (palette.header, palette.highlight, palette.dim);
     let items: Vec<ListItem> = state
         .options
         .iter()
@@ -224,9 +254,11 @@ pub fn render_select(frame: &mut Frame, state: &SelectState, active_theme: &str,
         "Use ↑/↓ to navigate • Enter to select"
     };
     let list = List::new(items)
+        .style(palette.base)
         .block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_style(palette.base)
                 .title(Span::styled(state.title.clone(), header)),
         )
         .highlight_style(highlight)
@@ -238,17 +270,21 @@ pub fn render_select(frame: &mut Frame, state: &SelectState, active_theme: &str,
 }
 
 pub fn render_input(frame: &mut Frame, state: &InputState, active_theme: &str, subtitle: &str) {
+    let palette = theme_style(active_theme);
+    fill_background(frame, palette.base);
     let chunks = layout_chunks(frame.area());
     render_banner(frame, chunks[0], active_theme, subtitle);
-    let (header, _, dim) = theme_style(active_theme);
+    let (header, dim) = (palette.header, palette.dim);
     let shown = format!("{}▏", state.value);
     let body = Paragraph::new(vec![
         Line::from(shown),
         Line::from(Span::styled(format!("(empty = {})", state.default), dim)),
     ])
+    .style(palette.base)
     .block(
         Block::default()
             .borders(Borders::ALL)
+            .border_style(palette.base)
             .title(Span::styled(state.title.clone(), header)),
     );
     frame.render_widget(body, chunks[1]);
@@ -330,6 +366,80 @@ impl Drop for TerminalGuard {
     }
 }
 
+fn wizard_subtitle() -> String {
+    format!("{} {}", crate::APP_TUI_TITLE, crate::app_version_label())
+}
+
+/// One-shot fullscreen single select. Returns None on cancel (Esc/Ctrl-C).
+pub fn screen_select_single(app: &App, title: &str, options: &[String]) -> Option<String> {
+    if options.is_empty() {
+        return None;
+    }
+    let _guard = TerminalGuard::enter().ok()?;
+    let backend = ratatui::backend::CrosstermBackend::new(std::io::stdout());
+    let mut terminal = Terminal::new(backend).ok()?;
+    let state = SelectState::new(title, options.to_vec(), false);
+    let state = run_select(&mut terminal, state, &app.active_theme, &wizard_subtitle()).ok()?;
+    if state.cancelled {
+        return None;
+    }
+    state.picked().first().cloned()
+}
+
+/// One-shot fullscreen multi select with optional preselected values.
+/// Returns None on cancel (Esc/Ctrl-C), otherwise the picked options.
+pub fn screen_select_multi(
+    app: &App,
+    title: &str,
+    options: &[String],
+    preselected: &[String],
+) -> Option<Vec<String>> {
+    if options.is_empty() {
+        return Some(Vec::new());
+    }
+    let _guard = TerminalGuard::enter().ok()?;
+    let backend = ratatui::backend::CrosstermBackend::new(std::io::stdout());
+    let mut terminal = Terminal::new(backend).ok()?;
+    let mut state = SelectState::new(title, options.to_vec(), true);
+    state.preselect(preselected);
+    let state = run_select(&mut terminal, state, &app.active_theme, &wizard_subtitle()).ok()?;
+    if state.cancelled {
+        return None;
+    }
+    Some(state.picked())
+}
+
+/// One-shot fullscreen text input. Returns None on cancel.
+pub fn screen_input(app: &App, title: &str, default: &str) -> Option<String> {
+    let _guard = TerminalGuard::enter().ok()?;
+    let backend = ratatui::backend::CrosstermBackend::new(std::io::stdout());
+    let mut terminal = Terminal::new(backend).ok()?;
+    let state = InputState::new(title, default);
+    let state = run_input(&mut terminal, state, &app.active_theme, &wizard_subtitle()).ok()?;
+    if state.cancelled {
+        return None;
+    }
+    Some(state.result())
+}
+
+/// One-shot yes/no question rendered as a TUI select ("Yes"/"No").
+pub fn screen_yes_no(app: &App, prompt: &str) -> bool {
+    let options = vec!["Yes".to_string(), "No".to_string()];
+    matches!(
+        screen_select_single(app, prompt, &options).as_deref(),
+        Some("Yes")
+    )
+}
+
+/// One-shot Confirm/Cancel question (mirror of the fzf confirm menu).
+pub fn screen_confirm(app: &App, prompt: &str) -> bool {
+    let options = vec!["Confirm".to_string(), "Cancel".to_string()];
+    matches!(
+        screen_select_single(app, prompt, &options).as_deref(),
+        Some("Confirm")
+    )
+}
+
 /// Wizard outcome collected from the fullscreen phase.
 #[derive(Debug, Default, Clone)]
 pub struct WizardSelections {
@@ -351,6 +461,7 @@ pub fn run_tui(app: &mut App) -> crate::Result<()> {
     let selections = run_wizard_screens(app)?;
     apply_selections(app, selections);
     config::save_user_config(app);
+    app.tui_mode = true;
     install::run_install(app)
 }
 
@@ -427,11 +538,16 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
     let detected =
         mcp::detect_configured_mcps(std::path::Path::new(&selections.project_dir), &app.home);
     let mut mcp_options: Vec<String> = vec![mcp::MCP_NONE_OPTION.to_string()];
+    let mut preselected: Vec<String> = Vec::new();
     for id in mcp::MCP_REGISTRY_IDS {
-        let checked = detected.iter().any(|d| d == id);
-        mcp_options.push(mcp::mcp_display_row(id, checked));
+        let row = format!("{id:<20} {}", mcp::mcp_description(id));
+        if detected.iter().any(|d| d == id) {
+            preselected.push(row.clone());
+        }
+        mcp_options.push(row);
     }
-    let state = SelectState::new("Select MCP servers to enable:", mcp_options, true);
+    let mut state = SelectState::new("Select MCP servers to enable:", mcp_options, true);
+    state.preselect(&preselected);
     let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
     let picked = state.picked();
     if picked.is_empty() && !detected.is_empty() {

@@ -355,18 +355,18 @@ pub fn configure_opencode_plugins_if_needed(app: &mut App) -> crate::Result<()> 
                 }
                 _ => {
                     app.opencode_telegram_bot_token =
-                        prompt::prompt_text_interactive("Telegram botToken", "");
+                        prompt::prompt_text_interactive(app, "Telegram botToken", "");
                     app.opencode_telegram_chat_id =
-                        prompt::prompt_text_interactive("Telegram chatId", "");
+                        prompt::prompt_text_interactive(app, "Telegram chatId", "");
                 }
             }
         } else {
             let bot = app.opencode_telegram_bot_token.clone();
             let chat = app.opencode_telegram_chat_id.clone();
             app.opencode_telegram_bot_token =
-                prompt::prompt_text_interactive("Telegram botToken", &bot);
+                prompt::prompt_text_interactive(app, "Telegram botToken", &bot);
             app.opencode_telegram_chat_id =
-                prompt::prompt_text_interactive("Telegram chatId", &chat);
+                prompt::prompt_text_interactive(app, "Telegram chatId", &chat);
         }
         if enable_telegram {
             if app.opencode_telegram_bot_token.is_empty()

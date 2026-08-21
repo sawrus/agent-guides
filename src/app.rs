@@ -53,6 +53,9 @@ pub struct App {
     pub config_home_override: Option<PathBuf>,
     /// Test-only override for interactive terminal detection.
     pub interactive_override: Option<bool>,
+    /// True while running the ratatui wizard flow: interactive questions are
+    /// rendered as fullscreen TUI screens instead of line prompts.
+    pub tui_mode: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -110,6 +113,7 @@ impl App {
             home,
             config_home_override: None,
             interactive_override: None,
+            tui_mode: false,
         })
     }
 

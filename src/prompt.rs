@@ -44,7 +44,11 @@ pub fn prompt_with_default(prompt: &str, default: &str) -> String {
     }
 }
 
-pub fn prompt_text_interactive(prompt: &str, default: &str) -> String {
+pub fn prompt_text_interactive(app: &App, prompt: &str, default: &str) -> String {
+    if app.tui_mode {
+        return crate::tui::screen_input(app, prompt, default)
+            .unwrap_or_else(|| default.to_string());
+    }
     let answer = if default.is_empty() {
         read_line_prompt(&format!("{prompt}: "))
     } else {
@@ -57,10 +61,23 @@ pub fn prompt_text_interactive(prompt: &str, default: &str) -> String {
     }
 }
 
-pub fn confirm_action_interactive(prompt: &str) -> bool {
+pub fn confirm_action_interactive(app: &App, prompt: &str) -> bool {
+    if app.tui_mode {
+        return crate::tui::screen_confirm(app, prompt);
+    }
     let answer = read_line_prompt(&format!("{prompt} [y/N]: "));
     let lower = answer.to_lowercase();
     lower == "y" || lower == "yes"
+}
+
+/// Yes/no question: fullscreen select in TUI mode, `[y/N]` line prompt in CLI
+/// mode. Empty answer means "no".
+pub fn read_yes_no(app: &App, prompt: &str) -> bool {
+    if app.tui_mode {
+        return crate::tui::screen_yes_no(app, prompt);
+    }
+    let answer = read_line_prompt(&format!("{prompt} [y/N]: "));
+    answer.to_lowercase().starts_with('y')
 }
 
 /// Single-choice numbered menu; empty answer = first option;
@@ -70,6 +87,10 @@ pub fn choose_single_by_index(
     prompt: &str,
     options: &[String],
 ) -> crate::Result<String> {
+    if app.tui_mode {
+        // Cancel behaves like the fzf cancel in the bash version: empty choice.
+        return Ok(crate::tui::screen_select_single(app, prompt, options).unwrap_or_default());
+    }
     eprintln!("{prompt}");
     for (i, option) in options.iter().enumerate() {
         eprintln!("  {}) {option}", i + 1);
@@ -94,6 +115,9 @@ pub fn choose_multi_by_index(
     prompt: &str,
     options: &[String],
 ) -> crate::Result<Vec<String>> {
+    if app.tui_mode {
+        return Ok(crate::tui::screen_select_multi(app, prompt, options, &[]).unwrap_or_default());
+    }
     eprintln!("{prompt}");
     for (i, option) in options.iter().enumerate() {
         eprintln!("  {}) {option}", i + 1);
@@ -129,7 +153,7 @@ pub fn configure_context7_key_interactive(app: &mut App) -> crate::Result<()> {
     let choice = choose_single_by_index(app, "Context7 API key mode:", &options)?;
     if choice == "Enter CONTEXT7_API_KEY" {
         let current = app.context7_api_key.clone();
-        app.context7_api_key = prompt_text_interactive("CONTEXT7_API_KEY", &current);
+        app.context7_api_key = prompt_text_interactive(app, "CONTEXT7_API_KEY", &current);
     } else {
         app.context7_api_key.clear();
     }
@@ -149,17 +173,29 @@ mod tests {
         set_test_answers(&["", "value", "", "custom"]);
         assert_eq!(prompt_with_default("p", "def"), "def");
         assert_eq!(prompt_with_default("p", "def"), "value");
-        assert_eq!(prompt_text_interactive("p", "keep"), "keep");
-        assert_eq!(prompt_text_interactive("p", ""), "custom");
+        let app = app();
+        assert_eq!(prompt_text_interactive(&app, "p", "keep"), "keep");
+        assert_eq!(prompt_text_interactive(&app, "p", ""), "custom");
     }
 
     #[test]
     fn confirm_variants() {
+        let app = app();
         set_test_answers(&["y", "YES", "n", ""]);
-        assert!(confirm_action_interactive("q"));
-        assert!(confirm_action_interactive("q"));
-        assert!(!confirm_action_interactive("q"));
-        assert!(!confirm_action_interactive("q"));
+        assert!(confirm_action_interactive(&app, "q"));
+        assert!(confirm_action_interactive(&app, "q"));
+        assert!(!confirm_action_interactive(&app, "q"));
+        assert!(!confirm_action_interactive(&app, "q"));
+    }
+
+    #[test]
+    fn yes_no_line_mode() {
+        let app = app();
+        set_test_answers(&["y", "yes", "n", ""]);
+        assert!(read_yes_no(&app, "q"));
+        assert!(read_yes_no(&app, "q"));
+        assert!(!read_yes_no(&app, "q"));
+        assert!(!read_yes_no(&app, "q"));
     }
 
     #[test]

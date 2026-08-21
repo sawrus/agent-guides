@@ -134,6 +134,7 @@ pub fn mcp_description(id: &str) -> &'static str {
     }
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn mcp_display_row(id: &str, checked: bool) -> String {
     let mark = if checked { "[x]" } else { "[ ]" };
     format!("{mark} {id:<20} {}", mcp_description(id))
@@ -663,7 +664,11 @@ pub fn configure_context7_if_needed(app: &mut App) -> crate::Result<()> {
 
     if app.is_interactive_terminal() {
         if enable.is_empty() {
-            enable = crate::prompt::read_line_prompt("Enable Context7 MCP configuration? [y/N]: ");
+            enable = if crate::prompt::read_yes_no(app, "Enable Context7 MCP configuration?") {
+                "y".to_string()
+            } else {
+                "n".to_string()
+            };
         }
         if !enable.to_lowercase().starts_with('y') {
             ui::log(app, "Context7 MCP configuration disabled");
