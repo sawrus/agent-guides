@@ -161,9 +161,12 @@ self-contained cross-platform Rust binary.
       preserved content tooling)
 - [x] `install` bootstrap script rewrite (GitHub Releases binaries)
 - [x] README/CHANGELOG/UPGRADE updates, version 0.7.0 (`Cargo.toml` is the
-      single version source; npm package removed)
+      version source; package.json kept in sync, enforced by
+      `make check-version-sync` and the publish workflow)
 - [x] CI workflows (`ci.yml`, `release.yml`)
-- [x] Removed bash `agentic`, `bin/agentic.js`, `package.json`,
-      `tests/e2e/*.sh`, npm publish workflow
+- [x] Removed bash `agentic` and `tests/e2e/*.sh`; npm channel reworked:
+      `bin/agentic.js` is a thin launcher downloading the release binary
+      (version pinned to package.json, cache `~/.cache/agentic-npm/<version>`),
+      published via `publish-npm.yml` on release publication
 - [x] Final verification: `make lint test test-coverage release-build` green;
       release binary (6.5 MB) verified standalone with embedded knowledge base

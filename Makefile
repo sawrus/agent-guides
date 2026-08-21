@@ -5,8 +5,8 @@ CARGO ?= cargo
 COVERAGE_MIN ?= 80
 
 .PHONY: help install dev build release-build test test-unit test-integration \
-	e2e test-coverage lint fmt clean check-no-pycache lint-content \
-	build-docs sync-diagrams assess-areas
+	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
+	lint-content build-docs sync-diagrams assess-areas
 
 help:
 	@echo "Agentic Makefile targets:"
@@ -54,6 +54,7 @@ test-coverage:
 lint:
 	$(CARGO) fmt --check
 	$(CARGO) clippy --all-targets -- -D warnings
+	$(MAKE) check-version-sync
 	$(MAKE) lint-content
 
 fmt:
@@ -71,6 +72,14 @@ lint-content:
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/sync_workflow_diagrams.py --check
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/build_docs_catalog.py --validate --output /tmp/agentic-catalog-check.json
 	$(MAKE) check-no-pycache
+
+check-version-sync:
+	@cargo_version=$$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1); \
+	npm_version=$$(node -p "require('./package.json').version" 2>/dev/null || \
+		sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -n1); \
+	if [ "$$cargo_version" != "$$npm_version" ]; then \
+		echo "[agentic][error] version mismatch: Cargo.toml=$$cargo_version package.json=$$npm_version"; exit 1; \
+	fi
 
 check-no-pycache:
 	@if find . -path ./target -prune -o -name '__pycache__' -print -o -name '*.pyc' -print | grep -q .; then \

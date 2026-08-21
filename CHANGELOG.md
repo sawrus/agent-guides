@@ -10,7 +10,7 @@
 - Preserved 100% of the install pipeline semantics: manifest idempotency, managed-file protection (unmanaged/user-modified/config skips), marker injection with `created_by` preservation, MCP registry and per-agent config writers, OpenCode plugins/profiles/agent-model-mapper, codex TOML editing, doctor smoke checks with fatal-pattern classification.
 - Fixed an upstream validation bug: the documented `default` agent OS is now accepted by `--agent-os` validation.
 - `--install-fzf` is kept as a deprecated no-op for bootstrap compatibility.
-- Removed the npm distribution (`@jetrabbits/agentic`, `bin/agentic.js`) and the bash e2e suite; testing is now `cargo test` (unit + integration + real-run blackbox e2e with fake agent binaries) with an enforced 80% line-coverage gate (`make test-coverage`).
+- Reworked the npm distribution: `@jetrabbits/agentic` is now a thin Node launcher that downloads the platform binary for the matching release tag from GitHub Releases on first run (per-version cache in `~/.cache/agentic-npm/`); publishing runs on GitHub Release publication with a Cargo/npm/tag version-sync gate. Removed the bash e2e suite; testing is now `cargo test` (unit + integration + real-run blackbox e2e with fake agent binaries) with an enforced 80% line-coverage gate (`make test-coverage`).
 - Added CI (`ci.yml`: fmt/clippy/tests on linux+macos+windows + coverage gate) and release automation (`release.yml`: 5-target build matrix publishing `agentic-<arch>-<os>` assets with SHA256SUMS).
 
 ## v0.6.3

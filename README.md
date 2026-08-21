@@ -9,6 +9,7 @@ and prompts into any project — and run a full SDLC agent team out of the box.
 - [Coverage scorecard](https://claude.ai/public/artifacts/8177bc3d-3b2f-48a6-8232-47c5b02b20f3)
 - [CLI usage guide](docs/agentic-usage.md)
 - [Releases (prebuilt binaries)](https://github.com/sawrus/agent-guides/releases)
+- [NPM package](https://www.npmjs.com/package/@jetrabbits/agentic)
 
 ## Coverage snapshot
 
@@ -107,7 +108,13 @@ knowledge base (areas, extensions) is embedded into the binary.
 
 ### Install
 
-Bootstrap the latest release binary (linux x86_64/aarch64, macOS Intel/ARM):
+Via npm (thin launcher that fetches the platform binary on first run):
+
+```bash
+npx @jetrabbits/agentic@latest
+```
+
+Or bootstrap the latest release binary (linux x86_64/aarch64, macOS Intel/ARM):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash

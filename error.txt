@@ -1,0 +1,27 @@
+
+failures:
+
+---- manifest::tests::can_write_skips_user_modified stdout ----
+[agentic][warn] Skipping user-modified managed file: C:\Users\RUNNER~1\AppData\Local\Temp\.tmpI3VEuA\file.md
+
+thread 'manifest::tests::can_write_skips_user_modified' (6384) panicked at src\manifest.rs:554:9:
+assertion `left == right` failed
+  left: ["C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\.tmpI3VEuA\\file.md"]
+ right: ["file.md"]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- selfinstall::tests::ensure_path_export_appends_once stdout ----
+[agentic] Added PATH export to C:\Users\RUNNER~1\AppData\Local\Temp\.tmpPoqBY3\.profile
+
+thread 'selfinstall::tests::ensure_path_export_appends_once' (7912) panicked at src\selfinstall.rs:245:52:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "The system cannot find the file specified." }
+
+
+failures:
+    manifest::tests::can_write_skips_user_modified
+    selfinstall::tests::ensure_path_export_appends_once
+
+test result: FAILED. 120 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.18s
+
+error: test failed, to rerun pass `--bin agentic`
+Error: Process completed with exit code 1.
