@@ -187,11 +187,11 @@ impl App {
     }
 
     pub fn project_rel_path(&self, path: &std::path::Path) -> String {
-        let full = path.to_string_lossy().to_string();
-        let prefix = format!("{}/", self.project_dir);
-        full.strip_prefix(&prefix)
-            .map(|s| s.to_string())
-            .unwrap_or(full)
+        match path.strip_prefix(std::path::Path::new(&self.project_dir)) {
+            // Manifest paths always use forward slashes, also on Windows.
+            Ok(rel) if !rel.as_os_str().is_empty() => rel.to_string_lossy().replace('\\', "/"),
+            _ => path.to_string_lossy().to_string(),
+        }
     }
 
     pub fn selected_agent_os_contains(&self, expected: &str) -> bool {

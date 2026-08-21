@@ -208,6 +208,10 @@ fn print_self_install_report(app: &App, source: &Path, target: &Path, _bin_dir: 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    /// Serializes tests that mutate the process-wide SHELL env var.
+    static SHELL_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn path_ref_uses_home_variable() {
@@ -224,6 +228,7 @@ mod tests {
 
     #[test]
     fn profile_file_by_shell() {
+        let _guard = SHELL_LOCK.lock().unwrap();
         let home = Path::new("/h");
         std::env::set_var("SHELL", "/bin/zsh");
         assert_eq!(self_install_profile_file(home), home.join(".zshrc"));
@@ -235,6 +240,7 @@ mod tests {
 
     #[test]
     fn ensure_path_export_appends_once() {
+        let _guard = SHELL_LOCK.lock().unwrap();
         let tmp = tempfile::tempdir().unwrap();
         std::env::set_var("SHELL", "/bin/bash");
         let mut app = App::new().unwrap();
