@@ -36,9 +36,7 @@ pub fn mempalace_timeout_seconds() -> u64 {
 fn command_available(name: &str) -> bool {
     let mut cmd = Command::new(name);
     cmd.arg("--version");
-    run_with_timeout(&mut cmd, Duration::from_secs(mempalace_timeout_seconds()))
-        .map(|(timed_out, status, _)| !timed_out && status == 0)
-        .unwrap_or(false)
+    run_with_timeout(&mut cmd, Duration::from_secs(mempalace_timeout_seconds())).is_ok()
 }
 
 pub fn write_mempalace_ignore_file(app: &mut App) -> crate::Result<()> {
