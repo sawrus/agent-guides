@@ -466,6 +466,14 @@ pub fn configure_selected_mcps_if_needed(app: &mut App) -> crate::Result<()> {
     if generic.is_empty() {
         return Ok(());
     }
+    if app.install_settings_replay
+        && app.context7_api_key_mode.as_deref() == Some("api_key")
+        && app.context7_api_key.is_empty()
+    {
+        ui::warn(app, "Context7 API key mode is enabled but CONTEXT7_API_KEY is not set; preserving existing Context7 configuration");
+        return Ok(());
+    }
+
     let project = PathBuf::from(&app.project_dir);
     if app.selected_agent_os_contains("opencode") {
         write_selected_mcp_json_config(
@@ -674,7 +682,13 @@ pub fn configure_context7_if_needed(app: &mut App) -> crate::Result<()> {
             ui::log(app, "Context7 MCP configuration disabled");
             return Ok(());
         }
-        crate::prompt::configure_context7_key_interactive(app)?;
+        if app.context7_api_key_mode.is_none() {
+            crate::prompt::configure_context7_key_interactive(app)?;
+        } else if app.context7_api_key_mode.as_deref() == Some("api_key")
+            && app.context7_api_key.is_empty()
+        {
+            ui::warn(app, "Context7 API key mode is enabled but CONTEXT7_API_KEY is not set; reusing existing configuration where possible");
+        }
     } else if !enable.is_empty() {
         if !enable.to_lowercase().starts_with('y') {
             ui::log(app, "Context7 MCP configuration disabled");

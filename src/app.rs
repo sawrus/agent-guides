@@ -25,7 +25,6 @@ pub struct App {
 
     pub self_install_force: bool,
     pub self_install_bin_dir: String,
-    pub self_install_with_fzf: bool,
 
     pub created_paths: Vec<String>,
     pub copied_paths: Vec<String>,
@@ -34,6 +33,7 @@ pub struct App {
     pub warnings: Vec<String>,
 
     pub context7_api_key: String,
+    pub context7_api_key_mode: Option<String>,
     pub enable_context7_env: Option<String>,
     pub enable_mempalace_env: Option<String>,
     pub doctor_enabled_env: bool,
@@ -86,13 +86,13 @@ impl App {
             install_settings_replay: false,
             self_install_force: false,
             self_install_bin_dir: home.join(".local/bin").to_string_lossy().to_string(),
-            self_install_with_fzf: false,
             created_paths: Vec::new(),
             copied_paths: Vec::new(),
             managed_records: Vec::new(),
             skipped_managed_paths: Vec::new(),
             warnings: Vec::new(),
             context7_api_key: std::env::var("CONTEXT7_API_KEY").unwrap_or_default(),
+            context7_api_key_mode: None,
             enable_context7_env: std::env::var("AGENTIC_ENABLE_CONTEXT7")
                 .ok()
                 .filter(|v| !v.is_empty()),

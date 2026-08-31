@@ -1,6 +1,6 @@
 [package]
 name = "agentic"
-version = "0.7.0"
+version = "1.0.0"
 edition = "2021"
 description = "Agentic Installer: self-contained installer for AI-agent guidance payloads"
 license = "MIT"

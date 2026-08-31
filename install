@@ -42,7 +42,7 @@ main() {
   local asset tag url tmp_dir
   asset="$(detect_target)"
   tmp_dir="$(mktemp -d /tmp/agentic-install.XXXXXX)"
-  trap 'rm -rf "$tmp_dir"' EXIT
+  trap "rm -rf -- '$tmp_dir'" EXIT
 
   log "Resolving latest release of $REPO..."
   download "$API_URL" "$tmp_dir/release.json"

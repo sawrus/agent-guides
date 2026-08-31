@@ -66,7 +66,6 @@ self-contained cross-platform Rust binary.
   (with `[x]` detection) → areas → per-area specs → install. Esc on project
   dir = exit 1; empty spec selection = exit 1 (parity).
 - `selfinstall.rs` — copy binary to `~/.local/bin`, PATH export in shell rc,
-  `--install-fzf` kept as a deprecated no-op.
 - `upgrade.rs` — GitHub Releases latest → version compare → download asset
   `agentic-<arch>-<os>.{tar.gz,zip}` → sha-checked replace → project re-sync
   (replay install + mempalace graph refresh).
@@ -103,7 +102,6 @@ self-contained cross-platform Rust binary.
       validator rejected it — upstream bug).
     - `upgrade` updates the binary from GitHub Releases instead of git pull
       (knowledge base is embedded).
-    - `--install-fzf` is a no-op with a deprecation warning.
 
 ## Testing
 
@@ -123,7 +121,7 @@ self-contained cross-platform Rust binary.
   build-docs-catalog) preserved.
 - `install` script: downloads the platform binary from GitHub Releases
   (only the bootstrap script itself needs curl/wget).
-- `README.md`, `CHANGELOG.md` (v0.7.0), `UPGRADE.md` migration notes.
+- `README.md`, `CHANGELOG.md` (v1.0.0), `UPGRADE.md` migration notes.
 - Removed: bash `agentic`, `bin/agentic.js` npm wrapper, `tests/e2e/*.sh`,
   coverage shims.
 
@@ -160,7 +158,7 @@ self-contained cross-platform Rust binary.
 - [x] Makefile rewrite (`build/test/e2e/test-coverage/lint/fmt/install` +
       preserved content tooling)
 - [x] `install` bootstrap script rewrite (GitHub Releases binaries)
-- [x] README/CHANGELOG/UPGRADE updates, version 0.7.0 (`Cargo.toml` is the
+- [x] README/CHANGELOG/UPGRADE updates, version 1.0.0 (`Cargo.toml` is the
       version source; package.json kept in sync, enforced by
       `make check-version-sync` and the publish workflow)
 - [x] CI workflows (`ci.yml`, `release.yml`)

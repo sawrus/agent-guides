@@ -681,7 +681,7 @@ mod tests {
         );
         state.selected[1] = true;
         terminal
-            .draw(|f| render_select(f, &state, "dark", "Agentic installer (TUI mode) v0.7.0"))
+            .draw(|f| render_select(f, &state, "dark", "Agentic installer (TUI mode) v1.0.0"))
             .unwrap();
         let buffer = terminal.backend().buffer().clone();
         let content: String = buffer

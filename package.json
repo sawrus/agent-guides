@@ -1,6 +1,6 @@
 {
   "name": "@jetrabbits/agentic",
-  "version": "0.7.0",
+  "version": "1.0.0",
   "description": "Agentic Installer: self-contained CLI that installs AI-agent guidance (rules, skills, workflows, prompts) into any project. This npm package is a thin launcher that downloads the prebuilt Rust binary for your platform from GitHub Releases.",
   "license": "MIT",
   "repository": {

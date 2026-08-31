@@ -362,6 +362,7 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
             "areas": app.selected_areas,
             "specializations": app.selected_specs,
             "mcp_integrations": app.selected_mcps,
+            "context7": {"api_key_mode": app.context7_api_key_mode.clone().unwrap_or_else(|| if app.context7_api_key.is_empty() { "without_api_key".to_string() } else { "api_key".to_string() })},
             "opencode_profile": app.selected_opencode_profile,
             "opencode_plugins": Value::Object(opencode_plugins),
             "source_repo": crate::APP_REPO_LINK,
@@ -419,6 +420,15 @@ pub fn load_install_settings_from_manifest(
     let loaded_areas = load_list("areas");
     let loaded_specs = load_list("specializations");
     let loaded_mcps = load_list("mcp_integrations");
+    if let Some(mode) = settings
+        .get("context7")
+        .and_then(|v| v.get("api_key_mode"))
+        .and_then(|v| v.as_str())
+    {
+        if mode == "without_api_key" || mode == "api_key" {
+            app.context7_api_key_mode = Some(mode.to_string());
+        }
+    }
 
     if app.selected_agent_os == vec![crate::DEFAULT_AGENT_OS.to_string()]
         && !loaded_agent_os.is_empty()
