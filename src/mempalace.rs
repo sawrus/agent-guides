@@ -407,14 +407,6 @@ fn initialize_mempalace_project(app: &mut App, step_prefix: &str) -> bool {
         app,
         &format!("{step_prefix} [4/4] Initializing project memory at {project_dir} (wing: {project_wing})"),
     );
-    if !command_available("mempalace") {
-        ui::warn(
-            app,
-            "mempalace command is unavailable after install; please run setup manually",
-        );
-        print_setup_instructions(app);
-        return false;
-    }
     let mut init_cmd = Command::new("mempalace");
     init_cmd
         .args(["init", &project_dir, "--yes", "--no-llm"])
