@@ -5,12 +5,30 @@ use crate::ui;
 use std::path::Path;
 
 pub fn path_ref_for_shell_export(home: &Path, dir: &Path) -> String {
-    let dir_str = dir.to_string_lossy();
-    let home_prefix = format!("{}/", home.to_string_lossy());
-    if let Some(rest) = dir_str.strip_prefix(&home_prefix) {
+    // Match prefixes using platform-aware path semantics, then normalize the
+    // relative portion for shell syntax (which conventionally uses `/`).
+    if let Ok(rest) = dir.strip_prefix(home) {
+        let rest = rest.to_string_lossy().replace('\\', "/");
+        if rest.is_empty() {
+            return "$HOME".to_string();
+        }
         return format!("$HOME/{rest}");
     }
-    dir_str.to_string()
+
+    // Fall back to normalized textual matching for synthetic or mixed-separator
+    // paths (for example, values supplied by tests or environment variables).
+    let home_str = home.to_string_lossy().replace('\\', "/");
+    let dir_str = dir.to_string_lossy().replace('\\', "/");
+    let home_str = home_str.trim_end_matches('/');
+    if dir_str == home_str {
+        return "$HOME".to_string();
+    }
+    if let Some(rest) = dir_str.strip_prefix(&format!("{home_str}/")) {
+        return format!("$HOME/{rest}");
+    }
+
+    // Keep absolute paths usable in shell exports even on Windows.
+    dir_str
 }
 
 pub fn self_install_profile_file(home: &Path) -> std::path::PathBuf {
@@ -223,6 +241,13 @@ mod tests {
         assert_eq!(
             path_ref_for_shell_export(home, Path::new("/opt/bin")),
             "/opt/bin"
+        );
+        assert_eq!(
+            path_ref_for_shell_export(
+                Path::new(r"C:\Users\runner"),
+                Path::new(r"C:\Users\runner\.local\bin"),
+            ),
+            "$HOME/.local/bin"
         );
     }
 
