@@ -1,20 +1,62 @@
 #!/usr/bin/env bash
+# Agentic bootstrap installer: downloads the prebuilt self-contained binary
+# from GitHub Releases for the current platform and installs it via
+# `agentic self-install`.
 
 set -euo pipefail
 
-REPO_RAW_BASE="https://raw.githubusercontent.com/sawrus/agent-guides/main"
-INSTALLER_URL="$REPO_RAW_BASE/agentic"
-TMP_FILE="$(mktemp /tmp/agentic.XXXXXX)"
+REPO="sawrus/agent-guides"
+API_URL="https://api.github.com/repos/$REPO/releases/latest"
+BIN_DIR="${AGENTIC_BIN_DIR:-$HOME/.local/bin}"
 
-cleanup() {
-  rm -f "$TMP_FILE"
+log() { echo "[agentic] $1"; }
+fail() { echo "[agentic][error] $1" >&2; exit 1; }
+
+download() {
+  local url="$1" dest="$2"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$url" -o "$dest"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "$dest" "$url"
+  else
+    fail "curl or wget is required for install bootstrap"
+  fi
 }
-trap cleanup EXIT
 
-if ! command -v curl >/dev/null 2>&1; then
-  echo "[agentic][error] curl is required for install bootstrap" >&2
-  exit 1
-fi
+detect_target() {
+  local os arch
+  case "$(uname -s)" in
+    Linux)  os="unknown-linux-musl" ;;
+    Darwin) os="apple-darwin" ;;
+    *) fail "Unsupported OS: $(uname -s). Download a binary manually from https://github.com/$REPO/releases" ;;
+  esac
+  case "$(uname -m)" in
+    x86_64|amd64)  arch="x86_64" ;;
+    arm64|aarch64) arch="aarch64" ;;
+    *) fail "Unsupported architecture: $(uname -m)" ;;
+  esac
+  echo "agentic-$arch-$os.tar.gz"
+}
 
-curl -fsSL "$INSTALLER_URL" -o "$TMP_FILE"
-bash "$TMP_FILE" self-install --force --install-fzf "$@"
+main() {
+  local asset tag url tmp_dir
+  asset="$(detect_target)"
+  tmp_dir="$(mktemp -d /tmp/agentic-install.XXXXXX)"
+  trap 'rm -rf "$tmp_dir"' EXIT
+
+  log "Resolving latest release of $REPO..."
+  download "$API_URL" "$tmp_dir/release.json"
+  tag="$(sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$tmp_dir/release.json" | head -n1)"
+  [[ -n "$tag" ]] || fail "Could not resolve latest release tag"
+
+  url="https://github.com/$REPO/releases/download/$tag/$asset"
+  log "Downloading $url"
+  download "$url" "$tmp_dir/$asset"
+  tar -xzf "$tmp_dir/$asset" -C "$tmp_dir"
+  [[ -f "$tmp_dir/agentic" ]] || fail "Archive did not contain the agentic binary"
+  chmod +x "$tmp_dir/agentic"
+
+  "$tmp_dir/agentic" self-install --force --bin-dir "$BIN_DIR" "$@"
+}
+
+main "$@"

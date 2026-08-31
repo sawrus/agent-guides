@@ -59,3 +59,12 @@ An update is ready only when it gives the target-project agent enough context to
 - where the behavior is documented under `docs/`.
 
 If an update cannot pass that bar, keep it out of `areas/**` until it becomes actionable.
+
+## Migrating from the Bash CLI (v0.6.x) to the Rust binary (v0.7.0+)
+
+1. Remove the old bash script if installed: `rm -f ~/.local/bin/agentic`.
+2. Install the new binary: `curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash`.
+3. The local knowledge-base checkout at `~/.local/share/agentic/repo` is no longer used (content is embedded in the binary); you may delete it.
+4. Existing projects with `.agentic.json` keep working: run `agentic install --project-dir <dir>` or `agentic upgrade` inside the project to re-sync.
+5. `npx @jetrabbits/agentic@latest` keeps working from v0.7.0: the npm package is now a thin launcher that downloads the release binary on first run.
+6. `fzf` is no longer needed — the TUI is built in.

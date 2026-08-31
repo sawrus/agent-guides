@@ -1,0 +1,29 @@
+[package]
+name = "agentic"
+version = "0.7.0"
+edition = "2021"
+description = "Agentic Installer: self-contained installer for AI-agent guidance payloads"
+license = "MIT"
+repository = "https://github.com/sawrus/agent-guides"
+
+[dependencies]
+include_dir = "0.7"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10"
+regex = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+crossterm = "0.28"
+ratatui = "0.29"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+self-replace = "1"
+tempfile = "3"
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1

@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross (linux musl)
+        if: contains(matrix.target, 'linux-musl')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          cargo install cross --git https://github.com/cross-rs/cross --locked || true
+
+      - name: Build (cross for aarch64 musl)
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Build (native)
+        if: matrix.target != 'aarch64-unknown-linux-musl'
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package (unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          # Asset naming must match upgrade::release_asset_name():
+          # agentic-<arch>-<os>.tar.gz
+          arch="${{ matrix.target }}"
+          case "$arch" in
+            x86_64-unknown-linux-musl)  name="agentic-x86_64-unknown-linux-musl" ;;
+            aarch64-unknown-linux-musl) name="agentic-aarch64-unknown-linux-musl" ;;
+            x86_64-apple-darwin)        name="agentic-x86_64-apple-darwin" ;;
+            aarch64-apple-darwin)       name="agentic-aarch64-apple-darwin" ;;
+          esac
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/agentic" dist/agentic
+          tar -czf "$name.tar.gz" -C dist agentic
+          shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256"
+
+      - name: Package (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/agentic.exe" dist/agentic.exe
+          Compress-Archive -Path dist/agentic.exe -DestinationPath agentic-x86_64-pc-windows-msvc.zip -Force
+          (Get-FileHash agentic-x86_64-pc-windows-msvc.zip -Algorithm SHA256).Hash + "  agentic-x86_64-pc-windows-msvc.zip" | Out-File agentic-x86_64-pc-windows-msvc.zip.sha256 -Encoding ascii
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: |
+            agentic-*.tar.gz
+            agentic-*.zip
+            agentic-*.sha256
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - name: Combined SHA256SUMS
+        run: cat *.sha256 > SHA256SUMS
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            agentic-*.tar.gz
+            agentic-*.zip
+            SHA256SUMS
+          generate_release_notes: true

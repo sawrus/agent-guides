@@ -8,6 +8,7 @@ and prompts into any project — and run a full SDLC agent team out of the box.
 - [Website](https://sawrus.github.io/agent-guides/)
 - [Coverage scorecard](https://claude.ai/public/artifacts/8177bc3d-3b2f-48a6-8232-47c5b02b20f3)
 - [CLI usage guide](docs/agentic-usage.md)
+- [Releases (prebuilt binaries)](https://github.com/sawrus/agent-guides/releases)
 - [NPM package](https://www.npmjs.com/package/@jetrabbits/agentic)
 
 ## Coverage snapshot
@@ -88,7 +89,7 @@ agent-guides/
 ├── areas/template/            # Authoring templates — start here for new content
 ├── docs/                      # Setup and usage guides
 ├── AGENTS.md                  # Root agent guidance (loaded into every project)
-└── agentic                    # CLI installer
+└── src/                       # Rust CLI installer (self-contained binary)
 ```
 
 ---
@@ -97,19 +98,39 @@ agent-guides/
 
 ### Requirements
 
-- required commands: `bash`, `python3`, `pip`, `pip3`, or `python3 -m pip`, `git`
-- optional commands: `fzf`, `node`/`npm`, `curl`, agent binaries such as `codex`, `opencode`, `claude`, `gemini`
+`agentic` is a single self-contained binary — no runtime dependencies. The
+knowledge base (areas, extensions) is embedded into the binary.
+
+- required: nothing (the binary works standalone)
+- optional: `python3` + `pip` (only for the MemPalace integration), agent
+  binaries such as `codex`, `opencode`, `claude`, `gemini` (for doctor smoke
+  checks and actual agent work)
 
 ### Install
+
+Via npm (thin launcher that fetches the platform binary on first run):
 
 ```bash
 npx @jetrabbits/agentic@latest
 ```
 
-Alternative bootstrap (installs local binary):
+Or bootstrap the latest release binary (linux x86_64/aarch64, macOS Intel/ARM):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash
+```
+
+Or download a binary for your platform from
+[GitHub Releases](https://github.com/sawrus/agent-guides/releases) and run:
+
+```bash
+./agentic self-install --force
+```
+
+Build from source (Rust toolchain required):
+
+```bash
+make release-build && make install
 ```
 
 ### Run
@@ -123,6 +144,10 @@ agentic
 ```bash
 agentic upgrade
 ```
+
+`upgrade` downloads the newest release binary from GitHub Releases and
+atomically replaces the installed one, then re-syncs any managed project
+(`.agentic.json`) found in the current directory.
 
 ### Full instructions
 
