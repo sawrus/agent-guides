@@ -49,7 +49,7 @@ Usage:
   {name} install --project-dir <dir> [--agent-os <comma_list>] --areas <comma_list> --specializations <comma_list> [--theme auto|dark|light]
   {name} tui [--theme auto|dark|light]
   {name} upgrade
-  {name} self-install [--bin-dir <dir>] [--force] [--install-fzf] [--dry-run]
+  {name} self-install [--bin-dir <dir>] [--force] [--dry-run]
   {name} --version
 
 Behavior:
@@ -66,7 +66,6 @@ Options:
   --no-doctor           Skip real agent smoke checks after install
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)
   --force               Overwrite existing binary for self-install
-  --install-fzf         Deprecated no-op kept for compatibility
   --dry-run             Show actions without writing files
   -h, --help            Show this help
   -V, --version         Show agentic version
@@ -336,10 +335,6 @@ fn cmd_self_install(app: &mut App, rest: &[String]) -> Result<()> {
             }
             "--force" => {
                 app.self_install_force = true;
-                i += 1;
-            }
-            "--install-fzf" => {
-                app.self_install_with_fzf = true;
                 i += 1;
             }
             "--theme" => {

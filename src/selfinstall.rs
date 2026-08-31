@@ -184,13 +184,6 @@ pub fn self_install(app: &mut App) -> crate::Result<()> {
         ui::log(app, &format!("Installed: {}", target.display()));
     }
 
-    if app.self_install_with_fzf {
-        ui::warn(
-            app,
-            "--install-fzf is deprecated: the Rust TUI no longer requires fzf (no-op)",
-        );
-    }
-
     let path_env = std::env::var("PATH").unwrap_or_default();
     let in_path = std::env::split_paths(&path_env).any(|p| p == bin_dir);
     if in_path {
@@ -219,7 +212,6 @@ fn print_self_install_report(app: &App, source: &Path, target: &Path, _bin_dir: 
     println!("Target binary: {}", target.display());
     println!("Config directory: {}", app.app_config_dir().display());
     println!("Knowledge base: {}", app.kb.root_label());
-    println!("Install fzf requested: {}", app.self_install_with_fzf);
     println!("Dry-run: {}", app.dry_run);
 }
 

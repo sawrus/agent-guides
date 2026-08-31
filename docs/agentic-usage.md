@@ -42,7 +42,7 @@ Default behavior:
 
 Optional tools:
 
-- `fzf` for interactive picker UI; index-based menus are used when it is unavailable.
+- Built-in ratatui fullscreen wizard for interactive picker UI; no external `fzf` dependency is required.
 - Node.js/npm only for the `npx @jetrabbits/agentic@latest` entrypoint.
 - `curl` only for the bootstrap installer.
 - Real agent binaries only for selected target recommendations and doctor checks.
@@ -69,7 +69,6 @@ Common options:
 
 - `--bin-dir <dir>`: install into a custom binary directory
 - `--force`: overwrite an existing target binary
-- `--install-fzf`: optionally try auto-installing `fzf` during self-install
 - `--dry-run`: show actions without writing files
 
 ## Core commands
@@ -146,40 +145,9 @@ agentic upgrade
 
 In installed mode, `agentic upgrade` also refreshes the installed `agentic` binary from the updated knowledge base checkout. If an older binary cannot self-update, use the `curl ... | bash -s -- --force` bootstrap command above once.
 
-## TUI and `fzf`
+## TUI
 
-TUI uses `fzf` for interactive selection. If `fzf` is missing, `agentic` can:
-
-1. ask permission to auto-install it
-2. fall back to index-based menus if install is declined or fails
-
-`--install-fzf` only affects `self-install`. If auto-install fails, self-install still completes.
-
-The CLI supports the system bash 3.2 shipped with macOS and does not require installing a newer bash.
-
-Manual install examples:
-
-Linux:
-
-```bash
-sudo apt-get install -y fzf
-```
-
-macOS:
-
-```bash
-brew install fzf
-```
-
-Windows (run from Git Bash):
-
-```bash
-winget install --id junegunn.fzf -e
-# or
-choco install fzf -y
-# or
-scoop install fzf
-```
+The interactive wizard is implemented with ratatui and does not require an external `fzf` binary.
 
 ## OpenCode optional plugins
 

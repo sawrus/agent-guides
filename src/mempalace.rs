@@ -30,16 +30,13 @@ pub fn mempalace_timeout_seconds() -> u64 {
         .ok()
         .and_then(|v| v.parse::<u64>().ok())
         .filter(|v| *v > 0)
-        .unwrap_or(60)
+        .unwrap_or(30)
 }
 
 fn command_available(name: &str) -> bool {
-    Command::new(name)
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .is_ok()
+    let mut cmd = Command::new(name);
+    cmd.arg("--version");
+    run_with_timeout(&mut cmd, Duration::from_secs(mempalace_timeout_seconds())).is_ok()
 }
 
 pub fn write_mempalace_ignore_file(app: &mut App) -> crate::Result<()> {
@@ -254,9 +251,9 @@ fn python_available() -> bool {
 fn install_mempalace_with_pip(app: &mut App, pip: &[String]) -> bool {
     let mut cmd = Command::new(&pip[0]);
     cmd.args(&pip[1..]).args(["install", "mempalace"]);
-    let output = cmd.output();
+    let output = run_with_timeout(&mut cmd, Duration::from_secs(mempalace_timeout_seconds()));
     match output {
-        Ok(out) if out.status.success() => {
+        Ok((false, 0, _)) => {
             ui::log(
                 app,
                 &format!(
@@ -266,12 +263,17 @@ fn install_mempalace_with_pip(app: &mut App, pip: &[String]) -> bool {
             );
             true
         }
-        Ok(out) => {
-            let combined = format!(
-                "{}{}",
-                String::from_utf8_lossy(&out.stdout),
-                String::from_utf8_lossy(&out.stderr)
+        Ok((true, _, _)) => {
+            ui::warn(
+                app,
+                &format!(
+                    "Timed out after {}s: pip install mempalace",
+                    mempalace_timeout_seconds()
+                ),
             );
+            false
+        }
+        Ok((false, _, combined)) => {
             if combined
                 .to_lowercase()
                 .contains("externally-managed-environment")
@@ -405,14 +407,6 @@ fn initialize_mempalace_project(app: &mut App, step_prefix: &str) -> bool {
         app,
         &format!("{step_prefix} [4/4] Initializing project memory at {project_dir} (wing: {project_wing})"),
     );
-    if !command_available("mempalace") {
-        ui::warn(
-            app,
-            "mempalace command is unavailable after install; please run setup manually",
-        );
-        print_setup_instructions(app);
-        return false;
-    }
     let mut init_cmd = Command::new("mempalace");
     init_cmd
         .args(["init", &project_dir, "--yes", "--no-llm"])
@@ -631,15 +625,20 @@ pub fn upgrade_mempalace_graph(app: &mut App) {
         app,
         &format!("Refreshing MemPalace knowledge graph for {project_dir} (wing: {project_wing})"),
     );
-    let ok = Command::new("mempalace")
-        .args(["mine", &project_dir, "--wing", &project_wing])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
+    let mut cmd = Command::new("mempalace");
+    cmd.args(["mine", &project_dir, "--wing", &project_wing]);
+    let result = run_with_timeout(&mut cmd, Duration::from_secs(mempalace_timeout_seconds()));
+    let ok = matches!(result, Ok((false, 0, _)));
     if ok {
         ui::log(app, "MemPalace graph updated");
+    } else if matches!(result, Ok((true, _, _))) {
+        ui::warn(
+            app,
+            &format!(
+                "Timed out after {}s: MemPalace graph refresh",
+                mempalace_timeout_seconds()
+            ),
+        );
     } else {
         ui::warn(app, &format!("mempalace mine failed; graph may be stale — run manually: mempalace mine \"{project_dir}\" --wing \"{project_wing}\""));
     }
@@ -649,15 +648,20 @@ pub fn upgrade_mempalace_graph(app: &mut App) {
             app,
             &format!("Refreshing shared MemPalace docs wing from {docs}"),
         );
-        let ok = Command::new("mempalace")
-            .args(["mine", &docs, "--wing", mempalace_shared_docs_wing()])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
+        let mut cmd = Command::new("mempalace");
+        cmd.args(["mine", &docs, "--wing", mempalace_shared_docs_wing()]);
+        let result = run_with_timeout(&mut cmd, Duration::from_secs(mempalace_timeout_seconds()));
+        let ok = matches!(result, Ok((false, 0, _)));
         if ok {
             ui::log(app, "MemPalace shared docs wing updated");
+        } else if matches!(result, Ok((true, _, _))) {
+            ui::warn(
+                app,
+                &format!(
+                    "Timed out after {}s: MemPalace shared docs refresh",
+                    mempalace_timeout_seconds()
+                ),
+            );
         } else {
             ui::warn(app, &format!("mempalace docs mine failed; shared docs may be stale — run manually: mempalace mine \"{docs}\" --wing \"shared_docs\""));
         }
@@ -739,11 +743,11 @@ mod tests {
     #[test]
     fn timeout_parsing() {
         std::env::remove_var("AGENTIC_MEMPALACE_TIMEOUT_SECONDS");
-        assert_eq!(mempalace_timeout_seconds(), 60);
+        assert_eq!(mempalace_timeout_seconds(), 30);
         std::env::set_var("AGENTIC_MEMPALACE_TIMEOUT_SECONDS", "5");
         assert_eq!(mempalace_timeout_seconds(), 5);
         std::env::set_var("AGENTIC_MEMPALACE_TIMEOUT_SECONDS", "0");
-        assert_eq!(mempalace_timeout_seconds(), 60);
+        assert_eq!(mempalace_timeout_seconds(), 30);
         std::env::remove_var("AGENTIC_MEMPALACE_TIMEOUT_SECONDS");
     }
 

@@ -152,9 +152,11 @@ pub fn configure_context7_key_interactive(app: &mut App) -> crate::Result<()> {
     ];
     let choice = choose_single_by_index(app, "Context7 API key mode:", &options)?;
     if choice == "Enter CONTEXT7_API_KEY" {
+        app.context7_api_key_mode = Some("api_key".to_string());
         let current = app.context7_api_key.clone();
         app.context7_api_key = prompt_text_interactive(app, "CONTEXT7_API_KEY", &current);
     } else {
+        app.context7_api_key_mode = Some("without_api_key".to_string());
         app.context7_api_key.clear();
     }
     Ok(())
