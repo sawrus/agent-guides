@@ -32,13 +32,9 @@ Default behavior:
 
 ## Requirements
 
-`agentic install` and `agentic tui` fail fast when required local tools are missing:
-
-- Bash 3.2+.
-- Python 3 as `python3`.
-- pip as `pip3`, `pip`, or `python3 -m pip`.
-- `shasum` or `sha256sum` for managed-file hashes.
-- Git when installed mode needs to bootstrap or upgrade `~/.local/share/agentic/repo`.
+The core installer is a self-contained Rust binary. Unix release upgrades use `tar`.
+Python and pip are needed only for optional MemPalace setup; selected integrations
+may require their own runtimes. No Git checkout is required for installed use.
 
 Optional tools:
 
@@ -137,13 +133,16 @@ agentic list areas
 agentic list specs --area software
 ```
 
-Refresh the local knowledge base checkout:
+Update the release binary and project instructions:
 
 ```bash
-agentic upgrade
+agentic upgrade --project-dir /path/to/project
+agentic upgrade --force --dry-run
 ```
 
-In installed mode, `agentic upgrade` also refreshes the installed `agentic` binary from the updated knowledge base checkout. If an older binary cannot self-update, use the `curl ... | bash -s -- --force` bootstrap command above once.
+Project synchronization runs with the new executable. Ordinary upgrades merge local
+instruction edits where possible and back up replacements. `--force` rebuilds only
+recognized Agentic artifacts without prompts. See [upgrade behavior](agentic-upgrade/README.md).
 
 ## TUI
 

@@ -160,6 +160,9 @@ pub fn add_selected_mcp(app: &mut App, id: &str) {
 }
 
 pub fn sync_selected_mcps_from_env(app: &mut App) {
+    if app.upgrade_mode {
+        return;
+    }
     if let Ok(raw) = std::env::var("AGENTIC_ENABLE_MCPS") {
         for item in util::split_csv(&raw) {
             add_selected_mcp(app, &item);
@@ -466,7 +469,8 @@ pub fn configure_selected_mcps_if_needed(app: &mut App) -> crate::Result<()> {
     if generic.is_empty() {
         return Ok(());
     }
-    if app.install_settings_replay
+    if !app.upgrade_mode
+        && app.install_settings_replay
         && app.context7_api_key_mode.as_deref() == Some("api_key")
         && app.context7_api_key.is_empty()
     {
@@ -649,6 +653,16 @@ pub fn write_context7_generic_config(
 }
 
 pub fn configure_context7_if_needed(app: &mut App) -> crate::Result<()> {
+    if app.upgrade_mode
+        && app.context7_api_key_mode.as_deref() == Some("api_key")
+        && app.context7_api_key.is_empty()
+    {
+        ui::warn(
+            app,
+            "Context7 key unavailable; preserving existing configuration",
+        );
+        return Ok(());
+    }
     let any_agent = [
         "opencode",
         "codex",

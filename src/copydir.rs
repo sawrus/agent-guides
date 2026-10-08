@@ -3,7 +3,6 @@
 
 use crate::app::App;
 use crate::manifest;
-use crate::markers;
 use crate::ui;
 use serde_json::Value;
 use std::path::Path;
@@ -29,28 +28,8 @@ pub fn copy_dir_contents(
         return Ok(());
     }
 
-    let manifest_path = app.project_manifest_path();
-    let managed: Option<serde_json::Map<String, Value>> = if manifest_path.is_file() {
-        let mut map = serde_json::Map::new();
-        if let Ok(text) = std::fs::read_to_string(&manifest_path) {
-            if let Ok(data) = serde_json::from_str::<Value>(&text) {
-                if let Some(items) = data.get("managed_files").and_then(|v| v.as_array()) {
-                    for item in items {
-                        if let Some(rel) = item.get("path").and_then(|p| p.as_str()) {
-                            map.insert(rel.to_string(), item.clone());
-                        }
-                    }
-                }
-            }
-        }
-        Some(map)
-    } else {
-        None
-    };
-
     let is_opencode_ext =
         src_rel.ends_with("extensions/opencode") || src_rel == "extensions/opencode";
-    let version = crate::app_version_label();
 
     for (rel, content) in app.kb.walk_files(src_rel) {
         if is_opencode_ext {
@@ -67,67 +46,19 @@ pub fn copy_dir_contents(
         let project_rel = app.project_rel_path(&target);
         let source_ref = format!("{src_rel}/{rel}");
 
-        if let Some(managed) = &managed {
-            match managed.get(&project_rel) {
-                None => {
-                    if target.exists() {
-                        ui::warn(
-                            app,
-                            &format!("Skipping unmanaged target on rerun: {project_rel}"),
-                        );
-                        app.record_skipped(&project_rel);
-                        continue;
-                    }
-                }
-                Some(item) => {
-                    if item.get("marker").and_then(|m| m.as_str()) == Some("config") {
-                        continue;
-                    }
-                    let expected = item
-                        .get("content_hash")
-                        .and_then(|h| h.as_str())
-                        .unwrap_or("");
-                    if target.exists() && !expected.is_empty() {
-                        if let Ok(current) = crate::util::hash_file(&target) {
-                            if current != expected {
-                                ui::warn(
-                                    app,
-                                    &format!("Skipping user-modified managed file: {project_rel}"),
-                                );
-                                app.record_skipped(&project_rel);
-                                continue;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let existing = std::fs::read_to_string(&target).ok();
-        let file_name = target
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
-        let output = markers::add_marker(
-            &content,
-            &file_name,
-            &source_ref,
-            crate::APP_REPO_LINK,
-            &version,
-            existing.as_deref(),
-        )
-        .map_err(|e| -> crate::AnyError { e.into() })?;
-
-        if let Some(parent) = target.parent() {
-            std::fs::create_dir_all(parent)?;
-            app.record_created(&parent.to_string_lossy());
-        }
-        if existing.as_deref() == Some(output.as_str()) {
-            manifest::register_managed_file(app, &target, &source_ref, "internal", false);
+        if !app.upgrade_mode && manifest::is_config_record(app, &project_rel) {
             continue;
         }
-        std::fs::write(&target, &output)?;
-        manifest::register_managed_file(app, &target, &source_ref, "internal", true);
+        if target.extension().and_then(|s| s.to_str()) == Some("json") && app.upgrade_mode {
+            let incoming: Value = serde_json::from_str(&content)?;
+            manifest::write_json_config_file(app, &target, &source_ref, move |data, _| {
+                let mut base = Value::Object(std::mem::take(data));
+                crate::upgrade_config::merge_json(&mut base, &incoming);
+                *data = base.as_object().cloned().unwrap_or_default();
+            })?;
+        } else {
+            manifest::write_file_with_agentic_marker(app, &content, &target, &source_ref)?;
+        }
     }
     Ok(())
 }

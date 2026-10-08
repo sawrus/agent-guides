@@ -51,27 +51,68 @@ pub fn is_newer_version(current: &str, remote: &str) -> bool {
 }
 
 fn extract_binary_from_tar_gz(bytes: &[u8]) -> crate::Result<Vec<u8>> {
-    // Minimal .tar.gz extraction: gzip decode via flate2-free approach is not
-    // available; store the raw binary as the only asset payload instead.
-    // Release assets are built as plain gzip-compressed tarballs by CI, so we
-    // shell out to tar which is universally available on unix.
     let tmp = tempfile::tempdir()?;
-    let archive_path = tmp.path().join("asset.tar.gz");
-    std::fs::write(&archive_path, bytes)?;
-    let status = std::process::Command::new("tar")
-        .arg("-xzf")
-        .arg(&archive_path)
-        .arg("-C")
-        .arg(tmp.path())
-        .status()?;
-    if !status.success() {
-        return Err("failed to extract release archive".into());
+    let archive = tmp.path().join("asset.tar.gz");
+    std::fs::write(&archive, bytes)?;
+    let listing = std::process::Command::new("tar")
+        .arg("-tzf")
+        .arg(&archive)
+        .output()?;
+    let names = String::from_utf8(listing.stdout)?;
+    let names: Vec<_> = names.lines().collect();
+    if !listing.status.success() || names.len() != 1 || !matches!(names[0], "agentic" | "./agentic")
+    {
+        return Err("release archive must contain exactly the agentic executable".into());
     }
-    let binary = tmp.path().join("agentic");
-    Ok(std::fs::read(&binary)?)
+    // Stream the member: archive paths and links cannot write outside a temp directory.
+    let output = std::process::Command::new("tar")
+        .arg("-xOzf")
+        .arg(&archive)
+        .arg(names[0])
+        .output()?;
+    if !output.status.success() || output.stdout.is_empty() {
+        return Err("failed to extract release executable".into());
+    }
+    Ok(output.stdout)
 }
 
-pub fn upgrade_binary(app: &mut App) -> crate::Result<()> {
+fn extract_binary_from_zip(bytes: &[u8]) -> crate::Result<Vec<u8>> {
+    use std::io::Read;
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))?;
+    if archive.len() != 1 {
+        return Err("release ZIP must contain exactly agentic.exe".into());
+    }
+    let mut entry = archive.by_index(0)?;
+    if entry.name() != "agentic.exe" || entry.is_dir() || entry.size() > 256 * 1024 * 1024 {
+        return Err("invalid release ZIP executable".into());
+    }
+    let mut binary = Vec::new();
+    entry.read_to_end(&mut binary)?;
+    Ok(binary)
+}
+
+fn validate_binary(binary: &[u8]) -> crate::Result<()> {
+    let valid = binary.len() >= 64
+        && match std::env::consts::OS {
+            "windows" => binary.starts_with(b"MZ"),
+            "macos" => binary.get(..4).is_some_and(|magic| {
+                matches!(
+                    magic,
+                    [0xcf, 0xfa, 0xed, 0xfe]
+                        | [0xfe, 0xed, 0xfa, 0xcf]
+                        | [0xca, 0xfe, 0xba, 0xbe]
+                        | [0xca, 0xfe, 0xba, 0xbf]
+                )
+            }),
+            _ => binary.starts_with(b"\x7fELF"),
+        };
+    if !valid {
+        return Err("release asset is not a platform executable".into());
+    }
+    Ok(())
+}
+
+pub fn upgrade_binary(app: &mut App) -> crate::Result<Option<std::path::PathBuf>> {
     ui::log(
         app,
         &format!("Current version: {}", crate::app_version_label()),
@@ -84,7 +125,7 @@ pub fn upgrade_binary(app: &mut App) -> crate::Result<()> {
             app,
             &format!("DRY-RUN download asset {}", release_asset_name()),
         );
-        return Ok(());
+        return Ok(None);
     }
 
     let client = reqwest::blocking::Client::builder()
@@ -104,11 +145,11 @@ pub fn upgrade_binary(app: &mut App) -> crate::Result<()> {
         .to_string();
     if tag.is_empty() {
         ui::warn(app, "No release tag found; skipping binary upgrade");
-        return Ok(());
+        return Ok(None);
     }
     if !is_newer_version(&crate::app_version(), &tag) {
         ui::log(app, &format!("Already up to date ({tag})"));
-        return Ok(());
+        return Ok(None);
     }
 
     let asset_name = release_asset_name();
@@ -128,7 +169,7 @@ pub fn upgrade_binary(app: &mut App) -> crate::Result<()> {
             app,
             &format!("Release {tag} has no asset '{asset_name}'; skipping binary upgrade"),
         );
-        return Ok(());
+        return Ok(None);
     };
 
     ui::log(app, &format!("Downloading {asset_url}"));
@@ -144,50 +185,135 @@ pub fn upgrade_binary(app: &mut App) -> crate::Result<()> {
     let binary = if asset_name.ends_with(".tar.gz") {
         extract_binary_from_tar_gz(&bytes)?
     } else {
-        bytes.to_vec()
+        extract_binary_from_zip(&bytes)?
     };
 
-    let tmp = tempfile::NamedTempFile::new_in(crate::util::tmp_dir())?;
+    validate_binary(&binary)?;
+    let tmp = tempfile::Builder::new()
+        .suffix(if cfg!(windows) { ".exe" } else { "" })
+        .tempfile_in(crate::util::tmp_dir())?;
     std::fs::write(tmp.path(), &binary)?;
-    self_replace::self_replace(tmp.path())
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o755))?;
+    }
+    let tmp = tmp.into_temp_path();
+    let executable: &std::path::Path = tmp.as_ref();
+    let version = std::process::Command::new(executable)
+        .arg("--version")
+        .output()
+        .map_err(|e| -> crate::AnyError {
+            format!("Downloaded executable cannot run: {e}").into()
+        })?;
+    if !version.status.success()
+        || String::from_utf8_lossy(&version.stdout)
+            .trim()
+            .trim_start_matches('v')
+            != tag.trim_start_matches('v')
+    {
+        return Err("Downloaded executable version does not match release tag".into());
+    }
+    let installed = std::env::current_exe()?;
+    self_replace::self_replace(executable)
         .map_err(|e| -> crate::AnyError { format!("Failed to replace binary: {e}").into() })?;
     ui::log(app, &format!("Updated installed binary to {tag}"));
-    Ok(())
+    Ok(Some(installed))
 }
 
 pub fn sync_current_project_after_upgrade(app: &mut App) -> crate::Result<()> {
-    let cwd = std::env::current_dir()?;
-    let manifest = cwd.join(crate::PROJECT_MANIFEST_NAME);
-    if !manifest.is_file() {
-        ui::log(
-            app,
-            &format!(
-                "No {} in current directory; knowledge base upgrade complete",
-                crate::PROJECT_MANIFEST_NAME
-            ),
-        );
-        return Ok(());
+    crate::project_update::synchronize(app)
+}
+
+#[derive(Debug)]
+pub struct ChildExit(pub i32);
+impl std::fmt::Display for ChildExit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "project synchronization exited with {}", self.0)
     }
-    ui::log(
-        app,
-        &format!(
-            "Detected managed project in {}; syncing from upgraded knowledge base",
-            cwd.display()
-        ),
-    );
-    app.project_dir = std::fs::canonicalize(&cwd)
-        .unwrap_or(cwd)
-        .to_string_lossy()
-        .to_string();
-    crate::manifest::load_install_settings_from_manifest(app, &manifest)?;
-    crate::install::run_install(app)?;
-    crate::mempalace::upgrade_mempalace_graph(app);
+}
+impl std::error::Error for ChildExit {}
+
+fn run_sync_binary(app: &App, executable: &std::path::Path) -> crate::Result<()> {
+    let mut command = std::process::Command::new(executable);
+    command.arg("__sync-project");
+    if !app.project_dir.is_empty() {
+        command.args(["--project-dir", &app.project_dir]);
+    }
+    if app.upgrade_force {
+        command.arg("--force");
+    }
+    if app.dry_run {
+        command.arg("--dry-run");
+    }
+    // Avoid accidentally selecting an adjacent old development checkout after replacement.
+    command.env("AGENTIC_UPGRADED_PROCESS", "1");
+    let status = command.status()?;
+    if !status.success() {
+        return Err(Box::new(ChildExit(status.code().unwrap_or(1))));
+    }
     Ok(())
+}
+
+pub fn sync_with_new_binary(app: &App, executable: &std::path::Path) -> crate::Result<()> {
+    run_sync_binary(app, executable)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn zip_extraction_and_executable_validation() {
+        use std::io::Write;
+        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        writer
+            .start_file("agentic.exe", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"MZfake-executable").unwrap();
+        let bytes = writer.finish().unwrap().into_inner();
+        assert_eq!(
+            extract_binary_from_zip(&bytes).unwrap(),
+            b"MZfake-executable"
+        );
+        assert!(extract_binary_from_zip(b"not a zip").is_err());
+        assert!(validate_binary(b"not executable").is_err());
+        assert!(validate_binary(&std::fs::read(std::env::current_exe().unwrap()).unwrap()).is_ok());
+        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        writer
+            .start_file("../agentic.exe", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"MZbad").unwrap();
+        assert!(extract_binary_from_zip(&writer.finish().unwrap().into_inner()).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn synchronization_uses_the_new_executable_and_propagates_status() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = tempfile::tempdir().unwrap();
+        let executable = root.path().join("new-agentic");
+        std::fs::write(
+            &executable,
+            r#"#!/bin/sh
+[ "$1" = __sync-project ] || exit 8
+[ "$AGENTIC_UPGRADED_PROCESS" = 1 ] || exit 9
+printf 'new embedded instructions' > "$3/AGENTS.md"
+exit 7
+"#,
+        )
+        .unwrap();
+        std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let mut app = App::new().unwrap();
+        app.project_dir = root.path().to_string_lossy().into();
+        app.upgrade_force = true;
+        let error = run_sync_binary(&app, &executable).unwrap_err();
+        assert_eq!(error.downcast_ref::<ChildExit>().unwrap().0, 7);
+        assert_eq!(
+            std::fs::read_to_string(root.path().join("AGENTS.md")).unwrap(),
+            "new embedded instructions"
+        );
+    }
 
     #[test]
     fn version_comparison() {

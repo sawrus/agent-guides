@@ -395,3 +395,59 @@ fn generated_markers_and_manifest_hashes_consistent() {
     assert!(content.contains("agentic:"));
     assert!(content.contains("generated_by: agentic"));
 }
+
+#[test]
+fn upgraded_standalone_process_replaces_old_payload_with_embedded_instructions() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let old_payload = tempfile::tempdir().unwrap();
+    let standalone = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(old_payload.path().join("areas/software/general")).unwrap();
+    std::fs::create_dir_all(old_payload.path().join("extensions")).unwrap();
+    for name in ["AGENTS.md", "MEMORY.md", "REVIEW_PIPELINE.md"] {
+        std::fs::write(old_payload.path().join(name), "# Old payload sentinel\n").unwrap();
+    }
+    std::fs::write(
+        old_payload.path().join("areas/software/general/AGENTS.md"),
+        "# Old specialization\n",
+    )
+    .unwrap();
+    assert_cmd::Command::cargo_bin("agentic")
+        .unwrap()
+        .args(["install", "--project-dir"])
+        .arg(project.path())
+        .args([
+            "--areas",
+            "software",
+            "--specializations",
+            "software.general",
+            "--no-doctor",
+        ])
+        .env("HOME", home.path())
+        .env("AGENTIC_KB_DIR", old_payload.path())
+        .env_remove("AGENTIC_FORCE_INTERACTIVE")
+        .assert()
+        .success();
+    assert!(std::fs::read_to_string(project.path().join("AGENTS.md"))
+        .unwrap()
+        .contains("Old payload sentinel"));
+    let executable = standalone.path().join(if cfg!(windows) {
+        "agentic.exe"
+    } else {
+        "agentic"
+    });
+    std::fs::copy(env!("CARGO_BIN_EXE_agentic"), &executable).unwrap();
+    assert_cmd::Command::new(&executable)
+        .args(["__sync-project", "--project-dir"])
+        .arg(project.path())
+        .env("HOME", home.path())
+        .env("AGENTIC_UPGRADED_PROCESS", "1")
+        .env("AGENTIC_DOCTOR", "0")
+        .env_remove("AGENTIC_KB_DIR")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("embedded:v1.2.0"));
+    let upgraded = std::fs::read_to_string(project.path().join("AGENTS.md")).unwrap();
+    assert!(!upgraded.contains("Old payload sentinel"));
+    assert!(upgraded.contains("Dynamic guidance loading"));
+}

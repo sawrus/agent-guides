@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.0
+
+- Upgrade now synchronizes using the newly installed executable and supports an explicit project directory.
+- Smart project upgrades adopt recognizable legacy artifacts, merge local guidance edits using generated baselines, and back up conflicts before replacing them. Fully user-owned instructions are preserved with a manual-integration report.
+- Added `upgrade --force` to rebuild recognized Agentic artifacts without prompts, replaying manifest settings or falling back to `default + software.general` with optional integrations off.
+- Project updates are staged, backed up privately under `.agentic-backups/`, and restored on application failures. Shared configurations retain unrelated fields; global settings are preserved.
+- Manifest v2 remains compatible with v1. The first upgrade of customized v1 instructions without a baseline replaces them with backup. Exclude backups from source control; they can contain project credentials.
+- Fixed Windows release ZIP extraction and added executable validation before binary replacement.
+
 ## v1.1.0
 
 - Added automatic, compact instruction and documentation/memory reviews after successful top-level delivery in six core SDLC workflows, across Claude, Codex, OpenCode, and existing Gemini profiles.

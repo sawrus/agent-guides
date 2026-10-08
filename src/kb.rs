@@ -40,6 +40,9 @@ impl Kb {
                 return Kb::Checkout(path);
             }
         }
+        if std::env::var("AGENTIC_UPGRADED_PROCESS").as_deref() == Ok("1") {
+            return Kb::Embedded;
+        }
         if let Ok(exe) = std::env::current_exe() {
             let mut candidates: Vec<PathBuf> = Vec::new();
             if let Some(dir) = exe.parent() {

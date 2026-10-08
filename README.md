@@ -143,11 +143,20 @@ agentic
 
 ```bash
 agentic upgrade
+agentic upgrade --project-dir /path/to/project
+agentic upgrade --force --dry-run
+agentic upgrade --force
 ```
 
 `upgrade` downloads the newest release binary from GitHub Releases and
-atomically replaces the installed one, then re-syncs any managed project
-(`.agentic.json`) found in the current directory.
+atomically replaces the installed one, then synchronizes project instructions using
+the new executable. Recognizable legacy artifacts are adopted; non-overlapping
+local edits are merged. Conflicts are replaced after backup, and fully user-owned
+instructions are preserved. `--force` rebuilds Agentic artifacts without prompts,
+using manifest settings or `default + software.general` when settings are unavailable.
+Unrelated project files and global configuration are preserved. Backups live in
+`.agentic-backups/` and may contain credentials; exclude them from source control.
+See [smart upgrade behavior](docs/agentic-upgrade/README.md) for details.
 
 ### Full instructions
 

@@ -67,7 +67,7 @@ self-contained cross-platform Rust binary.
   dir = exit 1; empty spec selection = exit 1 (parity).
 - `selfinstall.rs` — copy binary to `~/.local/bin`, PATH export in shell rc,
 - `upgrade.rs` — GitHub Releases latest → version compare → download asset
-  `agentic-<arch>-<os>.{tar.gz,zip}` → sha-checked replace → project re-sync
+  `agentic-<arch>-<os>.{tar.gz,zip}` → executable/version validation → replace → new-process project re-sync
   (replay install + mempalace graph refresh).
 
 ## Behavior parity contracts
@@ -86,9 +86,10 @@ self-contained cross-platform Rust binary.
 5. Manifest: same JSON shape, sorted `managed_files`, `created_at`/`created_by`
    preservation, unchanged-content keeps `updated_at`, rewrite skipped when
    only `updated_at`/`updated_by` differ.
-6. Managed-file rules on rerun: skip unmanaged existing targets, skip
+6. Install managed-file rules on rerun: skip unmanaged existing targets, skip
    user-modified (hash mismatch), never overwrite `config`-marked files during
-   dir copy.
+   dir copy. Upgrade uses the [smart reconciliation contract](../agentic-upgrade/README.md),
+   with manifest v2, generated baselines, staging, backup and rollback.
 7. Dest mapping: opencode → `.opencode/{rules,skills,commands}` (prompts
    skipped); cursor → `.cursor/{rules,skills}`; kilocode/antigravity →
    `.kilocode/{rules,skills,workflows}`; others → `.agent/<bucket>`; plus the

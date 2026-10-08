@@ -27,72 +27,39 @@ Target projects receive `.agentic.json`. It stores selected install settings, op
 
 The install-time OpenCode doctor smoke check does not reuse the user's live OpenCode session state. Instead, Agentic creates a temporary XDG home for that doctor run, copies only the OpenCode config directory plus `auth.json` and cached `models.json`, and lets any temporary OpenCode session database live only inside the doctor temp root.
 
-## Repository modes
+## Instruction sources
 
-`agentic` supports two repository source modes:
-
-1. Dev mode: when `agentic` runs from a real `agent-guides` checkout and can find sibling `areas/`, `extensions/`, and `AGENTS.md`, it uses the local repository directly.
-2. Installed mode: when the binary is installed to a standalone path such as `~/.local/bin/agentic`, it uses `~/.local/share/agentic/repo` as knowledge base checkout.
-
-## Bootstrap
-
-In installed mode, commands that need repository data clone the checkout on first use:
-
-```bash
-git clone https://github.com/sawrus/agent-guides.git ~/.local/share/agentic/repo
-```
-
-After cloning, `agentic` validates that the checkout contains:
-
-- `areas/`
-- `extensions/`
-- `AGENTS.md`
-
-Commands that auto-bootstrap when needed:
-
-- `agentic list ...`
-- `agentic install ...`
-- `agentic tui`
-- `agentic upgrade`
+The standalone Rust binary embeds the knowledge base. It needs no cloned checkout.
+An explicit `AGENTIC_KB_DIR` selects a development payload; otherwise a neighboring
+valid checkout takes priority during development. A process launched after binary
+replacement uses the newly embedded payload unless `AGENTIC_KB_DIR` is explicit.
 
 ## Upgrade flow
 
-Refresh the knowledge base checkout with:
-
 ```bash
-agentic upgrade
+agentic upgrade [--project-dir <path>] [--force] [--dry-run]
 ```
 
-Behavior:
+Upgrade fetches the latest GitHub release, validates its executable, replaces the
+installed binary, and launches project synchronization using the new executable.
+It synchronizes even when the installed binary is already current. By default the
+target is the current directory; `--project-dir` selects an explicit project.
 
-- If `~/.local/share/agentic/repo` does not exist, `agentic upgrade` performs initial clone.
-- If checkout already exists, `agentic` runs:
+Recognizable legacy artifacts and manifest-owned instructions are updated.
+Non-overlapping local edits are merged against stored generated baselines;
+conflicts and customized files without a baseline are replaced with backup.
+Fully user-owned guidance stays untouched and is reported for manual integration.
 
-```bash
-git -C ~/.local/share/agentic/repo pull --ff-only
-```
+`--force` rebuilds recognized Agentic artifacts without questions or TUI, retaining
+unrelated project files and global configuration. Valid settings are replayed;
+missing or invalid settings default to `default + software.general`, with optional
+MCPs and plugins disabled. Without force, a directory with neither a manifest nor
+recognized artifacts receives only the binary upgrade.
 
-In dev mode, `upgrade` targets the active local checkout instead of `~/.local/share/agentic/repo`.
-
-In installed mode, after the checkout is updated, `agentic upgrade` copies `~/.local/share/agentic/repo/agentic` over the running installed binary when the contents differ. This keeps future `agentic upgrade` runs able to update both the knowledge base and the local executable.
-
-If a user already has an older installed binary that cannot self-update, do not ask them to run `agentic self-install --force` from `$PATH`: that invokes the old binary. Use one of these recovery paths:
-
-From a fresh `agent-guides` checkout, run from the repository root:
-
-```bash
-./agentic self-install --force
-```
-
-Or refresh through the bootstrap installer, which downloads a fresh script before installing:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash -s -- --force
-```
-
-After the knowledge base is updated, `agentic upgrade` checks the current working directory for `.agentic.json`. If present, it treats the directory as an already managed project, reloads the recorded `agent_os`, `areas`, and `specializations`, and reruns the install sync against the upgraded knowledge base.
-
-The project sync follows the same manifest protection as `agentic install`: user-modified managed files are skipped, existing unmanaged files are not overwritten, and new generated files from the upgraded knowledge base are added when their target path does not already exist.
+Project updates are prepared in isolation, backed up privately, and restored if
+applying files fails. The successfully updated binary remains installed. Dry runs
+show project actions using the available payload without downloading a release or
+changing the target project. See [the full upgrade contract](agentic-upgrade/README.md).
 
 ## Managed reruns
 
@@ -103,7 +70,7 @@ When `.agentic.json` exists in the target project, `agentic install` treats the 
 - new hashes are written for successfully updated managed files;
 - skipped paths are recorded in `.agentic.json`.
 
-Every copied or generated file carries an internal marker. Markdown uses YAML front matter, comment-capable formats use comments, and JSON uses an `_agentic` object.
+Every copied or generated file carries an internal marker. Markdown uses YAML front matter, comment-capable formats use comments, and JSON ownership is recorded in the manifest.
 
 ## MemPalace install and validation logs
 

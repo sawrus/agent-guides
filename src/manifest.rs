@@ -28,6 +28,9 @@ fn manifest_item_for_path<'a>(manifest: &'a Value, rel: &str) -> Option<&'a Valu
 /// Mirror of `can_write_managed_file`: on rerun skip unmanaged existing
 /// targets and user-modified managed files.
 pub fn can_write_managed_file(app: &mut App, dest: &Path) -> bool {
+    if app.upgrade_mode {
+        return crate::project_update::can_write(app, dest, false);
+    }
     let rel = app.project_rel_path(dest);
     let manifest_path = app.project_manifest_path();
     if manifest_path.is_file() {
@@ -65,6 +68,14 @@ pub fn can_write_managed_file(app: &mut App, dest: &Path) -> bool {
         }
     }
     true
+}
+
+pub fn can_write_config_file(app: &mut App, dest: &Path) -> bool {
+    if app.upgrade_mode {
+        crate::project_update::can_write(app, dest, true)
+    } else {
+        can_write_managed_file(app, dest)
+    }
 }
 
 pub fn register_managed_file(
@@ -110,7 +121,7 @@ pub fn write_file_with_agentic_marker(
         app.ensure_dir(parent);
     }
     let existing = std::fs::read_to_string(dest).ok();
-    let output = markers::add_marker(
+    let generated = markers::add_marker(
         src_content,
         &dest
             .file_name()
@@ -123,6 +134,8 @@ pub fn write_file_with_agentic_marker(
     )
     .map_err(|e| -> crate::AnyError { e.into() })?;
 
+    let output =
+        crate::project_update::instruction_output(app, dest, &generated, existing.as_deref())?;
     if existing.as_deref() == Some(output.as_str()) {
         register_managed_file(app, dest, source_ref, "internal", false);
         return Ok(());
@@ -141,7 +154,7 @@ pub fn write_json_config_file<F>(
     mutate: F,
 ) -> crate::Result<()>
 where
-    F: FnOnce(&mut Map<String, Value>, &str),
+    F: Fn(&mut Map<String, Value>, &str),
 {
     if app.dry_run {
         ui::log(
@@ -151,7 +164,7 @@ where
         app.record_copied(&dest.to_string_lossy());
         return Ok(());
     }
-    if !can_write_managed_file(app, dest) {
+    if !can_write_config_file(app, dest) {
         return Ok(());
     }
     if let Some(parent) = dest.parent() {
@@ -162,10 +175,17 @@ where
         .as_deref()
         .and_then(|t| serde_json::from_str(t).ok())
         .unwrap_or(Value::Null);
+    if app.upgrade_mode && existing.is_some() && !data.is_object() {
+        return Err(format!("Invalid shared JSON configuration: {}", dest.display()).into());
+    }
     if !data.is_object() {
         data = json!({});
     }
     let key = app.context7_api_key.clone();
+    let mut owned = Map::new();
+    mutate(&mut owned, &key);
+    let owned = Value::Object(owned);
+    crate::upgrade_config::record_json_keys(app, dest, &owned);
     mutate(data.as_object_mut().unwrap(), &key);
     let output = markers::to_pretty_json(&data);
     if existing.as_deref() == Some(output.as_str()) {
@@ -192,12 +212,13 @@ pub fn write_text_config_file(
         app.record_copied(&dest.to_string_lossy());
         return Ok(());
     }
-    if !can_write_managed_file(app, dest) {
+    if !can_write_config_file(app, dest) {
         return Ok(());
     }
     if let Some(parent) = dest.parent() {
         app.ensure_dir(parent);
     }
+    crate::upgrade_config::record_text_keys(app, dest, source_ref, content);
     let existing = std::fs::read_to_string(dest).ok();
     if existing.as_deref() == Some(content) {
         register_managed_file(app, dest, source_ref, "config", false);
@@ -236,6 +257,10 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
             }
         }
     }
+    if app.upgrade_mode {
+        existing
+            .retain(|path, _| Path::new(path).is_relative() && project_dir.join(path).is_file());
+    }
     let original_existing = existing.clone();
 
     for record in app.managed_records.clone() {
@@ -265,6 +290,9 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
                 "source": record.source,
                 "content_hash": record.content_hash,
                 "marker": record.marker,
+                "generated_hash": if record.marker == "internal" {
+                    util::hash_file(&crate::project_update::baseline_path(project_dir, &record.path)).ok()
+                } else { None },
                 "updated_at": item_updated_at,
             }),
         );
@@ -354,7 +382,7 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
             "created_by": created_by,
             "updated_by": crate::app_version_label(),
         },
-        "version": 1,
+        "version": 2,
         "created_at": created_at,
         "updated_at": now,
         "settings": {
@@ -369,6 +397,7 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
             "source_checkout": app.kb.root_label(),
         },
         "managed_files": managed_files,
+        "config_owned_keys": crate::upgrade_config::manifest_keys(app, old_data.as_ref()),
         "skipped_files": app.skipped_managed_paths,
     });
 
@@ -469,7 +498,7 @@ pub fn load_install_settings_from_manifest(
                 || app.opencode_telegram_chat_id.is_empty()
             {
                 let _ = crate::config::load_global_telegram_credentials(app);
-            } else {
+            } else if !app.upgrade_mode {
                 let bot = app.opencode_telegram_bot_token.clone();
                 let chat = app.opencode_telegram_chat_id.clone();
                 let _ = crate::config::save_global_telegram_credentials(app, &bot, &chat);
@@ -489,6 +518,13 @@ pub fn load_install_settings_from_manifest(
         }
     }
     Ok(())
+}
+
+/// Directory copies defer shared configurations to their dedicated writers.
+pub fn is_config_record(app: &App, rel: &str) -> bool {
+    read_manifest(&app.project_manifest_path())
+        .and_then(|m| manifest_item_for_path(&m, rel).cloned())
+        .is_some_and(|v| v["marker"] == "config")
 }
 
 #[cfg(test)]
