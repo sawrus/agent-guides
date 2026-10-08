@@ -76,6 +76,10 @@ Cross-cutting practices that apply to every project regardless of area.
 See [MEMORY.md](MEMORY.md) for the full protocol: provider roles, Context7 usage, MemPalace session-start queries,
 fact-writing triggers, tool call examples, and fallback order.
 
+### Post-task Review
+
+For workflows with a Post-task review hook, load [REVIEW_PIPELINE.md](REVIEW_PIPELINE.md) only after successful delivery. Run the two read-only specialists once per top-level task; their recommendations are advisory.
+
 ### Code Style
 
 - Write self-documenting code with meaningful names — comments explain why, not what.

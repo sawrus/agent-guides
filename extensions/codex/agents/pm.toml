@@ -1,6 +1,6 @@
 name = "pm"
 description = "Use this agent for delivery planning, milestone tracking, dependency management, risk registers, and stakeholder status updates."
-model = "gpt-5.4-mini"
+model = "gpt-6-luna"
 model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
 developer_instructions = """

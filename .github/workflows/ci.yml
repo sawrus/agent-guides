@@ -21,6 +21,8 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
       - name: Content lint
         run: make lint-content
+      - name: Content contract tests
+        run: make test-content
 
   test:
     strategy:

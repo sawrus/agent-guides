@@ -114,6 +114,19 @@ pub fn copy_memory_md(app: &mut App, project_dir: &Path) -> crate::Result<()> {
     Ok(())
 }
 
+pub fn copy_review_pipeline(app: &mut App, project_dir: &Path) -> crate::Result<()> {
+    let content = app
+        .kb
+        .read_file("REVIEW_PIPELINE.md")
+        .ok_or("REVIEW_PIPELINE.md not found in knowledge base")?;
+    write_file_with_agentic_marker(
+        app,
+        &content,
+        &project_dir.join("REVIEW_PIPELINE.md"),
+        "REVIEW_PIPELINE.md",
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,6 +191,44 @@ mod tests {
         copy_memory_md(&mut app2, tmp2.path()).unwrap();
         assert!(tmp2.path().join(".opencode/MEMORY.md").is_file());
         assert!(tmp2.path().join("MEMORY.md").is_file());
+    }
+
+    #[test]
+    fn review_protocol_install_from_embedded_and_checkout() {
+        for kb in [
+            crate::kb::Kb::Embedded,
+            crate::kb::Kb::Checkout(PathBuf::from(env!("CARGO_MANIFEST_DIR"))),
+        ] {
+            let tmp = tempfile::tempdir().unwrap();
+            let mut app = test_app(tmp.path());
+            app.kb = kb;
+            copy_review_pipeline(&mut app, tmp.path()).unwrap();
+            let content = std::fs::read_to_string(tmp.path().join("REVIEW_PIPELINE.md")).unwrap();
+            assert!(content.starts_with("---\nagentic:\n"));
+            assert!(content.contains("once per completed top-level task"));
+            assert!(content.contains("Do not retry automatically"));
+            assert_eq!(app.managed_records.len(), 1);
+            assert_eq!(app.managed_records[0].source, "REVIEW_PIPELINE.md");
+        }
+    }
+
+    #[test]
+    fn review_protocol_dry_run_does_not_write() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut app = test_app(tmp.path());
+        app.dry_run = true;
+        copy_review_pipeline(&mut app, tmp.path()).unwrap();
+        assert!(!tmp.path().join("REVIEW_PIPELINE.md").exists());
+        assert!(app.managed_records.is_empty());
+    }
+
+    #[test]
+    fn missing_review_protocol_is_reported() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut app = test_app(tmp.path());
+        app.kb = crate::kb::Kb::Checkout(tmp.path().to_path_buf());
+        let error = copy_review_pipeline(&mut app, tmp.path()).unwrap_err();
+        assert!(error.to_string().contains("REVIEW_PIPELINE.md not found"));
     }
 
     #[test]

@@ -176,6 +176,7 @@ fn full_install_default_target() {
 
     assert!(project.path().join("AGENTS.md").is_file());
     assert!(project.path().join("MEMORY.md").is_file());
+    assert!(project.path().join("REVIEW_PIPELINE.md").is_file());
     assert!(project.path().join(".agent/rules").is_dir());
     assert!(project.path().join(".agentic.json").is_file());
 
@@ -246,11 +247,16 @@ fn install_is_idempotent() {
     run();
     let manifest_before = std::fs::read_to_string(project.path().join(".agentic.json")).unwrap();
     let agents_before = std::fs::read_to_string(project.path().join("AGENTS.md")).unwrap();
+    let review_before = std::fs::read_to_string(project.path().join("REVIEW_PIPELINE.md")).unwrap();
     run();
     let manifest_after = std::fs::read_to_string(project.path().join(".agentic.json")).unwrap();
     let agents_after = std::fs::read_to_string(project.path().join("AGENTS.md")).unwrap();
     assert_eq!(manifest_before, manifest_after);
     assert_eq!(agents_before, agents_after);
+    assert_eq!(
+        review_before,
+        std::fs::read_to_string(project.path().join("REVIEW_PIPELINE.md")).unwrap()
+    );
 }
 
 #[test]
@@ -270,6 +276,8 @@ fn rerun_preserves_user_modified_files() {
         .success();
     let agents_md = project.path().join("AGENTS.md");
     std::fs::write(&agents_md, "user content").unwrap();
+    let review_md = project.path().join("REVIEW_PIPELINE.md");
+    std::fs::write(&review_md, "user review policy").unwrap();
     agentic(home.path())
         .args(["install", "--project-dir"])
         .arg(project.path())
@@ -285,6 +293,47 @@ fn rerun_preserves_user_modified_files() {
             "Skipping user-modified managed file: AGENTS.md",
         ));
     assert_eq!(std::fs::read_to_string(&agents_md).unwrap(), "user content");
+    assert_eq!(
+        std::fs::read_to_string(&review_md).unwrap(),
+        "user review policy"
+    );
+}
+
+#[test]
+fn review_profiles_install_for_each_environment() {
+    for environment in ["claude", "codex", "opencode", "gemini"] {
+        let home = tempfile::tempdir().unwrap();
+        let project = tempfile::tempdir().unwrap();
+        agentic(home.path())
+            .args(["install", "--project-dir"])
+            .arg(project.path())
+            .args([
+                "--agent-os",
+                environment,
+                "--areas",
+                "software",
+                "--specializations",
+                "software.backend",
+            ])
+            .assert()
+            .success();
+        for specialist in ["instruction_reviewer", "memory_curator"] {
+            let extension = if environment == "codex" { "toml" } else { "md" };
+            let path = project
+                .path()
+                .join(format!(".{environment}/agents/{specialist}.{extension}"));
+            let profile = std::fs::read_to_string(path).unwrap();
+            assert!(profile.contains("read-only"));
+            assert!(profile.contains("500 words"));
+        }
+        let protocol = std::fs::read_to_string(project.path().join("REVIEW_PIPELINE.md")).unwrap();
+        assert!(protocol.contains("summary.md"));
+        let workflow =
+            std::fs::read_to_string(project.path().join(".agent/workflows/develop-feature.md"))
+                .unwrap();
+        assert!(workflow.contains("## Post-task review"));
+        assert!(workflow.contains("outside SDLC `roles`"));
+    }
 }
 
 #[test]
@@ -331,6 +380,7 @@ fn dry_run_writes_nothing() {
         .success()
         .stdout(predicate::str::contains("DRY-RUN"));
     assert!(!project.path().join("AGENTS.md").exists());
+    assert!(!project.path().join("REVIEW_PIPELINE.md").exists());
     assert!(!project.path().join(".agentic.json").exists());
 }
 

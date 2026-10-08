@@ -6,7 +6,7 @@ COVERAGE_MIN ?= 80
 
 .PHONY: help install dev build release-build test test-unit test-integration \
 	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
-	lint-content build-docs sync-diagrams assess-areas
+	lint-content test-content build-docs sync-diagrams assess-areas
 
 help:
 	@echo "Agentic Makefile targets:"
@@ -15,6 +15,7 @@ help:
 	@echo "  test             - all tests: unit + integration + e2e blackbox"
 	@echo "  test-unit        - unit tests only (cargo test --bin agentic)"
 	@echo "  test-integration - CLI integration tests (tests/cli.rs)"
+	@echo "  test-content     - post-task review content contract tests"
 	@echo "  e2e              - real-run blackbox e2e tests (tests/e2e_blackbox.rs)"
 	@echo "  test-coverage    - coverage with $(COVERAGE_MIN)% line gate (cargo llvm-cov)"
 	@echo "  lint             - cargo fmt --check + clippy -D warnings + content lint"
@@ -37,7 +38,10 @@ install: release-build
 dev:
 	@echo "Run: cargo run -- tui"
 
-test: test-unit test-integration e2e
+test: test-unit test-integration e2e test-content
+
+test-content:
+	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m unittest discover -s tests/content
 
 test-unit:
 	$(CARGO) test --bin agentic
@@ -67,8 +71,9 @@ clean:
 # --- Content tooling (areas/docs payload, unchanged from the bash era) ---
 
 lint-content:
-	PYTHONPYCACHEPREFIX=/tmp/agentic-pycache-check python3 -m py_compile scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py
+	PYTHONPYCACHEPREFIX=/tmp/agentic-pycache-check python3 -m py_compile scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/lint_review_pipeline.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_prompts.py --strict
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_review_pipeline.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/sync_workflow_diagrams.py --check
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/build_docs_catalog.py --validate --output /tmp/agentic-catalog-check.json
 	$(MAKE) check-no-pycache

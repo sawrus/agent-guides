@@ -1,6 +1,6 @@
 name = "qa"
 description = "Use this agent for quality verification, test strategy, defect classification, and release go or no-go recommendations."
-model = "gpt-5.4-mini"
+model = "gpt-6-terra"
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """

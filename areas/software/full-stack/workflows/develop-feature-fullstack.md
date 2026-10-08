@@ -127,6 +127,15 @@ flowchart TD
 ## Iteration Loop
 If review finds issues → return to relevant step (Step 2 for schema issues, Step 4 for logic issues, Step 5 for API issues). Maximum 3 return iterations; if issues remain open after the third, stop and escalate to `@team-lead` with the open blocker list for a scope or design decision.
 
+## Post-task review
+
+- **Coordinator:** `@team-lead` (`execution.initiator`).
+- **When:** after successful acceptance/sign-off and docs, CHANGELOG, and version completion, before the final user response.
+- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction_reviewer` and `memory_curator` as read-only specialists outside SDLC `roles`.
+- **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
+- **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
+- **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.
+
 ## Exit
 Merged PR with passing CI, docs and CHANGELOG updated, version bumped. Feature accessible in target environment.
 

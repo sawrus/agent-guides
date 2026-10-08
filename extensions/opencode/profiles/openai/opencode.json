@@ -8,8 +8,8 @@
     "product-owner": {
       "description": "Main coordinator for feature development workflow",
       "mode": "primary",
-      "model": "openai/gpt-5.5",
-      "fallback": ["openai/gpt-5.4"],
+      "model": "gpt-6.1-sol",
+      "fallback": ["gpt-6-astra"],
       "permission": {
         "task": {
           "pm": "allow",
@@ -25,8 +25,8 @@
     "pm": {
       "description": "Project Manager - coordinates workflow",
       "mode": "subagent",
-      "model": "openai/gpt-5.4-mini",
-      "fallback": ["openai/gpt-5.4"],
+      "model": "openai/gpt-6-luna",
+      "fallback": ["openai/gpt-6-luna"],
       "permission": {
         "task": {
           "team-lead": "allow",
@@ -39,8 +39,8 @@
     "team-lead": {
       "description": "Team Lead - planning and code review",
       "mode": "all",
-      "model": "openai/gpt-5.5",
-      "fallback": ["openai/gpt-5.4"],
+      "model": "gpt-6.1-sol",
+      "fallback": ["gpt-6-astra"],
       "permission": {
         "task": {
           "developer": "allow",
@@ -51,50 +51,50 @@
     "developer": {
       "description": "Developer - implements code",
       "mode": "all",
-      "model": "openai/gpt-5.4-mini",
-      "fallback": ["openai/gpt-5.4"]
+      "model": "openai/gpt-6-terra",
+      "fallback": ["openai/gpt-6-terra"]
     },
     "devops-engineer": {
       "description": "DevOps Engineer - infrastructure, CI/CD, and platform reliability",
       "mode": "all",
-      "model": "openai/gpt-5.4-mini",
-      "fallback": ["openai/gpt-5.4"]
+      "model": "gpt-6.1-sol",
+      "fallback": ["gpt-6-astra"]
     },
     "instruction_reviewer": {
       "description": "Instruction Reviewer - post-task review of instruction effectiveness and tool discipline",
       "mode": "all",
-      "model": "openai/gpt-5-nano",
-      "fallback": ["openai/gpt-5.4-nano"]
+      "model": "openai/gpt-6-luna",
+      "fallback": ["openai/gpt-6-luna"]
     },
     "memory_curator": {
       "description": "Memory Curator - post-task memory hygiene recommendations without automatic writes",
       "mode": "all",
-      "model": "openai/gpt-5-nano",
-      "fallback": ["openai/gpt-5.4-nano"]
+      "model": "openai/gpt-6-luna",
+      "fallback": ["openai/gpt-6-luna"]
     },
     "qa": {
       "description": "QA Engineer - runs tests",
       "mode": "subagent",
-      "model": "openai/gpt-5.4-nano",
-      "fallback": ["openai/gpt-5.4-mini"]
+      "model": "openai/gpt-6-luna",
+      "fallback": ["openai/gpt-6-luna"]
     },
     "designer": {
       "description": "Designer - UI/UX validation",
       "mode": "subagent",
-      "model": "openai/gpt-5.4-nano",
-      "fallback": ["openai/gpt-5.4-mini"]
+      "model": "openai/gpt-6-luna",
+      "fallback": ["openai/gpt-6-luna"]
     },
     "plan": {
       "description": "Planning mode",
       "mode": "primary",
-      "model": "openai/gpt-5.5",
-      "fallback": ["openai/gpt-5.4"]
+      "model": "gpt-6.1-sol",
+      "fallback": ["gpt-6-astra"]
     },
     "build": {
       "description": "Build mode",
       "mode": "primary",
-      "model": "openai/gpt-5.4-mini",
-      "fallback": ["openai/gpt-5.4"]
+      "model": "gpt-6.1-sol",
+      "fallback": ["gpt-6-astra"]
     }
   }
 }

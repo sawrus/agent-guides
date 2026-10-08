@@ -1,82 +1,107 @@
-# Review Pipeline
+# Post-task Review Pipeline
 
-Agentic ships two optional post-task specialist agents:
+## User-facing behavior
 
-- `instruction_reviewer`: reviews how instructions affected task execution.
-- `memory_curator`: recommends long-term memory store, update, merge, ignore, and delete-candidate actions.
+After successful top-level delivery, the orchestrator automatically requests two
+read-only specialist reports: instruction effectiveness and documentation/memory
+hygiene. Recommendations help improve future SDLC work; they are not applied
+in the delivery task. Reviews do not replace acceptance, QA, or code review.
 
-These agents are outside the mandatory SDLC role matrix. They do not replace `product-owner`, `pm`, `team-lead`,
-`developer`, `qa`, `designer`, or `devops-engineer`.
+The first release covers:
+- `/development-cycle-workflow`
+- `/develop-feature`
+- `/develop-epic`
+- `/develop-feature-fullstack`
+- `/feature-implementation-flow`
+- `/backend-project-full-cycle`
 
-## Guidance-mode integration
+Other workflows are unchanged. Claude, Codex, OpenCode, and existing Gemini
+profiles share the same report boundaries. This is guidance-driven orchestration,
+not an executable runner or a telemetry collection system.
 
-Agentic currently provides guidance and IDE agent definitions for the review pipeline. It does not run a generic
-post-task review runner. The parent or orchestrating agent should call the specialists after task execution when the
-task size and risk justify the extra review.
+## Runtime contract
 
-Small tasks may skip this pipeline.
+[REVIEW_PIPELINE.md](../REVIEW_PIPELINE.md) is the authoritative execution
+protocol. Agentic embeds and installs it in the project root, tracks it in the
+managed-file manifest, and links it from generated guidance. Load it only when
+a workflow's second-level `Post-task review` hook activates, after acceptance
+and the docs/changelog/version completion contract, before the final response.
+The workflow initiator coordinates the handoff and saves the reports.
 
-```yaml
-review_pipeline:
-  enabled: true
-  default:
-    - qa
-    - instruction_reviewer
-    - memory_curator
-  task_types:
-    agent_system:
-      - qa
-      - instruction_reviewer
-      - memory_curator
-    docs:
-      - instruction_reviewer
-      - memory_curator
-    code:
-      - qa
-      - instruction_reviewer
-      - memory_curator
-```
+Specialists stay outside workflow `roles`. `/develop-feature` still has exactly
+six mandatory SDLC agents; these two specialists are additional reviewers.
+Use native agent definitions when available, or their installed profiles with
+read-only generic delegation. Without delegation, record unavailability.
 
-`tool_optimizer` may be added to `agent_system` tasks in projects that install such a role. This repository does not
-ship a `tool_optimizer` role.
+One top-level task produces one review pair. Nested workflows and increments
+forward observations to their parent; fix/retest loops never launch reviews.
+Failed/deferred deliveries do not launch the success hook. A specialist failure
+or unavailable provider does not block accepted delivery or trigger retries.
 
-## Output files
+## Evidence and ownership
 
-When the orchestrating agent writes review artifacts, use this layout:
+Both specialists receive the same bounded packet built from existing task
+evidence: objectives/result, instructions actually used, relevant diff and docs,
+QA/sign-off, observed friction, and available tool/MemPalace activity. Missing
+evidence is named explicitly. No full transcript, repository scan, or memory
+inventory is required.
 
-```text
-.reviews/<task-id>/
-├── instruction-review.md
-├── memory-curation.md
-└── summary.md
-```
+`instruction_reviewer` links instruction conflicts, repeated reads/searches,
+excess calls, and avoidable rework to their instruction source and proposes exact
+edits. Code quality and product requirements remain outside its review scope.
+Useful security, acceptance, and operational constraints must be preserved.
 
-If the task id is unavailable, use a timestamp in `YYYY-MM-DD-HHMMSS` format, for example:
+`memory_curator` checks changed/consulted docs for sufficiency, freshness,
+duplication, contradictions, and retrieval. It assigns each durable fact a
+canonical home and evaluates observed MemPalace use. Existing docs should not
+be copied into memory without a specific retrieval benefit. At most two extra
+narrow searches (`limit: 3`, known project wing) may verify concrete findings;
+unavailable MCP and missing history are limitations, not evidence of clean memory.
+The curator never writes/deletes memory; executor fact-writing under
+[MEMORY.md](../MEMORY.md) continues to apply.
 
-```text
-.reviews/2026-05-26-153000/
-```
+## Reports and acceptance criteria
 
-The specialist agents only produce Markdown reports. They do not write memory automatically and do not create review
-files unless the parent task explicitly grants file-writing scope.
+Artifacts remain under `.reviews/<task-id>/`:
+- `instruction-review.md`
+- `memory-curation.md`
+- `summary.md`
 
-Example reports live under `docs/review-pipeline/examples/`.
+Without a safe task ID, use one `YYYY-MM-DD-HHMMSS` timestamp for all reports.
+Each specialist report is at most 500 words with at most five prioritized
+findings, sources, consequences, and proposals. Omit empty tables and numeric
+scores. No findings requires only a brief conclusion and evidence limitations.
+Measurements need telemetry provenance; otherwise use `not measured`.
 
-## Report boundaries
+If artifact persistence fails, finish delivery with an inline status and concise
+findings, explaining missing links without retries or blocking acceptance.
 
-`instruction_reviewer` reviews instruction effects only:
+Summary records `completed`, `unavailable`, or `failed` per specialist, limitations,
+and prioritized follow-ups. Failed/unavailable reviews receive short status
+placeholders. The final response links all three artifacts. Examples are under
+[examples](review-pipeline/examples/summary.example.md).
 
-- `AGENTS.md`, `MEMORY.md`, role prompts, workflows, and tool guidance
-- instruction clarity, usefulness, conflicts, redundancy, and missing rules
-- repeated search loops, unnecessary memory lookups, unnecessary MCP calls, and token/tool waste
+Acceptance scenarios:
+- A standalone accepted feature runs both specialists once after completion.
+- An epic runs one pair after final acceptance, not a pair per increment.
+- Failed/deferred delivery does not run the success hook.
+- One failed/unavailable specialist leaves the other report intact and does not
+  invalidate delivery; the summary records the limitation without automatic retry.
+- Without MemPalace, docs are still assessed and memory availability is explicit.
+- Without telemetry, reports do not invent token counts or savings.
+- Duplicate docs/memory generate a canonical-source recommendation, not automatic
+  consolidation, deletion, or another memory copy.
 
-It must not review code quality or product requirements.
+## Installation and rollout
 
-`memory_curator` reviews memory hygiene only:
+New installations receive the protocol and updated profiles/hooks. Embedded and
+checkout knowledge bases behave alike; dry-run does not create the protocol.
+Repeated installs preserve unchanged files. Existing unmanaged or user-modified
+managed guidance is skipped under normal manifest protection; inspect install
+reports and reconcile skipped hooks/profiles manually to enable the full behavior.
+No database migration, new MCP requirement, or automatic recommendation application
+is introduced. Version 1.1.0 includes the change in Cargo/npm and the changelog.
 
-- durable project facts, conventions, workflows, decisions, constraints, and rationale
-- duplicate, stale, contradictory, or low-value memory candidates
-- store/update/merge/ignore/delete recommendations
-
-It must not store temporary logs, one-time commands, transient errors, generated code, secrets, temporary URLs, noisy
-debug output, or current task state.
+Validate with `make lint`, `make test`, and `make test-coverage`. Regenerate content
+through `make sync-diagrams` and `make build-docs`. The content contract check covers
+hooks, role ownership, shared profile boundaries, and the on-demand protocol.

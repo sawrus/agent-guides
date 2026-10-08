@@ -112,6 +112,15 @@ flowchart TD
 ## Iteration Loop
 Steps 3–5 repeat for each increment (bounded by the increment count from the epic plan in step 1; if a single increment fails review 3 times, escalate to `@team-lead`). Replanning in Step 5 governs scope adjustments.
 
+## Post-task review
+
+- **Coordinator:** `@product-owner` (`execution.initiator`).
+- **When:** after successful acceptance/sign-off and docs, CHANGELOG, and version completion, before the final user response.
+- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction_reviewer` and `memory_curator` as read-only specialists outside SDLC `roles`.
+- **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
+- **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
+- **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.
+
 ## Exit
 All increments accepted by `@product-owner` + clean regression suite = epic delivered.
 

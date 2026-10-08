@@ -7,7 +7,7 @@
     "product-owner": {
       "description": "Main coordinator for feature development workflow",
       "mode": "primary",
-      "model": "github-copilot/gpt-5.5",
+      "model": "github-copilot/claude-opus-5.5",
       "fallback": [],
       "permission": {
         "task": {
@@ -24,7 +24,7 @@
     "pm": {
       "description": "Project Manager - coordinates workflow",
       "mode": "subagent",
-      "model": "github-copilot/gpt-5.3-codex",
+      "model": "github-copilot/gpt-6-luna",
       "fallback": [],
       "permission": {
         "task": {
@@ -38,7 +38,7 @@
     "team-lead": {
       "description": "Team Lead - planning and code review",
       "mode": "all",
-      "model": "github-copilot/claude-opus-4.8",
+      "model": "github-copilot/gpt-6.1-sol",
       "fallback": [],
       "permission": {
         "task": {
@@ -50,37 +50,37 @@
     "developer": {
       "description": "Developer - implements code",
       "mode": "all",
-      "model": "github-copilot/gpt-5.3-codex",
+      "model": "github-copilot/gpt-6-terra",
       "fallback": []
     },
     "devops-engineer": {
       "description": "DevOps Engineer - infrastructure, CI/CD, and platform reliability",
       "mode": "all",
-      "model": "github-copilot/claude-sonnet-4.6",
+      "model": "github-copilot/claude-opus-5.5",
       "fallback": []
     },
     "instruction_reviewer": {
       "description": "Instruction Reviewer - post-task review of instruction effectiveness and tool discipline",
       "mode": "all",
-      "model": "github-copilot/claude-sonnet-4.6",
+      "model": "github-copilot/gpt-6-luna",
       "fallback": []
     },
     "memory_curator": {
       "description": "Memory Curator - post-task memory hygiene recommendations without automatic writes",
       "mode": "all",
-      "model": "github-copilot/gpt-5-mini",
+      "model": "github-copilot/gpt-6-luna",
       "fallback": []
     },
     "qa": {
       "description": "QA Engineer - runs tests",
       "mode": "subagent",
-      "model": "github-copilot/gpt-5.3-codex",
+      "model": "github-copilot/gpt-6-luna",
       "fallback": []
     },
     "designer": {
       "description": "Designer - UI/UX validation",
       "mode": "subagent",
-      "model": "github-copilot/gemini-3.5-flash",
+      "model": "github-copilot/gpt-6-luna",
       "fallback": []
     }
   }
