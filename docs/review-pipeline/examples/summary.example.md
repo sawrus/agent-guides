@@ -1,18 +1,17 @@
 # Review Summary
 
-## Instruction review
+| Specialist | Status | Result |
+|---|---|---|
+| instruction_reviewer | completed | One scoped guidance replacement proposed. |
+| memory_curator | completed | One duplicate-memory update candidate; docs are canonical. |
 
-Overall score: 8/10
-Recommendation: Minor edits
+Evidence covers the supplied guidance, read history, changed docs, and one memory
+lookup. No full transcript or memory inventory was inspected. Token/time/savings:
+not measured. Neither specialist applied changes.
 
-## Memory curation
+Priority follow-ups for a separate requested task:
+1. Review the exact replacement in [instruction-review.md](instruction-review.example.md).
+2. Review the canonical-source proposal in [memory-curation.md](memory-curation.example.md).
 
-Store: 2
-Update: 0
-Delete candidates: 0
-
-## Action items
-
-- [ ] Document optional post-task specialists in README.
-- [ ] Keep specialist roles outside the mandatory SDLC matrix.
-- [ ] Store only durable review-pipeline conventions, not logs or generated examples.
+If a specialist is unavailable or fails, its row and report placeholder instead
+state `unavailable` or `failed` with the reason; completed delivery stays accepted.

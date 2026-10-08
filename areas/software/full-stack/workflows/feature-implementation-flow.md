@@ -76,6 +76,16 @@ quality-gates:
 - **Output:** green test run + review-ready branch
 - **Done when:** zero blocking issues; all checks green; docs, `CHANGELOG.md`, and version bump committed
 
+
+## Post-task review
+
+- **Coordinator:** `@pm` (`execution.initiator`).
+- **When:** after successful acceptance/sign-off and docs, CHANGELOG, and version completion, before the final user response.
+- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction_reviewer` and `memory_curator` as read-only specialists outside SDLC `roles`.
+- **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
+- **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
+- **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.
+
 ## Agent Interaction Diagram
 
 <!-- agent-diagram:start -->

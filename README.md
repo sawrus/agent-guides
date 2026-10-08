@@ -78,14 +78,14 @@ agent-guides/
 │       └── database-ops/      # PostgreSQL, Redis, migrations, backup/restore
 ├── extensions/
 │   ├── opencode/              # OpenCode agent definitions, commands, skills
-│   │   └── agents/            # SDLC agents + optional specialists for .opencode/agents/
+│   │   └── agents/            # SDLC agents + post-task specialists for .opencode/agents/
 │   ├── claude/                # Claude Code configs
-│   │   └── agents/            # SDLC agents + optional specialists for .claude/agents/
+│   │   └── agents/            # SDLC agents + post-task specialists for .claude/agents/
 │   ├── antigravity/           # Antigravity platform configs
 │   ├── codex/                 # Codex custom agents and override configs
-│   │   └── agents/            # SDLC agents + optional specialists for .codex/agents/
+│   │   └── agents/            # SDLC agents + post-task specialists for .codex/agents/
 │   └── gemini/                # Gemini-specific configs
-│   │   └── agents/            # SDLC agents + optional specialists for .gemini/agents/
+│   │   └── agents/            # SDLC agents + post-task specialists for .gemini/agents/
 ├── areas/template/            # Authoring templates — start here for new content
 ├── docs/                      # Setup and usage guides
 ├── AGENTS.md                  # Root agent guidance (loaded into every project)
@@ -166,7 +166,7 @@ guidance bundle.
 ## SDLC Agent team
 
 The same 7-agent SDLC team works across **Claude Code**, **OpenCode**, **Codex**, and any tool that supports agent or
-subagent files. Agentic also ships optional post-task review specialists for instruction quality and memory hygiene.
+subagent files. Agentic also ships post-task review specialists for instruction quality and docs/memory hygiene, automatic for hooked workflows and optional elsewhere.
 
 | Agent             | Role                                           | Invoke when                                   |
 |:------------------|:-----------------------------------------------|:----------------------------------------------|
@@ -181,15 +181,15 @@ subagent files. Agentic also ships optional post-task review specialists for ins
 Each agent has a `vibe` (one-line personality), `Identity`, `Communication Style`, `Success Metrics`, and explicit
 `Boundaries` — so roles never overlap and handoffs are always documented.
 
-Optional specialist agents run outside the mandatory SDLC role matrix:
+Post-task specialists run outside the mandatory SDLC role matrix. The six delivery workflows listed in the [Review Pipeline](docs/review-pipeline.md) invoke both automatically after successful top-level delivery:
 
 | Agent                  | Role                                             | Invoke when                                      |
 |:-----------------------|:-------------------------------------------------|:-------------------------------------------------|
-| `instruction_reviewer` | Post-task instruction effectiveness review       | Instructions, tool use, or role guidance changed |
-| `memory_curator`       | Post-task memory hygiene recommendations         | Durable facts or memory quality need review      |
+| `instruction_reviewer` | Post-task instruction effectiveness review       | Successful delivery workflow with a review hook |
+| `memory_curator`       | Post-task docs and memory hygiene recommendations         | Successful delivery workflow with a review hook      |
 
 See [Review Pipeline](docs/review-pipeline.md) for the guidance-mode pipeline and `.reviews/<task-id>/` output
-convention.
+convention. The installed [REVIEW_PIPELINE.md](REVIEW_PIPELINE.md) is loaded only at review time. Reports are compact, evidence-backed, and advisory; no instructions, docs, or memory are changed automatically.
 
 | Platform    | Agent path                      | Format                         | Guide                                                                                           |
 |:------------|:--------------------------------|:-------------------------------|:------------------------------------------------------------------------------------------------|

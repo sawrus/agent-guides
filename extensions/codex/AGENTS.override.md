@@ -49,13 +49,12 @@ Use the shipped role agents under `.codex/agents/`:
 - `@qa` for verification, test strategy, and go or no-go recommendations
 - `@devops-engineer` for CI/CD, infrastructure, deployment safety, and observability
 
-Optional post-task specialist agents:
+Post-task specialist agents (automatic for workflows with a review hook):
 
 - `@instruction_reviewer` for instruction effectiveness, tool discipline, memory discipline, ambiguity, and token-efficiency reports
 - `@memory_curator` for long-term memory store/update/merge/ignore/delete-candidate recommendations
 
-These specialist agents are not SDLC owners and do not replace the mandatory SDLC role mapping. Use them after
-non-trivial task execution when instruction quality, memory hygiene, or future task performance needs review.
+These specialist agents are not SDLC owners and do not replace the mandatory SDLC role mapping. For workflows with a Post-task review hook, load project-root REVIEW_PIPELINE.md after successful delivery and invoke both once. Other tasks may request them explicitly.
 
 Role selection guidance:
 
@@ -77,9 +76,9 @@ Suggested default flow:
 2. `@team-lead` and `@designer` for technical and UX review
 3. `@developer` or `@devops-engineer` for execution
 4. `@qa` and `@team-lead` for verification and release readiness
-5. Optional: `@instruction_reviewer` and `@memory_curator` for post-task review reports
+5. After successful delivery of a workflow with a review hook: `@instruction_reviewer` and `@memory_curator` for read-only post-task reports per REVIEW_PIPELINE.md
 
-When these optional specialists produce artifacts, use:
+When these specialists produce artifacts, use:
 
 - `.reviews/<task-id>/instruction-review.md`
 - `.reviews/<task-id>/memory-curation.md`

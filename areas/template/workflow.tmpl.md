@@ -60,7 +60,11 @@ AGENT INSTRUCTIONS:
 12. End the Exit section with an explicit handoff: "Next: /<trigger>" for the
     follow-up workflow, or "Next: terminal — no follow-up workflow."
 13. Target: 60–200 lines total. Over 200 lines = split into two workflows.
-14. Delete all AGENT INSTRUCTIONS comments before finalising.
+14. Delivery workflows opting into post-task review use a second-level
+    "Post-task review" heading, coordinated by execution.initiator. Load
+    project-root REVIEW_PIPELINE.md after successful delivery; specialists stay
+    outside roles. Run once at the top level, never in nested/retest loops.
+15. Delete all AGENT INSTRUCTIONS comments before finalising.
 -->
 
 ## Steps

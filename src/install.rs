@@ -658,6 +658,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     copy_specialization_assets(app, &project_dir)?;
     agentsmd::generate_agents_md(app, &project_dir)?;
     agentsmd::copy_memory_md(app, &project_dir)?;
+    agentsmd::copy_review_pipeline(app, &project_dir)?;
     if app.selected_agent_os_contains("codex") {
         write_codex_features_config(app)?;
     }

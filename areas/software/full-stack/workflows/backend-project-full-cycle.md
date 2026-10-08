@@ -174,6 +174,15 @@ flowchart TD
 ## Iteration Loop
 Phase 2 Steps 2.1–2.3 repeat until `@team-lead` approves (maximum 3 revision cycles). Phase 3 failure loops back to Phase 2 for fixes (maximum 2 returns). Exceeding either bound stops the loop and escalates to `@product-owner` for a scope decision.
 
+## Post-task review
+
+- **Coordinator:** `@team-lead` (`execution.initiator`).
+- **When:** after successful acceptance/sign-off and docs, CHANGELOG, and version completion, before the final user response.
+- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction_reviewer` and `memory_curator` as read-only specialists outside SDLC `roles`.
+- **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
+- **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
+- **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.
+
 ## Exit
 Green E2E tests + `@team-lead` sign-off + delivery report = production-ready service.
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.0
+
+- Added automatic, compact instruction and documentation/memory reviews after successful top-level delivery in six core SDLC workflows, across Claude, Codex, OpenCode, and existing Gemini profiles.
+- Installed a shared on-demand REVIEW_PIPELINE.md protocol with read-only specialists, advisory recommendations, bounded evidence/searches, and non-blocking failure reporting.
+- Preserved user-modified managed guidance on upgrades; review hooks or profiles skipped by managed-file protection must be reconciled manually. No memory migration or automatic recommendation application is performed.
+
 ## v1.0.0
 
 - Persisted Context7 API-key mode in project manifests so upgrades do not repeat interactive prompts.

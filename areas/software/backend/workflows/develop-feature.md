@@ -134,10 +134,20 @@ flowchart TD
 Steps 3–6 repeat per increment for large features (bounded by the increment list from step 2). `@pm` tracks scope changes and timeline impact.
 
 ## Mandatory Role Delegation
-- For `/develop-feature`, the executor must spawn exactly 6 subagents, one per role: `@product-owner`, `@pm`, `@team-lead`, `@developer`, `@qa`, `@designer`.
+- For `/develop-feature`, the executor must spawn exactly 6 SDLC subagents, one per role: `@product-owner`, `@pm`, `@team-lead`, `@developer`, `@qa`, `@designer`.
+- The two Post-task review specialists are additional read-only agents outside this six-agent SDLC matrix.
 - Role consolidation is forbidden: one subagent cannot own multiple roles.
 - Implementation work may start only after requirements outputs from `@product-owner` and `@pm`, and design outputs from `@team-lead` and `@designer`, are complete.
 - Final delivery requires QA recommendation and team-lead sign-off.
+
+## Post-task review
+
+- **Coordinator:** `@product-owner` (`execution.initiator`).
+- **When:** after successful acceptance/sign-off and docs, CHANGELOG, and version completion, before the final user response.
+- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction_reviewer` and `memory_curator` as read-only specialists outside SDLC `roles`.
+- **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
+- **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
+- **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.
 
 ## Exit
 `@product-owner` acceptance + no unresolved blockers = feature complete and ready for release.

@@ -1,5 +1,5 @@
 //! Knowledge base access. The payload (areas/, extensions/, AGENTS.md,
-//! MEMORY.md, CHANGELOG.md) is embedded into the binary at build time.
+//! MEMORY.md, REVIEW_PIPELINE.md, CHANGELOG.md) is embedded into the binary at build time.
 //! A development checkout next to the executable (or AGENTIC_KB_DIR) takes
 //! priority so contributors can iterate without rebuilding.
 
@@ -10,6 +10,7 @@ static AREAS: Dir = include_dir!("$CARGO_MANIFEST_DIR/areas");
 static EXTENSIONS: Dir = include_dir!("$CARGO_MANIFEST_DIR/extensions");
 static ROOT_AGENTS_MD: &str = include_str!("../AGENTS.md");
 static ROOT_MEMORY_MD: &str = include_str!("../MEMORY.md");
+static ROOT_REVIEW_PIPELINE_MD: &str = include_str!("../REVIEW_PIPELINE.md");
 static ROOT_CHANGELOG_MD: &str = include_str!("../CHANGELOG.md");
 
 pub const STATIC_AGENT_OS: [&str; 6] = [
@@ -156,6 +157,7 @@ impl Kb {
             Kb::Embedded => match rel {
                 "AGENTS.md" => Some(ROOT_AGENTS_MD.to_string()),
                 "MEMORY.md" => Some(ROOT_MEMORY_MD.to_string()),
+                "REVIEW_PIPELINE.md" => Some(ROOT_REVIEW_PIPELINE_MD.to_string()),
                 "CHANGELOG.md" => Some(ROOT_CHANGELOG_MD.to_string()),
                 _ => {
                     if let Some(rest) = rel.strip_prefix("areas/") {
