@@ -8,3 +8,6 @@ __pycache__/
 .pytest_cache/
 target/
 Cargo.lock.bak
+
+# Upgrade backups may include project credentials.
+.agentic-backups/

@@ -437,7 +437,7 @@ fn initialize_mempalace_project(app: &mut App, step_prefix: &str) -> bool {
     true
 }
 
-fn setup_mempalace_for_agentic(app: &mut App, initialize_project: bool) -> bool {
+pub fn setup_mempalace_for_agentic(app: &mut App, initialize_project: bool) -> bool {
     let step_prefix = "MemPalace setup";
     if std::env::var("AGENTIC_MEMPALACE_SETUP")
         .map(|v| v == "skip")
@@ -542,7 +542,7 @@ pub fn configure_mempalace_if_needed(app: &mut App) -> crate::Result<()> {
 
     write_mempalace_ignore_file(app)?;
 
-    let setup_ok = setup_mempalace_for_agentic(app, true);
+    let setup_ok = app.upgrade_mode || setup_mempalace_for_agentic(app, true);
     if !setup_ok {
         if !command_available("mempalace-mcp") {
             ui::warn(

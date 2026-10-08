@@ -188,7 +188,7 @@ fn full_install_default_target() {
         &std::fs::read_to_string(project.path().join(".agentic.json")).unwrap(),
     )
     .unwrap();
-    assert_eq!(manifest["version"], 1);
+    assert_eq!(manifest["version"], 2);
     assert_eq!(manifest["settings"]["areas"][0], "software");
     assert_eq!(
         manifest["settings"]["specializations"][0],
@@ -551,4 +551,320 @@ fn kilocode_and_cursor_layout() {
     assert!(project.path().join(".kilocode/rules").is_dir());
     assert!(project.path().join(".cursor/rules").is_dir());
     assert!(project.path().join(".agent/rules").is_dir());
+}
+
+// Internal sync exercises the project transaction without a GitHub network request.
+fn sync_upgrade(
+    project: &std::path::Path,
+    home: &std::path::Path,
+    force: bool,
+) -> assert_cmd::Command {
+    let mut cmd = assert_cmd::Command::cargo_bin("agentic").unwrap();
+    cmd.args(["__sync-project", "--project-dir"])
+        .arg(project)
+        .env("HOME", home)
+        .env("XDG_CONFIG_HOME", home.join(".config"))
+        .env("AGENTIC_DOCTOR", "0")
+        .env("AGENTIC_FORCE_INTERACTIVE", "1")
+        .env_remove("AGENTIC_ENABLE_MCPS")
+        .env_remove("AGENTIC_KB_DIR");
+    if force {
+        cmd.arg("--force");
+    }
+    cmd
+}
+
+fn install_upgrade_fixture(project: &std::path::Path, home: &std::path::Path, agents: &str) {
+    let mut cmd = assert_cmd::Command::cargo_bin("agentic").unwrap();
+    cmd.args(["install", "--project-dir"])
+        .arg(project)
+        .args([
+            "--agent-os",
+            agents,
+            "--areas",
+            "software",
+            "--specializations",
+            "software.general",
+            "--no-doctor",
+        ])
+        .env("HOME", home)
+        .env("XDG_CONFIG_HOME", home.join(".config"))
+        .env("AGENTIC_ENABLE_CONTEXT7", "n")
+        .env("AGENTIC_ENABLE_MEMPALACE", "n")
+        .env_remove("AGENTIC_FORCE_INTERACTIVE")
+        .env_remove("AGENTIC_ENABLE_MCPS")
+        .assert()
+        .success();
+}
+
+#[test]
+fn smart_upgrade_merges_edits_and_is_idempotent() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    install_upgrade_fixture(project.path(), home.path(), "default");
+    let path = project.path().join("AGENTS.md");
+    let mut local = std::fs::read_to_string(&path).unwrap();
+    local.push_str("\n## Project convention\nUse our local API.\n");
+    std::fs::write(&path, local).unwrap();
+    sync_upgrade(project.path(), home.path(), false)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Merged: AGENTS.md"));
+    assert!(std::fs::read_to_string(&path)
+        .unwrap()
+        .contains("Use our local API."));
+    let manifest = std::fs::read(project.path().join(".agentic.json")).unwrap();
+    sync_upgrade(project.path(), home.path(), false)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("already up to date"));
+    assert_eq!(
+        std::fs::read(project.path().join(".agentic.json")).unwrap(),
+        manifest
+    );
+}
+
+#[test]
+fn force_replays_and_removes_only_agentic_artifacts() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    install_upgrade_fixture(project.path(), home.path(), "codex");
+    let obsolete = project.path().join(".agent/obsolete.md");
+    std::fs::write(
+        &obsolete,
+        std::fs::read(project.path().join("MEMORY.md")).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        project.path().join("AGENTS.md"),
+        "customized managed instructions",
+    )
+    .unwrap();
+    std::fs::write(project.path().join(".agent/custom.md"), "user owned").unwrap();
+    let config = project.path().join(".codex/config.toml");
+    std::fs::write(&config, "model = \"mine\"\n[features]\nmemories = false\nother = true\n[mcp_servers.custom]\ncommand = \"custom\"\n").unwrap();
+    sync_upgrade(project.path(), home.path(), true)
+        .assert()
+        .success();
+    assert!(!obsolete.exists());
+    assert_eq!(
+        std::fs::read_to_string(project.path().join(".agent/custom.md")).unwrap(),
+        "user owned"
+    );
+    let config = std::fs::read_to_string(config).unwrap();
+    assert!(config.contains("model = \"mine\""));
+    assert!(config.contains("other = true"));
+    assert!(config.contains("[mcp_servers.custom]"));
+    assert!(config.contains("memories = true"));
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(project.path().join(".agentic.json")).unwrap())
+            .unwrap();
+    assert_eq!(manifest["settings"]["agent_os"][0], "codex");
+    assert!(project.path().join(".agentic-backups").is_dir());
+}
+
+#[test]
+fn legacy_adoption_missing_base_and_user_owned_agents() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    install_upgrade_fixture(project.path(), home.path(), "default");
+    let manifest_path = project.path().join(".agentic.json");
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&manifest_path).unwrap()).unwrap();
+    manifest["version"] = serde_json::json!(1);
+    let entries = manifest["managed_files"].as_array_mut().unwrap();
+    entries.retain(|v| v["path"] != "MEMORY.md");
+    for entry in entries {
+        entry.as_object_mut().unwrap().remove("generated_hash");
+    }
+    std::fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    std::fs::remove_dir_all(project.path().join(".agentic/baselines")).unwrap();
+    std::fs::write(
+        project.path().join("AGENTS.md"),
+        "locally edited managed file",
+    )
+    .unwrap();
+    sync_upgrade(project.path(), home.path(), false)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Replaced without baseline"));
+    let updated: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&manifest_path).unwrap()).unwrap();
+    assert!(updated["managed_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|v| v["path"] == "MEMORY.md"));
+    std::fs::remove_file(&manifest_path).unwrap();
+    std::fs::write(
+        project.path().join("AGENTS.md"),
+        "entirely user instructions",
+    )
+    .unwrap();
+    sync_upgrade(project.path(), home.path(), true)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("manual integration required"));
+    assert_eq!(
+        std::fs::read_to_string(project.path().join("AGENTS.md")).unwrap(),
+        "entirely user instructions"
+    );
+}
+
+#[test]
+fn force_defaults_and_dry_run_do_not_touch_project_or_home() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    sync_upgrade(project.path(), home.path(), true)
+        .arg("--dry-run")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("DRY-RUN Create: AGENTS.md"));
+    assert_eq!(std::fs::read_dir(project.path()).unwrap().count(), 0);
+    assert_eq!(std::fs::read_dir(home.path()).unwrap().count(), 0);
+    sync_upgrade(project.path(), home.path(), true)
+        .assert()
+        .success();
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(project.path().join(".agentic.json")).unwrap())
+            .unwrap();
+    assert_eq!(
+        manifest["settings"]["specializations"][0],
+        "software.general"
+    );
+    assert!(manifest["settings"]["mcp_integrations"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    assert_eq!(std::fs::read_dir(home.path()).unwrap().count(), 0);
+}
+
+#[test]
+fn upgrade_rejects_escaping_manifest_before_writes() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let bytes = br#"{"managed_files":[{"path":"../escaped.md"}]}"#;
+    std::fs::write(project.path().join(".agentic.json"), bytes).unwrap();
+    sync_upgrade(project.path(), home.path(), true)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Unsafe project path"));
+    assert_eq!(
+        std::fs::read(project.path().join(".agentic.json")).unwrap(),
+        bytes
+    );
+    assert!(!project.path().join(".agentic-backups").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn upgrade_rejects_symlink_targets() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    std::os::unix::fs::symlink(home.path(), project.path().join(".agent")).unwrap();
+    sync_upgrade(project.path(), home.path(), true)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Symlink project path"));
+    assert_eq!(std::fs::read_dir(home.path()).unwrap().count(), 0);
+}
+
+#[test]
+fn invalid_shared_json_aborts_before_project_changes() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    install_upgrade_fixture(project.path(), home.path(), "opencode");
+    let manifest_path = project.path().join(".agentic.json");
+    let mut data: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&manifest_path).unwrap()).unwrap();
+    data["settings"]["mcp_integrations"] = serde_json::json!(["playwright"]);
+    std::fs::write(&manifest_path, serde_json::to_vec(&data).unwrap()).unwrap();
+    std::fs::write(project.path().join("opencode.json"), "invalid json").unwrap();
+    let before = std::fs::read(project.path().join("AGENTS.md")).unwrap();
+    sync_upgrade(project.path(), home.path(), false)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Invalid shared JSON"));
+    assert_eq!(
+        std::fs::read(project.path().join("AGENTS.md")).unwrap(),
+        before
+    );
+    assert_eq!(
+        std::fs::read_to_string(project.path().join("opencode.json")).unwrap(),
+        "invalid json"
+    );
+    assert!(!project.path().join(".agentic-backups").exists());
+}
+
+#[test]
+fn corrupt_manifest_force_uses_defaults_and_preserves_global_configuration() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    std::fs::write(project.path().join(".agentic.json"), "broken manifest").unwrap();
+    let global_dir = home.path().join(".config/agentic");
+    std::fs::create_dir_all(&global_dir).unwrap();
+    let credentials = global_dir.join("config.json");
+    std::fs::write(&credentials, "{\"private\":\"must remain unchanged\"}").unwrap();
+    sync_upgrade(project.path(), home.path(), true)
+        .assert()
+        .success();
+    let data: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(project.path().join(".agentic.json")).unwrap())
+            .unwrap();
+    assert_eq!(data["version"], 2);
+    assert_eq!(data["settings"]["specializations"][0], "software.general");
+    assert_eq!(
+        std::fs::read_to_string(credentials).unwrap(),
+        "{\"private\":\"must remain unchanged\"}"
+    );
+}
+
+#[test]
+fn public_upgrade_project_dir_force_dry_run_accepts_new_flags() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let mut cmd = assert_cmd::Command::cargo_bin("agentic").unwrap();
+    cmd.args(["upgrade", "--project-dir"])
+        .arg(project.path())
+        .args(["--force", "--dry-run"])
+        .env("HOME", home.path())
+        .env("AGENTIC_DOCTOR", "0")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("DRY-RUN Create: AGENTS.md"));
+    assert_eq!(std::fs::read_dir(project.path()).unwrap().count(), 0);
+}
+
+#[test]
+fn force_preserves_unavailable_context7_key_and_updates_other_mcps() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    install_upgrade_fixture(project.path(), home.path(), "opencode");
+    let manifest_path = project.path().join(".agentic.json");
+    let mut data: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&manifest_path).unwrap()).unwrap();
+    data["settings"]["mcp_integrations"] = serde_json::json!(["context7", "playwright"]);
+    data["settings"]["context7"]["api_key_mode"] = serde_json::json!("api_key");
+    data["managed_files"].as_array_mut().unwrap().push(serde_json::json!({"path":"opencode.json","marker":"config","source":"generated:mcp-config"}));
+    std::fs::write(&manifest_path, serde_json::to_vec(&data).unwrap()).unwrap();
+    std::fs::write(project.path().join("opencode.json"), r#"{"mcp":{"context7":{"type":"remote","url":"https://mcp.context7.com/mcp","headers":{"CONTEXT7_API_KEY":"preserve-me"}},"playwright":{"command":["old"]},"custom":{"command":["mine"]}}}"#).unwrap();
+    sync_upgrade(project.path(), home.path(), true)
+        .env_remove("CONTEXT7_API_KEY")
+        .assert()
+        .success();
+    let result: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(project.path().join("opencode.json")).unwrap())
+            .unwrap();
+    assert_eq!(
+        result["mcp"]["context7"]["headers"]["CONTEXT7_API_KEY"],
+        "preserve-me"
+    );
+    assert_eq!(
+        result["mcp"]["custom"]["command"],
+        serde_json::json!(["mine"])
+    );
+    assert_eq!(
+        result["mcp"]["playwright"]["command"],
+        serde_json::json!(["npx", "-y", "@playwright/mcp@latest"])
+    );
 }

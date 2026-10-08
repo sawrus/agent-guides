@@ -12,6 +12,9 @@ mod mapper;
 mod markers;
 mod mcp;
 mod mempalace;
+mod project_inventory;
+mod project_transaction;
+mod project_update;
 mod prompt;
 mod selfinstall;
 mod theme;
@@ -19,6 +22,7 @@ mod tomledit;
 mod tui;
 mod ui;
 mod upgrade;
+mod upgrade_config;
 mod util;
 
 use app::App;
@@ -48,7 +52,7 @@ Usage:
   {name} list [agentos|areas|specs --area <name>]
   {name} install --project-dir <dir> [--agent-os <comma_list>] --areas <comma_list> --specializations <comma_list> [--theme auto|dark|light]
   {name} tui [--theme auto|dark|light]
-  {name} upgrade
+  {name} upgrade [--project-dir <path>] [--force] [--dry-run]
   {name} self-install [--bin-dir <dir>] [--force] [--dry-run]
   {name} --version
 
@@ -65,7 +69,7 @@ Options:
   --theme               Interface theme: auto|dark|light (default: config value or auto)
   --no-doctor           Skip real agent smoke checks after install
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)
-  --force               Overwrite existing binary for self-install
+  --force               Reset Agentic project artifacts for upgrade; overwrite binary for self-install
   --dry-run             Show actions without writing files
   -h, --help            Show this help
   -V, --version         Show agentic version
@@ -92,6 +96,9 @@ fn main() -> ExitCode {
     match run(args) {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
+            if let Some(status) = err.downcast_ref::<upgrade::ChildExit>() {
+                return ExitCode::from(status.0 as u8);
+            }
             let msg = err.to_string();
             if !msg.is_empty() && msg != "__exit1__" {
                 ui::error_plain(&msg);
@@ -131,6 +138,10 @@ fn run(args: Vec<String>) -> Result<()> {
         "install" => cmd_install(&mut app, rest),
         "tui" => cmd_tui(&mut app, rest),
         "upgrade" => cmd_upgrade(&mut app, rest),
+        "__sync-project" => {
+            app.upgrade_mode = true;
+            cmd_upgrade(&mut app, rest)
+        }
         "self-install" => cmd_self_install(&mut app, rest),
         "-h" | "--help" => {
             print_usage();
@@ -310,6 +321,18 @@ fn cmd_upgrade(app: &mut App, rest: &[String]) -> Result<()> {
     let mut i = 0;
     while i < rest.len() {
         match rest[i].as_str() {
+            "--project-dir" => {
+                app.project_dir = rest
+                    .get(i + 1)
+                    .filter(|s| !s.starts_with('-'))
+                    .ok_or("--project-dir requires a path")?
+                    .clone();
+                i += 2;
+            }
+            "--force" => {
+                app.upgrade_force = true;
+                i += 1;
+            }
             "--dry-run" => {
                 app.dry_run = true;
                 i += 1;
@@ -321,7 +344,12 @@ fn cmd_upgrade(app: &mut App, rest: &[String]) -> Result<()> {
             other => return Err(unknown_option(app, other)),
         }
     }
-    upgrade::upgrade_binary(app)?;
+    if app.upgrade_mode {
+        return upgrade::sync_current_project_after_upgrade(app);
+    }
+    if let Some(executable) = upgrade::upgrade_binary(app)? {
+        return upgrade::sync_with_new_binary(app, &executable);
+    }
     upgrade::sync_current_project_after_upgrade(app)
 }
 

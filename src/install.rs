@@ -182,10 +182,14 @@ pub fn configure_opencode_profile_if_needed(app: &mut App) -> crate::Result<()> 
     if !app.selected_agent_os_contains("opencode") {
         return Ok(());
     }
-    let profile_id = std::env::var("AGENTIC_OPENCODE_PROFILE")
-        .ok()
-        .filter(|v| !v.is_empty())
-        .unwrap_or_else(|| app.selected_opencode_profile.clone());
+    let profile_id = if app.upgrade_mode {
+        app.selected_opencode_profile.clone()
+    } else {
+        std::env::var("AGENTIC_OPENCODE_PROFILE")
+            .ok()
+            .filter(|v| !v.is_empty())
+            .unwrap_or_else(|| app.selected_opencode_profile.clone())
+    };
     let profile_id = profile_id.trim().to_string();
     if matches!(
         profile_id.as_str(),
@@ -222,7 +226,7 @@ pub fn configure_opencode_profile_if_needed(app: &mut App) -> crate::Result<()> 
         app.record_copied(&dest.to_string_lossy());
         return Ok(());
     }
-    if !manifest::can_write_managed_file(app, &dest) {
+    if !manifest::can_write_config_file(app, &dest) {
         return Ok(());
     }
     if let Some(parent) = dest.parent() {
@@ -239,9 +243,13 @@ pub fn configure_opencode_profile_if_needed(app: &mut App) -> crate::Result<()> 
         .as_deref()
         .and_then(|t| serde_json::from_str(t).ok())
         .unwrap_or(Value::Null);
+    if app.upgrade_mode && existing.is_some() && !data.is_object() {
+        return Err("Invalid OpenCode JSON configuration".into());
+    }
     if !data.is_object() {
         data = serde_json::json!({});
     }
+    crate::upgrade_config::record_json_keys(app, &dest, &profile);
     merge_json(&mut data, &profile);
     let output = markers::to_pretty_json(&data);
     let source_ref = format!("generated:opencode-profile-{profile_id}");
@@ -267,6 +275,9 @@ pub fn configure_opencode_plugins_if_needed(app: &mut App) -> crate::Result<()> 
     }
     if app.dry_run {
         ui::log(app, "DRY-RUN configure optional opencode plugins");
+        return Ok(());
+    }
+    if app.upgrade_mode {
         return Ok(());
     }
     let dir = app.app_config_dir();
@@ -417,10 +428,14 @@ pub fn copy_extensions(app: &mut App, project_dir: &Path) -> crate::Result<()> {
         let dest = project_dir.join(format!(".{agent_os}"));
         let mut skip_opencode_base_config = false;
         if agent_os == "opencode" {
-            let profile_id = std::env::var("AGENTIC_OPENCODE_PROFILE")
-                .ok()
-                .filter(|v| !v.is_empty())
-                .unwrap_or_else(|| app.selected_opencode_profile.clone());
+            let profile_id = if app.upgrade_mode {
+                app.selected_opencode_profile.clone()
+            } else {
+                std::env::var("AGENTIC_OPENCODE_PROFILE")
+                    .ok()
+                    .filter(|v| !v.is_empty())
+                    .unwrap_or_else(|| app.selected_opencode_profile.clone())
+            };
             if opencode_profile_is_none(&profile_id)
                 && app.opencode_telegram_enabled != "true"
                 && app.opencode_agent_model_mapper_enabled != "true"
@@ -643,7 +658,9 @@ fn print_current_changelog(app: &mut App) {
 }
 
 pub fn run_install(app: &mut App) -> crate::Result<()> {
-    ui::init_run_logging(app);
+    if !app.upgrade_mode {
+        ui::init_run_logging(app);
+    }
     normalize_selected_agent_os(app);
     validate_inputs(app)?;
 
@@ -667,8 +684,13 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     mcp::configure_context7_if_needed(app)?;
     mempalace::configure_mempalace_if_needed(app)?;
     mcp::configure_selected_mcps_if_needed(app)?;
-    mcp::check_selected_mcp_runtime_prerequisites(app);
+    if !app.upgrade_mode {
+        mcp::check_selected_mcp_runtime_prerequisites(app);
+    }
     manifest::write_agentic_manifest(app, &project_dir)?;
+    if app.upgrade_mode {
+        return Ok(());
+    }
     print_report(app);
     print_missing_agent_binary_guides(app);
     print_current_changelog(app);
