@@ -1,0 +1,12 @@
+{
+  "observations": "The API now returns 202, but the canonical docs still specify 200. No instruction conflict observed. Cost efficiency was not measured.",
+  "candidate_actions": [
+    {
+      "id": "update-response-contract",
+      "source": "docs/catalog/README.md",
+      "owner": "product-owner",
+      "action": "Update the response contract and acceptance example.",
+      "done_when": "Documented status matches the verified API acceptance scenario."
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "summary": "Three of four blockers independently closed. One race condition remains; developer proposes a mutex around the shared update.",
+  "remaining": ["race-condition"],
+  "attempt": 1,
+  "limit": 3
+}

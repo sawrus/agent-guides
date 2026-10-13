@@ -86,6 +86,7 @@ pub fn generate_agents_md(app: &mut App, project_dir: &Path) -> crate::Result<()
     app.ensure_dir(project_dir);
     let mut content = build_header(app);
     append_root_agents_template(app, &mut content);
+    content.push_str("## Optional JEV decisions\n\nBefore invoking JEV, check `settings.jev.enabled` in `.agentic.json`. When enabled, load `.agent/skills/jev/SKILL.md` at the workflow's JEV checkpoints. When disabled or absent, use the standard workflow without JEV calls. JEV decisions are advisory; preserve role ownership and required quality gates.\n\n");
     for spec_key in app.selected_specs.clone() {
         append_specialization_template(app, &mut content, &spec_key);
     }

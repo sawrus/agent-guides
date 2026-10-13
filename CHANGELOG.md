@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.3.0
+
+- JEV workflows use shared scope-bounded questions for least-cost routing,
+  evidence coverage, review triage, fix decisions, acceptance, epic priorities
+  and concrete documentation/instruction followups. Process effectiveness and
+  cost efficiency are separate; unsupported OpenCode model routing is explicit.
+
+- JEV-enabled Codex installs leave bundled role models open for per-invocation
+  routing. The skill now requires a separate role decision, an actual spawn
+  model override and a routing evidence report; user-edited profiles retain pins.
+- JEV-enabled Codex projects without an explicit agent limit receive capacity
+  for six SDLC roles and two review specialists; existing project limits remain.
+
+- Added optional JEV workflow skill activation beside Context7 in TUI and through install flags `--enable-jev`, `--disable-jev`, and `--jev-api-url`.
+- Project manifests preserve enablement/server URL without credentials. The shared skill reads the appropriate key from environment or project `.env`, using a small Python standard-library API helper.
+- The server defaults to the official TypeSafe AI API without a picker; CLI `--jev-api-url` or environment `JEV_API_URL` allows the test gateway/custom endpoint.
+- TUI supports masked key entry into the selected project's `.env`, preserving other variables, adding a Git ignore rule, and restricting Unix file permissions.
+- Six SDLC workflows now define conditional JEV questions for model-tier selection, evidence assessment, fix-loop actions, epic priority and review follow-ups. Existing roles, QA and acceptance ownership remain mandatory; disabled projects make no JEV calls.
+- JEV makes no paid call during installation. Existing projects enable it explicitly; reload the agent session after installation. Python 3 is required only when using this optional skill. Research results are retained under `docs/jev-rnd/`.
+
 ## v1.2.0
 
 - Upgrade now synchronizes using the newly installed executable and supports an explicit project directory.

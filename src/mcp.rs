@@ -8,13 +8,14 @@ use crate::util;
 use serde_json::{json, Map, Value};
 use std::path::{Path, PathBuf};
 
-pub const MCP_REGISTRY_IDS: [&str; 8] = [
+pub const MCP_REGISTRY_IDS: [&str; 9] = [
     "opencode-docs",
     "playwright",
     "kubernetes",
     "youtube-transcript",
     "docker-mcp",
     "context7",
+    "jev",
     "mempalace",
     "anydb",
 ];
@@ -35,6 +36,16 @@ pub struct McpEntry {
 
 pub fn registry_entry(id: &str) -> Option<McpEntry> {
     let entry = match id {
+        "jev" => McpEntry {
+            id: "jev",
+            server: "jev",
+            command: "",
+            args: &[],
+            remote: None,
+            codex_network: false,
+            codex_startup_timeout_sec: None,
+            codex_tool_timeout_sec: None,
+        },
         "opencode-docs" => McpEntry {
             id: "opencode-docs",
             server: "opencode",
@@ -128,6 +139,7 @@ pub fn mcp_description(id: &str) -> &'static str {
         "youtube-transcript" => "YouTube transcript extraction",
         "docker-mcp" => "Docker MCP Gateway",
         "context7" => "Fresh library documentation",
+        "jev" => "JEV workflow decisions (skill)",
         "mempalace" => "Persistent project memory",
         "anydb" => "Database access MCP",
         _ => "MCP server",
@@ -181,6 +193,9 @@ pub fn sync_selected_mcps_from_env(app: &mut App) {
         if v == "y" || v == "yes" {
             add_selected_mcp(app, "mempalace");
         }
+    }
+    if app.jev_enabled == Some(false) {
+        app.selected_mcps.retain(|id| id != "jev");
     }
 }
 
@@ -245,6 +260,13 @@ pub fn detect_configured_mcps(project_dir: &Path, home: &Path) -> Vec<String> {
                 util::unique_append(&mut found, id);
             }
         }
+    }
+    if std::fs::read_to_string(project_dir.join(crate::PROJECT_MANIFEST_NAME))
+        .ok()
+        .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+        .is_some_and(|v| v["settings"]["jev"]["enabled"].as_bool() == Some(true))
+    {
+        util::unique_append(&mut found, "jev");
     }
     found.sort();
     found
@@ -321,6 +343,9 @@ pub fn write_selected_mcp_json_config(
             migrate_opencode_legacy_servers(data);
         }
         for id in &ids {
+            if id == "jev" {
+                continue;
+            }
             let Some(entry) = registry_entry(id) else {
                 continue;
             };
@@ -397,6 +422,9 @@ pub fn write_selected_mcp_codex_config(
     }
 
     for id in selected_ids {
+        if id == "jev" {
+            continue;
+        }
         let Some(entry) = registry_entry(id) else {
             continue;
         };
@@ -463,7 +491,7 @@ pub fn configure_selected_mcps_if_needed(app: &mut App) -> crate::Result<()> {
     let generic: Vec<String> = app
         .selected_mcps
         .iter()
-        .filter(|id| id.as_str() != "context7" && id.as_str() != "mempalace")
+        .filter(|id| !matches!(id.as_str(), "context7" | "mempalace" | "jev"))
         .cloned()
         .collect();
     if generic.is_empty() {

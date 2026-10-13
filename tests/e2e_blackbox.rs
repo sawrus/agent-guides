@@ -446,7 +446,10 @@ fn upgraded_standalone_process_replaces_old_payload_with_embedded_instructions()
         .env_remove("AGENTIC_KB_DIR")
         .assert()
         .success()
-        .stdout(predicate::str::contains("embedded:v1.2.0"));
+        .stdout(predicate::str::contains(format!(
+            "embedded:v{}",
+            env!("CARGO_PKG_VERSION")
+        )));
     let upgraded = std::fs::read_to_string(project.path().join("AGENTS.md")).unwrap();
     assert!(!upgraded.contains("Old payload sentinel"));
     assert!(upgraded.contains("Dynamic guidance loading"));

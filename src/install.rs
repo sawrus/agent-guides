@@ -487,8 +487,24 @@ pub fn copy_specialization_assets(app: &mut App, project_dir: &Path) -> crate::R
 pub fn write_codex_features_config(app: &mut App) -> crate::Result<()> {
     let dest = PathBuf::from(&app.project_dir).join(".codex/config.toml");
     let text = std::fs::read_to_string(&dest).unwrap_or_default();
-    let body = tomledit::enable_codex_memories(&text);
-    manifest::write_text_config_file(app, &dest, "generated:codex-features-config", &body)
+    let mut body = tomledit::enable_codex_memories(&text);
+    let add_capacity = app.jev_enabled == Some(true)
+        && !tomledit::has_table_key(&text, "agents", "max_threads")
+        && !tomledit::has_table_key(&text, "agents", "max_concurrent_threads_per_session");
+    if add_capacity {
+        // Six SDLC roles plus two post-task specialists must fit without
+        // consolidating roles or replacing live agents to change models.
+        body = tomledit::set_table_key(&body, "agents", "max_threads", "8");
+    }
+    manifest::write_text_config_file(app, &dest, "generated:codex-features-config", &body)?;
+    if add_capacity {
+        let rel = app.project_rel_path(&dest);
+        crate::util::unique_append(
+            app.config_owned_keys.entry(rel).or_default(),
+            "agents.max_threads",
+        );
+    }
+    Ok(())
 }
 
 fn print_report(app: &mut App) {
@@ -667,6 +683,10 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     app.project_dir = util::normalize_project_dir_path(&app.project_dir);
     let project_dir = PathBuf::from(&app.project_dir);
     app.ensure_dir(&project_dir);
+
+    mcp::sync_selected_mcps_from_env(app);
+    crate::jev_skill::configure(app)?;
+    crate::jev_skill::install(app, &project_dir)?;
 
     configure_opencode_plugins_if_needed(app)?;
     copy_extensions(app, &project_dir)?;

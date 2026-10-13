@@ -40,6 +40,8 @@ pub struct App {
     pub context7_api_key_mode: Option<String>,
     pub enable_context7_env: Option<String>,
     pub enable_mempalace_env: Option<String>,
+    pub jev_enabled: Option<bool>,
+    pub jev_api_url: Option<String>,
     pub doctor_enabled_env: bool,
 
     pub opencode_telegram_enabled: String,
@@ -107,6 +109,12 @@ impl App {
             enable_mempalace_env: std::env::var("AGENTIC_ENABLE_MEMPALACE")
                 .ok()
                 .filter(|v| !v.is_empty()),
+            jev_enabled: std::env::var("AGENTIC_ENABLE_JEV")
+                .ok()
+                .map(|v| matches!(v.as_str(), "1" | "y" | "yes" | "true")),
+            jev_api_url: std::env::var("JEV_API_URL")
+                .ok()
+                .filter(|v| !v.trim().is_empty()),
             doctor_enabled_env: std::env::var("AGENTIC_DOCTOR")
                 .map(|v| v != "0")
                 .unwrap_or(true),

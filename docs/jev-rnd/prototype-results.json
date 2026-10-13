@@ -1,0 +1,210 @@
+{
+  "runs": [
+    {
+      "status": "fallback",
+      "preset": "route",
+      "provider": "hosted",
+      "model": "jev-1.13.0",
+      "answers": {
+        "verdict": {
+          "type": "choice",
+          "choice": "fast",
+          "confidence": 0.56,
+          "probabilities": {
+            "fast": 0.67,
+            "balanced": 0,
+            "frontier": 0,
+            "clarify": 0.33
+          }
+        }
+      },
+      "latency_ms": 1319,
+      "applied": false,
+      "next_action": "existing_workflow",
+      "confidence_threshold": 0.9,
+      "usage": {
+        "input_tokens": 416,
+        "output_tokens": 49,
+        "cost_usd": 0.000175
+      },
+      "reason_code": "low_confidence"
+    },
+    {
+      "status": "fallback",
+      "preset": "evidence",
+      "provider": "hosted",
+      "model": "jev-1.13.0",
+      "answers": {
+        "verdict": {
+          "type": "choice",
+          "choice": "insufficient",
+          "confidence": 0.52,
+          "probabilities": {
+            "supported": 0.31,
+            "contradicted": 0.01,
+            "insufficient": 0.68
+          }
+        }
+      },
+      "latency_ms": 1048,
+      "applied": false,
+      "next_action": "existing_workflow",
+      "confidence_threshold": 0.9,
+      "usage": {
+        "input_tokens": 486,
+        "output_tokens": 48,
+        "cost_usd": 0.000205
+      },
+      "reason_code": "low_confidence"
+    },
+    {
+      "status": "recommendation",
+      "preset": "loop",
+      "provider": "hosted",
+      "model": "jev-1.13.0",
+      "answers": {
+        "verdict": {
+          "type": "choice",
+          "choice": "continue",
+          "confidence": 0.99,
+          "probabilities": {
+            "continue": 0.99,
+            "complete": 0,
+            "replan": 0,
+            "escalate": 0,
+            "gather_evidence": 0.01
+          }
+        }
+      },
+      "latency_ms": 1097,
+      "applied": false,
+      "next_action": "continue",
+      "confidence_threshold": 0.9,
+      "usage": {
+        "input_tokens": 449,
+        "output_tokens": 60,
+        "cost_usd": 0.000189
+      }
+    },
+    {
+      "status": "fallback",
+      "preset": "epic",
+      "provider": "hosted",
+      "model": "jev-1.13.0",
+      "answers": {
+        "i0_value": {
+          "type": "score",
+          "score": 2.96,
+          "confidence": 0.87,
+          "probabilities": {
+            "0": 0.01,
+            "1": 0,
+            "2": 0.06,
+            "3": 0.86,
+            "4": 0.07
+          }
+        },
+        "i0_urgency": {
+          "type": "score",
+          "score": 2.05,
+          "confidence": 0.63,
+          "probabilities": {
+            "0": 0.08,
+            "1": 0.03,
+            "2": 0.64,
+            "3": 0.25,
+            "4": 0
+          }
+        },
+        "i0_risk": {
+          "type": "score",
+          "score": 3.35,
+          "confidence": 0.47,
+          "probabilities": {
+            "0": 0.03,
+            "1": 0.01,
+            "2": 0.03,
+            "3": 0.42,
+            "4": 0.51
+          }
+        },
+        "i1_value": {
+          "type": "score",
+          "score": 0,
+          "confidence": 1,
+          "probabilities": {
+            "0": 1,
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          }
+        },
+        "i1_urgency": {
+          "type": "score",
+          "score": 0.42,
+          "confidence": 0.65,
+          "probabilities": {
+            "0": 0.58,
+            "1": 0.42,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          }
+        },
+        "i1_risk": {
+          "type": "score",
+          "score": 0,
+          "confidence": 1,
+          "probabilities": {
+            "0": 1,
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          }
+        }
+      },
+      "latency_ms": 1041,
+      "applied": false,
+      "next_action": "existing_workflow",
+      "confidence_threshold": 0.9,
+      "usage": {
+        "input_tokens": 899,
+        "output_tokens": 100,
+        "cost_usd": 0.000378
+      },
+      "reason_code": "low_confidence"
+    },
+    {
+      "status": "recommendation",
+      "preset": "review",
+      "provider": "hosted",
+      "model": "jev-1.13.0",
+      "answers": {
+        "verdict": {
+          "type": "choice",
+          "choice": "docs_task",
+          "confidence": 1,
+          "probabilities": {
+            "keep": 0,
+            "docs_task": 1,
+            "instructions_task": 0,
+            "both": 0,
+            "insufficient": 0
+          }
+        }
+      },
+      "latency_ms": 1030,
+      "applied": false,
+      "next_action": "docs_task",
+      "confidence_threshold": 0.9,
+      "usage": {
+        "input_tokens": 530,
+        "output_tokens": 59,
+        "cost_usd": 0.000223
+      }
+    }
+  ],
+  "total_cost_usd": 0.00117
+}

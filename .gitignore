@@ -11,3 +11,8 @@ Cargo.lock.bak
 
 # Upgrade backups may include project credentials.
 .agentic-backups/
+
+# Local API credentials (including optional JEV).
+.env
+.env.*
+!.env.example

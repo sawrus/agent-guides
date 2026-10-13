@@ -1,0 +1,23 @@
+{
+  "completed": [],
+  "increments": [
+    {
+      "id": "billing-foundation",
+      "description": "Shared payment schema required by the checkout repair; resolves a major consistency risk.",
+      "effort": 2,
+      "depends_on": []
+    },
+    {
+      "id": "checkout-repair",
+      "description": "Stop an active checkout outage that prevents all customer purchases.",
+      "effort": 1,
+      "depends_on": ["billing-foundation"]
+    },
+    {
+      "id": "cosmetic-button",
+      "description": "Optional decorative button color update with no usability impact, deadline or risk reduction.",
+      "effort": 1,
+      "depends_on": []
+    }
+  ]
+}

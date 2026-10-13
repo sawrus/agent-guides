@@ -48,6 +48,127 @@ fn help_output() {
 }
 
 #[test]
+fn jev_skill_enable_provider_replay_and_explicit_disable() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let install = |args: &[&str]| {
+        agentic(home.path())
+            .env_remove("AGENTIC_ENABLE_JEV")
+            .env_remove("AGENTIC_JEV_PROVIDER")
+            .args(["install", "--project-dir"])
+            .arg(project.path())
+            .args([
+                "--agent-os",
+                "codex,claude,gemini,opencode,cursor,kilocode,antigravity",
+                "--areas",
+                "software",
+                "--specializations",
+                "software.backend",
+                "--no-doctor",
+            ])
+            .args(args)
+            .assert()
+            .success();
+    };
+    install(&[
+        "--enable-jev",
+        "--jev-api-url",
+        "https://api.typesafe.ai/v1/systemone",
+    ]);
+    for dir in [
+        ".agent",
+        ".agents",
+        ".claude",
+        ".gemini",
+        ".opencode",
+        ".cursor",
+        ".kilocode",
+    ] {
+        assert!(project
+            .path()
+            .join(dir)
+            .join("skills/jev/scripts/decide.py")
+            .is_file());
+        for reference in ["questions.json", "checkpoints.md", "hosts.md"] {
+            assert!(project
+                .path()
+                .join(dir)
+                .join("skills/jev/references")
+                .join(reference)
+                .is_file());
+        }
+    }
+    let developer_profile = project.path().join(".codex/agents/developer.toml");
+    let profile = std::fs::read_to_string(&developer_profile).unwrap();
+    let codex_config = project.path().join(".codex/config.toml");
+    assert!(std::fs::read_to_string(&codex_config)
+        .unwrap()
+        .contains("max_threads = 8"));
+    assert!(!profile.contains("\nmodel ="));
+    assert!(!profile.contains("\nmodel_reasoning_effort ="));
+    assert!(profile.contains("sandbox_mode = \"workspace-write\""));
+    assert!(profile.contains("You are the Software Developer"));
+    let manifest = || {
+        serde_json::from_str::<Value>(
+            &std::fs::read_to_string(project.path().join(".agentic.json")).unwrap(),
+        )
+        .unwrap()
+    };
+    assert_eq!(
+        manifest()["settings"]["jev"],
+        serde_json::json!({"enabled":true,"api_url":"https://api.typesafe.ai/v1/systemone"})
+    );
+    install(&[]);
+    assert_eq!(
+        manifest()["settings"]["jev"]["api_url"],
+        "https://api.typesafe.ai/v1/systemone"
+    );
+    install(&["--disable-jev", "--enable-jev"]);
+    assert!(std::fs::read_to_string(&developer_profile)
+        .unwrap()
+        .contains("model = \"gpt-6.1-sol\""));
+    let user_profile = std::fs::read_to_string(&developer_profile)
+        .unwrap()
+        .replace("gpt-6.1-sol", "user-pinned-model");
+    std::fs::write(&developer_profile, &user_profile).unwrap();
+    let limited = std::fs::read_to_string(&codex_config)
+        .unwrap()
+        .replace("[agents]", "[agents] # explicit user limit")
+        .replace("max_threads = 8", "max_threads = 3");
+    std::fs::write(&codex_config, limited).unwrap();
+    install(&["--enable-jev"]);
+    assert!(std::fs::read_to_string(&codex_config)
+        .unwrap()
+        .contains("max_threads = 3"));
+    assert_eq!(
+        std::fs::read_to_string(&developer_profile).unwrap(),
+        user_profile
+    );
+    install(&["--disable-jev"]);
+    assert_eq!(manifest()["settings"]["jev"]["enabled"], false);
+    assert!(!manifest()["settings"]["mcp_integrations"]
+        .as_array()
+        .unwrap()
+        .contains(&serde_json::json!("jev")));
+    let root = std::fs::read_to_string(project.path().join("AGENTS.md")).unwrap();
+    assert!(root.contains("settings.jev.enabled"));
+    let codex = std::fs::read_to_string(project.path().join(".codex/config.toml")).unwrap();
+    assert!(!codex.contains("mcp_servers.jev"));
+    agentic(home.path())
+        .env("AGENTIC_ENABLE_JEV", "1")
+        .env("JEV_API_URL", "https://example.test/decide")
+        .args(["__sync-project", "--project-dir"])
+        .arg(project.path())
+        .assert()
+        .success();
+    assert_eq!(manifest()["settings"]["jev"]["enabled"], false);
+    assert_eq!(
+        manifest()["settings"]["jev"]["api_url"],
+        "https://api.typesafe.ai/v1/systemone"
+    );
+}
+
+#[test]
 fn no_args_non_interactive_exits_1_with_usage() {
     let home = tempfile::tempdir().unwrap();
     agentic(home.path())

@@ -31,7 +31,7 @@ pub fn copy_dir_contents(
     let is_opencode_ext =
         src_rel.ends_with("extensions/opencode") || src_rel == "extensions/opencode";
 
-    for (rel, content) in app.kb.walk_files(src_rel) {
+    for (rel, mut content) in app.kb.walk_files(src_rel) {
         if is_opencode_ext {
             if rel.starts_with("profiles/") {
                 continue;
@@ -41,6 +41,22 @@ pub fn copy_dir_contents(
             {
                 continue;
             }
+        }
+        // Custom-agent model settings override even explicit spawn settings in
+        // Codex. Leave bundled defaults open for JEV; managed-file protection
+        // below still preserves user-edited role profiles.
+        if app.jev_enabled == Some(true)
+            && src_rel == "extensions/codex"
+            && rel.starts_with("agents/")
+            && rel.ends_with(".toml")
+        {
+            content = content
+                .lines()
+                .filter(|line| {
+                    !line.starts_with("model =") && !line.starts_with("model_reasoning_effort =")
+                })
+                .map(|line| format!("{line}\n"))
+                .collect();
         }
         let target = dest_root.join(&rel);
         let project_rel = app.project_rel_path(&target);

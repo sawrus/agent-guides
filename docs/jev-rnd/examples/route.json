@@ -1,0 +1,4 @@
+{
+  "task": "Fix one spelling mistake in a README heading.",
+  "constraints": "Preserve the existing meaning and formatting."
+}

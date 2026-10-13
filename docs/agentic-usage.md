@@ -69,6 +69,25 @@ Common options:
 
 ## Core commands
 
+### Optional JEV workflow skill
+
+Select `jev` beside Context7 in TUI. The server defaults to the official TypeSafe
+AI API without a picker. Use `--jev-api-url` or `JEV_API_URL` for your test server.
+For a non-interactive install:
+
+```bash
+agentic install --project-dir /path/to/project --agent-os codex \
+  --areas software --specializations software.backend \
+  --enable-jev --no-doctor
+```
+
+Use `--disable-jev` on a later install to turn it off. The project manifest stores
+`settings.jev.enabled/api_url`; keys stay in environment or project `.env`.
+Hosted uses `JEV_API_KEY`; official TypeSafe uses `TYPESAFE_API_KEY`.
+No MCP server or extra Rust API client is installed. Workflows conditionally load
+`.agent/skills/jev/SKILL.md` and call its Python standard-library helper.
+See [activation and local checks](jev-integration/README.md).
+
 Start TUI:
 
 ```bash

@@ -131,6 +131,8 @@ fn settings_valid(app: &App, data: &Value) -> bool {
 }
 
 fn reset_settings(app: &mut App) {
+    app.jev_enabled = Some(false);
+    app.jev_api_url = None;
     app.selected_agent_os = vec!["default".into()];
     app.selected_areas = vec!["software".into()];
     app.selected_specs = vec!["software.general".into()];
@@ -205,6 +207,8 @@ pub fn synchronize(app: &mut App) -> crate::Result<()> {
     // Replay must not import environment selections or write global credentials.
     app.enable_context7_env = Some("n".into());
     app.enable_mempalace_env = Some("n".into());
+    app.jev_enabled = None;
+    app.jev_api_url = None;
     app.selected_mcps.clear();
     manifest::load_install_settings_from_manifest(app, &root.join(crate::PROJECT_MANIFEST_NAME))?;
     if !settings_valid(app, &data) {

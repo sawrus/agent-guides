@@ -3,10 +3,11 @@
 
 CARGO ?= cargo
 COVERAGE_MIN ?= 80
+SKILL_VALIDATOR ?= $(HOME)/.codex/skills/.system/skill-creator/scripts/quick_validate.py
 
 .PHONY: help install dev build release-build test test-unit test-integration \
 	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
-	lint-content test-content build-docs sync-diagrams assess-areas
+	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify validate-jev-skill jev-skill-live
 
 help:
 	@echo "Agentic Makefile targets:"
@@ -25,9 +26,21 @@ help:
 	@echo "  build-docs       - build docs catalog (content tooling)"
 	@echo "  sync-diagrams    - sync workflow diagrams (content tooling)"
 	@echo "  assess-areas     - area quality scorecards (content tooling)"
+	@echo "  jev-rnd-verify   - inspect saved research results offline"
+	@echo "  validate-jev-skill - validate the shared JEV skill"
+	@echo "  jev-skill-live    - one paid hosted skill request using local .env"
 
 build:
 	$(CARGO) build
+
+jev-rnd-verify:
+	$(MAKE) -f docs/jev-rnd/Makefile verify
+
+validate-jev-skill:
+	PYTHONDONTWRITEBYTECODE=1 python3 $(SKILL_VALIDATOR) skills/jev
+
+jev-skill-live:
+	PYTHONDONTWRITEBYTECODE=1 python3 skills/jev/scripts/decide.py --enabled --api-url https://jevtypesafeai.com/api/v1/decide --input docs/jev-integration/example-request.json
 
 release-build:
 	$(CARGO) build --release
