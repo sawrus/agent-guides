@@ -3,11 +3,10 @@
 
 CARGO ?= cargo
 COVERAGE_MIN ?= 80
-SKILL_VALIDATOR ?= $(HOME)/.codex/skills/.system/skill-creator/scripts/quick_validate.py
 
 .PHONY: help install dev build release-build test test-unit test-integration \
 	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
-	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify validate-jev-skill jev-skill-live
+	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode test-jev-hooks test-jev-sdk
 
 help:
 	@echo "Agentic Makefile targets:"
@@ -17,7 +16,7 @@ help:
 	@echo "  test-unit        - unit tests only (cargo test --bin agentic)"
 	@echo "  test-integration - CLI integration tests (tests/cli.rs)"
 	@echo "  test-content     - post-task review content contract tests"
-	@echo "  e2e              - real-run blackbox e2e tests (tests/e2e_blackbox.rs)"
+	@echo "  e2e              - offline e2e tests with fake agent CLIs"
 	@echo "  test-coverage    - coverage with $(COVERAGE_MIN)% line gate (cargo llvm-cov)"
 	@echo "  lint             - cargo fmt --check + clippy -D warnings + content lint"
 	@echo "  fmt              - cargo fmt"
@@ -27,8 +26,9 @@ help:
 	@echo "  sync-diagrams    - sync workflow diagrams (content tooling)"
 	@echo "  assess-areas     - area quality scorecards (content tooling)"
 	@echo "  jev-rnd-verify   - inspect saved research results offline"
-	@echo "  validate-jev-skill - validate the shared JEV skill"
-	@echo "  jev-skill-live    - one paid hosted skill request using local .env"
+	@echo "  blackbox         - real local Codex/OpenCode + JEV calculator checks (paid)"
+	@echo "  blackbox-codex   - real Codex + JEV calculator check"
+	@echo "  blackbox-opencode - real OpenCode V2 + JEV calculator check"
 
 build:
 	$(CARGO) build
@@ -36,11 +36,19 @@ build:
 jev-rnd-verify:
 	$(MAKE) -f docs/jev-rnd/Makefile verify
 
-validate-jev-skill:
-	PYTHONDONTWRITEBYTECODE=1 python3 $(SKILL_VALIDATOR) skills/jev
+# Live tests consume JEV quota and the locally authenticated agent's quota.
+BLACKBOX_ARGS ?=
+blackbox: build
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/blackbox_jev.py --host all $(BLACKBOX_ARGS)
 
-jev-skill-live:
-	PYTHONDONTWRITEBYTECODE=1 python3 skills/jev/scripts/decide.py --enabled --api-url https://jevtypesafeai.com/api/v1/decide --input docs/jev-integration/example-request.json
+blackbox-codex: build
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/blackbox_jev.py --host codex $(BLACKBOX_ARGS)
+
+blackbox-opencode: build
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/blackbox_jev.py --host opencode $(BLACKBOX_ARGS)
+
+test-jev-hooks:
+	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=extensions/codex/hooks/jev python3 -m unittest discover -s tests/jev
 
 release-build:
 	$(CARGO) build --release
@@ -51,7 +59,7 @@ install: release-build
 dev:
 	@echo "Run: cargo run -- tui"
 
-test: test-unit test-integration e2e test-content
+test: test-unit test-integration e2e test-content test-jev-hooks
 
 test-content:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m unittest discover -s tests/content
@@ -113,3 +121,8 @@ sync-diagrams:
 
 assess-areas:
 	python3 scripts/assess_area_quality.py --json-output reports/area-quality.json --markdown-output reports/area-quality.md
+
+# Pinned SDK check; install dependencies into SDK_DIR, outside the project.
+SDK_DIR ?= /tmp/agentic-jev-sdk
+test-jev-sdk:
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/check_jev_sdk.py --sdk-dir $(SDK_DIR)

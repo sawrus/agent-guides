@@ -152,7 +152,7 @@ pub fn opencode_profile_contains(app: &App, id: &str) -> bool {
         .is_file()
 }
 
-fn opencode_profile_source(app: &App, profile_id: &str) -> Option<String> {
+pub(crate) fn opencode_profile_source(app: &App, profile_id: &str) -> Option<String> {
     if let Some(content) = app.kb.read_file(&format!(
         "extensions/opencode/profiles/{profile_id}/opencode.json"
     )) {
@@ -685,8 +685,8 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     app.ensure_dir(&project_dir);
 
     mcp::sync_selected_mcps_from_env(app);
-    crate::jev_skill::configure(app)?;
-    crate::jev_skill::install(app, &project_dir)?;
+    crate::jev_hooks::configure(app)?;
+    crate::jev_hooks::ensure_ignores(app, &project_dir)?;
 
     configure_opencode_plugins_if_needed(app)?;
     copy_extensions(app, &project_dir)?;
@@ -699,6 +699,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     if app.selected_agent_os_contains("codex") {
         write_codex_features_config(app)?;
     }
+    crate::jev_hooks::install(app, &project_dir)?;
     mcp::sync_selected_mcps_from_env(app);
     mcp::sync_legacy_mcp_env_from_selected(app);
     mcp::configure_context7_if_needed(app)?;

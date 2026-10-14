@@ -391,7 +391,7 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
             "specializations": app.selected_specs,
             "mcp_integrations": app.selected_mcps,
             "context7": {"api_key_mode": app.context7_api_key_mode.clone().unwrap_or_else(|| if app.context7_api_key.is_empty() { "without_api_key".to_string() } else { "api_key".to_string() })},
-            "jev": {"enabled": app.jev_enabled.unwrap_or(false), "api_url": app.jev_api_url.as_deref().unwrap_or(crate::jev_skill::DEFAULT_API_URL)},
+            "jev": {"enabled": app.jev_enabled.unwrap_or(false), "api_url": app.jev_api_url.as_deref().unwrap_or(crate::jev_hooks::DEFAULT_API_URL)},
             "opencode_profile": app.selected_opencode_profile,
             "opencode_plugins": Value::Object(opencode_plugins),
             "source_repo": crate::APP_REPO_LINK,

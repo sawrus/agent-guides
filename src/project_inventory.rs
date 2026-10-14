@@ -9,6 +9,8 @@ const ROOT_FILES: &[&str] = &[
     "MEMORY.md",
     "REVIEW_PIPELINE.md",
     ".agentic.json",
+    ".gitignore",
+    ".agentic/jev-hook-entries.json",
     ".mcp.json",
     "opencode.json",
     ".mempalaceignore",

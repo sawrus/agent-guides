@@ -139,7 +139,7 @@ pub fn mcp_description(id: &str) -> &'static str {
         "youtube-transcript" => "YouTube transcript extraction",
         "docker-mcp" => "Docker MCP Gateway",
         "context7" => "Fresh library documentation",
-        "jev" => "JEV workflow decisions (skill)",
+        "jev" => "JEV decisions (native hooks)",
         "mempalace" => "Persistent project memory",
         "anydb" => "Database access MCP",
         _ => "MCP server",

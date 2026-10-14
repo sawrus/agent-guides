@@ -10,12 +10,12 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("jev_helper", ROOT / "skills/jev/scripts/decide.py")
+spec = importlib.util.spec_from_file_location("jev_helper", ROOT / "extensions/codex/hooks/jev/api.py")
 jev = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(jev)
 
 
-class JevSkillTests(unittest.TestCase):
+class JevApiTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.project = Path(self.temp.name)

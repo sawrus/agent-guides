@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One optional typed-decision API call. Workflow policy stays in Markdown."""
+"""Shared TypeSafe/JEV request validation, credential loading and redaction."""
 
 import argparse
 import json
@@ -22,7 +22,7 @@ def key_for(project, name):
     path = project / ".env"
     if not path.is_file() or path.stat().st_size > 65536:
         return None
-    for line in path.read_text().splitlines():
+    for line in path.read_text(encoding='utf-8').splitlines():
         match = re.match(r"^\s*(?:export\s+)?" + name + r"\s*=\s*(.*?)\s*$", line)
         if match:
             value = match[1]
@@ -36,7 +36,7 @@ def key_for(project, name):
 
 def redact(value):
     if isinstance(value, dict):
-        return {k: "[REDACTED]" if re.search(r"api.?key|password|secret|token|authorization|cookie|credential", k, re.I) else redact(v) for k, v in value.items()}
+        return {k: "[REDACTED]" if re.search(r"api.?key|password|secret|(?:^|_)token$|authorization|cookie|credential", k, re.I) else redact(v) for k, v in value.items()}
     if isinstance(value, list):
         return [redact(v) for v in value]
     if isinstance(value, str):
@@ -80,7 +80,7 @@ def answers_for(result, questions):
             continue
         probabilities = answer.get("probabilities")
         confidence = answer.get("confidence")
-        if not isinstance(probabilities, dict) or not isinstance(confidence, (int, float)) or not 0 <= confidence <= 1:
+        if not isinstance(probabilities, dict) or not isinstance(confidence, (int, float)) or isinstance(confidence, bool) or not 0 <= confidence <= 1:
             raise ValueError("invalid distribution")
         if not all(isinstance(p, (float, int)) and not isinstance(p, bool) and 0 <= p <= 1 for p in probabilities.values()) or abs(sum(probabilities.values()) - 1) > .03:
             raise ValueError("invalid probability mass")

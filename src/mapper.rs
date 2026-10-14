@@ -347,6 +347,7 @@ pub fn write_agent_model_mapping(
     let state = json!({
         "configured": true,
         "roles": roles.iter().map(|r| r.name.clone()).collect::<Vec<_>>(),
+        "model_defaults": mapping.iter().map(|(role, model, _)| (role.clone(), json!(model))).collect::<serde_json::Map<String, Value>>(),
     });
     std::fs::write(&state_path, markers::to_pretty_json(&state))?;
     manifest::register_managed_file(
@@ -530,6 +531,10 @@ mod tests {
         assert_eq!(data["agent"]["developer"]["model"], json!("openai/gpt-4"));
         assert_eq!(data["agent"]["developer"]["fallback"], json!(["acme/m1"]));
         assert!(has_complete_mapping(&roles, &config_path, &state_path));
+        assert_eq!(
+            read_json(&state_path)["model_defaults"]["developer"],
+            json!("openai/gpt-4")
+        );
 
         // same fallback as model -> empty fallback list
         let mapping2 = vec![(

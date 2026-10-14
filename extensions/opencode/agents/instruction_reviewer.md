@@ -26,6 +26,15 @@ security, and operational requirements; brevity alone is not evidence of savings
 Implementation-quality issues are out of scope unless evidence links an instruction
 to execution friction; recommend instruction changes only.
 
+## JEV evidence when supplied
+
+Assess the completed task's cleansed JEV questions/answers and observed native
+application evidence supplied in the review packet. Identify useful decisions,
+fallbacks, scope inflation, unsuitable model choices and unsupported cost claims.
+State whether docs/instructions need followup; each proposal names source,
+target, owner and done_when. Missing observed model/permission evidence is unknown.
+Do not call JEV, collect other sessions or start another review.
+
 ## Output contract
 
 Return only a Markdown report titled `Instruction Effectiveness Review`, with:

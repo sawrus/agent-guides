@@ -48,7 +48,7 @@ fn help_output() {
 }
 
 #[test]
-fn jev_skill_enable_provider_replay_and_explicit_disable() {
+fn jev_hooks_enable_provider_replay_and_explicit_disable() {
     let home = tempfile::tempdir().unwrap();
     let project = tempfile::tempdir().unwrap();
     let install = |args: &[&str]| {
@@ -75,29 +75,19 @@ fn jev_skill_enable_provider_replay_and_explicit_disable() {
         "--jev-api-url",
         "https://api.typesafe.ai/v1/systemone",
     ]);
-    for dir in [
-        ".agent",
-        ".agents",
-        ".claude",
-        ".gemini",
-        ".opencode",
-        ".cursor",
-        ".kilocode",
-    ] {
-        assert!(project
-            .path()
-            .join(dir)
-            .join("skills/jev/scripts/decide.py")
-            .is_file());
-        for reference in ["questions.json", "checkpoints.md", "hosts.md"] {
-            assert!(project
-                .path()
-                .join(dir)
-                .join("skills/jev/references")
-                .join(reference)
-                .is_file());
-        }
-    }
+    assert!(project.path().join(".agent/jev/hook.py").is_file());
+    assert!(project
+        .path()
+        .join(".opencode/plugins/agentic-jev/index.ts")
+        .is_file());
+    assert!(!project.path().join(".agent/skills/jev/SKILL.md").exists());
+    let hooks = project.path().join(".codex/hooks.json");
+    assert!(std::fs::read_to_string(&hooks)
+        .unwrap()
+        .contains("UserPromptSubmit"));
+    let ignore = std::fs::read_to_string(project.path().join(".gitignore")).unwrap();
+    assert!(ignore.contains(".agentic*/"));
+    assert!(ignore.contains(".review*/"));
     let developer_profile = project.path().join(".codex/agents/developer.toml");
     let profile = std::fs::read_to_string(&developer_profile).unwrap();
     let codex_config = project.path().join(".codex/config.toml");
@@ -105,6 +95,11 @@ fn jev_skill_enable_provider_replay_and_explicit_disable() {
         .unwrap()
         .contains("max_threads = 8"));
     assert!(!profile.contains("\nmodel ="));
+    let defaults: Value = serde_json::from_str(
+        &std::fs::read_to_string(project.path().join(".agent/jev/model-defaults.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(defaults["developer"], "gpt-6.1-sol");
     assert!(!profile.contains("\nmodel_reasoning_effort ="));
     assert!(profile.contains("sandbox_mode = \"workspace-write\""));
     assert!(profile.contains("You are the Software Developer"));
@@ -124,6 +119,10 @@ fn jev_skill_enable_provider_replay_and_explicit_disable() {
         "https://api.typesafe.ai/v1/systemone"
     );
     install(&["--disable-jev", "--enable-jev"]);
+    assert!(!project
+        .path()
+        .join(".agent/jev/model-defaults.json")
+        .exists());
     assert!(std::fs::read_to_string(&developer_profile)
         .unwrap()
         .contains("model = \"gpt-6.1-sol\""));
@@ -151,7 +150,16 @@ fn jev_skill_enable_provider_replay_and_explicit_disable() {
         .unwrap()
         .contains(&serde_json::json!("jev")));
     let root = std::fs::read_to_string(project.path().join("AGENTS.md")).unwrap();
-    assert!(root.contains("settings.jev.enabled"));
+    assert!(!root.contains("Optional JEV decisions"));
+    let hooks: Value = serde_json::from_str(&std::fs::read_to_string(&hooks).unwrap()).unwrap();
+    assert!(hooks["hooks"]["UserPromptSubmit"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    assert!(!project
+        .path()
+        .join(".opencode/plugins/agentic-jev/index.ts")
+        .exists());
     let codex = std::fs::read_to_string(project.path().join(".codex/config.toml")).unwrap();
     assert!(!codex.contains("mcp_servers.jev"));
     agentic(home.path())
@@ -988,4 +996,104 @@ fn force_preserves_unavailable_context7_key_and_updates_other_mcps() {
         result["mcp"]["playwright"]["command"],
         serde_json::json!(["npx", "-y", "@playwright/mcp@latest"])
     );
+}
+
+#[test]
+fn jev_native_hook_entries_preserve_foreign_handlers_through_upgrade_and_disable() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let install = |extra: &[&str]| {
+        agentic(home.path())
+            .env_remove("AGENTIC_ENABLE_JEV")
+            .args(["install", "--project-dir"])
+            .arg(project.path())
+            .args([
+                "--agent-os",
+                "codex,opencode",
+                "--areas",
+                "software",
+                "--specializations",
+                "software.backend",
+                "--no-doctor",
+            ])
+            .args(extra)
+            .assert()
+            .success();
+    };
+    install(&["--enable-jev"]);
+    let hook_path = project.path().join(".codex/hooks.json");
+    let mut hooks: Value =
+        serde_json::from_str(&std::fs::read_to_string(&hook_path).unwrap()).unwrap();
+    let foreign =
+        serde_json::json!({"matcher":"*","hooks":[{"type":"command","command":"echo foreign"}]});
+    hooks["hooks"]["UserPromptSubmit"]
+        .as_array_mut()
+        .unwrap()
+        .push(foreign.clone());
+    std::fs::write(&hook_path, serde_json::to_string_pretty(&hooks).unwrap()).unwrap();
+    install(&["--enable-jev"]);
+    agentic(home.path())
+        .args(["__sync-project", "--project-dir"])
+        .arg(project.path())
+        .assert()
+        .success();
+    let hooks: Value = serde_json::from_str(&std::fs::read_to_string(&hook_path).unwrap()).unwrap();
+    assert_eq!(
+        hooks["hooks"]["UserPromptSubmit"].as_array().unwrap().len(),
+        2
+    );
+    assert!(hooks["hooks"]["UserPromptSubmit"]
+        .as_array()
+        .unwrap()
+        .contains(&foreign));
+    install(&["--disable-jev"]);
+    let hooks: Value = serde_json::from_str(&std::fs::read_to_string(&hook_path).unwrap()).unwrap();
+    assert_eq!(
+        hooks["hooks"]["UserPromptSubmit"],
+        serde_json::json!([foreign])
+    );
+    let ignore = std::fs::read_to_string(project.path().join(".gitignore")).unwrap();
+    assert_eq!(ignore.matches(".agentic*/").count(), 1);
+    assert_eq!(ignore.matches(".review*/").count(), 1);
+}
+
+#[test]
+fn jev_user_modified_hook_is_preserved_and_disable_is_persisted() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let install = |flag: &str| {
+        agentic(home.path())
+            .env_remove("AGENTIC_ENABLE_JEV")
+            .args(["install", "--project-dir"])
+            .arg(project.path())
+            .args([
+                "--agent-os",
+                "codex",
+                "--areas",
+                "software",
+                "--specializations",
+                "software.backend",
+                "--no-doctor",
+                flag,
+            ])
+            .assert()
+            .success();
+    };
+    install("--enable-jev");
+    let path = project.path().join(".codex/hooks.json");
+    let mut data: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    data["hooks"]["UserPromptSubmit"][0]["hooks"][0]["timeout"] = serde_json::json!(99);
+    std::fs::write(&path, serde_json::to_string_pretty(&data).unwrap()).unwrap();
+    install("--disable-jev");
+    let data: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    assert_eq!(
+        data["hooks"]["UserPromptSubmit"][0]["hooks"][0]["timeout"],
+        99
+    );
+    let manifest: Value = serde_json::from_str(
+        &std::fs::read_to_string(project.path().join(".agentic.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["settings"]["jev"]["enabled"], false);
+    assert!(project.path().join(".agent/jev/hook.py").is_file());
 }

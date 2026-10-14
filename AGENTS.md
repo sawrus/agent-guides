@@ -21,6 +21,18 @@ Prefer relative paths in references inside markdown files.
 
 Cross-cutting practices that apply to every project regardless of area.
 
+### Repository Layout
+
+- Add a new file at the repository root only with the customer's explicit approval. State its purpose and proposed name before requesting approval.
+- Use existing directories for implementation, tests, documentation, and generated artifacts. This requirement concerns new root files; edits to existing files follow the authorized task scope.
+
+### Response Language and Clarity
+
+- Use ASD-STE100 principles for about 80% of user-facing explanations: short sentences, active voice, concrete verbs, consistent terms, and one main idea per sentence.
+- Treat 80% as a writing target, not a measured compliance score. Adapt these principles to the user's language; do not force English vocabulary into other languages.
+- Use normal technical language for the remaining complex material when simplification would reduce accuracy. Explain necessary specialist terms once. Preserve code, identifiers, API names, quotations, and precise requirements.
+- Do not claim formal ASD-STE100 compliance without validation against the standard. Prefer clarity over a rigid sentence count or artificial quota.
+
 ### Git Workflow
 
 - Use feature branches with task IDs in branch names (e.g., `feat/TASK-123-add-auth`).

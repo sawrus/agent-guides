@@ -16,3 +16,7 @@ Cargo.lock.bak
 .env
 .env.*
 !.env.example
+
+# Local Agentic runtime and post-task review directories.
+.agentic*/
+.review*/

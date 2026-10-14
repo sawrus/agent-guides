@@ -1,182 +1,204 @@
-# JEV activation through Agentic
+# JEV native hooks
 
-## Requirements and design
+See [native verification results](verification.md) for measured outcomes and limits.
 
-Follow-up to the R&D prototype: select JEV beside Context7 in CLI/TUI, use
-the official TypeSafe API by default, persist enablement, and install the skill
-in every supported environment. Removing JEV must disable future calls.
-Installer and status checks make no
-paid requests. Existing SDLC roles and advisory verdict boundaries remain.
+## Behavior and acceptance criteria
 
-Install one shared `jev` skill with a small Python HTTP helper. Keep decisions
-in workflow Markdown; the Rust installer only handles enablement, server URL and
-asset installation. No separate Rust evaluator or MCP server is needed.
-Read the selected provider's environment variable or exact key assignment in
-project `.env` at runtime, without executing the file or copying credentials.
+Agentic 1.3.0 replaces JEV skill calls and workflow-specific Markdown checkpoints
+with native hooks for **Codex 0.161.0+** and **OpenCode V2 2.0.28+**. Rust handles
+activation and installation; `.agent/jev/hook.py` handles typed decisions and
+`.opencode/plugins/agentic-jev/index.ts` adapts the OpenCode V2 API. Python 3.10+
+is required at runtime. Claude/Gemini adapters, semantic test-evidence evaluation,
+fix-loop control and epic prioritization are deferred. No extra workflow runner
+or JEV MCP server is installed.
 
-Persist `settings.jev.enabled/api_url` in `.agentic.json`. Explicit off overrides
-environment/replay. The helper checks enablement before every call; disabled
-calls do not read credentials. Generated root guidance points to the shared
-skill, while workflow checkpoints define questions and handling of answers.
+Adapter sources belong to `extensions/codex/hooks/jev/` and
+`extensions/opencode/hooks/agentic-jev.ts`. The common Python runtime is deployed
+to `.agent/jev/`; the OpenCode adapter is deployed to its native plugin directory.
 
-Verification: TUI selection/deselection, URL replay, installation across
-seven environments, secret exclusion, dry-run, disabled/no-request behavior,
-workflow hooks, skill validation and one real hosted request through the helper.
+On the original user prompt, JEV chooses from the workflows actually installed
+in `.agent/workflows/`. The host receives context directing it to load and execute
+the selected workflow with its native roles. Explicit workflow requests remain
+unchanged. This is a context instruction; actual execution must be verified from
+native tool evidence, not merely from JEV's recommendation.
 
-## Local check now
+Before creating a subagent, JEV chooses the least expensive sufficient available
+model for the original task and exact role assignment. Candidates are restricted
+to the models assigned by the installed project's role profiles, intersected with
+the host's available catalog and known availability restrictions. An empty
+intersection retains native behavior. Role title alone must not
+inflate complexity. Codex uses its native model cache; OpenCode uses its runtime
+catalog, capabilities and prices. Codex `PreToolUse` rewrites the native spawn
+arguments; OpenCode rewrites `subagent.model`. Native role permissions remain.
+Explicit tool model assignments, models written in local role Markdown, manual
+local configuration changes and continuing existing children are preserved.
+Inherited role models and unchanged Agentic mapper assignments are defaults that
+JEV can route. Mapper state records `model_defaults`; changing a local role model
+relative to that snapshot makes it a pin. Selected bundled/custom OpenCode profile
+defaults are recorded in `.agent/jev/opencode-profile-defaults.json`; unchanged
+profile assignments are also routable. Legacy mapper states without a snapshot
+conservatively retain local model pins. To reconfigure them, back up and move
+`.opencode/agent-model-mapper.state.json` out of that path, then select the mapper
+in Agentic TUI and confirm the desired defaults again. Root `opencode.json` role
+models also remain explicit pins. If a local configuration cannot be safely parsed
+(including JSONC comments), model routing falls back without a paid request.
+Production considers all active providers, not just OpenAI. Catalog visibility
+means quota is unknown unless verified. Observed OpenCode HTTP auth/quota failures
+exclude that model from subsequent decisions for 15 minutes (429: one minute);
+no paid availability probes or unproven quota claims are made.
+Bundled Codex role defaults are recorded in `.agent/jev/model-defaults.json`
+and omitted from native TOML when enabled so they do not override hook decisions;
+explicit models in user profiles also enter the pool and remain pinned for that role. User-edited profiles are
+protected. Missing/unknown prices do not prove cheapest. Reviewer selection uses
+comparable input+output catalog prices, otherwise `AGENTIC_JEV_REVIEW_MODEL` or
+`settings.jev.lightweight_model`; the Codex default is available `gpt-6-luna`.
 
-From this repository, `make jev-skill-live` sends one small paid request through
-the skill helper using `JEV_API_KEY` from environment or local `.env`. No
-standalone `agentic jev` command is needed.
+Permission evaluation can return allow/deny/ask. Explicit native denials remain
+final. Automatic approval is bounded to project/system temporary paths with
+sandbox preserved. Secrets, deletion, outside paths, network/escalation and
+symlink escapes require native approval. Arbitrary shell commands are assessed,
+but only simple provably bounded commands may be auto-approved; interpreters,
+substitutions, pipes and redirects remain native approval requests. Codex Bash
+PermissionRequest represents escalation/network approval and is never auto-allowed.
+JEV does not execute commands or grant sandbox exemptions.
 
-## Enable in a project
+Errors, unavailable keys/catalogs, timeout (eight seconds), oversized requests,
+confidence below 0.9 and duplicate in-flight events retain native behavior.
+The same native event is evaluated once; no retry requests for a preferred answer.
+Disabled integration makes no requests and does not read credentials.
 
-```bash
+Some Codex transports expose encrypted subagent assignments to hooks. The audit
+marks `assignment_unavailable`; JEV receives original scope and role metadata,
+not decrypted content. Confidence assesses capability fit, while price and quota
+can remain unknown. Ambiguous capability requirements still trigger fallback.
+
+## Enable and disable
+
+```sh
 make build
 ./target/debug/agentic tui --no-doctor
 ```
 
-Select the target project and agent environments. In the integrations menu,
-select `jev` with Space and confirm with Enter. There is no server picker;
-the default is **TypeSafe AI (official API)** at `https://api.typesafe.ai/v1/systemone`.
-Then choose `Enter key and save in project .env`, enter the key in the masked
-field and press Enter. Existing unrelated `.env` values are preserved; the key
-is kept outside manifests/logs and `.env` is added to the project's `.gitignore`.
-Unix file permissions are restricted to 0600. Alternatively choose the existing
-environment/project `.env` option. Installation makes no paid request.
-Reload the agent session after installing the skill.
+Select the target project, Codex/OpenCode, areas and JEV beside Context7.
+Activation and masked key entry stay in the existing TUI. There is no server
+picker. Key entry preserves unrelated `.env` assignments, ignores `.env`, and
+restricts Unix permissions to 0600. Installation itself makes no paid requests.
 
-CLI equivalent:
-
-```bash
+```sh
 ./target/debug/agentic install --project-dir /path/to/project \
-  --agent-os codex,claude,gemini,opencode --areas software \
-  --specializations software.backend --enable-jev --no-doctor
+  --agent-os codex,opencode --areas software \
+  --specializations software.backend,software.general --enable-jev --no-doctor
 ```
 
-For your existing paid test gateway key, override the server when starting TUI:
+The default server is **TypeSafe AI (official API)**:
+`https://api.typesafe.ai/v1/systemone`, with `TYPESAFE_API_KEY` from environment or
+project `.env`. Buy official quota at [TypeSafe console](https://console.typesafe.ai/keys).
+For the purchased test gateway, use `JEV_API_KEY` and:
 
-```bash
-./target/debug/agentic tui --no-doctor \
-  --jev-api-url https://jevtypesafeai.com/api/v1/decide
-```
-
-Or set the OS environment variable:
-
-```bash
+```sh
 JEV_API_URL=https://jevtypesafeai.com/api/v1/decide ./target/debug/agentic tui --no-doctor
 ```
 
-The override is saved in the target project's manifest. `install` also accepts
-`--jev-api-url`. Official keys come from https://console.typesafe.ai/keys and use
-TYPESAFE_API_KEY. The test gateway/custom endpoint uses JEV_API_KEY. No automatic
-server/credential failover occurs; redirects are disabled.
+`--jev-api-url` also overrides the URL. Installer precedence is CLI > OS variable
+> saved manifest > official default. Runtime OS override wins over the saved URL.
+No redirect following, key/provider fallback or secret execution from `.env` occurs.
 
-From the installed project root:
+Uncheck JEV in TUI or use `--disable-jev`. The saved false flag wins over enable
+arguments/replay. Unmodified managed adapters and individual owned Codex hook
+entries are removed; edited/unmanaged assets and foreign hooks are preserved with
+warnings. Conflicting entries require manual reconciliation. Old skill files are
+removed only with matching recorded ownership/hash; edits remain local.
 
-```bash
-python3 .agent/skills/jev/scripts/decide.py --status
-python3 .agent/skills/jev/scripts/decide.py --input /tmp/jev-request.json --dry-run
-python3 .agent/skills/jev/scripts/decide.py --input /tmp/jev-request.json
+Codex requires **native trust review** of project hooks through `/hooks` before
+calls run. Agentic never trusts definitions automatically or adds trust bypass
+flags. Changed definitions require review again. For CLI tests use `--no-daemon`
+to avoid inheriting a shared server's project configuration. OpenCode discovers
+its local plugin automatically; legacy V1 plugins/auth integrations may need their
+own V2 migration independently of JEV.
+
+Install and upgrade ignore directories `.agentic*/` and `.review*/`; they do not
+ignore the tracked `.agentic.json` file. Upgrade staging includes `.gitignore` and
+hook-entry ownership metadata, while keeping Q/A logs out of synchronization.
+
+## Audit and post-task review
+
+Cleansed full questions, responses, context, usage and native observations live
+in `.agentic/jev/event-*.json`, with 30-day retention and event deduplication.
+They contain session/task/tool identifiers; exact local JEV keys and secret
+assignments are removed before sending and writing. Native observed model may be
+unknown: a requested model alone does not prove application.
+
+The existing REVIEW_PIPELINE runs its specialist pair once after successful
+top-level delivery. Supply only that task's audit records. Instruction reviewer
+assesses workflow/model/permission decisions, fallback and measured efficiency,
+then states whether docs/instructions need followup with source, target, owner,
+`done_when`. No recursive JEV review or extra Stop-triggered review is introduced.
+
+Hooks prepare one task-scoped `.agentic/jev/review-*.json` packet with exact Q/A,
+native observations and explicit paths to full records. Inline questions have a
+48 KiB budget; omitted questions remain in their referenced full records.
+OpenCode appends the packet path to the reviewer assignment. Codex passes it as
+native `SubagentStart` developer context, leaving encrypted assignments unchanged.
+Reviewers must read these exact paths; ordinary search omits Git-ignored journals.
+OpenCode also supplies up to 64 KiB of cleansed packet content directly, overriding
+incorrect coordinator assertions that JEV records are absent.
+
+## Real local blackbox
+
+```sh
+# Existing local CLI authentication; JEV key from OS env or this checkout's .env.
+JEV_API_URL=https://jevtypesafeai.com/api/v1/decide make blackbox
+# Individual hosts:
+make blackbox-codex
+make blackbox-opencode
+# Recheck saved execution and arithmetic without any paid requests:
+make blackbox-opencode BLACKBOX_ARGS='--verify-only --run-dir /absolute/path/.agentic-blackbox/<run>'
 ```
 
-Use [example-request.json](example-request.json) as the request file. Status
-returns enabled/api_url/key_available and paid_calls=0. Dry-run shows a redacted
-request. A real response has status=evaluated, typed answers and usage; uncertain
-answers are handed back to the workflow role. Missing key/network/provider errors
-return fallback. The helper does not generate requirements, run tests or switch
-the active coding model itself.
+Each host receives a separate temporary Git project. The built Agentic installs
+`software.backend` + `software.general`, enables JEV and installs hooks. The
+real CLI receives exactly **«разработай калькулятор»** with no workflow flag.
+Following the requested OpenAI restriction, the OpenCode coordinator uses the
+configured `openai/gpt-5.5` (`BLACKBOX_OPENCODE_MODEL` can override it with another
+OpenAI model); JEV subagent candidates are restricted to OpenAI through
+`AGENTIC_JEV_MODEL_PROVIDER=openai`. Codex has no model flag. Routing uses the same
+default-versus-pin rules in tests and production, without a test-only routing override.
+Global files remain unchanged. Tests run sequentially, with a 20-minute limit per host, and leave projects
+available for inspection. Cleansed traces/results are saved in
+`.agentic-blackbox/<run>/`; `project.json` records each temporary project's path.
+These targets are opt-in and paid; `make test`/CI remain offline.
 
-The canonical copy is `.agent/skills/jev/`. Native discovery copies are installed
-for Codex (`.agents/skills`), Claude (`.claude/skills`), Gemini (`.gemini/skills`),
-OpenCode (`.opencode/skills`), Cursor (`.cursor/skills`) and KiloCode/Antigravity
-(their existing Agentic skill directory). All copies use the same project flag.
-`default` also supports the canonical copy through generated root guidance.
+For Codex trust preparation, first run:
 
-## Disable and replay
+```sh
+JEV_API_URL=https://jevtypesafeai.com/api/v1/decide \
+  make blackbox-codex BLACKBOX_ARGS=--prepare-only
+codex --no-daemon -C /tmp/agentic-jev-blackbox-codex-<id>
+# Review the exact five Agentic definitions in /hooks, then exit.
+make blackbox-codex BLACKBOX_ARGS='--run-dir /absolute/path/.agentic-blackbox/<run>'
+```
 
-Uncheck `jev` in TUI and confirm an empty selection if desired. Or repeat the
-install command with `--disable-jev`. This overrides saved selections and
-`--enable-jev` in the same invocation. Existing skill files can remain, but the
-helper checks the disabled flag before reading input/keys or making requests.
-No MCP configuration is created or removed. Replay/upgrade preserve the URL
-and enabled state. Installer precedence is CLI URL > JEV_API_URL > saved URL >
-official default. Runtime helper `--api-url` / JEV_API_URL can override the saved
-URL. A key alone never enables JEV; runtime AGENTIC_ENABLE_JEV=0 blocks saved
-true. Standalone research can explicitly use `--enabled` without a manifest;
-workflow calls require the saved flag. Saved false cannot be bypassed this way.
+Passing requires real JEV workflow selection, native workflow-load evidence,
+requested/observed model agreement for the same role/session, successful CLI
+completion and independent arithmetic checks. A fallback, provider error,
+clarification stall or recommendation without application cannot pass.
+The built-in arithmetic probe supports public Python/JavaScript calculator evaluators.
+Other stacks require `BLACKBOX_VERIFIER=/absolute/path/to/executable`; it receives
+the project path and must independently execute calculator checks, returning JSON
+`{"verified":true}` and exit zero. Agent-authored assertions are not accepted.
 
-## Workflow behavior
+Native hook trust and valid host provider authorization are prerequisites. A key
+for JEV does not authenticate coding models. Inspect `results.json` and the
+cleansed trace for failed/blocked prerequisites. The shared `.agentic-blackbox/jev-budget.json` ledger reserves $0.02 per call,
+settles reported costs, and stops before the configured $5 limit. Unknown costs
+retain the reservation; it is a conservative guard, not a provider billing cap.
+Existing test quota remains bounded by the agreed $5 JEV budget; coding agents use their existing host quota.
 
-The root Markdown points to the optional skill. Six workflows contain explicit
-conditional checkpoints: develop-feature, develop-epic, development-cycle,
-develop-feature-fullstack, feature-implementation-flow, backend-project-full-cycle.
-They specify which state/question to send and which role handles the result.
-The helper only transports typed decisions; policy and role ownership remain
-in Markdown. All arithmetic and evidence provenance checks stay local.
+## Source contracts
 
-Each workflow now uses maintained question objects from the installed skill's
-`references/questions.json` and packet/action contracts from
-`references/checkpoints.md`. This prevents one role from losing the "least
-expensive sufficient" requirement or silently adding unrelated project repairs
-to a routing packet. Original request, agreed scope and approval provenance
-stay explicit; out-of-scope findings are separate proposals.
-
-Scope alignment, evidence coverage, disputed review blockers, fix-loop actions,
-per-criterion acceptance, epic factors and actionable post-task followups each
-have their own question and owner action. JEV is skipped for deterministic
-failures or missing cost telemetry. Followups name proposal IDs, source, target,
-owner and done_when; process effectiveness and measured cost efficiency are
-reported separately. Existing QA/sign-off/acceptance and loop limits remain.
-
-## Per-agent model routing
-
-With JEV enabled, the coordinator asks separately for each role invocation,
-then passes the chosen available model to the host's actual spawn operation.
-This includes exploration and post-task specialists. Codex defaults map fast
-to `gpt-6-luna`, balanced to `gpt-6.1-sol`, frontier to `gpt-6-astra`, restricted
-to its runtime catalog; no price ranking is claimed without pricing evidence.
-Low confidence, missing API access or unsupported model overrides retain the
-inherited parent model/reasoning (or explicit user fallback) and produce an
-explicit fallback record. Former bundled role defaults are not retained
-automatically. Existing SDLC agents keep their models on followups; routing
-must not create extra agents beyond the workflow's six-role limit.
-
-Bundled Codex role model/reasoning assignments are omitted during JEV-enabled
-installation because Codex custom profile settings override spawn parameters.
-Role instructions and sandbox remain. User-edited profiles are protected and
-their explicit pins still win. Disabling JEV restores bundled defaults for
-unmodified managed profiles. Record verdict, requested model and any observed
-model in `docs/<feature>/model-routing.md`; a recommendation alone is not proof
-of applied routing. Other hosts require an equivalent supported spawn override.
-
-For Codex, JEV-enabled installation sets `agents.max_threads = 8` when the
-project has no explicit agent limit, allowing six SDLC roles and two review
-specialists. Existing project limits are preserved; a limit below six can block
-this workflow. The capacity setting remains when disabling JEV. For a temporary
-test override, use `codex -c agents.max_threads=8`.
-
-## OpenCode status
-
-The shared skill and decision checkpoints are installed for OpenCode.
-Automatic per-task model application is **not implemented** there: the existing
-Agent Model Mapping feature writes fixed role models at installation time.
-See the skill's `references/hosts.md` for capability checks and the proposed
-native adapter boundary. Until an adapter or supported native model override
-is verified, report routing as `unsupported` and retain the configured model.
-
-OpenCode's [agent documentation](https://opencode.ai/docs/agents/) describes
-per-agent models, and its [SDK](https://opencode.ai/docs/sdk/) supports an explicit
-model in `session.prompt`. That API capability alone does not mean Agentic
-currently applies JEV choices through it. No live OpenCode routing test has
-been run; an OpenCode executable is not installed in this environment.
-
-## Verified result
-
-`make lint`, `make test`, `make build`, skill validation and `make test-coverage`
-pass. Rust line coverage is 82.37% (80% gate). A full TUI run in an isolated
-temporary project verified URL override persistence, no server picker, masked
-key entry, target `.env` storage, skill installation and no key in terminal or
-manifest. A real hosted request through the skill returned `fast` at confidence
-1.0 for the spelling fixture in the final live smoke; its reported cost was $0.000173. Official paid
-quota is not available, so its request contract/key separation is tested with mocks.
+[Codex hooks](https://developers.openai.com/codex/hooks) define native input
+replacement, approval decisions and hook trust. [OpenCode V2 plugins](https://opencode.ai/v2/docs/build/plugins/)
+define prompt, tool and permission evaluation hooks. SDK 2.0.28 source confirms
+the native `subagent.model` override is applied before child creation and retains
+role permission checks. Ordinary tests validate both endpoint contracts with mocks;
+official paid quota has not been used.

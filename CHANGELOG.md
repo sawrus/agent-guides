@@ -1,24 +1,16 @@
 # Changelog
 
-## v1.3.0
+## v1.3.0 (unreleased)
 
-- JEV workflows use shared scope-bounded questions for least-cost routing,
-  evidence coverage, review triage, fix decisions, acceptance, epic priorities
-  and concrete documentation/instruction followups. Process effectiveness and
-  cost efficiency are separate; unsupported OpenCode model routing is explicit.
-
-- JEV-enabled Codex installs leave bundled role models open for per-invocation
-  routing. The skill now requires a separate role decision, an actual spawn
-  model override and a routing evidence report; user-edited profiles retain pins.
-- JEV-enabled Codex projects without an explicit agent limit receive capacity
-  for six SDLC roles and two review specialists; existing project limits remain.
-
-- Added optional JEV workflow skill activation beside Context7 in TUI and through install flags `--enable-jev`, `--disable-jev`, and `--jev-api-url`.
-- Project manifests preserve enablement/server URL without credentials. The shared skill reads the appropriate key from environment or project `.env`, using a small Python standard-library API helper.
-- The server defaults to the official TypeSafe AI API without a picker; CLI `--jev-api-url` or environment `JEV_API_URL` allows the test gateway/custom endpoint.
-- TUI supports masked key entry into the selected project's `.env`, preserving other variables, adding a Git ignore rule, and restricting Unix file permissions.
-- Six SDLC workflows now define conditional JEV questions for model-tier selection, evidence assessment, fix-loop actions, epic priority and review follow-ups. Existing roles, QA and acceptance ownership remain mandatory; disabled projects make no JEV calls.
-- JEV makes no paid call during installation. Existing projects enable it explicitly; reload the agent session after installation. Python 3 is required only when using this optional skill. Research results are retained under `docs/jev-rnd/`.
+- Added opt-in JEV native hooks for Codex and OpenCode V2 (2.0.28+), replacing the shared skill and workflow-specific checkpoints. Hooks select an installed workflow and an available subagent model; explicit user selections remain authoritative.
+- Preserved TUI activation and masked key entry. The official TypeSafe AI server remains the default, with CLI/environment overrides for the paid test gateway.
+- Permission hooks retain sandbox restrictions and native denials. Sensitive or unbounded operations require normal user approval; failures and low-confidence responses fall back to native behavior.
+- Local cleansed JEV Q/A and routing evidence are retained for 30 days and included in the existing advisory review pipeline. Unknown prices or application evidence are reported explicitly.
+- Added opt-in `make blackbox` checks with real local Codex/OpenCode and the calculator prompt; ordinary tests and CI do not make paid requests. Codex requires native hook trust review.
+- Install/upgrade now ignore `.agentic*/` and `.review*/` directories without ignoring `.agentic.json`. Existing local review artifacts are no longer tracked.
+- Fixed Windows knowledge-base path normalization for Codex model routing; bundled model defaults remain open when JEV is enabled, while user pins and explicit agent limits are preserved.
+- Limited JEV model candidates to project role defaults intersected with the host catalog. Hook sources now live under each environment's `extensions/<host>/hooks/` directory.
+- Root guidance requires customer approval for new repository-root files and uses an approximate 80% simplified technical writing target, preserving precision for complex material.
 
 ## v1.2.0
 

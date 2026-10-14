@@ -6,7 +6,7 @@ mod config;
 mod copydir;
 mod doctor;
 mod install;
-mod jev_skill;
+mod jev_hooks;
 mod kb;
 mod manifest;
 mod mapper;
@@ -69,7 +69,7 @@ Options:
   --specializations     Comma-separated specializations in area.spec format (example: software.backend,software.frontend)
   --theme               Interface theme: auto|dark|light (default: config value or auto)
   --no-doctor           Skip real agent smoke checks after install
-  --enable-jev          Enable the optional JEV workflow skill
+  --enable-jev          Enable the optional JEV native hooks
   --disable-jev         Disable JEV decisions (overrides saved enablement)
   --jev-api-url         Override JEV API URL (default: official TypeSafe API)
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)

@@ -30,6 +30,23 @@ scan all docs/memory, or collect fresh telemetry just to populate a report.
 Use project-root-relative paths in the packet; resolve protocol references from
 that root, including when the current guidance lives under `.opencode/`.
 
+## Optional JEV audit evidence
+
+When JEV native hooks are enabled, include only the completed top-level task's
+cleansed records from `.agentic/jev/event-*.json` in the evidence packet. Match
+session/task IDs; exclude other tasks. Show the actual questions, answers,
+workflow decision, requested/observed models, permission outcomes and fallbacks.
+Missing native application evidence is `unknown`, not a successful override.
+Hook routing selects the cheapest eligible reviewer when comparable catalog
+prices exist; otherwise use the configured lightweight model and state that
+cheapest is unproven. Preserve read-only permissions and user model pins.
+
+The instruction reviewer assesses whether each decision helped the task, and
+whether project docs/instructions need another action. Name concrete followups
+with source, target, owner and `done_when`, or explicitly recommend no changes.
+Separate process usefulness from measured cost savings. Do not call JEV to
+review JEV, launch extra reviews on every Stop event, or recurse on these reports.
+
 ## Dispatch and failure handling
 
 Invoke `instruction_reviewer` and `memory_curator` independently with the same
