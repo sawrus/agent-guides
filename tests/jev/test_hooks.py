@@ -91,6 +91,8 @@ class Hooks(unittest.TestCase):
             result = hook.run_event(self.project, event)
             self.assertTrue((self.project / result['review_packet']).is_file())
             self.assertNotIn('review_packet', hook.run_event(self.project, event))
+            handoff = hook.run_event(self.project, self.event('review_handoff', session_id='child', root_session_id='root', event_id='child-review', agent='instruction_reviewer'))
+            self.assertEqual(handoff['review_packet'], result['review_packet'])
 
     def test_workflow_context_model_and_repeat_are_scoped(self):
         def respond(project, settings, request):

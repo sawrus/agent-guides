@@ -23,7 +23,7 @@ Candidates come from installed role defaults and the available host catalog.
 Explicit tool/Markdown/local configuration pins remain authoritative.
 
 Recorded JEV costs for representative runs were $0.003619 for Codex and
-$0.004826 for OpenCode. These are decision-service costs reported by the gateway,
+$0.006819 for OpenCode. These are decision-service costs reported by the gateway,
 not coding-model costs or measured savings. The shared conservative budget ledger
 remained below the agreed $5. No official paid quota was used; official API
 contracts were checked offline.
@@ -41,7 +41,8 @@ task's JEV decision records and returned concrete followups with source, target,
 owner and completion criteria. Encrypted assignments were preserved byte for byte;
 the journal path was delivered through native `SubagentStart` context.
 
-OpenCode receives a task-scoped packet directly in its reviewer assignment, with
+The subsequent OpenCode run also confirmed task-scoped Q/A review. OpenCode
+receives the packet directly in its reviewer assignment, with
 an absolute path to the full packet and referenced records. Inline context is
 bounded to 64 KiB. This avoids relying on ordinary search, which skips ignored
 journals, or on coordinator claims that the records are absent. Recommendations

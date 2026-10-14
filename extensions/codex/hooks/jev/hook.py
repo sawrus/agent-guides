@@ -273,7 +273,7 @@ def run_event(project, event):
         return {'status': 'fallback', 'reason_code': 'disabled'}
     event = scrub(event, project)
     kind = event.get('kind')
-    if kind not in ('prompt', 'spawn', 'permission', 'observation', 'tool', 'availability'):
+    if kind not in ('prompt', 'spawn', 'permission', 'observation', 'tool', 'availability', 'review_handoff'):
         return {'status': 'fallback', 'reason_code': 'unsupported_event'}
     directory = private_dir(project)
     session = str(event.get('session_id', 'unknown'))
@@ -304,7 +304,9 @@ def run_event(project, event):
     request = None
     result = {'status': 'fallback', 'reason_code': 'no_decision'}
     try:
-        if kind == 'prompt':
+        if kind == 'review_handoff':
+            result = {'status': 'prepared', 'review_packet': review_packet(project, event.get('root_session_id') or session)}
+        elif kind == 'prompt':
             catalog = workflow_catalog(project)
             event['workflows'] = catalog
             explicit = [w for w in catalog if w['trigger'] and w['trigger'] in event.get('prompt', '') or re.search(r'(?<![\w-])' + re.escape(w['id']) + r'(?![\w-])', event.get('prompt', ''))]
@@ -380,8 +382,8 @@ def run_event(project, event):
 
 
 def review_context(project):
-    return ('For this successfully completed top-level task only, include its cleansed .agentic/jev/event-*.json Q/A and native application evidence in the REVIEW_PIPELINE packet. ' 
-            'Assess workflow fit, requested/observed models, permissions, fallback and missing measurements. Provide concrete followups with source, target, owner, done_when. ' 
+    return ('For this successfully completed top-level task only, include its cleansed .agentic/jev/event-*.json Q/A and native application evidence in the REVIEW_PIPELINE packet. '
+            'Assess workflow fit, requested/observed models, permissions, fallback and missing measurements. Provide concrete followups with source, target, owner, done_when. '
             'Do not start review after failed/deferred delivery or inside loops; run the specialist pair once, never recursively. Do not call JEV to review JEV.')
 
 

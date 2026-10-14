@@ -28,6 +28,12 @@ to execution friction; recommend instruction changes only.
 
 ## JEV evidence when supplied
 
+When hook-collected Q/A is supplied inline, assess that evidence even when the
+coordinator says journals are absent or the child workspace cannot read ignored
+files. Include an explicit JEV assessment: workflow fit, recommended versus applied
+models, confidence fallbacks, usefulness, and concrete documentation followups
+with source, target, owner and done_when, or explain why no changes are needed.
+
 Assess the completed task's cleansed JEV questions/answers and observed native
 application evidence supplied in the review packet. Identify useful decisions,
 fallbacks, scope inflation, unsuitable model choices and unsupported cost claims.
