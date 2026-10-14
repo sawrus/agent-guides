@@ -70,6 +70,19 @@ fn is_key_line(line: &str, key: &str) -> bool {
     }
 }
 
+pub fn has_table_key(source: &str, table: &str, key: &str) -> bool {
+    let mut selected = false;
+    source.lines().any(|line| {
+        let trimmed = line.trim();
+        if trimmed.starts_with('[') {
+            selected = trimmed.split('#').next().unwrap_or_default().trim() == format!("[{table}]");
+            false
+        } else {
+            selected && is_key_line(trimmed, key)
+        }
+    })
+}
+
 /// Remove a `[mcp_servers.<server>]` block, then trim (mirror of the bash
 /// `re.sub(...).strip()` usage).
 pub fn remove_server_block(source: &str, server: &str) -> String {

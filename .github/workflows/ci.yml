@@ -22,7 +22,14 @@ jobs:
       - name: Content lint
         run: make lint-content
       - name: Content contract tests
-        run: make test-content
+        run: make test-content test-jev-hooks
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned OpenCode SDK for adapter typecheck
+        run: npm install --prefix "$RUNNER_TEMP/agentic-jev-sdk" --ignore-scripts --no-audit --no-fund @opencode/plugin@2.0.28 typescript@5.8.2 @types/node@22
+      - name: OpenCode SDK contract
+        run: make test-jev-sdk SDK_DIR="$RUNNER_TEMP/agentic-jev-sdk"
 
   test:
     strategy:

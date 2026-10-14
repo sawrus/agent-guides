@@ -1,0 +1,15 @@
+{
+  "claim": "All required tests passed for the current changes.",
+  "current_tree": "synthetic-tree-A",
+  "required": ["make test"],
+  "records": [
+    {
+      "source": "independent_executor",
+      "command": "make test",
+      "tree": "synthetic-tree-A",
+      "exit_code": 0,
+      "skipped": false,
+      "summary": "42 tests passed; this fixture is synthetic, not an actual execution record."
+    }
+  ]
+}

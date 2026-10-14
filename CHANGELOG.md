@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.3.0 (unreleased)
+
+- Added opt-in JEV native hooks for Codex and OpenCode V2 (2.0.28+), replacing the shared skill and workflow-specific checkpoints. Hooks select an installed workflow and an available subagent model; explicit user selections remain authoritative.
+- Preserved TUI activation and masked key entry. The official TypeSafe AI server remains the default, with CLI/environment overrides for the paid test gateway.
+- Permission hooks retain sandbox restrictions and native denials. Sensitive or unbounded operations require normal user approval; failures and low-confidence responses fall back to native behavior.
+- Local cleansed JEV Q/A and routing evidence are retained for 30 days and included in the existing advisory review pipeline. Unknown prices or application evidence are reported explicitly.
+- Added opt-in `make blackbox` checks with real local Codex/OpenCode and the calculator prompt; ordinary tests and CI do not make paid requests. Codex requires native hook trust review.
+- Install/upgrade now ignore `.agentic*/` and `.review*/` directories without ignoring `.agentic.json`. Existing local review artifacts are no longer tracked.
+- Fixed Windows knowledge-base path normalization for Codex model routing; bundled model defaults remain open when JEV is enabled, while user pins and explicit agent limits are preserved.
+- Limited JEV model candidates to project role defaults intersected with the host catalog. Hook sources now live under each environment's `extensions/<host>/hooks/` directory.
+- Root guidance requires customer approval for new repository-root files and uses an approximate 80% simplified technical writing target, preserving precision for complex material.
+
 ## v1.2.0
 
 - Upgrade now synchronizes using the newly installed executable and supports an explicit project directory.

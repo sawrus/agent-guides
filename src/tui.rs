@@ -115,6 +115,7 @@ pub struct InputState {
     pub value: String,
     pub done: bool,
     pub cancelled: bool,
+    pub masked: bool,
 }
 
 impl InputState {
@@ -125,6 +126,7 @@ impl InputState {
             value: String::new(),
             done: false,
             cancelled: false,
+            masked: false,
         }
     }
 
@@ -275,7 +277,14 @@ pub fn render_input(frame: &mut Frame, state: &InputState, active_theme: &str, s
     let chunks = layout_chunks(frame.area());
     render_banner(frame, chunks[0], active_theme, subtitle);
     let (header, dim) = (palette.header, palette.dim);
-    let shown = format!("{}▏", state.value);
+    let shown = format!(
+        "{}▏",
+        if state.masked {
+            "•".repeat(state.value.chars().count())
+        } else {
+            state.value.clone()
+        }
+    );
     let body = Paragraph::new(vec![
         Line::from(shown),
         Line::from(Span::styled(format!("(empty = {})", state.default), dim)),
@@ -290,7 +299,11 @@ pub fn render_input(frame: &mut Frame, state: &InputState, active_theme: &str, s
     frame.render_widget(body, chunks[1]);
     frame.render_widget(
         Paragraph::new(Span::styled(
-            "Type path and press Enter to confirm • Esc to cancel",
+            if state.masked {
+                "Enter key and press Enter to save • Esc to cancel"
+            } else {
+                "Type path and press Enter to confirm • Esc to cancel"
+            },
             dim,
         )),
         chunks[2],
@@ -422,6 +435,20 @@ pub fn screen_input(app: &App, title: &str, default: &str) -> Option<String> {
     Some(state.result())
 }
 
+pub fn screen_secret_input(app: &App, title: &str) -> Option<String> {
+    let _guard = TerminalGuard::enter().ok()?;
+    let backend = ratatui::backend::CrosstermBackend::new(std::io::stdout());
+    let mut terminal = Terminal::new(backend).ok()?;
+    let mut state = InputState::new(title, "");
+    state.masked = true;
+    let state = run_input(&mut terminal, state, &app.active_theme, &wizard_subtitle()).ok()?;
+    if state.cancelled {
+        None
+    } else {
+        Some(state.result())
+    }
+}
+
 /// One-shot yes/no question rendered as a TUI select ("Yes"/"No").
 pub fn screen_yes_no(app: &App, prompt: &str) -> bool {
     let options = vec!["Yes".to_string(), "No".to_string()];
@@ -484,6 +511,7 @@ pub fn apply_selections(app: &mut App, selections: WizardSelections) {
     for id in &selections.mcps {
         mcp::add_selected_mcp(app, id);
     }
+    app.jev_enabled = Some(app.selected_mcp_contains("jev"));
     mcp::sync_legacy_mcp_env_from_selected(app);
     app.selected_areas = if selections.areas.is_empty() {
         vec!["software".to_string()]
@@ -546,11 +574,11 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
         }
         mcp_options.push(row);
     }
-    let mut state = SelectState::new("Select MCP servers to enable:", mcp_options, true);
+    let mut state = SelectState::new("Select integrations (MCP / skills):", mcp_options, true);
     state.preselect(&preselected);
     let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
     let picked = state.picked();
-    if picked.is_empty() && !detected.is_empty() {
+    if state.cancelled {
         selections.mcps = detected;
     } else {
         for row in picked {
@@ -737,6 +765,50 @@ mod tests {
         assert_eq!(app.selected_areas, vec!["devops"]);
         assert!(app.selected_mcps.is_empty());
         assert_eq!(app.enable_context7_env.as_deref(), Some("n"));
+        assert_eq!(app.jev_enabled, Some(false));
+    }
+
+    #[test]
+    fn jev_selection_and_deselection_are_explicit() {
+        let mut app = App::new().unwrap();
+        let selections = WizardSelections {
+            project_dir: "/tmp/jev-ui".into(),
+            mcps: vec!["jev".into()],
+            ..Default::default()
+        };
+        apply_selections(&mut app, selections);
+        assert_eq!(app.jev_enabled, Some(true));
+        assert!(app.selected_mcp_contains("jev"));
+        let selections = WizardSelections {
+            project_dir: "/tmp/jev-ui".into(),
+            ..Default::default()
+        };
+        apply_selections(&mut app, selections);
+        crate::mcp::sync_selected_mcps_from_env(&mut app);
+        assert_eq!(app.jev_enabled, Some(false));
+        assert!(!app.selected_mcp_contains("jev"));
+    }
+
+    #[test]
+    fn secret_input_never_renders_the_key() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut state = InputState::new("JEV_API_KEY", "");
+        state.masked = true;
+        state.value = "mock-private-key".into();
+        terminal
+            .draw(|frame| render_input(frame, &state, "dark", "test"))
+            .unwrap();
+        let shown: String = terminal
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect();
+        assert!(!shown.contains("mock-private-key"));
+        assert!(shown.contains('•'));
+        assert_eq!(state.result(), "mock-private-key");
     }
 
     #[test]

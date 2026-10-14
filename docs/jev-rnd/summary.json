@@ -1,0 +1,44 @@
+{
+  "calls": 47,
+  "unique_cases": 24,
+  "families": {
+    "routing": {
+      "calls": 10,
+      "agreed": 10
+    },
+    "evidence": {
+      "calls": 14,
+      "agreed": 14
+    },
+    "loop": {
+      "calls": 10,
+      "agreed": 10
+    },
+    "review": {
+      "calls": 8,
+      "agreed": 8
+    },
+    "epic": {
+      "calls": 4,
+      "agreed": 4
+    },
+    "primitives": {
+      "calls": 1,
+      "agreed": 0
+    }
+  },
+  "label_changed_by_option_order": [],
+  "max_confidence_shift": 0.11,
+  "cost_usd": 0.008803,
+  "input_tokens": 20905,
+  "latency_ms": {
+    "min": 1025.2,
+    "median": 1100.7,
+    "p95_nearest_rank": 1324.8,
+    "max": 1430.1
+  },
+  "models": [
+    "jev-1.13.0"
+  ],
+  "limitations": "Hand-labelled simple synthetic fixtures; paired variants are not independent samples. No model quality, production calibration or total-workflow cost comparison."
+}

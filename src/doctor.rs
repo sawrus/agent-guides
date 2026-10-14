@@ -201,6 +201,7 @@ fn run_doctor_for_agent(app: &mut App, agent_os: &str, doctor_root: &Path) -> bo
     let Some(mut cmd) = build_doctor_command(app, agent_os, &work_dir, doctor_root) else {
         return false;
     };
+    cmd.env("AGENTIC_ENABLE_JEV", "0");
     let started = Instant::now();
     let result = run_with_timeout(&mut cmd, Duration::from_secs(timeout_seconds));
     let elapsed = started.elapsed().as_secs();

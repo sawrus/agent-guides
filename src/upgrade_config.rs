@@ -57,6 +57,7 @@ pub fn record_text_keys(app: &mut App, dest: &Path, source: &str, content: &str)
         } else {
             app.selected_mcps
                 .iter()
+                .filter(|id| id.as_str() != "jev")
                 .filter_map(|id| {
                     crate::mcp::registry_entry(id).map(|entry| entry.server.to_string())
                 })

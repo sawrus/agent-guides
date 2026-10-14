@@ -216,7 +216,7 @@ impl Kb {
 
 fn collect_embedded(dir: &Dir, base: &str, out: &mut Vec<(String, String)>) {
     for file in dir.files() {
-        let full = file.path().to_string_lossy().to_string();
+        let full = file.path().to_string_lossy().replace('\\', "/");
         let rel = if base.is_empty() {
             full
         } else {
@@ -245,7 +245,7 @@ fn collect_fs(base: &Path, dir: &Path, out: &mut Vec<(String, String)>) {
             if let Ok(content) = std::fs::read_to_string(&path) {
                 let rel = path
                     .strip_prefix(base)
-                    .map(|p| p.to_string_lossy().to_string())
+                    .map(|p| p.to_string_lossy().replace('\\', "/"))
                     .unwrap_or_default();
                 out.push((rel, content));
             }

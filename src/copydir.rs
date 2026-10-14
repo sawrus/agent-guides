@@ -31,7 +31,12 @@ pub fn copy_dir_contents(
     let is_opencode_ext =
         src_rel.ends_with("extensions/opencode") || src_rel == "extensions/opencode";
 
-    for (rel, content) in app.kb.walk_files(src_rel) {
+    for (rel, mut content) in app.kb.walk_files(src_rel) {
+        if matches!(src_rel, "extensions/codex" | "extensions/opencode")
+            && rel.starts_with("hooks/")
+        {
+            continue;
+        }
         if is_opencode_ext {
             if rel.starts_with("profiles/") {
                 continue;
@@ -41,6 +46,22 @@ pub fn copy_dir_contents(
             {
                 continue;
             }
+        }
+        // Custom-agent model settings override even explicit spawn settings in
+        // Codex. Leave bundled defaults open for JEV; managed-file protection
+        // below still preserves user-edited role profiles.
+        if app.jev_enabled == Some(true)
+            && src_rel == "extensions/codex"
+            && rel.starts_with("agents/")
+            && rel.ends_with(".toml")
+        {
+            content = content
+                .lines()
+                .filter(|line| {
+                    !line.starts_with("model =") && !line.starts_with("model_reasoning_effort =")
+                })
+                .map(|line| format!("{line}\n"))
+                .collect();
         }
         let target = dest_root.join(&rel);
         let project_rel = app.project_rel_path(&target);
@@ -137,5 +158,40 @@ mod tests {
         let dest = tmp.path().join(".agent/rules");
         copy_dir_contents(&mut app, "areas/software/backend/rules", &dest, false).unwrap();
         assert!(!dest.exists());
+    }
+}
+
+#[cfg(test)]
+mod jev_model_tests {
+    use super::*;
+    #[test]
+    fn codex_bundled_models_are_open_in_both_kb_sources() {
+        for kb in [
+            crate::kb::Kb::Embedded,
+            crate::kb::Kb::Checkout(std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))),
+        ] {
+            let project = tempfile::tempdir().unwrap();
+            let mut app = App::new().unwrap();
+            app.project_dir = project.path().to_string_lossy().into();
+            app.jev_enabled = Some(true);
+            app.kb = kb;
+            assert!(app
+                .kb
+                .walk_files("extensions/codex")
+                .iter()
+                .all(|(p, _)| !p.contains('\\')));
+            copy_dir_contents(
+                &mut app,
+                "extensions/codex",
+                &project.path().join(".codex"),
+                false,
+            )
+            .unwrap();
+            let text = std::fs::read_to_string(project.path().join(".codex/agents/developer.toml"))
+                .unwrap();
+            assert!(!text.contains("\nmodel ="));
+            assert!(!text.contains("\nmodel_reasoning_effort ="));
+            assert!(text.contains("sandbox_mode = \"workspace-write\""));
+        }
     }
 }

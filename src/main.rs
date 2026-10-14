@@ -6,6 +6,7 @@ mod config;
 mod copydir;
 mod doctor;
 mod install;
+mod jev_hooks;
 mod kb;
 mod manifest;
 mod mapper;
@@ -68,6 +69,9 @@ Options:
   --specializations     Comma-separated specializations in area.spec format (example: software.backend,software.frontend)
   --theme               Interface theme: auto|dark|light (default: config value or auto)
   --no-doctor           Skip real agent smoke checks after install
+  --enable-jev          Enable the optional JEV native hooks
+  --disable-jev         Disable JEV decisions (overrides saved enablement)
+  --jev-api-url         Override JEV API URL (default: official TypeSafe API)
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)
   --force               Reset Agentic project artifacts for upgrade; overwrite binary for self-install
   --dry-run             Show actions without writing files
@@ -259,6 +263,23 @@ fn cmd_install(app: &mut App, rest: &[String]) -> Result<()> {
                 app.doctor_enabled_env = false;
                 i += 1;
             }
+            "--enable-jev" => {
+                app.jev_enabled = Some(true);
+                i += 1;
+            }
+            "--disable-jev" => {
+                app.jev_enabled = Some(false);
+                i += 1;
+            }
+            "--jev-api-url" => {
+                app.jev_api_url = Some(
+                    rest.get(i + 1)
+                        .filter(|v| !v.starts_with("--"))
+                        .ok_or("--jev-api-url requires an HTTPS URL")?
+                        .clone(),
+                );
+                i += 2;
+            }
             "-h" | "--help" => {
                 print_usage();
                 return Ok(());
@@ -267,6 +288,9 @@ fn cmd_install(app: &mut App, rest: &[String]) -> Result<()> {
         }
     }
 
+    if rest.iter().any(|v| v == "--disable-jev") {
+        app.jev_enabled = Some(false);
+    }
     let cwd = std::env::current_dir()?;
     if app.project_dir.is_empty() && cwd.join(PROJECT_MANIFEST_NAME).is_file() {
         app.project_dir = cwd.to_string_lossy().to_string();
@@ -298,6 +322,15 @@ fn cmd_tui(app: &mut App, rest: &[String]) -> Result<()> {
             s if s.starts_with("--theme=") => {
                 parse_theme_option(app, Some(&s["--theme=".len()..]))?;
                 i += 1;
+            }
+            "--jev-api-url" => {
+                app.jev_api_url = Some(
+                    rest.get(i + 1)
+                        .filter(|v| !v.starts_with("--"))
+                        .ok_or("--jev-api-url requires an HTTPS URL")?
+                        .clone(),
+                );
+                i += 2;
             }
             "--dry-run" => {
                 app.dry_run = true;
