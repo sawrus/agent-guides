@@ -187,7 +187,7 @@ Each host receives a separate temporary Git project. The built Agentic installs
 `software.backend` + `software.general`, enables JEV and installs hooks. The
 real CLI receives exactly **«разработай калькулятор»** with no workflow flag.
 Following the requested OpenAI restriction, the OpenCode coordinator uses the
-configured `openai/gpt-5.5` (`BLACKBOX_OPENCODE_MODEL` can override it with another
+configured `openai/gpt-6-luna` (ChatGPT-account OAuth no longer serves `gpt-5.5`; `BLACKBOX_OPENCODE_MODEL` can override it with another
 OpenAI model); JEV subagent candidates are restricted to OpenAI through
 `AGENTIC_JEV_MODEL_PROVIDER=openai`. Codex has no model flag. Routing uses the same
 default-versus-pin rules in tests and production, without a test-only routing override.
@@ -212,12 +212,17 @@ acceptEdits --model ${BLACKBOX_CLAUDE_MODEL:-sonnet}` with a narrow
 `make`, `git`, `ls`, `mkdir`, `cat`); the prompt goes to stdin. The list exists only on the
 blackbox command line and is never written into the project. Project guidance
 requires explicit approval for new root files (`Makefile`, `CHANGELOG.md`, …), so
-the coordinator may stop and ask. When the first turn ends without a verifiable
-calculator, the run sends exactly one bounded approval reply
-(`claude -p --resume <session>`) and then judges the result; no other input is
-supplied. The run also enables
-Telegram hooks against a local fake Bot API with run-local credentials
-(`AGENTIC_CONFIG_DIR`), and writes an `InstructionsLoaded` recorder into the run
+the coordinator may stop and ask. On every host, when the first turn ends without a
+verifiable calculator, the run sends exactly one bounded approval reply into the same
+native session (`claude -p --resume <session>`, `opencode run --session <id>`,
+`codex exec resume <thread>`) and then judges the result; no other input is
+supplied. Every host also enables
+Telegram against a local fake Bot API with run-local credentials
+(`AGENTIC_CONFIG_DIR`) and requires `telegram_fired`. Codex runs with
+`--sandbox workspace-write`; hosts that block unprivileged user namespaces
+(`kernel.apparmor_restrict_unprivileged_userns=1`) cannot start its bubblewrap
+sandbox, so set `BLACKBOX_CODEX_SANDBOX=danger-full-access` there. Claude also
+writes an `InstructionsLoaded` recorder into the run
 project's `.claude/settings.local.json`. Extra Claude checks: all nine role agents,
 the `/develop-feature` command and at least one installed skill appear in the
 `init` event; a `.claude/rules/` file is loaded; the Telegram `Stop` hook sends the
@@ -230,7 +235,8 @@ completion and independent arithmetic checks. A fallback, provider error,
 clarification stall or recommendation without application cannot pass.
 The built-in arithmetic probe supports public Python/JavaScript calculator evaluators,
 including `src/` packages with relative imports, numeric results such as `Decimal`,
-and domain errors that name the division by zero.
+domain errors that name the division by zero, and one consistent operator spelling
+per run: ASCII (`- * /`), typographic (`− × ÷`) or words (`subtract`, …).
 Other stacks require `BLACKBOX_VERIFIER=/absolute/path/to/executable`; it receives
 the project path and must independently execute calculator checks, returning JSON
 `{"verified":true}` and exit zero. Agent-authored assertions are not accepted.

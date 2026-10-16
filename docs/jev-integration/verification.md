@@ -98,3 +98,19 @@ Limitations:
 - The coordinator first stopped to request approval for new root files, as the
   project rules require. The run then sent its single bounded approval follow-up
   through `--resume`.
+
+# Native verification, 2026-10-16 (OpenCode and Codex, Agentic 1.4.0)
+
+| Host | Run | Outcome |
+| --- | --- | --- |
+| OpenCode 2.0.29, `openai/gpt-6-luna` | `.agentic-blackbox/20261016-233233` | JEV selected `development-cycle-workflow`; the agent read it and ran PO → `pm` → `team-lead` → `developer` → `qa` → `instruction-reviewer` + `memory-curator` with the 1.4.0 names, after one approval follow-up. The independent probe verified `docs/calculator/app.js:calculate` (typographic operators). JEV returned `no_decision` for all ten spawns, so `model_applied_to_subagent` failed. |
+| Codex 0.163.0 | `.agentic-blackbox/20261016-232317` | JEV selected the workflow, the agent read it, and the Codex Telegram `Stop` hook delivered (`telegram_fired`). Commands failed with `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`: the host sets `kernel.apparmor_restrict_unprivileged_userns=1`, so the `workspace-write` sandbox cannot start. No calculator; rerun with `BLACKBOX_CODEX_SANDBOX=danger-full-access`. |
+
+`openai/gpt-5.5` is no longer served for ChatGPT-account OAuth in OpenCode, so the
+blackbox default moved to `openai/gpt-6-luna`. Hooks were trusted manually in Codex
+`/hooks` before the run.
+
+Telegram (real bot and fake API, outside the blackbox target): OpenCode V2 did not
+load the 1.3.0 plugin (`Plugin must export a default definition`). The 1.4.0 plugin
+uses `Plugin.define` and delivered both `⏳ Ожидает ввода` (`permission.asked`) and
+`✅ Задача завершена` with Telegram HTML formatting.

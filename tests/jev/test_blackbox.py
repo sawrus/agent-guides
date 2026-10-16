@@ -129,6 +129,34 @@ class ClaudeBlackboxVerification(unittest.TestCase):
             self.assertFalse(result['checks']['rules_loaded'])
             self.assertEqual(result['status'], 'failed')
 
+    def test_codex_requires_shared_telegram_hook_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            (project / '.agentic/jev').mkdir(parents=True)
+            run = project / 'run'
+            run.mkdir()
+            trace = run / 'trace.jsonl'
+            trace.write_text('{"type":"thread.started","thread_id":"t"}\n')
+            with patch.object(blackbox.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout='{"verified":true}')):
+                self.assertFalse(blackbox.verify(project, trace, 0, 'codex')['checks']['telegram_fired'])
+                (run / 'telegram.json').write_text(json.dumps({'messages': ['✅ Задача завершена — p\n\nГотово']}))
+                self.assertTrue(blackbox.verify(project, trace, 0, 'codex')['checks']['telegram_fired'])
+                self.assertTrue(blackbox.verify(project, trace, 0, 'opencode')['checks']['telegram_fired'])
+
+
+class FollowupTurn(unittest.TestCase):
+    def test_each_host_resumes_its_own_session_once(self):
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory) / 'trace.jsonl'
+            trace.write_text('{"type":"step_start","sessionID":"ses_1"}\n')
+            command, text = blackbox.followup_turn('opencode', 'opencode', ['opencode', 'run'], trace)
+            self.assertEqual((command[-2:], text), (['--session', 'ses_1'], blackbox.FOLLOWUP))
+            trace.write_text('{"type":"thread.started","thread_id":"th_1"}\n')
+            command, text = blackbox.followup_turn('codex', 'codex', [], trace)
+            self.assertEqual((command[2:4], command[-2:], text), (['exec', 'resume'], ['th_1', blackbox.FOLLOWUP], None))
+            trace.write_text('')
+            self.assertIsNone(blackbox.followup_turn('codex', 'codex', [], trace))
+
 
 class PackageCalculatorProbe(unittest.TestCase):
     def write_package(self, project, divide):
@@ -155,4 +183,16 @@ class PackageCalculatorProbe(unittest.TestCase):
     def test_src_package_with_wrong_division_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             self.write_package(Path(directory), 'a // b')
+            self.assertFalse(probe.main(directory)['verified'])
+
+    def test_typographic_operator_dialect_is_accepted_but_not_mixed(self):
+        source = ('def calculate(left, operator, right):\n'
+                  '    if operator == "÷" and right == 0:\n'
+                  '        raise ValueError("Cannot divide by zero")\n'
+                  '    return {"+": left + right, "−": left - right, "×": left * right, "÷": %s}[operator]\n')
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / 'calc.py').write_text(source % 'left / right')
+            self.assertTrue(probe.main(directory)['verified'])
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / 'calc.py').write_text(source % 'left // right')
             self.assertFalse(probe.main(directory)['verified'])

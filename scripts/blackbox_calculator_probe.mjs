@@ -3,6 +3,9 @@ import { pathToFileURL } from 'node:url';
 
 const cases = [['addition', '9+4', 9, '+', 4, 13], ['subtraction', '9-4', 9, '-', 4, 5],
   ['multiplication', '9*4', 9, '*', 4, 36], ['division', '9/4', 9, '/', 4, 2.25]];
+// One spelling per run: every case must pass with the same operator dialect.
+const dialects = [{'+':'+','-':'-','*':'*','/':'/'}, {'+':'+','-':'−','*':'×','/':'÷'},
+  {'+':'add','-':'subtract','*':'multiply','/':'divide'}];
 for (const file of process.argv.slice(2)) {
   try {
     const before = new Map(Object.getOwnPropertyNames(globalThis).map(name => [name, globalThis[name]]));
@@ -71,15 +74,16 @@ for (const file of process.argv.slice(2)) {
         if (opIndex < 0) continue;
         invoke = (_, a, op, b) => { const args = [a,b]; args.splice(opIndex,0,op); return fn(...args); };
       } else continue;
+      for (const dialect of dialects) {
       const checks = {};
       try {
         for (const [label, expr, a, op, b, expected] of cases) {
-          const actual = await invoke(expr, a, op, b);
+          const actual = await invoke(expr, a, dialect[op], b);
           const value = actual && typeof actual === 'object' && actual.ok === true ? actual.value : actual;
           checks[label] = typeof value !== 'boolean' && value !== null && Number.isFinite(Number(value)) && Math.abs(Number(value)-expected) < 1e-10;
         }
         try {
-          const zero = await invoke('9/0',9,'/',0);
+          const zero = await invoke('9/0',9,dialect['/'],0);
           checks.division_by_zero = zero === null || typeof zero === 'string' && /error|ошиб|zero|нол|нуль/i.test(zero) || zero?.ok === false && /zero|division|нол|делен/i.test(String(zero.error));
         } catch (error) { checks.division_by_zero = /zero|division|finite|нол|нуль|делен/i.test(String(error)); }
         if (Object.values(checks).every(Boolean)) {
@@ -87,6 +91,7 @@ for (const file of process.argv.slice(2)) {
           process.exit(0);
         }
       } catch {}
+      }
     }
   } catch {}
 }

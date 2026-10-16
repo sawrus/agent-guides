@@ -1,6 +1,7 @@
-//! Telegram notifications for Claude Code and Codex through native hooks.
-//! OpenCode keeps its plugin; all hosts share one enablement flag and the
-//! global credentials in `~/.config/agentic/config.json`.
+//! Telegram notifications. Claude Code and Codex call the shared runtime from
+//! native hooks; the OpenCode plugin pipes its session events into the same
+//! runtime. All hosts share one enablement flag, the global credentials in
+//! `~/.config/agentic/config.json`, and one message format.
 
 use crate::app::App;
 use crate::hookmerge::{self, HookSet};
@@ -109,7 +110,9 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
                 .ok()
                 .is_some_and(|s| s.contains(RUNTIME_REL))
         });
-    if (on && hook_hosts(app)) || referenced {
+    // The OpenCode plugin forwards to the same runtime.
+    let runtime_hosts = hook_hosts(app) || app.selected_agent_os_contains("opencode");
+    if (on && runtime_hosts) || referenced {
         crate::manifest::write_file_with_agentic_marker(app, RUNTIME, &path, RUNTIME_SOURCE)?;
         if on && app.selected_agent_os_contains("codex") && !app.dry_run {
             ui::log(app, "Codex Telegram hooks installed. Review and trust them through /hooks in the target project.");
@@ -150,5 +153,19 @@ mod tests {
             .unwrap()
             .contains(RUNTIME_REL));
         assert!(!p.join(RUNTIME_REL).exists());
+    }
+
+    #[test]
+    fn opencode_plugin_gets_the_shared_runtime() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path();
+        let mut app = App::new().unwrap();
+        app.project_dir = p.to_string_lossy().into();
+        app.selected_agent_os = vec!["opencode".into()];
+        app.opencode_telegram_enabled = "true".into();
+        install(&mut app, p).unwrap();
+        assert!(p.join(RUNTIME_REL).is_file());
+        assert!(!p.join(".claude/settings.json").exists());
+        assert!(!p.join(".codex/hooks.json").exists());
     }
 }

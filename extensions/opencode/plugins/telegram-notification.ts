@@ -1,144 +1,88 @@
-import type { Plugin } from "@opencode-ai/plugin"
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
-import { homedir } from "node:os"
+/** Agentic Telegram notifications for the OpenCode V2 plugin API (2.0.28+). */
+import { Plugin } from "@opencode/plugin";
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
-type AgenticPluginConfig = {
-  settings?: any
-}
+// Forwards OpenCode events to the shared Agentic notifier (.agent/notify/telegram.py).
+// The notifier owns enablement, credentials, Markdown rendering and delivery, so
+// OpenCode, Claude Code and Codex send the same messages.
+export default Plugin.define({
+  id: "agentic-telegram",
+  async setup(ctx) {
+    const project = ctx.location.directory;
+    const script = join(project, ".agent", "notify", "telegram.py");
+    const python = process.platform === "win32" ? "python" : "python3";
+    const controller = new AbortController();
+    // State comes from the event stream itself: `opencode run` stops the server right
+    // after the turn ends, so there is no time for session reads at that point.
+    const children = new Set<string>();
+    const titles = new Map<string, string>();
+    const replies = new Map<string, string>();
+    const asked = new Set<string>();
 
-type TelegramConfig = {
-  enabled?: boolean
-  botToken?: string
-  chatId?: string
-}
+    function notify(event: "stop" | "waiting", payload: Record<string, unknown>) {
+      if (!existsSync(script)) return;
+      try {
+        // Detached so delivery outlives a server that is shutting down.
+        const child = spawn(python, [script, "--host", "opencode", "--event", event, "--project-dir", project],
+          { stdio: ["pipe", "ignore", "ignore"], detached: true });
+        child.on("error", () => {});
+        child.unref();
+        child.stdin?.on("error", () => {});
+        child.stdin?.end(JSON.stringify(payload));
+      } catch {}
+    }
 
-function telegramApiBaseUrl(): string {
-  return process.env.OPENCODE_TELEGRAM_API_BASE_URL || "https://api.telegram.org"
-}
-
-function telegramUrl(botToken: string, method: string): string {
-  return `${telegramApiBaseUrl()}/bot${botToken}/${method}`
-}
-
-function redactSecret(value: unknown): string {
-  const text = String(value)
-  const telegram = currentTelegramConfig
-  const token = telegram?.botToken
-  const chatId = telegram?.chatId
-  return [token, chatId].filter(Boolean).reduce((output, secret) => output.split(secret as string).join("[redacted]"), text)
-}
-
-function readAgenticConfig(directory: string): AgenticPluginConfig {
-  const configPath = join(directory, ".agentic.json")
-  try {
-    return JSON.parse(readFileSync(configPath, "utf-8")) as AgenticPluginConfig
-  } catch {
-    return {}
-  }
-}
-
-function readGlobalTelegramConfig() {
-  const home = process.env.HOME || homedir()
-  const configPath = join(home, ".config", "agentic", "config.json")
-  try {
-    const config = JSON.parse(readFileSync(configPath, "utf-8"))
-    return config?.opencode?.plugins?.telegram || {}
-  } catch {
-    return {}
-  }
-}
-
-let currentTelegramConfig
-
-export const TelegramNotificationPlugin: Plugin = async ({ $, client, directory }) => {
-  const config = readAgenticConfig(directory)
-  const projectTelegram = config.settings?.opencode_plugins?.telegram || {}
-  const globalTelegram = readGlobalTelegramConfig()
-  const telegram = { ...projectTelegram, ...globalTelegram, enabled: projectTelegram.enabled }
-  currentTelegramConfig = telegram
-  const botToken = telegram?.botToken
-  const chatId = telegram?.chatId
-
-  if (!projectTelegram?.enabled || !botToken || !chatId) {
-    return {}
-  }
-
-  return {
-    event: async ({ event }) => {
-      if (event.type === "session.idle") {
-        const sessionID = event.properties.sessionID
-        let messageText = "✅ Задача завершена"
-        let fullText = ""
-
-        try {
-          const sessionResult = await client.session.get({ path: { id: sessionID } })
-          const session = sessionResult.data
-
-          if (!sessionResult.error && session) {
-            messageText = `✅ ${session.title || "Задача завершена"}`
-
-            if (session.summary) {
-              messageText += `\n📊 +${session.summary.additions} -${session.summary.deletions} в ${session.summary.files} файл(ах)`
-            }
-
-            const messagesResult = await client.session.messages({ path: { id: sessionID } })
-            if (!messagesResult.error && messagesResult.data?.length) {
-              const lastMessage = messagesResult.data[messagesResult.data.length - 1]
-              const textParts = lastMessage.parts?.filter(p => p.type === "text") || []
-              fullText = textParts.map(p => (p as any).text).join("")
-            }
-          }
-        } catch (e) {
-          await $`echo "Error: ${redactSecret(e)}" >> ${directory}/.opencode/telegram-debug.log`
-        }
-
-        try {
-          if (fullText.length >= 4096) {
-            const formData = new FormData()
-            formData.append("chat_id", chatId)
-            formData.append(
-              "document",
-              new Blob([fullText], { type: "text/markdown" }),
-              `response-${sessionID.slice(0, 8)}.md`
-            )
-
-            await fetch(
-              telegramUrl(botToken, "sendDocument"),
-              { method: "POST", body: formData }
-            )
-
-            const shortText = fullText.slice(0, 3000)
-            await fetch(
-              telegramUrl(botToken, "sendMessage"),
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  text: `${messageText}\n\nПолный ответ в attachment (${fullText.length} символов):\n\n${shortText}...`
-                })
-              }
-            )
-          } else {
-            const textToSend = fullText
-              ? `${messageText}\n\n${fullText}`
-              : messageText
-
-            await fetch(
-              telegramUrl(botToken, "sendMessage"),
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  text: textToSend.slice(0, 4096)
-                })
-              }
-            )
-          }
-        } catch {}
+    function waiting(type: string, data: any) {
+      if (!data.id || asked.has(data.id)) return;
+      asked.add(data.id);
+      if (type === "question.asked") {
+        const lines = (data.questions ?? []).flatMap((q: any) => [q.question ?? q.header ?? "",
+          ...(q.options ?? []).map((o: any) => `- ${o.label}${o.description ? ` — ${o.description}` : ""}`)]);
+        notify("waiting", { session_id: data.sessionID, message: lines.filter(Boolean).join("\n") || "Агент задал вопрос" });
+        return;
       }
-    },
-  }
-}
+      const resources = Array.isArray(data.resources) ? data.resources.join("\n") : "";
+      notify("waiting", { session_id: data.sessionID, message: `Нужно разрешение: ${data.action ?? "действие"}`,
+        ...(resources ? { tool_input: { command: resources } } : {}) });
+    }
+
+    function handle(type: string, data: any) {
+      const id = data.sessionID;
+      switch (type) {
+        case "session.created":
+          if (data.parentID) children.add(id);
+          if (data.title) titles.set(id, data.title);
+          break;
+        case "session.renamed":
+          titles.set(id, data.title);
+          break;
+        case "session.execution.started":
+          replies.delete(id);
+          break;
+        case "session.text.ended":
+          // The last text block of the turn is the final answer.
+          if (data.text) replies.set(id, data.text);
+          break;
+        case "session.execution.succeeded":
+          // Subagent sessions finish inside the coordinator's turn; report only root sessions.
+          if (!children.has(id)) notify("stop", { session_id: id, title: titles.get(id), last_assistant_message: replies.get(id) ?? "" });
+          replies.delete(id);
+          break;
+        case "permission.asked":
+        case "question.asked":
+          waiting(type, data);
+          break;
+      }
+    }
+
+    (async () => {
+      for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+        try { handle(String((event as any).type), (event as any).data ?? {}); } catch {}
+      }
+    })().catch(() => {});
+
+    return async () => controller.abort();
+  },
+});

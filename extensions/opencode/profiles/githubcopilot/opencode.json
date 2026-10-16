@@ -1,8 +1,5 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": [
-    "telegram-notification"
-  ],
   "agent": {
     "product-owner": {
       "description": "Main coordinator for feature development workflow",

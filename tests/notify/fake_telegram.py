@@ -5,7 +5,7 @@ import threading
 
 
 class FakeTelegram:
-    def __init__(self):
+    def __init__(self, reject_html=False):
         self.requests = []
         owner = self
 
@@ -13,8 +13,10 @@ class FakeTelegram:
             def do_POST(self):
                 body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
                 owner.requests.append({'path': self.path, 'type': self.headers.get('Content-Type', ''), 'body': body})
-                payload = json.dumps({'ok': True, 'result': {}}).encode()
-                self.send_response(200)
+                # Mimic Telegram's 400 "can't parse entities" so callers can test the plain-text fallback.
+                rejected = reject_html and self.path.endswith('/sendMessage') and b'"parse_mode"' in body
+                payload = json.dumps({'ok': not rejected, 'result': {}}).encode()
+                self.send_response(400 if rejected else 200)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Content-Length', str(len(payload)))
                 self.end_headers()
@@ -37,3 +39,6 @@ class FakeTelegram:
 
     def messages(self):
         return [json.loads(r['body'])['text'] for r in self.requests if r['path'].endswith('/sendMessage')]
+
+    def payloads(self):
+        return [json.loads(r['body']) for r in self.requests if r['path'].endswith('/sendMessage')]

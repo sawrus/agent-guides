@@ -85,6 +85,27 @@ fn drop_renamed_keys(config: &mut Value) -> bool {
     changed
 }
 
+/// Bundled plugins are local files under `.opencode/plugins/`, loaded
+/// automatically. Older releases also listed them in `plugin`, which OpenCode
+/// treats as npm packages (install fails with 404).
+const LOCAL_PLUGIN_REFS: [&str; 2] = ["telegram-notification", "agent-model-mapper"];
+
+fn drop_local_plugin_refs(config: &mut Value) -> bool {
+    let Some(map) = config.as_object_mut() else {
+        return false;
+    };
+    let Some(plugins) = map.get_mut("plugin").and_then(Value::as_array_mut) else {
+        return false;
+    };
+    let before = plugins.len();
+    plugins.retain(|v| !v.as_str().is_some_and(|s| LOCAL_PLUGIN_REFS.contains(&s)));
+    let changed = plugins.len() != before;
+    if plugins.is_empty() {
+        map.remove("plugin");
+    }
+    changed
+}
+
 /// Remove role files and OpenCode role keys that use pre-1.4 names.
 pub fn migrate_renamed_roles(app: &mut App, project: &Path) -> crate::Result<()> {
     if app.dry_run {
@@ -112,10 +133,13 @@ pub fn migrate_renamed_roles(app: &mut App, project: &Path) -> crate::Result<()>
         let Ok(mut data) = serde_json::from_str::<Value>(&std::fs::read_to_string(&path)?) else {
             continue;
         };
-        if drop_renamed_keys(&mut data) {
+        let renamed = drop_renamed_keys(&mut data);
+        let plugins = drop_local_plugin_refs(&mut data);
+        if renamed || plugins {
             std::fs::write(&path, crate::markers::to_pretty_json(&data))?;
-            app.upgrade_actions
-                .push(format!("Removed renamed role keys: {rel}"));
+            app.upgrade_actions.push(format!(
+                "Removed legacy role keys or npm plugin refs: {rel}"
+            ));
         }
     }
     Ok(())
@@ -125,6 +149,17 @@ pub fn migrate_renamed_roles(app: &mut App, project: &Path) -> crate::Result<()>
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn local_plugin_refs_are_not_npm_packages() {
+        let mut config = json!({"plugin": ["telegram-notification", "custom-plugin"]});
+        assert!(drop_local_plugin_refs(&mut config));
+        assert_eq!(config, json!({"plugin": ["custom-plugin"]}));
+        let mut config = json!({"plugin": ["agent-model-mapper"], "agent": {}});
+        assert!(drop_local_plugin_refs(&mut config));
+        assert_eq!(config, json!({"agent": {}}));
+        assert!(!drop_local_plugin_refs(&mut config));
+    }
 
     #[test]
     fn renamed_role_keys_are_removed() {

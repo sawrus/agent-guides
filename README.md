@@ -245,15 +245,16 @@ make blackbox-claude   # paid real-CLI check; also blackbox-codex, blackbox-open
 
 | Feature | OpenCode | Codex | Claude Code | Gemini | Cursor · Kilocode · Antigravity |
 |:--|:-:|:-:|:-:|:-:|:-:|
-| SDLC role subagents (9 roles incl. `analyst`, reviewers) | ☑️ | ☑️ | ✅ | ☑️ | ➖ |
+| SDLC role subagents (9 roles incl. `analyst`, reviewers) | ✅ | ☑️ | ✅ | ☑️ | ➖ |
 | Rules (auto-loaded) | ☑️ | ☑️ ¹ | ✅ | ☑️ ¹ | ☑️ |
 | Skills | ☑️ | ☑️ ¹ | ✅ | ☑️ ¹ | ☑️ |
 | Workflows as commands | ✅ | ✅ ¹ | ✅ | ☑️ ¹ | ☑️ ¹ |
 | MCP servers (Context7, MemPalace, Playwright, …) | ☑️ | ☑️ | ☑️ | ☑️ | ☑️ (Cursor, Kilocode) |
 | Memory guidance (`MEMORY.md`, MemPalace) | ☑️ | ☑️ | ✅ | ☑️ | ☑️ |
-| Post-task review (`instruction-reviewer` + `memory-curator`) | ☑️ | ✅ | ✅ | ☑️ | ➖ |
+| Post-task review (`instruction-reviewer` + `memory-curator`) | ✅ | ✅ | ✅ | ☑️ | ➖ |
 | Model profiles per role | ☑️ (openai, githubcopilot, user) | ☑️ (TOML defaults) | ☑️ (`anthropic`) | ➖ | ➖ |
-| Telegram notifications | ☑️ (plugin) | ☑️ (hooks) | ✅ (hooks) | ➖ | ➖ |
+| Telegram: task finished | ✅ (plugin) ² | ✅ (hooks) | ✅ (hooks) | ➖ | ➖ |
+| Telegram: waiting for input | ✅ (plugin) ² | ☑️ (hooks) ² | ☑️ (hooks) ² | ➖ | ➖ |
 | **JEV** · workflow selection | ✅ | ✅ | ✅ | ➖ | ➖ |
 | **JEV** · subagent model routing | ✅ | ✅ | ✅ | ➖ | ➖ |
 | **JEV** · permission decisions | ☑️ | ☑️ | ☑️ | ➖ | ➖ |
@@ -261,13 +262,22 @@ make blackbox-claude   # paid real-CLI check; also blackbox-codex, blackbox-open
 | Real-CLI blackbox target | `make blackbox-opencode` | `make blackbox-codex` | `make blackbox-claude` | ➖ | ➖ |
 
 ¹ Through the shared `.agent/` directory that `AGENTS.md` tells the agent to read, not a native discovery path.
+² Real CLI, real Telegram bot, outside the blackbox target (2026-10-16). OpenCode V2 delivered both events;
+the Claude/Codex waiting messages were sent through the same script with recorded hook payloads.
 
 Real runs:
 
 - **Claude Code 2.1.301, Agentic 1.4.0, 2026-10-16:** all ten checks passed (`.agentic-blackbox/20261016-165654`).
   JEV permission evaluations fell back below confidence 0.9 in that run.
-- **Codex 0.161.0 and OpenCode V2, Agentic 1.3.0, 2026-10-14.** The 1.4.0 role renames and Codex Telegram hooks have
-  not yet been re-verified with these CLIs. A 2026-10-16 OpenCode rerun stopped at provider authorization (HTTP 401).
+- **OpenCode 2.0.29 (`openai/gpt-6-luna`), Agentic 1.4.0, 2026-10-16** (`.agentic-blackbox/20261016-233233`): JEV
+  selected the workflow, and the agent ran PO → `pm` → `team-lead` → `developer` → `qa` → `instruction-reviewer` +
+  `memory-curator` with the new role names. An independent probe verified the calculator. JEV answered `no_decision`
+  for all ten spawns, so subagent model routing was not re-confirmed (it was in the 1.3.0 run).
+- **Codex 0.163.0, Agentic 1.4.0, 2026-10-16** (`.agentic-blackbox/20261016-232317`): JEV selected and the agent read the
+  workflow, and the Codex Telegram `Stop` hook delivered. Codex could not run commands: its `workspace-write` sandbox
+  (bubblewrap) is blocked on hosts with `kernel.apparmor_restrict_unprivileged_userns=1`. On such hosts, rerun with
+  `BLACKBOX_CODEX_SANDBOX=danger-full-access`.
+- **Codex 0.161.0 and OpenCode V2, Agentic 1.3.0, 2026-10-14:** model routing and calculator checks passed.
 
 Details: [JEV verification](docs/jev-integration/verification.md).
 
@@ -309,12 +319,15 @@ project/.claude/                 ← with --agent-os claude
 - `mempalace` (sensitive): adds a local memory MCP server for project context discovery and reuse.
 - `anydb` (dangerous): adds database access through AnyDB MCP.
 
-### Telegram notifications (all hook-capable hosts)
+### Telegram notifications (OpenCode, Claude Code, Codex)
 
-- OpenCode: the `Telegram Notifications` plugin (`telegram-notification`) fires when a session becomes idle.
-- Claude Code and Codex: native hooks (`Stop` and waiting-for-input events) run the shared `.agent/notify/telegram.py`;
-  enable with `--enable-telegram` or the interactive prompt. Same message format, attachment for long output, and
-  credentials in `~/.config/agentic/config.json`. See [Telegram notifications](docs/notifications/README.md).
+- Every host sends through the shared `.agent/notify/telegram.py`: OpenCode through its V2 plugin, Claude Code and
+  Codex through native hooks. Messages arrive when the agent finishes and when it waits for input (permission or
+  question).
+- Agent Markdown is rendered as Telegram formatting: bold, code, links, lists, tables as monospace blocks. Long answers
+  arrive as a `.md` attachment with a preview.
+- Enable with `--enable-telegram` or the interactive prompt; credentials stay in `~/.config/agentic/config.json`.
+  See [Telegram notifications](docs/notifications/README.md).
 
 ### OpenCode Plugins
 

@@ -24,6 +24,8 @@ PROMPT = 'разработай калькулятор'
 FOLLOWUP = ('Подтверждаю: создавай нужные файлы, включая файлы в корне, и используй предложенный минимальный scope. '
             'Доведи работу до конца без дополнительных вопросов.')
 HOSTS = ('codex', 'opencode', 'claude')
+# Every host delivers through the shared .agent/notify runtime (OpenCode via its plugin).
+TELEGRAM_HOSTS = HOSTS
 CLAUDE_ROLES = ('product-owner', 'team-lead', 'developer', 'qa', 'devops-engineer', 'analyst', 'pm',
                 'instruction-reviewer', 'memory-curator')
 # Session variables of an enclosing Claude Code run; the nested CLI must start its own session.
@@ -64,7 +66,7 @@ def prepare(host, root, endpoint):
 
 
 def install_project(host, project, root, endpoint):
-    extra = ['--enable-telegram'] if host == 'claude' else []
+    extra = ['--enable-telegram'] if host in TELEGRAM_HOSTS else []
     result = subprocess.run([str(ROOT / 'target/debug/agentic'), 'install', '--project-dir', str(project),
                              '--agent-os', host, '--areas', 'software', '--specializations',
                              'software.backend,software.general', '--enable-jev', '--jev-api-url', endpoint,
@@ -72,15 +74,27 @@ def install_project(host, project, root, endpoint):
     (root / host / 'install.log').write_text(clean(result.stdout + result.stderr))
     if result.returncode:
         raise RuntimeError('Agentic install failed; inspect install.log')
+    if host in TELEGRAM_HOSTS:
+        prepare_telegram_credentials(host, root)
     if host == 'claude':
         prepare_claude_evidence(project, root)
 
 
-def prepare_claude_evidence(project, root):
-    """Run-local evidence only: fake Telegram credentials and an instructions-load log."""
-    config = root / 'claude' / 'agentic-config'
+def prepare_telegram_credentials(host, root):
+    """Run-local fake credentials; the real ~/.config/agentic is never read or written."""
+    config = root / host / 'agentic-config'
     config.mkdir(parents=True, exist_ok=True)
     (config / 'config.json').write_text(json.dumps({'notifications': {'telegram': {'botToken': 'blackbox-token', 'chatId': '1'}}}))
+
+
+def telegram_fired(trace):
+    path = trace.parent / 'telegram.json'
+    telegram = json.loads(path.read_text()) if path.exists() else {}
+    return any('Задача завершена' in text for text in telegram.get('messages', []))
+
+
+def prepare_claude_evidence(project, root):
+    """Run-local evidence only: an instructions-load log."""
     log = root / 'claude' / 'instructions.jsonl'
     recorder = ('import json,sys; e=json.load(sys.stdin); '
                 f'open({json.dumps(str(log))},"a").write(json.dumps({{"file_path":e.get("file_path"),"memory_type":e.get("memory_type"),"load_reason":e.get("load_reason")}})+"\\n")')
@@ -124,12 +138,48 @@ def claude_checks(project, trace):
     installed_skills = {p.parent.name for p in (project / '.claude/skills').glob('*/SKILL.md')}
     instructions = trace.parent / 'instructions.jsonl'
     loaded = instructions.read_text() if instructions.exists() else ''
-    telegram = json.loads((trace.parent / 'telegram.json').read_text()) if (trace.parent / 'telegram.json').exists() else {}
     return {'agents_loaded': set(CLAUDE_ROLES) <= agents,
             'commands_visible': 'develop-feature' in commands,
             'skills_visible': bool(installed_skills & skills),
             'rules_loaded': '.claude/rules/' in loaded,
-            'telegram_fired': any('Задача завершена' in text for text in telegram.get('messages', []))}
+            'telegram_fired': telegram_fired(trace)}
+
+
+def codex_sandbox():
+    sandbox = os.environ.get('BLACKBOX_CODEX_SANDBOX', 'workspace-write')
+    if sandbox not in ('workspace-write', 'danger-full-access'):
+        raise ValueError('BLACKBOX_CODEX_SANDBOX must be workspace-write or danger-full-access')
+    return sandbox
+
+
+def native_session(trace):
+    """First session id the host reports: Codex thread, Claude init, or OpenCode event."""
+    for line in trace.read_text().splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if event.get('type') == 'thread.started':
+            return event.get('thread_id')
+        if event.get('type') == 'system' and event.get('subtype') == 'init':
+            return event.get('session_id')
+        if event.get('sessionID'):
+            return event['sessionID']
+    return None
+
+
+def followup_turn(host, executable, command, trace):
+    """(command, stdin) that resumes the same native session with the single FOLLOWUP reply."""
+    session = native_session(trace)
+    if not session:
+        return None
+    if host == 'claude':
+        return command[:2] + ['--resume', session] + command[2:], FOLLOWUP
+    if host == 'opencode':
+        return command + ['--session', session], FOLLOWUP
+    # `codex exec resume` has no --sandbox/-C flags; cwd is already the project.
+    return [executable, '--no-daemon', 'exec', 'resume', '--json', '--skip-git-repo-check',
+            '-c', f'sandbox_mode="{codex_sandbox()}"', session, FOLLOWUP], None
 
 
 def calculator_probe(project):
@@ -148,21 +198,8 @@ def calculator_probe(project):
 
 def verify(project, trace, exit_code, host=None):
     records = [json.loads(p.read_text()) for p in (project / '.agentic/jev').glob('event-*.json')]
-    native_session = None
-    for line in trace.read_text().splitlines():
-        try:
-            native = json.loads(line)
-        except ValueError:
-            continue
-        if native.get('type') == 'thread.started':
-            native_session = native.get('thread_id')
-        elif native.get('type') == 'system' and native.get('subtype') == 'init':
-            native_session = native.get('session_id')
-        else:
-            native_session = native.get('sessionID')
-        if native_session:
-            break
-    prompts = [r for r in records if r['context']['kind'] == 'prompt' and r['context'].get('prompt') == PROMPT and r['context'].get('session_id') == native_session]
+    session = native_session(trace)
+    prompts = [r for r in records if r['context']['kind'] == 'prompt' and r['context'].get('prompt') == PROMPT and r['context'].get('session_id') == session]
     tasks = {r['context'].get('task_id') for r in prompts}
     records = [r for r in records if r['context'].get('task_id') in tasks]
     workflow_records = [r for r in prompts if r['result'].get('workflow') and r['result']['status'] == 'evaluated']
@@ -183,6 +220,8 @@ def verify(project, trace, exit_code, host=None):
               'calculator_verified': False}
     if host == 'claude':
         checks.update(claude_checks(project, trace))
+    elif host in TELEGRAM_HOSTS:
+        checks['telegram_fired'] = telegram_fired(trace)
     checks['calculator_verified'], evidence = calculator_probe(project)
     (trace.parent / 'calculator-check.json').write_text(clean(json.dumps(evidence, ensure_ascii=False, indent=2)))
     cost = sum(r['result'].get('usage', {}).get('cost_usd') or 0 for r in records)
@@ -215,21 +254,23 @@ def run(host, project, root, timeout):
             env[key] = value
     # Use existing auth. No HOME/CODEX_HOME replacement, --pure, or permission/trust bypass.
     telegram = None
+    if host in TELEGRAM_HOSTS:
+        telegram = FakeTelegram().__enter__()
+        env['AGENTIC_TELEGRAM_API_BASE_URL'] = telegram.url
+        env['AGENTIC_CONFIG_DIR'] = str(root / host / 'agentic-config')
     if host == 'codex':
-        command = [executable, '--no-daemon', 'exec', '--json', '--skip-git-repo-check', '--sandbox', 'workspace-write', '-C', str(project), PROMPT]
+        # Hosts that block unprivileged user namespaces (bwrap) need an explicit override, e.g. danger-full-access.
+        command = [executable, '--no-daemon', 'exec', '--json', '--skip-git-repo-check', '--sandbox', codex_sandbox(), '-C', str(project), PROMPT]
     elif host == 'claude':
         for name in CLAUDE_SESSION_ENV:
             env.pop(name, None)
-        telegram = FakeTelegram().__enter__()
-        env['AGENTIC_TELEGRAM_API_BASE_URL'] = telegram.url
-        env['AGENTIC_CONFIG_DIR'] = str(root / 'claude' / 'agentic-config')
         model = os.environ.get('BLACKBOX_CLAUDE_MODEL', 'sonnet')
         # Edits stay inside the project; only the listed test commands run without a prompt.
         command = [executable, '-p', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits',
                    '--model', model, '--allowedTools', CLAUDE_ALLOWED_TOOLS]  # variadic flag: prompt goes to stdin
     else:
         env['AGENTIC_JEV_MODEL_PROVIDER'] = 'openai'
-        primary = os.environ.get('BLACKBOX_OPENCODE_MODEL', 'openai/gpt-5.5')
+        primary = os.environ.get('BLACKBOX_OPENCODE_MODEL', 'openai/gpt-6-luna')
         if not primary.startswith('openai/'):
             raise ValueError('OpenCode blackbox is restricted to OpenAI models')
         command = [executable, 'run', '--standalone', '--model', primary, '--format', 'json']
@@ -284,11 +325,11 @@ def run(host, project, root, timeout):
 
     trace.write_text('')
     returncode, reason = turn(command, PROMPT if host in ('opencode', 'claude') else None)
-    if host == 'claude' and not reason and returncode == 0 and not calculator_probe(project)[0]:
-        session = claude_init(trace).get('session_id')
-        if session:
+    if not reason and returncode == 0 and not calculator_probe(project)[0]:
+        followup = followup_turn(host, executable, command, trace)
+        if followup:
             print(f'{host}: coordinator stopped before delivery; sending one approval follow-up', flush=True)
-            returncode, reason = turn(command[:2] + ['--resume', session] + command[2:], FOLLOWUP)
+            returncode, reason = turn(*followup)
     if telegram:
         # The notifier sends from a detached child; give it a moment, then save evidence.
         for _ in range(40):

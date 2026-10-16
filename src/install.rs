@@ -636,7 +636,8 @@ pub fn changelog_section(changelog: &str, version_label: &str) -> Option<String>
     let mut in_section = false;
     let mut lines: Vec<&str> = Vec::new();
     for line in changelog.lines() {
-        if line == wanted {
+        // Accept a status suffix such as `## v1.4.0 (unreleased)`.
+        if line == wanted || line.starts_with(&format!("{wanted} ")) {
             in_section = true;
             lines.push(line);
             continue;
@@ -812,6 +813,11 @@ mod tests {
         assert!(section.contains("- new"));
         assert!(!section.contains("- old"));
         assert!(changelog_section(changelog, "v9.9.9").is_none());
+        let unreleased = "## v1.4.0 (unreleased)\n- next\n\n## v1.4.01\n- other\n";
+        assert!(changelog_section(unreleased, "v1.4.0")
+            .unwrap()
+            .contains("- next"));
+        assert!(changelog_section(unreleased, "v1.4").is_none());
     }
 
     #[test]

@@ -16,6 +16,9 @@ import shutil
 
 CASES = [('addition', '9 + 4', 9, '+', 4, 13), ('subtraction', '9 - 4', 9, '-', 4, 5),
          ('multiplication', '9 * 4', 9, '*', 4, 36), ('division', '9 / 4', 9, '/', 4, 2.25)]
+# One spelling per run: every case must pass with the same operator dialect.
+DIALECTS = [{'+': '+', '-': '-', '*': '*', '/': '/'}, {'+': '+', '-': '−', '*': '×', '/': '÷'},
+            {'+': 'add', '-': 'subtract', '*': 'multiply', '/': 'divide'}]
 
 
 ZERO_WORDS = ('zero', 'ноль', 'нуль', 'нол', 'делени', 'ошиб', 'error')
@@ -95,20 +98,24 @@ def main(project):
                         return function(*args)
                 else:
                     continue
-                verified = {}
-                for label, expr, a, op, b, expected in CASES:
-                    actual = invoke(expr, a, op, b)
-                    # Decimal/Fraction results are numbers too; booleans and strings are not.
-                    verified[label] = isinstance(actual, numbers.Number) and not isinstance(actual, bool) and math.isclose(float(actual), expected)
-                try:
-                    zero = invoke('9 / 0', 9, '/', 0)
-                    verified['division_by_zero'] = zero is None or isinstance(zero, str) and any(word in zero.lower() for word in ZERO_WORDS)
-                except (ZeroDivisionError, ValueError):
-                    verified['division_by_zero'] = True
-                except Exception as error:  # noqa: BLE001 - a domain error must still name the zero division
-                    verified['division_by_zero'] = not isinstance(error, (TypeError, AttributeError, NameError)) and any(word in str(error).lower() for word in ZERO_WORDS)
-                if all(verified.values()):
-                    return {'verified': True, 'checks': verified, 'entrypoint': str(path.relative_to(project)) + ':' + name}
+                for dialect in DIALECTS:
+                    verified = {}
+                    try:
+                        for label, expr, a, op, b, expected in CASES:
+                            actual = invoke(expr, a, dialect[op], b)
+                            # Decimal/Fraction results are numbers too; booleans and strings are not.
+                            verified[label] = isinstance(actual, numbers.Number) and not isinstance(actual, bool) and math.isclose(float(actual), expected)
+                    except (TypeError, ValueError, KeyError):
+                        continue
+                    try:
+                        zero = invoke('9 / 0', 9, dialect['/'], 0)
+                        verified['division_by_zero'] = zero is None or isinstance(zero, str) and any(word in zero.lower() for word in ZERO_WORDS)
+                    except (ZeroDivisionError, ValueError):
+                        verified['division_by_zero'] = True
+                    except Exception as error:  # noqa: BLE001 - a domain error must still name the zero division
+                        verified['division_by_zero'] = not isinstance(error, (TypeError, AttributeError, NameError)) and any(word in str(error).lower() for word in ZERO_WORDS)
+                    if all(verified.values()):
+                        return {'verified': True, 'checks': verified, 'entrypoint': str(path.relative_to(project)) + ':' + name}
         except (Exception, SystemExit):
             continue
     if shutil.which('node'):
