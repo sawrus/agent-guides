@@ -1,6 +1,17 @@
 # Changelog
 
-## v1.3.0 (unreleased)
+## v1.4.0 (unreleased)
+
+- Claude Code now matches OpenCode and Codex. Install writes `.claude/rules`, `.claude/skills`, one `.claude/commands/<workflow>.md` wrapper per workflow, `.claude/CLAUDE.md` with `@AGENTS.md` and `@MEMORY.md` imports, and an ownership-tracked `.claude/settings.json` (`agent: product-owner`, approved `.mcp.json` servers, hooks).
+- Claude model profiles: the default `anthropic` profile pins `opus`, `sonnet` or `haiku` per role. Use `--claude-profile none` to inherit the session model. Role agents now declare `tools:`, and both post-task reviewers are read-only.
+- JEV native hooks for Claude Code: workflow context, alias-only model routing through the Agent tool, permission decisions, and the reviewer packet. See `docs/jev-integration`.
+- Telegram notifications for Claude Code and Codex through native hooks (`Stop`, plus waiting-for-input events), using one shared runtime, `.agent/notify/telegram.py`. New flags: `--enable-telegram` and `--disable-telegram`. Credentials stay in `~/.config/agentic/config.json`. See `docs/notifications`.
+- SDLC roster on all hosts: product-owner → team-lead → developer → qa → optional devops-engineer → post-task review. `pm` and `analyst` are optional. OpenCode `permission.task` now allows devops-engineer, and allows the reviewers from every coordinator. The reviewers are denied edit and bash.
+- **Role renames (migration):** `designer` → `analyst` (system analyst), `instruction_reviewer` → `instruction-reviewer`, `memory_curator` → `memory-curator`. Install and upgrade remove unmodified old role files and old OpenCode role keys. Edited files are kept, with a warning. The JEV runtime accepts both spellings.
+- All 98 skills now carry valid `name` and `description` frontmatter, and `lint_prompts.py --strict` enforces it. Added `make blackbox-claude`, which runs a real Claude CLI with JEV, a fake Telegram API, and checks that agents, commands, skills and rules load. Added `make test-notify`.
+- Operational: Python 3.10+ is required when JEV or Telegram hooks are enabled. Codex Telegram hooks need a `/hooks` trust review.
+
+## v1.3.0
 
 - Added opt-in JEV native hooks for Codex and OpenCode V2 (2.0.28+), replacing the shared skill and workflow-specific checkpoints. Hooks select an installed workflow and an available subagent model; explicit user selections remain authoritative.
 - Preserved TUI activation and masked key entry. The official TypeSafe AI server remains the default, with CLI/environment overrides for the paid test gateway.

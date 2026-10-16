@@ -1,3 +1,8 @@
+---
+name: observability-setup
+description: "Sets up service observability with mandatory golden signals, Prometheus alert rules, and a structured logging contract; use when setting up monitoring for a new service, configuring alerts, or debugging production issues."
+---
+
 # Skill: Observability Setup
 
 ## When to load

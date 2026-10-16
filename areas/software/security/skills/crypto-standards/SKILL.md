@@ -1,3 +1,8 @@
+---
+name: crypto-standards
+description: "Defines approved cryptographic algorithms, Argon2id password storage, and envelope encryption; use when implementing password storage, data encryption, token signing, or key management."
+---
+
 # Skill: Cryptography Standards
 
 ## When to load

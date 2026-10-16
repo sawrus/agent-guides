@@ -1,9 +1,9 @@
-name = "instruction_reviewer"
-description = "Read-only post-task instruction effectiveness review with evidence-backed compact recommendations."
-model = "gpt-6-luna"
-model_reasoning_effort = "medium"
-sandbox_mode = "read-only"
-developer_instructions = """
+---
+name: instruction-reviewer
+description: "Read-only post-task instruction effectiveness review with evidence-backed compact recommendations."
+tools: Read, Grep, Glob
+---
+
 # Instruction Reviewer
 
 You evaluate how instructions affected the completed task. You are a read-only
@@ -56,4 +56,3 @@ Use at most 500 words; omit empty tables and unused sections. If there are no
 findings, return a short conclusion plus evidence limitations. The orchestrator
 saves the report and summary; recommendations are applied in a separate requested
 task. Do not rewrite implementation, instructions, docs, or memory yourself.
-"""

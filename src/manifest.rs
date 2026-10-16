@@ -368,6 +368,16 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
         );
     }
 
+    let old_notifications = old_settings
+        .get("notifications")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let notifications = match telegram_enabled {
+        Some(enabled) => json!({"telegram": {"enabled": enabled}}),
+        None if old_notifications.is_object() => old_notifications,
+        None => json!({"telegram": {"enabled": false}}),
+    };
+
     let mut managed_files: Vec<Value> = existing.into_iter().map(|(_, v)| v).collect();
     managed_files.sort_by(|a, b| {
         let pa = a.get("path").and_then(|v| v.as_str()).unwrap_or("");
@@ -394,6 +404,8 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
             "jev": {"enabled": app.jev_enabled.unwrap_or(false), "api_url": app.jev_api_url.as_deref().unwrap_or(crate::jev_hooks::DEFAULT_API_URL)},
             "opencode_profile": app.selected_opencode_profile,
             "opencode_plugins": Value::Object(opencode_plugins),
+            "notifications": notifications,
+            "claude_profile": app.selected_claude_profile,
             "source_repo": crate::APP_REPO_LINK,
             "source_checkout": app.kb.root_label(),
         },
@@ -522,6 +534,19 @@ pub fn load_install_settings_from_manifest(
     if let Some(profile) = settings.get("opencode_profile").and_then(|v| v.as_str()) {
         if !profile.is_empty() {
             app.selected_opencode_profile = profile.to_string();
+        }
+    }
+    if !app.claude_profile_explicit {
+        if let Some(profile) = settings.get("claude_profile").and_then(|v| v.as_str()) {
+            if !profile.is_empty() {
+                app.selected_claude_profile = profile.to_string();
+            }
+        }
+    }
+    if app.opencode_telegram_enabled.is_empty() {
+        // Only an enabled flag needs replay; a saved `false` is preserved as-is.
+        if settings["notifications"]["telegram"]["enabled"].as_bool() == Some(true) {
+            app.opencode_telegram_enabled = "true".into();
         }
     }
     Ok(())

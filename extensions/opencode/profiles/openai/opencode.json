@@ -9,16 +9,19 @@
       "description": "Main coordinator for feature development workflow",
       "mode": "primary",
       "model": "gpt-6.1-sol",
-      "fallback": ["gpt-6-astra"],
+      "fallback": [
+        "gpt-6-astra"
+      ],
       "permission": {
         "task": {
           "pm": "allow",
           "team-lead": "allow",
-          "designer": "allow",
+          "analyst": "allow",
           "developer": "allow",
           "qa": "allow",
-          "instruction_reviewer": "allow",
-          "memory_curator": "allow"
+          "devops-engineer": "allow",
+          "instruction-reviewer": "allow",
+          "memory-curator": "allow"
         }
       }
     },
@@ -26,13 +29,18 @@
       "description": "Project Manager - coordinates workflow",
       "mode": "subagent",
       "model": "openai/gpt-6-luna",
-      "fallback": ["openai/gpt-6-luna"],
+      "fallback": [
+        "openai/gpt-6-luna"
+      ],
       "permission": {
         "task": {
           "team-lead": "allow",
-          "designer": "allow",
+          "analyst": "allow",
           "developer": "allow",
-          "qa": "allow"
+          "qa": "allow",
+          "devops-engineer": "allow",
+          "instruction-reviewer": "allow",
+          "memory-curator": "allow"
         }
       }
     },
@@ -40,11 +48,17 @@
       "description": "Team Lead - planning and code review",
       "mode": "all",
       "model": "gpt-6.1-sol",
-      "fallback": ["gpt-6-astra"],
+      "fallback": [
+        "gpt-6-astra"
+      ],
       "permission": {
         "task": {
+          "analyst": "allow",
           "developer": "allow",
-          "qa": "allow"
+          "qa": "allow",
+          "devops-engineer": "allow",
+          "instruction-reviewer": "allow",
+          "memory-curator": "allow"
         }
       }
     },
@@ -52,49 +66,73 @@
       "description": "Developer - implements code",
       "mode": "all",
       "model": "openai/gpt-6-terra",
-      "fallback": ["openai/gpt-6-terra"]
+      "fallback": [
+        "openai/gpt-6-terra"
+      ]
     },
     "devops-engineer": {
       "description": "DevOps Engineer - infrastructure, CI/CD, and platform reliability",
       "mode": "all",
       "model": "gpt-6.1-sol",
-      "fallback": ["gpt-6-astra"]
+      "fallback": [
+        "gpt-6-astra"
+      ]
     },
-    "instruction_reviewer": {
+    "instruction-reviewer": {
       "description": "Instruction Reviewer - post-task review of instruction effectiveness and tool discipline",
       "mode": "all",
       "model": "openai/gpt-6-luna",
-      "fallback": ["openai/gpt-6-luna"]
+      "fallback": [
+        "openai/gpt-6-luna"
+      ],
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
     },
-    "memory_curator": {
+    "memory-curator": {
       "description": "Memory Curator - post-task memory hygiene recommendations without automatic writes",
       "mode": "all",
       "model": "openai/gpt-6-luna",
-      "fallback": ["openai/gpt-6-luna"]
+      "fallback": [
+        "openai/gpt-6-luna"
+      ],
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
     },
     "qa": {
       "description": "QA Engineer - runs tests",
       "mode": "subagent",
       "model": "openai/gpt-6-luna",
-      "fallback": ["openai/gpt-6-luna"]
+      "fallback": [
+        "openai/gpt-6-luna"
+      ]
     },
-    "designer": {
-      "description": "Designer - UI/UX validation",
+    "analyst": {
+      "description": "Analyst - requirements, contracts, and UX specification",
       "mode": "subagent",
       "model": "openai/gpt-6-luna",
-      "fallback": ["openai/gpt-6-luna"]
+      "fallback": [
+        "openai/gpt-6-luna"
+      ]
     },
     "plan": {
       "description": "Planning mode",
       "mode": "primary",
       "model": "gpt-6.1-sol",
-      "fallback": ["gpt-6-astra"]
+      "fallback": [
+        "gpt-6-astra"
+      ]
     },
     "build": {
       "description": "Build mode",
       "mode": "primary",
       "model": "gpt-6.1-sol",
-      "fallback": ["gpt-6-astra"]
+      "fallback": [
+        "gpt-6-astra"
+      ]
     }
   }
 }

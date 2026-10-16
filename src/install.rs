@@ -269,6 +269,75 @@ pub fn configure_opencode_profile_if_needed(app: &mut App) -> crate::Result<()> 
     Ok(())
 }
 
+/// Interactive credential choice for Telegram; stores valid credentials globally.
+/// Returns whether notifications stay enabled.
+pub fn prompt_telegram_credentials(app: &mut App) -> crate::Result<bool> {
+    if config::load_global_telegram_credentials(app) {
+        let saved_bot = app.opencode_telegram_bot_token.clone();
+        let saved_chat = app.opencode_telegram_chat_id.clone();
+        let options = vec![
+            "Use saved Telegram credentials".to_string(),
+            "Enter new Telegram credentials".to_string(),
+            "Disable Telegram Notifications".to_string(),
+        ];
+        let choice = prompt::choose_single_by_index(app, "Telegram credentials:", &options)?;
+        match choice.as_str() {
+            "Use saved Telegram credentials" => {
+                app.opencode_telegram_bot_token = saved_bot;
+                app.opencode_telegram_chat_id = saved_chat;
+                let file = app.app_config_json_file();
+                ui::log(
+                    app,
+                    &format!(
+                        "Telegram notifications enabled; using credentials from {}",
+                        file.display()
+                    ),
+                );
+                return Ok(true);
+            }
+            "Disable Telegram Notifications" => {
+                app.opencode_telegram_bot_token.clear();
+                app.opencode_telegram_chat_id.clear();
+                return Ok(false);
+            }
+            _ => {
+                app.opencode_telegram_bot_token =
+                    prompt::prompt_text_interactive(app, "Telegram botToken", "");
+                app.opencode_telegram_chat_id =
+                    prompt::prompt_text_interactive(app, "Telegram chatId", "");
+            }
+        }
+    } else {
+        let bot = app.opencode_telegram_bot_token.clone();
+        let chat = app.opencode_telegram_chat_id.clone();
+        app.opencode_telegram_bot_token =
+            prompt::prompt_text_interactive(app, "Telegram botToken", &bot);
+        app.opencode_telegram_chat_id =
+            prompt::prompt_text_interactive(app, "Telegram chatId", &chat);
+    }
+    if app.opencode_telegram_bot_token.is_empty() || app.opencode_telegram_chat_id.is_empty() {
+        ui::warn(
+            app,
+            "Telegram credentials are incomplete; disabling Telegram notifications",
+        );
+        app.opencode_telegram_bot_token.clear();
+        app.opencode_telegram_chat_id.clear();
+        return Ok(false);
+    }
+    let bot = app.opencode_telegram_bot_token.clone();
+    let chat = app.opencode_telegram_chat_id.clone();
+    config::save_global_telegram_credentials(app, &bot, &chat);
+    let file = app.app_config_json_file();
+    ui::log(
+        app,
+        &format!(
+            "Telegram notifications enabled; credentials stored in {}",
+            file.display()
+        ),
+    );
+    Ok(true)
+}
+
 pub fn configure_opencode_plugins_if_needed(app: &mut App) -> crate::Result<()> {
     if !app.selected_agent_os_contains("opencode") {
         return Ok(());
@@ -336,74 +405,11 @@ pub fn configure_opencode_plugins_if_needed(app: &mut App) -> crate::Result<()> 
         }
     }
 
+    if let Some(explicit) = app.telegram_cli {
+        enable_telegram = explicit;
+    }
     if enable_telegram {
-        if config::load_global_telegram_credentials(app) {
-            let saved_bot = app.opencode_telegram_bot_token.clone();
-            let saved_chat = app.opencode_telegram_chat_id.clone();
-            let options = vec![
-                "Use saved Telegram credentials".to_string(),
-                "Enter new Telegram credentials".to_string(),
-                "Disable Telegram Notifications".to_string(),
-            ];
-            let choice = prompt::choose_single_by_index(app, "Telegram credentials:", &options)?;
-            match choice.as_str() {
-                "Use saved Telegram credentials" => {
-                    app.opencode_telegram_bot_token = saved_bot;
-                    app.opencode_telegram_chat_id = saved_chat;
-                    let file = app.app_config_json_file();
-                    ui::log(
-                        app,
-                        &format!(
-                            "Telegram plugin enabled; using credentials from {}",
-                            file.display()
-                        ),
-                    );
-                }
-                "Disable Telegram Notifications" => {
-                    enable_telegram = false;
-                    app.opencode_telegram_bot_token.clear();
-                    app.opencode_telegram_chat_id.clear();
-                }
-                _ => {
-                    app.opencode_telegram_bot_token =
-                        prompt::prompt_text_interactive(app, "Telegram botToken", "");
-                    app.opencode_telegram_chat_id =
-                        prompt::prompt_text_interactive(app, "Telegram chatId", "");
-                }
-            }
-        } else {
-            let bot = app.opencode_telegram_bot_token.clone();
-            let chat = app.opencode_telegram_chat_id.clone();
-            app.opencode_telegram_bot_token =
-                prompt::prompt_text_interactive(app, "Telegram botToken", &bot);
-            app.opencode_telegram_chat_id =
-                prompt::prompt_text_interactive(app, "Telegram chatId", &chat);
-        }
-        if enable_telegram {
-            if app.opencode_telegram_bot_token.is_empty()
-                || app.opencode_telegram_chat_id.is_empty()
-            {
-                ui::warn(
-                    app,
-                    "Telegram plugin credentials are incomplete; disabling telegram-notification",
-                );
-                enable_telegram = false;
-                app.opencode_telegram_bot_token.clear();
-                app.opencode_telegram_chat_id.clear();
-            } else {
-                let bot = app.opencode_telegram_bot_token.clone();
-                let chat = app.opencode_telegram_chat_id.clone();
-                config::save_global_telegram_credentials(app, &bot, &chat);
-                let file = app.app_config_json_file();
-                ui::log(
-                    app,
-                    &format!(
-                        "Telegram plugin enabled; credentials stored in {}",
-                        file.display()
-                    ),
-                );
-            }
-        }
+        enable_telegram = prompt_telegram_credentials(app)?;
     }
     app.opencode_telegram_enabled = enable_telegram.to_string();
     app.opencode_agent_model_mapper_enabled = enable_mapper.to_string();
@@ -689,10 +695,14 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     crate::jev_hooks::ensure_ignores(app, &project_dir)?;
 
     configure_opencode_plugins_if_needed(app)?;
+    crate::notify::configure(app)?;
+    crate::claude::configure_profile(app)?;
+    crate::legacy::migrate_renamed_roles(app, &project_dir)?;
     copy_extensions(app, &project_dir)?;
     configure_opencode_profile_if_needed(app)?;
     crate::mapper::configure_opencode_agent_model_mapper_if_needed(app)?;
     copy_specialization_assets(app, &project_dir)?;
+    crate::claude::generate_commands(app, &project_dir)?;
     agentsmd::generate_agents_md(app, &project_dir)?;
     agentsmd::copy_memory_md(app, &project_dir)?;
     agentsmd::copy_review_pipeline(app, &project_dir)?;
@@ -700,11 +710,13 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
         write_codex_features_config(app)?;
     }
     crate::jev_hooks::install(app, &project_dir)?;
+    crate::notify::install(app, &project_dir)?;
     mcp::sync_selected_mcps_from_env(app);
     mcp::sync_legacy_mcp_env_from_selected(app);
     mcp::configure_context7_if_needed(app)?;
     mempalace::configure_mempalace_if_needed(app)?;
     mcp::configure_selected_mcps_if_needed(app)?;
+    crate::claude::write_settings(app, &project_dir)?;
     if !app.upgrade_mode {
         mcp::check_selected_mcp_runtime_prerequisites(app);
     }

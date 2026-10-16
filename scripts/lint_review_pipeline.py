@@ -8,15 +8,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = {
-    'software/general/development-cycle-workflow': ['product-owner', 'pm', 'team-lead', 'developer', 'qa'],
-    'software/backend/develop-feature': ['product-owner', 'pm', 'team-lead', 'developer', 'qa', 'designer'],
-    'software/backend/develop-epic': ['product-owner', 'pm', 'team-lead', 'developer', 'qa'],
-    'software/full-stack/develop-feature-fullstack': ['team-lead', 'developer', 'qa'],
-    'software/full-stack/feature-implementation-flow': ['pm', 'team-lead', 'designer', 'developer', 'qa'],
-    'software/full-stack/backend-project-full-cycle': ['pm', 'team-lead', 'developer', 'qa'],
+    'software/general/development-cycle-workflow': ['product-owner', 'pm', 'team-lead', 'developer', 'qa', 'devops-engineer'],
+    'software/backend/develop-feature': ['product-owner', 'pm', 'team-lead', 'developer', 'qa', 'analyst', 'devops-engineer'],
+    'software/backend/develop-epic': ['product-owner', 'pm', 'team-lead', 'developer', 'qa', 'devops-engineer'],
+    'software/full-stack/develop-feature-fullstack': ['team-lead', 'developer', 'qa', 'devops-engineer'],
+    'software/full-stack/feature-implementation-flow': ['pm', 'team-lead', 'analyst', 'developer', 'qa', 'devops-engineer'],
+    'software/full-stack/backend-project-full-cycle': ['pm', 'team-lead', 'developer', 'qa', 'devops-engineer'],
 }
-AGENTS = ('instruction_reviewer', 'memory_curator')
+AGENTS = ('instruction-reviewer', 'memory-curator')
 ENVIRONMENTS = ('claude', 'codex', 'opencode', 'gemini')
+# Roles renamed in v1.4.0; only migration code and alias tables may mention old names.
+LEGACY_ROLES = re.compile(r'\b(?:instruction_reviewer|memory_curator)\b|@designer\b|^\s+- designer$|"designer"', re.M)
+LEGACY_SCAN = ('areas', 'extensions', 'AGENTS.md', 'REVIEW_PIPELINE.md', 'MEMORY.md', 'README.md')
+LEGACY_ALLOWED = ('extensions/codex/hooks/jev/hook.py',)
 
 
 def section(text: str, heading: str) -> str:
@@ -84,16 +88,24 @@ def validate(root: Path = ROOT) -> list[str]:
             for token in ('read-only', 'at most five', '500 words', 'not measured', 'separate requested', 'orchestrator'):
                 if token not in body:
                     issues.append(f'{path.relative_to(root)}: missing boundary: {token}')
-    curator = profile_body(root / 'extensions/claude/agents/memory_curator.md')
+    curator = profile_body(root / 'extensions/claude/agents/memory-curator.md')
     for token in ('canonical home', 'at most two', '`limit: 3`', 'Do not scan all docs', 'memory-write or delete', 'unavailable'):
         if token not in curator:
-            issues.append(f'memory_curator: missing docs/memory boundary: {token}')
+            issues.append(f'memory-curator: missing docs/memory boundary: {token}')
     protocol = (root / 'REVIEW_PIPELINE.md').read_text()
     for token in ('once per completed top-level task', 'failed/deferred delivery',
                   'Do not retry automatically', 'not measured', 'unavailable',
                   'failed', 'summary.md', 'separate', 'current task context'):
         if token not in protocol:
             issues.append(f'REVIEW_PIPELINE.md: missing lifecycle contract: {token}')
+    for entry in LEGACY_SCAN:
+        base = root / entry
+        for path in ([base] if base.is_file() else sorted(p for p in base.rglob('*') if p.is_file())):
+            rel = path.relative_to(root).as_posix()
+            if rel in LEGACY_ALLOWED or path.suffix not in ('.md', '.toml', '.json', '.ts', '.py'):
+                continue
+            if LEGACY_ROLES.search(path.read_text(encoding='utf-8', errors='replace')):
+                issues.append(f'{rel}: uses a pre-1.4 role name (designer/instruction_reviewer/memory_curator)')
     for path in (root / 'docs/review-pipeline/examples').glob('*.md'):
         if len(path.read_text().split()) > 500:
             issues.append(f'{path.relative_to(root)}: example exceeds 500 words')

@@ -25,6 +25,95 @@ PLACEHOLDER_STRINGS = (
 )
 
 
+SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+SKILL_NAME_MAX = 64
+SKILL_DESCRIPTION_MAX = 1024
+CLAUDE_TOOLS = frozenset({
+    "Read", "Write", "Edit", "Glob", "Grep", "Bash", "WebFetch", "WebSearch",
+    "NotebookEdit", "Agent", "TodoWrite",
+})
+TOOL_PATTERN_RE = re.compile(r"^(Bash\(.+\)|mcp__[A-Za-z0-9_-]+(__[A-Za-z0-9_*-]+)?)$")
+FRONTMATTER_KEY_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$")
+
+
+def _unquote(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        return value[1:-1]
+    return value
+
+
+def parse_frontmatter(text: str) -> dict[str, object] | None:
+    """Parse the flat `key: value` / `key:` + `- item` subset used by skill front matter."""
+    match = FRONTMATTER.match(text)
+    if not match:
+        return None
+    data: dict[str, object] = {}
+    current_list: list[str] | None = None
+    for line in match.group(1).splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        item = re.match(r"^\s+-\s*(.*)$", line)
+        if item and current_list is not None:
+            current_list.append(_unquote(item.group(1)))
+            continue
+        pair = FRONTMATTER_KEY_RE.match(line)
+        if not pair:
+            raise ValueError(f"unparseable front matter line: {line!r}")
+        key, value = pair.group(1), pair.group(2).strip()
+        if value:
+            data[key] = _unquote(value)
+            current_list = None
+        else:
+            current_list = []
+            data[key] = current_list
+    return data
+
+
+def _split_tools(raw: object) -> list[str]:
+    if isinstance(raw, list):
+        return [str(t).strip() for t in raw if str(t).strip()]
+    return [t.strip() for t in re.split(r",(?![^()]*\))", str(raw)) if t.strip()]
+
+
+def check_skills(areas: Path) -> list[str]:
+    """Return Claude Code skill-format issues for every SKILL.md under `areas`."""
+    issues: list[str] = []
+    base = areas.parent
+    for path in sorted(areas.glob("**/SKILL.md")):
+        rel = path.relative_to(base)
+        if path.parent.parent.name != "skills":
+            issues.append(f"{rel}: SKILL.md must live exactly at skills/<dir>/SKILL.md (nested or misplaced)")
+            continue
+        try:
+            fm = parse_frontmatter(path.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            issues.append(f"{rel}: {exc}")
+            continue
+        if fm is None:
+            issues.append(f"{rel}: missing YAML front matter (`---` ... `---`)")
+            continue
+        dir_name = path.parent.name
+        name = fm.get("name")
+        if not isinstance(name, str) or not name:
+            issues.append(f"{rel}: missing `name`")
+        elif name != dir_name:
+            issues.append(f"{rel}: `name: {name}` must equal directory name `{dir_name}`")
+        elif not SKILL_NAME_RE.match(name) or len(name) > SKILL_NAME_MAX:
+            issues.append(f"{rel}: `name` must be kebab-case (a-z, 0-9, -) and <= {SKILL_NAME_MAX} chars")
+        description = fm.get("description")
+        if not isinstance(description, str) or not description.strip():
+            issues.append(f"{rel}: missing non-empty `description`")
+        elif len(description) > SKILL_DESCRIPTION_MAX:
+            issues.append(f"{rel}: `description` exceeds {SKILL_DESCRIPTION_MAX} chars")
+        if "allowed-tools" in fm:
+            invalid = [t for t in _split_tools(fm["allowed-tools"])
+                       if t not in CLAUDE_TOOLS and not TOOL_PATTERN_RE.match(t)]
+            if invalid:
+                issues.append(f"{rel}: invalid `allowed-tools` entries: {', '.join(invalid)}")
+    return issues
+
+
 def workflow_stems_for_prompt(prompt_path: Path) -> set[str]:
     wf_dir = prompt_path.parent.parent / "workflows"
     if not wf_dir.exists():
@@ -98,6 +187,7 @@ def main() -> int:
         elif area_stems and not (refs & area_stems):
             issues.append(f"{rel}: no /<workflow-file-name> command reference found")
 
+    issues.extend(check_skills(AREAS))
 
     if issues:
         print("Prompt lint issues:")
@@ -105,7 +195,7 @@ def main() -> int:
             print(f"- {issue}")
         return 1 if args.strict else 0
 
-    print("All prompts pass format checks.")
+    print("All prompts and skills pass format checks.")
     return 0
 
 

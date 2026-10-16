@@ -1,6 +1,6 @@
 //! JEV activation and installation of shared runtime and native hook adapters.
 
-use crate::{app::App, manifest::write_file_with_agentic_marker};
+use crate::{app::App, hookmerge, manifest::write_file_with_agentic_marker};
 use std::path::Path;
 
 pub const DEFAULT_API_URL: &str = "https://api.typesafe.ai/v1/systemone";
@@ -194,112 +194,91 @@ fn cleanup_legacy(app: &mut App, project: &Path) -> crate::Result<()> {
     Ok(())
 }
 
+pub const CODEX_OWNERSHIP: &str = ".agentic/jev-hook-entries.json";
+pub const CLAUDE_OWNERSHIP: &str = ".agentic/claude-jev-hook-entries.json";
+
 /// Each native hook handler is owned individually; unrelated handlers survive.
 fn codex_hooks(app: &mut App, project: &Path, enabled: bool) -> crate::Result<()> {
-    use serde_json::{json, Value};
-    if app.dry_run {
-        return Ok(());
-    }
-    let path = project.join(".codex/hooks.json");
-    let ownership_path = project.join(".agentic/jev-hook-entries.json");
-    for file in [&path, &ownership_path] {
-        crate::project_inventory::safe_path(project, &app.project_rel_path(file))?;
-    }
-    let mut data: Value = if path.exists() {
-        serde_json::from_str(&std::fs::read_to_string(&path)?)?
-    } else {
-        json!({"hooks":{}})
+    let command = format!("{} .agent/jev/hook.py --host codex", hookmerge::python());
+    let set = hookmerge::HookSet {
+        config_rel: ".codex/hooks.json",
+        ownership_rel: CODEX_OWNERSHIP,
+        command_marker: ".agent/jev/hook.py",
+        status_message: "Agentic JEV",
+        source_ref: "generated:codex-jev-hooks",
+        label: "JEV",
+        entries: vec![
+            ("UserPromptSubmit", "*", command.clone(), 12),
+            (
+                "PreToolUse",
+                r"spawn_agent|Agent|collaborationspawn_agent|collaboration\.spawn_agent|functions\.spawn_agent",
+                command.clone(),
+                12,
+            ),
+            ("PermissionRequest", "*", command.clone(), 12),
+            ("PostToolUse", "*", command.clone(), 12),
+            ("SubagentStart", "*", command, 12),
+        ],
     };
-    let mut owned: Value = if ownership_path.exists() {
-        serde_json::from_str(&std::fs::read_to_string(&ownership_path)?)?
-    } else {
-        json!({})
-    };
-    let hooks = data
-        .as_object_mut()
-        .ok_or("Invalid Codex hooks object")?
-        .entry("hooks")
-        .or_insert_with(|| json!({}))
-        .as_object_mut()
-        .ok_or("Invalid Codex hooks map")?;
-    for (event, matcher) in [
-        ("UserPromptSubmit", "*"),
-        (
-            "PreToolUse",
-            r"spawn_agent|Agent|collaborationspawn_agent|collaboration\.spawn_agent|functions\.spawn_agent",
-        ),
-        ("PermissionRequest", "*"),
-        ("PostToolUse", "*"),
-        ("SubagentStart", "*"),
-    ] {
-        let python = if cfg!(windows) { "python" } else { "python3" };
-        let command = format!("{python} .agent/jev/hook.py --host codex");
-        let entry = json!({"matcher": matcher, "hooks":[{"type":"command", "command":command, "timeout":12, "statusMessage":"Agentic JEV"}]});
-        let groups = hooks
-            .entry(event)
-            .or_insert_with(|| json!([]))
-            .as_array_mut()
-            .ok_or("Invalid Codex hook event array")?;
-        let previous = owned.get(event).cloned();
-        // Do not adopt or overwrite a similarly named foreign/user-edited hook.
-        let matching: Vec<_> = groups
-            .iter()
-            .filter(|g| {
-                g["hooks"].as_array().is_some_and(|a| {
-                    a.iter().any(|h| {
-                        h["statusMessage"] == "Agentic JEV"
-                            || h["command"]
-                                .as_str()
-                                .is_some_and(|c| c.contains(".agent/jev/hook.py"))
-                    })
-                })
-            })
-            .cloned()
-            .collect();
-        if matching.iter().any(|g| Some(g) != previous.as_ref()) || matching.len() > 1 {
-            crate::ui::warn(
-                app,
-                &format!("Preserving conflicting JEV hook entry: {event}; reconcile manually"),
-            );
-            app.record_skipped(&format!(".codex/hooks.json:{event}"));
-            continue;
-        }
-        if let Some(old) = previous {
-            groups.retain(|g| g != &old);
-        }
-        if enabled {
-            groups.push(entry.clone());
-            owned[event] = entry;
-        }
-    }
-    std::fs::create_dir_all(path.parent().unwrap())?;
-    std::fs::create_dir_all(ownership_path.parent().unwrap())?;
-    std::fs::write(&path, serde_json::to_string_pretty(&data)? + "\n")?;
-    std::fs::write(ownership_path, serde_json::to_string_pretty(&owned)? + "\n")?;
-    crate::manifest::register_managed_file(app, &path, "generated:codex-jev-hooks", "config", true);
-    if enabled {
+    hookmerge::sync(app, project, &set, enabled)?;
+    if enabled && !app.dry_run {
         crate::ui::log(app, "Codex JEV hooks installed. Review and trust them through /hooks in the target project; hook trust is never bypassed.");
     }
     Ok(())
 }
 
+/// Claude Code reads hooks from `.claude/settings.json`; the Agent tool accepts model aliases only.
+fn claude_hooks(app: &mut App, project: &Path, enabled: bool) -> crate::Result<()> {
+    // Claude may run hooks from a subdirectory; anchor them to the project root.
+    let command = format!(
+        "{} \"$CLAUDE_PROJECT_DIR/.agent/jev/hook.py\" --host claude --project-dir \"$CLAUDE_PROJECT_DIR\"",
+        hookmerge::python()
+    );
+    let set = hookmerge::HookSet {
+        config_rel: ".claude/settings.json",
+        ownership_rel: CLAUDE_OWNERSHIP,
+        command_marker: ".agent/jev/hook.py",
+        status_message: "Agentic JEV",
+        source_ref: "generated:claude-settings",
+        label: "JEV",
+        entries: vec![
+            ("UserPromptSubmit", "", command.clone(), 12),
+            ("PreToolUse", "Agent|Task", command.clone(), 12),
+            ("PermissionRequest", "", command.clone(), 12),
+            ("PostToolUse", "", command.clone(), 12),
+            ("SubagentStart", "", command.clone(), 12),
+            ("SubagentStop", "", command, 12),
+        ],
+    };
+    hookmerge::sync(app, project, &set, enabled)
+}
+
 pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
     cleanup_legacy(app, project)?;
     let enabled = app.jev_enabled == Some(true);
-    if app.selected_agent_os_contains("codex")
-        || project.join(".agentic/jev-hook-entries.json").exists()
-    {
+    if app.selected_agent_os_contains("codex") || project.join(CODEX_OWNERSHIP).exists() {
         codex_hooks(
             app,
             project,
             enabled && app.selected_agent_os_contains("codex"),
         )?;
     }
+    if app.selected_agent_os_contains("claude") || project.join(CLAUDE_OWNERSHIP).exists() {
+        claude_hooks(
+            app,
+            project,
+            enabled && app.selected_agent_os_contains("claude"),
+        )?;
+    }
     // Edited hooks may still reference the managed runtime after disablement.
     // Keep a disabled no-op runtime rather than leaving those preserved commands broken.
-    let retained_reference = std::fs::read_to_string(project.join(".codex/hooks.json"))
-        .ok()
-        .is_some_and(|s| s.contains(".agent/jev/hook.py"));
+    let retained_reference = [".codex/hooks.json", ".claude/settings.json"]
+        .iter()
+        .any(|rel| {
+            std::fs::read_to_string(project.join(rel))
+                .ok()
+                .is_some_and(|s| s.contains(".agent/jev/hook.py"))
+        });
     let defaults: serde_json::Map<String, serde_json::Value> = app
         .kb
         .walk_files("extensions/codex/agents")
@@ -316,6 +295,13 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
             ))
         })
         .collect();
+    // Claude's Agent tool accepts aliases only; a Codex host keeps its model ids.
+    let defaults =
+        if app.selected_agent_os_contains("claude") && !app.selected_agent_os_contains("codex") {
+            crate::claude::profile_models(app)
+        } else {
+            defaults
+        };
     let defaults_json = serde_json::to_string_pretty(&defaults)?;
     let profile = crate::install::opencode_profile_source(app, &app.selected_opencode_profile)
         .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
@@ -356,7 +342,8 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
             && app.selected_agent_os_contains("opencode"))
             || (rel == ".agent/jev/model-defaults.json"
                 && enabled
-                && app.selected_agent_os_contains("codex"))
+                && (app.selected_agent_os_contains("codex")
+                    || app.selected_agent_os_contains("claude")))
             || (rel.starts_with(".agent/")
                 && rel != ".agent/jev/model-defaults.json"
                 && rel != ".agent/jev/opencode-profile-defaults.json"
@@ -411,9 +398,9 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
         && !app
             .selected_agent_os
             .iter()
-            .any(|s| matches!(s.as_str(), "codex" | "opencode"))
+            .any(|s| matches!(s.as_str(), "codex" | "opencode" | "claude"))
     {
-        crate::ui::warn(app, "JEV hooks currently support Codex and OpenCode V2 only; other hosts retain their native behavior.");
+        crate::ui::warn(app, "JEV hooks currently support Codex, OpenCode V2, and Claude Code only; other hosts retain their native behavior.");
     }
     Ok(())
 }

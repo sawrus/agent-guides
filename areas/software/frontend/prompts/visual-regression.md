@@ -19,7 +19,7 @@ Baseline: main branch snapshots (Percy baseline)
 Changed: updated design tokens (spacing +4px, border-radius change)
 Expected diffs: all Button, Card sizes will have slightly more padding - intentional
 Unexpected diffs to catch: any text overflow, icon misalignment, broken dark mode
-Designer must review: all diffs before baseline is updated
+Analyst (UX) must review: all diffs before baseline is updated
 ```
 
 **RU:**
@@ -52,7 +52,7 @@ Acceptance criteria:
 - no overlap or clipping in EN + DE locales
 - loading and error states reviewed in light and dark themes
 - approved intentional diffs documented before updating the baseline
-Output: visual diff report grouped by route, list of blocker diffs, and approved baseline updates with designer sign-off
+Output: visual diff report grouped by route, list of blocker diffs, and approved baseline updates with analyst sign-off
 ```
 
 **RU:**

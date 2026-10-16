@@ -13,11 +13,12 @@
         "task": {
           "pm": "allow",
           "team-lead": "allow",
-          "designer": "allow",
+          "analyst": "allow",
           "developer": "allow",
           "qa": "allow",
-          "instruction_reviewer": "allow",
-          "memory_curator": "allow"
+          "devops-engineer": "allow",
+          "instruction-reviewer": "allow",
+          "memory-curator": "allow"
         }
       }
     },
@@ -29,9 +30,12 @@
       "permission": {
         "task": {
           "team-lead": "allow",
-          "designer": "allow",
+          "analyst": "allow",
           "developer": "allow",
-          "qa": "allow"
+          "qa": "allow",
+          "devops-engineer": "allow",
+          "instruction-reviewer": "allow",
+          "memory-curator": "allow"
         }
       }
     },
@@ -42,8 +46,12 @@
       "fallback": [],
       "permission": {
         "task": {
+          "analyst": "allow",
           "developer": "allow",
-          "qa": "allow"
+          "qa": "allow",
+          "devops-engineer": "allow",
+          "instruction-reviewer": "allow",
+          "memory-curator": "allow"
         }
       }
     },
@@ -59,17 +67,25 @@
       "model": "github-copilot/claude-opus-5.5",
       "fallback": []
     },
-    "instruction_reviewer": {
+    "instruction-reviewer": {
       "description": "Instruction Reviewer - post-task review of instruction effectiveness and tool discipline",
       "mode": "all",
       "model": "github-copilot/gpt-6-luna",
-      "fallback": []
+      "fallback": [],
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
     },
-    "memory_curator": {
+    "memory-curator": {
       "description": "Memory Curator - post-task memory hygiene recommendations without automatic writes",
       "mode": "all",
       "model": "github-copilot/gpt-6-luna",
-      "fallback": []
+      "fallback": [],
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
     },
     "qa": {
       "description": "QA Engineer - runs tests",
@@ -77,8 +93,8 @@
       "model": "github-copilot/gpt-6-luna",
       "fallback": []
     },
-    "designer": {
-      "description": "Designer - UI/UX validation",
+    "analyst": {
+      "description": "Analyst - requirements, contracts, and UX specification",
       "mode": "subagent",
       "model": "github-copilot/gpt-6-luna",
       "fallback": []

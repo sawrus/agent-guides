@@ -1,3 +1,8 @@
+---
+name: feature-engineering
+description: "Builds declarative feature pipelines and prevents training-serving skew; use when building training datasets, designing feature pipelines, or debugging training-serving skew."
+---
+
 # Skill: Feature Engineering
 
 ## When to load

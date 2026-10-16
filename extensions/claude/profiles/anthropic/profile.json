@@ -1,0 +1,14 @@
+{
+  "description": "Anthropic model aliases per SDLC role (Claude Code Agent tool accepts opus, sonnet, haiku).",
+  "agents": {
+    "product-owner": "opus",
+    "team-lead": "opus",
+    "developer": "sonnet",
+    "qa": "sonnet",
+    "devops-engineer": "sonnet",
+    "analyst": "sonnet",
+    "pm": "haiku",
+    "instruction-reviewer": "haiku",
+    "memory-curator": "haiku"
+  }
+}

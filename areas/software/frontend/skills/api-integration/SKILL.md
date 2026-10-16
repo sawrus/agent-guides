@@ -1,3 +1,8 @@
+---
+name: api-integration
+description: "Provides frontend API integration patterns for a standard fetch layer, loading and error states, and optimistic updates; use when connecting a component to a REST API or implementing optimistic updates."
+---
+
 # Skill: API Integration Patterns
 
 ## When to load

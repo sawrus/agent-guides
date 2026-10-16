@@ -65,3 +65,36 @@ Permission checks include outside paths, secret files, deletion, patch move
 destinations, symlink escapes, shell working directories and indirect shell file
 reads. Independent calculator probes reject broken arithmetic and self-reported
 acceptance. A run lock prevents overlapping tests from corrupting a shared trace.
+
+# Native verification, 2026-10-16 (Claude Code)
+
+Real Claude Code 2.1.301 received the exact prompt `разработай калькулятор` in a
+temporary Git project installed by Agentic 1.4.0 (`software.backend` +
+`software.general`, JEV and Telegram hooks enabled, coordinator model `sonnet`).
+The run used `make blackbox-claude`. Cleansed artifacts are in
+`.agentic-blackbox/20261016-165654/claude/`.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Native exit | passed | Every stream-json `result` event is `success` |
+| JEV workflow selection | passed | JEV selected `development-cycle-workflow`; the agent read the file (PostToolUse) |
+| Model routing | passed | `haiku` was requested for the Explore subagent and observed as `claude-haiku-5-5` (SubagentStop transcript) |
+| Agents / commands / skills | passed | The `init` event lists all nine roles, `/develop-feature` and the installed skills |
+| Rules and imports | passed | `InstructionsLoaded` recorded `.claude/rules/*.md`, `AGENTS.md` and `MEMORY.md` (via `@` imports) |
+| Telegram `Stop` hook | passed | The local fake Bot API received `✅ Задача завершена — …` with the final answer |
+| Calculator | passed | Independent probe: `calculator/…:evaluate`, the four operations and division by zero |
+| Post-task review | passed | `instruction-reviewer` and `memory-curator` ran once; reports were saved in `.reviews/CALC-001/`; a JEV review packet was produced |
+
+Limitations:
+
+- Most spawn decisions (team-lead, developer, qa, memory-curator) fell back to
+  native models below confidence 0.9.
+- `instruction-reviewer` was routed to `haiku` by the configured lightweight rule,
+  without a paid call.
+- All 14 permission evaluations fell back (`low_confidence`), so automatic
+  approval was not exercised in this run.
+- The gateway reported no cost (`jev_reported_cost_usd: 0`). Coding-model cost
+  reported by Claude was $1.56.
+- The coordinator first stopped to request approval for new root files, as the
+  project rules require. The run then sent its single bounded approval follow-up
+  through `--resume`.

@@ -69,14 +69,14 @@ Common options:
 
 ## Core commands
 
-### Optional JEV workflow skill
+### Optional JEV native hooks
 
 Select `jev` beside Context7 in TUI. The server defaults to the official TypeSafe
 AI API without a picker. Use `--jev-api-url` or `JEV_API_URL` for your test server.
 For a non-interactive install:
 
 ```bash
-agentic install --project-dir /path/to/project --agent-os codex \
+agentic install --project-dir /path/to/project --agent-os codex,opencode,claude \
   --areas software --specializations software.backend \
   --enable-jev --no-doctor
 ```
@@ -84,9 +84,22 @@ agentic install --project-dir /path/to/project --agent-os codex \
 Use `--disable-jev` on a later install to turn it off. The project manifest stores
 `settings.jev.enabled/api_url`; keys stay in environment or project `.env`.
 Hosted uses `JEV_API_KEY`; official TypeSafe uses `TYPESAFE_API_KEY`.
-No MCP server or extra Rust API client is installed. Workflows conditionally load
-`.agent/skills/jev/SKILL.md` and call its Python standard-library helper.
-See [activation and local checks](jev-integration/README.md).
+No MCP server or extra Rust API client is installed. Native hooks (Codex
+`.codex/hooks.json`, OpenCode plugin, Claude `.claude/settings.json`) call
+`.agent/jev/hook.py`. See [activation and local checks](jev-integration/README.md).
+
+### Telegram notifications and Claude model profiles
+
+```bash
+agentic install --project-dir /path/to/project --agent-os claude,codex \
+  --areas software --specializations software.backend \
+  --enable-telegram --claude-profile anthropic --no-doctor
+```
+
+`--enable-telegram` / `--disable-telegram` control notifications on every host
+(OpenCode plugin, Claude and Codex hooks); see [notifications](notifications/README.md).
+`--claude-profile anthropic|none` (or `AGENTIC_CLAUDE_PROFILE`) pins or clears
+per-role model aliases in `.claude/agents`; see [Claude Code](claude-code/README.md).
 
 Start TUI:
 

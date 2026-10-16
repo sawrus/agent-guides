@@ -1,3 +1,8 @@
+---
+name: error-handling
+description: "Provides frontend error boundaries and an error classification scheme for async and UI errors; use when adding error boundaries, handling async errors, or building error UI states."
+---
+
 # Skill: Frontend Error Handling
 
 ## When to load

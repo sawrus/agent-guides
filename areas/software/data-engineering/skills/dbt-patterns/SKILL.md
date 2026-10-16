@@ -1,3 +1,8 @@
+---
+name: dbt-patterns
+description: "Provides dbt development patterns for materialization strategy, incremental models, and audit-column macros; use when building dbt models, writing macros, or configuring materializations."
+---
+
 # Skill: dbt Development Patterns
 
 ## When to load

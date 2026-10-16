@@ -1,3 +1,8 @@
+---
+name: ci-cd-pipelines
+description: "Provides CI/CD pipeline structure, a GitHub Actions CI template, deployment gates, and an optimization checklist; use when designing GitHub Actions workflows, optimizing pipeline speed, or implementing deployment gates."
+---
+
 # Skill: CI/CD Pipeline Patterns
 
 ## When to load

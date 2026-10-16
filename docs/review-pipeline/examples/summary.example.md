@@ -2,8 +2,8 @@
 
 | Specialist | Status | Result |
 |---|---|---|
-| instruction_reviewer | completed | One scoped guidance replacement proposed. |
-| memory_curator | completed | One duplicate-memory update candidate; docs are canonical. |
+| instruction-reviewer | completed | One scoped guidance replacement proposed. |
+| memory-curator | completed | One duplicate-memory update candidate; docs are canonical. |
 
 Evidence covers the supplied guidance, read history, changed docs, and one memory
 lookup. No full transcript or memory inventory was inspected. Token/time/savings:

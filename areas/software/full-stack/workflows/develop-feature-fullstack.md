@@ -15,6 +15,7 @@ roles:
   - team-lead
   - developer
   - qa
+  - devops-engineer
 execution:
   initiator: team-lead
 agent: team-lead
@@ -78,7 +79,13 @@ quality-gates:
 - **Output:** passing CI + PR ready for review
 - **Done when:** `make test` green; `make lint` clean; PR submitted
 
-### 8. Document & Version — `@developer`
+### 8. Deployment (optional) — `@devops-engineer`
+- **Input:** QA go recommendation and the infrastructure, pipeline, configuration, or rollout changes the increment needs
+- **Actions:** skip with a one-line note when no CI/CD, infrastructure, or deployment change is needed; otherwise apply changes through code (IaC / pipeline definitions), run the pipeline, and verify the rollback path
+- **Output:** pipeline run evidence and `ops_notes.md` (or the documented skip)
+- **Done when:** deployment evidence is attached, or the step is explicitly skipped as not needed
+
+### 9. Document & Version — `@developer`
 - **Input:** merged PR from step 7
 - **Actions:** update feature docs under `docs/<feature>/README.md`; add a user-facing entry to `CHANGELOG.md`; bump the project version in the version source
 - **Output:** docs + CHANGELOG + version committed in the same change set
@@ -93,6 +100,7 @@ flowchart TD
   role_1["team-lead"]
   role_2["developer"]
   role_3["qa"]
+  role_4["devops-engineer"]
   step_1["1. Design"]
   step_2["2. DB Model & Migration"]
   step_3["3. Repository Layer"]
@@ -100,7 +108,8 @@ flowchart TD
   step_5["5. API Endpoint"]
   step_6["6. Frontend / UI"]
   step_7["7. QA & PR"]
-  step_8["8. Document & Version"]
+  step_8["8. Deployment (optional)"]
+  step_9["9. Document & Version"]
   exit(["Merged PR with passing CI, docs and CHANGELOG updated, version bumped. Feat..."])
   start --> step_1
   step_1 --> step_2
@@ -110,7 +119,8 @@ flowchart TD
   step_5 --> step_6
   step_6 --> step_7
   step_7 --> step_8
-  step_8 --> exit
+  step_8 --> step_9
+  step_9 --> exit
   role_1 -. owns .-> step_1
   role_2 -. owns .-> step_2
   role_2 -. owns .-> step_3
@@ -119,8 +129,9 @@ flowchart TD
   role_2 -. owns .-> step_6
   role_3 -. owns .-> step_7
   role_1 -. owns .-> step_7
-  role_2 -. owns .-> step_8
-  step_8 -. iterate if blocked .-> step_1
+  role_4 -. owns .-> step_8
+  role_2 -. owns .-> step_9
+  step_9 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->
 
@@ -131,7 +142,7 @@ If review finds issues → return to relevant step (Step 2 for schema issues, St
 
 - **Coordinator:** `@team-lead` (`execution.initiator`).
 - **When:** after successful acceptance/sign-off and docs, CHANGELOG, and version completion, before the final user response.
-- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction_reviewer` and `memory_curator` as read-only specialists outside SDLC `roles`.
+- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction-reviewer` and `memory-curator` as read-only specialists outside SDLC `roles`.
 - **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
 - **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
 - **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.

@@ -2,17 +2,21 @@ use std::process::ExitCode;
 
 mod agentsmd;
 mod app;
+mod claude;
 mod config;
 mod copydir;
 mod doctor;
+mod hookmerge;
 mod install;
 mod jev_hooks;
 mod kb;
+mod legacy;
 mod manifest;
 mod mapper;
 mod markers;
 mod mcp;
 mod mempalace;
+mod notify;
 mod project_inventory;
 mod project_transaction;
 mod project_update;
@@ -72,6 +76,9 @@ Options:
   --enable-jev          Enable the optional JEV native hooks
   --disable-jev         Disable JEV decisions (overrides saved enablement)
   --jev-api-url         Override JEV API URL (default: official TypeSafe API)
+  --enable-telegram     Enable Telegram notifications (OpenCode plugin, Claude/Codex hooks)
+  --disable-telegram    Disable Telegram notifications
+  --claude-profile      Claude model profile: anthropic|none (default: anthropic)
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)
   --force               Reset Agentic project artifacts for upgrade; overwrite binary for self-install
   --dry-run             Show actions without writing files
@@ -280,6 +287,23 @@ fn cmd_install(app: &mut App, rest: &[String]) -> Result<()> {
                 );
                 i += 2;
             }
+            "--enable-telegram" => {
+                app.telegram_cli = Some(true);
+                i += 1;
+            }
+            "--disable-telegram" => {
+                app.telegram_cli = Some(false);
+                i += 1;
+            }
+            "--claude-profile" => {
+                app.selected_claude_profile = rest
+                    .get(i + 1)
+                    .filter(|v| !v.starts_with("--"))
+                    .ok_or("--claude-profile requires a profile id (anthropic|none)")?
+                    .clone();
+                app.claude_profile_explicit = true;
+                i += 2;
+            }
             "-h" | "--help" => {
                 print_usage();
                 return Ok(());
@@ -290,6 +314,9 @@ fn cmd_install(app: &mut App, rest: &[String]) -> Result<()> {
 
     if rest.iter().any(|v| v == "--disable-jev") {
         app.jev_enabled = Some(false);
+    }
+    if rest.iter().any(|v| v == "--disable-telegram") {
+        app.telegram_cli = Some(false);
     }
     let cwd = std::env::current_dir()?;
     if app.project_dir.is_empty() && cwd.join(PROJECT_MANIFEST_NAME).is_file() {

@@ -1,3 +1,8 @@
+---
+name: dependency-audit
+description: "Runs a dependency audit workflow with supply-chain red flags and a required output template; use when adding or updating dependencies, handling security findings, preparing releases, or reviewing supply-chain risk in PRs."
+---
+
 # Skill: Dependency Audit
 
 ## When to load

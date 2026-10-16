@@ -9,6 +9,8 @@ and prompts into any project — and run a full SDLC agent team out of the box.
 - [Coverage scorecard](https://claude.ai/public/artifacts/8177bc3d-3b2f-48a6-8232-47c5b02b20f3)
 - [CLI usage guide](docs/agentic-usage.md)
 - [JEV native hooks and real CLI testing](docs/jev-integration/README.md)
+- [Claude Code integration](docs/claude-code/README.md)
+- [Telegram notifications](docs/notifications/README.md)
 - [JEV research and opt-in CLI prototype](docs/jev-rnd/README.md)
 - [Releases (prebuilt binaries)](https://github.com/sawrus/agent-guides/releases)
 - [NPM package](https://www.npmjs.com/package/@jetrabbits/agentic)
@@ -26,8 +28,11 @@ Coverage report for the current catalog across areas, specs, skills, and workflo
 Most agent prompt libraries give you a smarter *single agent*. agent-guides gives you a **coordinated team**:
 
 ```
-@product-owner → @team-lead → @developer → @qa → @devops-engineer
+@product-owner → @team-lead → @developer → @qa → (@devops-engineer) → post-task review
 ```
+
+`@pm` (delivery planning) and `@analyst` (system analysis) join when the change needs them; `@devops-engineer` is an
+optional stage before the read-only post-task review by `@instruction-reviewer` and `@memory-curator`.
 
 Each role has hard boundaries, explicit handoff criteria, and measurable success metrics. The Product Owner orchestrates
 the full SDLC; no other agent library ships this out of the box.
@@ -186,28 +191,85 @@ subagent files. Agentic also ships post-task review specialists for instruction 
 | `team-lead`       | Architecture, code review, quality gates       | Planning and pre-release sign-off             |
 | `developer`       | Implementation, tests, delivery                | Implementation plan is approved               |
 | `qa`              | Verification, defect classification, go/no-go  | Developer hands off an increment              |
-| `designer`        | UX flows, accessibility, design-system review  | Planning and implementation review            |
+| `analyst`         | Requirements, scenarios, API/data contracts, UX states | Planning; requirement and contract review |
 | `devops-engineer` | CI/CD, IaC, platform reliability               | Anything touching infra, pipelines, or deploy |
 
-Each agent has a `vibe` (one-line personality), `Identity`, `Communication Style`, `Success Metrics`, and explicit
-`Boundaries` — so roles never overlap and handoffs are always documented.
+Each agent has an `Identity`, `Communication Style`, `Success Metrics`, and explicit `Boundaries` (OpenCode agents also
+carry a one-line `vibe`), so roles never overlap and handoffs are always documented. In Claude Code the
+`product-owner` runs as the main session because subagents cannot start other subagents.
 
 Post-task specialists run outside the mandatory SDLC role matrix. The six delivery workflows listed in the [Review Pipeline](docs/review-pipeline.md) invoke both automatically after successful top-level delivery:
 
 | Agent                  | Role                                             | Invoke when                                      |
 |:-----------------------|:-------------------------------------------------|:-------------------------------------------------|
-| `instruction_reviewer` | Post-task instruction effectiveness review       | Successful delivery workflow with a review hook |
-| `memory_curator`       | Post-task docs and memory hygiene recommendations         | Successful delivery workflow with a review hook      |
+| `instruction-reviewer` | Post-task instruction effectiveness review       | Successful delivery workflow with a review hook |
+| `memory-curator`       | Post-task docs and memory hygiene recommendations         | Successful delivery workflow with a review hook      |
 
 See [Review Pipeline](docs/review-pipeline.md) for the guidance-mode pipeline and `.reviews/<task-id>/` output
 convention. The installed [REVIEW_PIPELINE.md](REVIEW_PIPELINE.md) is loaded only at review time. Reports are compact, evidence-backed, and advisory; no instructions, docs, or memory are changed automatically.
 
 | Platform    | Agent path                      | Format                         | Guide                                                                                           |
 |:------------|:--------------------------------|:-------------------------------|:------------------------------------------------------------------------------------------------|
-| Claude Code | `project/.claude/agents/*.md`   | Markdown with YAML frontmatter | [Claude Code subagents](https://docs.claude.com/en/api/agent-sdk/subagents)                     |
+| Claude Code | `project/.claude/agents/*.md`   | Markdown with YAML frontmatter | [Claude Code subagents](https://docs.claude.com/en/docs/claude-code/sub-agents) · [setup](docs/claude-code/README.md) |
 | OpenCode    | `project/.opencode/agents/*.md` | Markdown with frontmatter      | [OpenCode agents](https://opencode.ai/docs/agents/) · [repo setup note](docs/opencode_setup.md) |
 | Codex       | `project/.codex/agents/*.toml`  | TOML custom agents             | [Codex subagents](https://developers.openai.com/codex/subagents)                                |
-| Gemini      | `project/.gemini/agents/*.toml` | Markdown with YAML frontmatter | [Gemini subagents](https://geminicli.com/docs/core/subagents)                                   |
+| Gemini      | `project/.gemini/agents/*.md`   | Markdown with YAML frontmatter | [Gemini subagents](https://geminicli.com/docs/core/subagents)                                   |
+
+---
+
+## JEV: native decision hooks
+
+[JEV](docs/jev-integration/README.md) is an optional, paid decision service (TypeSafe AI) that runs inside each
+host's native hooks. It does not add an MCP server or a workflow runner.
+
+- **Workflow selection.** On the first prompt it picks one of the installed `.agent/workflows/*.md` and tells the
+  host to execute it as the declared initiator.
+- **Model routing.** Before a subagent starts, it picks the cheapest sufficient model from the role defaults: Codex
+  model ids, OpenCode catalog models, Claude `opus`/`sonnet`/`haiku` aliases. Explicit pins are preserved.
+- **Permission decisions.** allow / deny / ask, with automatic approval limited to bounded project paths.
+- **Review packet.** A task-scoped `.agentic/jev/review-*.json` packet goes to `instruction-reviewer`.
+- **Safety and audit.** Errors, timeouts (8 s) and confidence below 0.9 keep the native behavior. Cleansed audit
+  records are kept 30 days in `.agentic/jev/`.
+
+```sh
+agentic install --project-dir <dir> --agent-os claude,codex,opencode --areas software \
+  --specializations software.backend,software.general --enable-jev   # TYPESAFE_API_KEY or JEV_API_KEY in env/.env
+make blackbox-claude   # paid real-CLI check; also blackbox-codex, blackbox-opencode, blackbox (all)
+```
+
+---
+
+## Feature support by platform
+
+✅ supported **and verified in a real CLI blackbox run** · ☑️ supported, covered by offline tests only · ➖ not supported
+
+| Feature | OpenCode | Codex | Claude Code | Gemini | Cursor · Kilocode · Antigravity |
+|:--|:-:|:-:|:-:|:-:|:-:|
+| SDLC role subagents (9 roles incl. `analyst`, reviewers) | ☑️ | ☑️ | ✅ | ☑️ | ➖ |
+| Rules (auto-loaded) | ☑️ | ☑️ ¹ | ✅ | ☑️ ¹ | ☑️ |
+| Skills | ☑️ | ☑️ ¹ | ✅ | ☑️ ¹ | ☑️ |
+| Workflows as commands | ✅ | ✅ ¹ | ✅ | ☑️ ¹ | ☑️ ¹ |
+| MCP servers (Context7, MemPalace, Playwright, …) | ☑️ | ☑️ | ☑️ | ☑️ | ☑️ (Cursor, Kilocode) |
+| Memory guidance (`MEMORY.md`, MemPalace) | ☑️ | ☑️ | ✅ | ☑️ | ☑️ |
+| Post-task review (`instruction-reviewer` + `memory-curator`) | ☑️ | ✅ | ✅ | ☑️ | ➖ |
+| Model profiles per role | ☑️ (openai, githubcopilot, user) | ☑️ (TOML defaults) | ☑️ (`anthropic`) | ➖ | ➖ |
+| Telegram notifications | ☑️ (plugin) | ☑️ (hooks) | ✅ (hooks) | ➖ | ➖ |
+| **JEV** · workflow selection | ✅ | ✅ | ✅ | ➖ | ➖ |
+| **JEV** · subagent model routing | ✅ | ✅ | ✅ | ➖ | ➖ |
+| **JEV** · permission decisions | ☑️ | ☑️ | ☑️ | ➖ | ➖ |
+| **JEV** · reviewer evidence packet | ☑️ | ✅ | ✅ | ➖ | ➖ |
+| Real-CLI blackbox target | `make blackbox-opencode` | `make blackbox-codex` | `make blackbox-claude` | ➖ | ➖ |
+
+¹ Through the shared `.agent/` directory that `AGENTS.md` tells the agent to read, not a native discovery path.
+
+Real runs:
+
+- **Claude Code 2.1.301, Agentic 1.4.0, 2026-10-16:** all ten checks passed (`.agentic-blackbox/20261016-165654`).
+  JEV permission evaluations fell back below confidence 0.9 in that run.
+- **Codex 0.161.0 and OpenCode V2, Agentic 1.3.0, 2026-10-14.** The 1.4.0 role renames and Codex Telegram hooks have
+  not yet been re-verified with these CLIs. A 2026-10-16 OpenCode rerun stopped at provider authorization (HTTP 401).
+
+Details: [JEV verification](docs/jev-integration/verification.md).
 
 ---
 
@@ -222,6 +284,14 @@ project/.agent/
 ├── skills/      ← capabilities loaded on demand
 ├── workflows/   ← processes triggered by slash commands
 └── prompts/     ← human-paste templates
+
+project/.claude/                 ← with --agent-os claude
+├── CLAUDE.md    ← @AGENTS.md / @MEMORY.md imports
+├── agents/      ← 9 role subagents (tools + model per profile)
+├── rules/       ← auto-loaded rules
+├── skills/      ← native skills
+├── commands/    ← one /<workflow> wrapper per .agent/workflows/*.md
+└── settings.json← agent: product-owner, MCP approvals, JEV/Telegram hooks (ownership-tracked)
 ```
 
 ---
@@ -239,10 +309,15 @@ project/.agent/
 - `mempalace` (sensitive): adds a local memory MCP server for project context discovery and reuse.
 - `anydb` (dangerous): adds database access through AnyDB MCP.
 
+### Telegram notifications (all hook-capable hosts)
+
+- OpenCode: the `Telegram Notifications` plugin (`telegram-notification`) fires when a session becomes idle.
+- Claude Code and Codex: native hooks (`Stop` and waiting-for-input events) run the shared `.agent/notify/telegram.py`;
+  enable with `--enable-telegram` or the interactive prompt. Same message format, attachment for long output, and
+  credentials in `~/.config/agentic/config.json`. See [Telegram notifications](docs/notifications/README.md).
+
 ### OpenCode Plugins
 
-- `Telegram Notifications`: sends Telegram notifications when an OpenCode session becomes idle, including the final
-  response or an attachment for long output. Stored internally as `telegram-notification`.
 - `Agent Model Mapping`: maps `.opencode/agents/*.md` roles to main and fallback OpenCode models during interactive
   `agentic install`/`agentic tui`. Stored internally as `agent-model-mapper`; OpenCode startup never prompts or writes
   project files.
@@ -258,6 +333,13 @@ project/.agent/
 - `none`: applies no model profile and does not copy the baseline `extensions/opencode/opencode.json` just for profile
   selection. OpenCode MCPs, Telegram notifications, and model mapping may still create or update `.opencode/opencode.json`
   when those options are selected.
+
+### Claude Code Model Profiles
+
+- `anthropic` (default): `opus` for product-owner and team-lead, `sonnet` for developer, qa, devops-engineer and
+  analyst, `haiku` for pm and both reviewers. Written as `model:` in `.claude/agents/*.md`.
+- `none` (`--claude-profile none`): every role inherits the session model.
+- With JEV enabled, models stay open so JEV hooks route each Agent call to an alias.
 
 ---
 

@@ -1,3 +1,8 @@
+---
+name: navigation-patterns
+description: "Provides React Navigation architecture and deep link validation patterns; use when designing mobile app navigation, implementing deep linking, or handling auth flows."
+---
+
 # Skill: Navigation Patterns (React Navigation)
 
 ## When to load

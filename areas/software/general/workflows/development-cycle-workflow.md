@@ -16,6 +16,7 @@ roles:
   - team-lead
   - developer
   - qa
+  - devops-engineer
 execution:
   initiator: product-owner
 agent: product-owner
@@ -79,6 +80,12 @@ quality-gates:
 - **Output:** merged PR; feature branch deleted
 - **Done when:** PR is merged and change is verified in staging/preview; docs, `CHANGELOG.md`, and version bump committed
 
+### 7. Deployment (optional) — `@devops-engineer`
+- **Input:** QA go recommendation and the infrastructure, pipeline, configuration, or rollout changes the increment needs
+- **Actions:** skip with a one-line note when no CI/CD, infrastructure, or deployment change is needed; otherwise apply changes through code (IaC / pipeline definitions), run the pipeline, and verify the rollback path
+- **Output:** pipeline run evidence and `ops_notes.md` (or the documented skip)
+- **Done when:** deployment evidence is attached, or the step is explicitly skipped as not needed
+
 ## Agent Interaction Diagram
 
 <!-- agent-diagram:start -->
@@ -90,12 +97,14 @@ flowchart TD
   role_3["team-lead"]
   role_4["developer"]
   role_5["qa"]
+  role_6["devops-engineer"]
   step_1["1. Requirements Framing"]
   step_2["2. Technical Design"]
   step_3["3. Implementation"]
   step_4["4. Verification"]
   step_5["5. Pull Request"]
   step_6["6. Review & Merge"]
+  step_7["7. Deployment (optional)"]
   exit(["Merged PR + acceptance criteria validated in staging = task complete. Spec-..."])
   start --> step_1
   step_1 --> step_2
@@ -103,7 +112,8 @@ flowchart TD
   step_3 --> step_4
   step_4 --> step_5
   step_5 --> step_6
-  step_6 --> exit
+  step_6 --> step_7
+  step_7 --> exit
   role_1 -. owns .-> step_1
   role_2 -. owns .-> step_1
   role_3 -. owns .-> step_2
@@ -113,7 +123,8 @@ flowchart TD
   role_4 -. owns .-> step_5
   role_3 -. owns .-> step_6
   role_2 -. owns .-> step_6
-  step_6 -. iterate if blocked .-> step_1
+  role_6 -. owns .-> step_7
+  step_7 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->
 
@@ -124,7 +135,7 @@ If verification (Step 4) or review (Step 6) reveals gaps → return to Step 3. M
 
 - **Coordinator:** `@product-owner` (`execution.initiator`).
 - **When:** after successful acceptance/sign-off and docs, CHANGELOG, and version completion, before the final user response.
-- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction_reviewer` and `memory_curator` as read-only specialists outside SDLC `roles`.
+- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction-reviewer` and `memory-curator` as read-only specialists outside SDLC `roles`.
 - **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
 - **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
 - **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.

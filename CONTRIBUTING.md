@@ -139,7 +139,7 @@ Each specialization follows this consistent layout:
 
 - Every step has a checkable "Done when" criterion.
 - At least one step includes a documented failure path.
-- Roles use the standard handle set: `@product-owner`, `@pm`, `@team-lead`, `@developer`, `@qa`, `@designer`.
+- Roles use the standard handle set: `@product-owner`, `@pm`, `@team-lead`, `@developer`, `@qa`, `@analyst`.
 
 ### Rules for prompts
 

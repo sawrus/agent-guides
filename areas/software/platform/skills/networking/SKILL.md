@@ -1,3 +1,8 @@
+---
+name: networking
+description: "Guides cloud networking with three-tier VPC design, default-deny security group rules, and network cost optimization; use when designing VPC topology, configuring security groups, setting up NAT, or reviewing network architecture."
+---
+
 # Skill: Cloud Networking
 
 ## When to load

@@ -1,3 +1,8 @@
+---
+name: incident-response
+description: "Provides incident severity classification, a P0 response playbook, and common runbooks; use when responding to a production alert, diagnosing an outage, or writing a postmortem."
+---
+
 # Skill: Incident Response Runbooks
 
 ## When to load

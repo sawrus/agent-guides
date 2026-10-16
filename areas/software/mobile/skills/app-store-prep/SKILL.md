@@ -1,3 +1,8 @@
+---
+name: app-store-prep
+description: "Provides a pre-submission checklist for App Store and Google Play releases; use when preparing a mobile release build or responding to store rejection reasons."
+---
+
 # Skill: App Store Submission Preparation
 
 ## When to load

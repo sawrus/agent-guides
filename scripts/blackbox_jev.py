@@ -15,9 +15,22 @@ from contextlib import contextmanager
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'extensions/codex/hooks/jev'))
+sys.path.insert(0, str(ROOT / 'tests/notify'))
 from api import key_for, redact  # noqa: E402
+from fake_telegram import FakeTelegram  # noqa: E402
 
 PROMPT = 'разработай калькулятор'
+# One bounded reply when the coordinator stops to ask for approval (for example new root files).
+FOLLOWUP = ('Подтверждаю: создавай нужные файлы, включая файлы в корне, и используй предложенный минимальный scope. '
+            'Доведи работу до конца без дополнительных вопросов.')
+HOSTS = ('codex', 'opencode', 'claude')
+CLAUDE_ROLES = ('product-owner', 'team-lead', 'developer', 'qa', 'devops-engineer', 'analyst', 'pm',
+                'instruction-reviewer', 'memory-curator')
+# Session variables of an enclosing Claude Code run; the nested CLI must start its own session.
+CLAUDE_SESSION_ENV = ('CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_SSE_PORT', 'CLAUDE_PROJECT_DIR',
+                      'CLAUDE_ENV_FILE', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_CODE_SESSION_ACCESS_TOKEN')
+CLAUDE_ALLOWED_TOOLS = ('Bash(python3:*) Bash(python:*) Bash(node:*) Bash(npm:*) Bash(npx:*) Bash(pytest:*) Bash(ruff:*) '
+                        'Bash(make:*) Bash(git:*) Bash(ls:*) Bash(mkdir:*) Bash(cat:*)')
 
 
 def clean(text):
@@ -51,16 +64,89 @@ def prepare(host, root, endpoint):
 
 
 def install_project(host, project, root, endpoint):
+    extra = ['--enable-telegram'] if host == 'claude' else []
     result = subprocess.run([str(ROOT / 'target/debug/agentic'), 'install', '--project-dir', str(project),
                              '--agent-os', host, '--areas', 'software', '--specializations',
                              'software.backend,software.general', '--enable-jev', '--jev-api-url', endpoint,
-                             '--no-doctor'], capture_output=True, text=True)
+                             '--no-doctor', *extra], capture_output=True, text=True)
     (root / host / 'install.log').write_text(clean(result.stdout + result.stderr))
     if result.returncode:
         raise RuntimeError('Agentic install failed; inspect install.log')
+    if host == 'claude':
+        prepare_claude_evidence(project, root)
 
 
-def verify(project, trace, exit_code):
+def prepare_claude_evidence(project, root):
+    """Run-local evidence only: fake Telegram credentials and an instructions-load log."""
+    config = root / 'claude' / 'agentic-config'
+    config.mkdir(parents=True, exist_ok=True)
+    (config / 'config.json').write_text(json.dumps({'notifications': {'telegram': {'botToken': 'blackbox-token', 'chatId': '1'}}}))
+    log = root / 'claude' / 'instructions.jsonl'
+    recorder = ('import json,sys; e=json.load(sys.stdin); '
+                f'open({json.dumps(str(log))},"a").write(json.dumps({{"file_path":e.get("file_path"),"memory_type":e.get("memory_type"),"load_reason":e.get("load_reason")}})+"\\n")')
+    local = {'hooks': {'InstructionsLoaded': [{'matcher': '', 'hooks': [{'type': 'command', 'command': f'{sys.executable} -c {json.dumps(recorder)}', 'timeout': 5}]}]}}
+    (project / '.claude' / 'settings.local.json').write_text(json.dumps(local, indent=2))
+
+
+def native_success(trace):
+    """Claude stream-json ends each turn with a result event; every turn must succeed."""
+    results = []
+    for line in trace.read_text().splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if event.get('type') == 'result':
+            results.append(event.get('subtype') == 'success' and not event.get('is_error'))
+    return bool(results) and all(results)
+
+
+def claude_init(trace):
+    for line in trace.read_text().splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if event.get('type') == 'system' and event.get('subtype') == 'init':
+            return event
+    return {}
+
+
+def names(items):
+    return {item if isinstance(item, str) else (item or {}).get('name', '') for item in items or []}
+
+
+def claude_checks(project, trace):
+    init = claude_init(trace)
+    agents = names(init.get('agents'))
+    commands = names(init.get('slash_commands'))
+    skills = names(init.get('skills')) | commands
+    installed_skills = {p.parent.name for p in (project / '.claude/skills').glob('*/SKILL.md')}
+    instructions = trace.parent / 'instructions.jsonl'
+    loaded = instructions.read_text() if instructions.exists() else ''
+    telegram = json.loads((trace.parent / 'telegram.json').read_text()) if (trace.parent / 'telegram.json').exists() else {}
+    return {'agents_loaded': set(CLAUDE_ROLES) <= agents,
+            'commands_visible': 'develop-feature' in commands,
+            'skills_visible': bool(installed_skills & skills),
+            'rules_loaded': '.claude/rules/' in loaded,
+            'telegram_fired': any('Задача завершена' in text for text in telegram.get('messages', []))}
+
+
+def calculator_probe(project):
+    """The agent selects the stack. Validate its delivered public entrypoint separately with explicit evidence."""
+    probe_command = [sys.executable, str(ROOT / 'scripts/blackbox_calculator_probe.py'), str(project)]
+    verifier = os.environ.get('BLACKBOX_VERIFIER')
+    if verifier:
+        probe_command = [str(Path(verifier).resolve()), str(project)]
+    try:
+        probe = subprocess.run(probe_command, cwd=project, capture_output=True, text=True, timeout=30)
+        evidence = json.loads(probe.stdout)
+        return probe.returncode == 0 and evidence.get('verified') is True, evidence
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return False, {'verified': False, 'reason': 'Independent calculator probe failed'}
+
+
+def verify(project, trace, exit_code, host=None):
     records = [json.loads(p.read_text()) for p in (project / '.agentic/jev').glob('event-*.json')]
     native_session = None
     for line in trace.read_text().splitlines():
@@ -68,7 +154,12 @@ def verify(project, trace, exit_code):
             native = json.loads(line)
         except ValueError:
             continue
-        native_session = native.get('thread_id') if native.get('type') == 'thread.started' else native.get('sessionID')
+        if native.get('type') == 'thread.started':
+            native_session = native.get('thread_id')
+        elif native.get('type') == 'system' and native.get('subtype') == 'init':
+            native_session = native.get('session_id')
+        else:
+            native_session = native.get('sessionID')
         if native_session:
             break
     prompts = [r for r in records if r['context']['kind'] == 'prompt' and r['context'].get('prompt') == PROMPT and r['context'].get('session_id') == native_session]
@@ -81,23 +172,18 @@ def verify(project, trace, exit_code):
     routes = [r for r in records if r['context']['kind'] == 'spawn' and r['result'].get('model')]
     observed = [r for r in records if r['context']['kind'] == 'observation' and r['result'].get('observed_model')]
     # Match a child/role observation to the routed parent/role, rather than any mentioned model string.
-    model_applied = any(a['result']['status'] == 'evaluated' and a['result']['model'] == b['result']['observed_model']
+    def same_model(requested, observed):
+        # Claude routes by alias (haiku) while transcripts record full ids (claude-haiku-...).
+        return requested == observed or (host == 'claude' and isinstance(observed, str) and f'-{requested}-' in f'-{observed}-')
+    model_applied = any(a['result']['status'] == 'evaluated' and same_model(a['result']['model'], b['result']['observed_model'])
                         and a['context'].get('session_id') == b['context'].get('session_id')
                         and a['context'].get('agent') == b['context'].get('agent') for a in routes for b in observed)
     checks = {'native_exit_success': exit_code == 0, 'real_jev_workflow': bool(workflow_records),
               'workflow_read_by_agent': workflow_applied, 'model_applied_to_subagent': model_applied,
               'calculator_verified': False}
-    # The agent selects the stack. Validate its delivered public entrypoint separately with explicit evidence.
-    probe_command = [sys.executable, str(ROOT / 'scripts/blackbox_calculator_probe.py'), str(project)]
-    verifier = os.environ.get('BLACKBOX_VERIFIER')
-    if verifier:
-        probe_command = [str(Path(verifier).resolve()), str(project)]
-    try:
-        probe = subprocess.run(probe_command, cwd=project, capture_output=True, text=True, timeout=30)
-        evidence = json.loads(probe.stdout)
-        checks['calculator_verified'] = probe.returncode == 0 and evidence.get('verified') is True
-    except (OSError, ValueError, subprocess.TimeoutExpired):
-        evidence = {'verified': False, 'reason': 'Independent calculator probe failed'}
+    if host == 'claude':
+        checks.update(claude_checks(project, trace))
+    checks['calculator_verified'], evidence = calculator_probe(project)
     (trace.parent / 'calculator-check.json').write_text(clean(json.dumps(evidence, ensure_ascii=False, indent=2)))
     cost = sum(r['result'].get('usage', {}).get('cost_usd') or 0 for r in records)
     return {'status': 'passed' if all(checks.values()) else 'failed', 'checks': checks,
@@ -128,8 +214,19 @@ def run(host, project, root, timeout):
         if value:
             env[key] = value
     # Use existing auth. No HOME/CODEX_HOME replacement, --pure, or permission/trust bypass.
+    telegram = None
     if host == 'codex':
         command = [executable, '--no-daemon', 'exec', '--json', '--skip-git-repo-check', '--sandbox', 'workspace-write', '-C', str(project), PROMPT]
+    elif host == 'claude':
+        for name in CLAUDE_SESSION_ENV:
+            env.pop(name, None)
+        telegram = FakeTelegram().__enter__()
+        env['AGENTIC_TELEGRAM_API_BASE_URL'] = telegram.url
+        env['AGENTIC_CONFIG_DIR'] = str(root / 'claude' / 'agentic-config')
+        model = os.environ.get('BLACKBOX_CLAUDE_MODEL', 'sonnet')
+        # Edits stay inside the project; only the listed test commands run without a prompt.
+        command = [executable, '-p', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits',
+                   '--model', model, '--allowedTools', CLAUDE_ALLOWED_TOOLS]  # variadic flag: prompt goes to stdin
     else:
         env['AGENTIC_JEV_MODEL_PROVIDER'] = 'openai'
         primary = os.environ.get('BLACKBOX_OPENCODE_MODEL', 'openai/gpt-5.5')
@@ -138,58 +235,81 @@ def run(host, project, root, timeout):
         command = [executable, 'run', '--standalone', '--model', primary, '--format', 'json']
     trace = root / host / 'trace.jsonl'
     print(f'{host}: {project}', flush=True)
-    process = subprocess.Popen(command, cwd=project, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                               text=True, stdin=subprocess.PIPE if host == 'opencode' else subprocess.DEVNULL, start_new_session=os.name != 'nt')
-    if host == 'opencode':
-        process.stdin.write(PROMPT)
-        process.stdin.close()
     output_lines = []
-    def consume():
-        with trace.open('w') as handle:
-            for line in process.stdout:
-                try:
-                    json.loads(line)
-                    cleaned = clean(line)
-                except ValueError:
-                    cleaned = json.dumps({'type':'host_output', 'text':clean(line.rstrip())}, ensure_ascii=False) + '\n'
-                output_lines.append(cleaned)
-                handle.write(cleaned)
-                handle.flush()
-    reader = threading.Thread(target=consume, daemon=True)
-    reader.start()
     deadline = time.monotonic() + timeout
-    started = time.monotonic()
-    reason = None
-    while process.poll() is None:
-        if time.monotonic() >= deadline:
-            reason = 'Native CLI exceeded the configured timeout'
-            break
-        if host == 'codex' and time.monotonic() - started > 60 and not list((project / '.agentic/jev').glob('event-*.json')):
-            reason = 'No Codex JEV hook event observed; review project hooks in /hooks and rerun with --run-dir'
-            break
-        time.sleep(.25)
-    if reason:
-        if os.name != 'nt':
-            os.killpg(process.pid, signal.SIGTERM)
-        else:
-            process.terminate()
-        try:
-            process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
+
+    def turn(command, text):
+        process = subprocess.Popen(command, cwd=project, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                   text=True, stdin=subprocess.PIPE if text is not None else subprocess.DEVNULL, start_new_session=os.name != 'nt')
+        if text is not None:
+            process.stdin.write(text)
+            process.stdin.close()
+        def consume():
+            with trace.open('a') as handle:
+                for line in process.stdout:
+                    try:
+                        json.loads(line)
+                        cleaned = clean(line)
+                    except ValueError:
+                        cleaned = json.dumps({'type':'host_output', 'text':clean(line.rstrip())}, ensure_ascii=False) + '\n'
+                    output_lines.append(cleaned)
+                    handle.write(cleaned)
+                    handle.flush()
+        reader = threading.Thread(target=consume, daemon=True)
+        reader.start()
+        started = time.monotonic()
+        reason = None
+        while process.poll() is None:
+            if time.monotonic() >= deadline:
+                reason = 'Native CLI exceeded the configured timeout'
+                break
+            if host == 'codex' and time.monotonic() - started > 60 and not list((project / '.agentic/jev').glob('event-*.json')):
+                reason = 'No Codex JEV hook event observed; review project hooks in /hooks and rerun with --run-dir'
+                break
+            time.sleep(.25)
+        if reason:
             if os.name != 'nt':
-                os.killpg(process.pid, signal.SIGKILL)
+                os.killpg(process.pid, signal.SIGTERM)
             else:
-                process.kill()
-    reader.join(timeout=10)
+                process.terminate()
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                if os.name != 'nt':
+                    os.killpg(process.pid, signal.SIGKILL)
+                else:
+                    process.kill()
+        reader.join(timeout=10)
+        return process.returncode, reason
+
+    trace.write_text('')
+    returncode, reason = turn(command, PROMPT if host in ('opencode', 'claude') else None)
+    if host == 'claude' and not reason and returncode == 0 and not calculator_probe(project)[0]:
+        session = claude_init(trace).get('session_id')
+        if session:
+            print(f'{host}: coordinator stopped before delivery; sending one approval follow-up', flush=True)
+            returncode, reason = turn(command[:2] + ['--resume', session] + command[2:], FOLLOWUP)
+    if telegram:
+        # The notifier sends from a detached child; give it a moment, then save evidence.
+        for _ in range(40):
+            if telegram.messages():
+                break
+            time.sleep(.25)
+        (root / host / 'telegram.json').write_text(json.dumps(
+            {'requests': [r['path'].replace('blackbox-token', '[token]') for r in telegram.requests],
+             'messages': telegram.messages()}, ensure_ascii=False, indent=2))
+        telegram.__exit__(None, None, None)
     output = ''.join(output_lines)
     if reason:
         return {'status': 'blocked' if 'hook' in reason else 'failed', 'reason': reason, 'project': str(project), 'trace': str(trace)}
     trace.write_text(output)
-    if 'hooks need review' in output.lower() or 'untrusted hook' in output.lower() or 'review and trust' in output.lower():
+    if host == 'codex' and ('hooks need review' in output.lower() or 'untrusted hook' in output.lower() or 'review and trust' in output.lower()):
         return {'status': 'blocked', 'reason': 'Review project hooks in Codex /hooks and rerun with --run-dir.', 'project': str(project)}
-    result = verify(project, trace, process.returncode)
+    result = verify(project, trace, returncode, host)
     if 'usage limit' in output.lower() or 'insufficient_quota' in output:
         result.update(status='blocked', reason='Coding model usage quota is exhausted; JEV quota is separate')
+    if host == 'claude' and ('Invalid API key' in output or 'Please run /login' in output):
+        result.update(status='blocked', reason='Claude Code is not authenticated; run claude /login first')
     if 'provider.auth' in output or 'PERMISSION_DENIED' in output:
         result.update(status='blocked', reason='Coding provider authorization failed; JEV authentication is separate')
     return result
@@ -211,7 +331,7 @@ def run_lock(root):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--host', choices=('codex', 'opencode', 'all'), default='all')
+    parser.add_argument('--host', choices=(*HOSTS, 'all'), default='all')
     parser.add_argument('--prepare-only', action='store_true')
     parser.add_argument('--verify-only', action='store_true', help='Recheck saved native execution without any model requests; requires --run-dir')
     parser.add_argument('--run-dir', type=Path, help='Reuse prepared projects after native hook trust review')
@@ -227,15 +347,15 @@ def main():
 
 def execute(args, root, endpoint):
     results = {}
-    for host in ('codex', 'opencode') if args.host == 'all' else (args.host,):
+    for host in HOSTS if args.host == 'all' else (args.host,):
         try:
             project = Path(json.loads((root / host / 'project.json').read_text())['path']) if args.run_dir else prepare(host, root, endpoint)
             if args.run_dir and not args.verify_only:
                 install_project(host, project, root, endpoint)
             if args.verify_only:
                 previous = json.loads((root / 'results.json').read_text())[host]
-                exit_code = 0 if previous.get('checks', {}).get('native_exit_success') else 1
-                result = verify(project, root / host / 'trace.jsonl', exit_code)
+                exit_code = 0 if previous.get('checks', {}).get('native_exit_success') or native_success(root / host / 'trace.jsonl') else 1
+                result = verify(project, root / host / 'trace.jsonl', exit_code, host)
             elif args.prepare_only:
                 result = {'status': 'prepared', 'project': str(project)}
                 print(f'{host}: prepared {project}', flush=True)

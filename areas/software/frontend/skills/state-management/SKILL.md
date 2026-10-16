@@ -1,3 +1,8 @@
+---
+name: state-management
+description: "Classifies frontend state and applies colocation, React Query, and Zustand slice patterns; use when deciding where to put state, choosing between local and global state, integrating server state, or debugging stale data."
+---
+
 # Skill: State Management
 
 ## When to load

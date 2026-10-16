@@ -63,6 +63,14 @@ pub fn copy_dir_contents(
                 .map(|line| format!("{line}\n"))
                 .collect();
         }
+        if src_rel == "extensions/claude" {
+            if rel.starts_with("profiles/") {
+                continue;
+            }
+            if rel.starts_with("agents/") && rel.ends_with(".md") {
+                content = crate::claude::apply_agent_model(app, &rel, &content);
+            }
+        }
         let target = dest_root.join(&rel);
         let project_rel = app.project_rel_path(&target);
         let source_ref = format!("{src_rel}/{rel}");

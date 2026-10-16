@@ -1,3 +1,8 @@
+---
+name: orchestration
+description: "Provides Airflow DAG templates and idempotent task patterns for pipeline orchestration; use when designing DAGs, debugging pipeline failures, or configuring retries."
+---
+
 # Skill: Pipeline Orchestration (Airflow)
 
 ## When to load

@@ -100,11 +100,10 @@ src/
 ## Agent Coordination Pipeline
 
 ```
-@project-planner   → decompose request into tasks + dependency graph
-@backend-dev       → implement API, DB models, services, repositories
-@frontend-dev      → implement pages, components, server actions
-@qa-engineer       → write unit tests + E2E tests
-@team-lead         → review, check architecture compliance, approve
+@analyst          → decompose request into tasks + dependency graph, define API contracts
+@developer        → implement backend (API, DB models, services, repositories) and frontend (pages, components, server actions)
+@qa               → write unit tests + E2E tests
+@team-lead        → review, check architecture compliance, approve
 ```
 
 Sequential for new projects. Parallel only when tasks are genuinely independent (frontend + backend with agreed contract).
@@ -120,7 +119,7 @@ Sequential for new projects. Parallel only when tasks are genuinely independent 
    - Task list with dependency order
    - Agent assignments per task
 4. Present plan to user → wait for approval
-5. Execute: @backend-dev first (establish contracts) → @frontend-dev → @qa-engineer
+5. Execute: @developer backend first (establish contracts) → @developer frontend → @qa
 6. @team-lead final review: architecture compliance, test coverage, README complete
 ```
 

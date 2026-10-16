@@ -1,3 +1,8 @@
+---
+name: terraform-patterns
+description: "Provides Terraform module structure, resource naming, remote state, least-privilege IAM, and anti-pattern guidance; use when writing new Terraform, reviewing IaC PRs, designing module structure, or debugging plan or apply failures."
+---
+
 # Skill: Terraform Patterns
 
 ## When to load

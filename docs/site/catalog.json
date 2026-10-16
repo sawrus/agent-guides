@@ -1880,7 +1880,8 @@
             "pm",
             "team-lead",
             "developer",
-            "qa"
+            "qa",
+            "devops-engineer"
           ],
           "related_rules": [
             "architecture.md",
@@ -1916,7 +1917,7 @@
             "each increment is independently testable and deployable",
             "integration and regression checks pass after each increment"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-epic\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Epic Decomposition & Milestone Planning\"]\n  step_2[\"2. Architecture Runway Definition\"]\n  step_3[\"3. Increment Implementation\"]\n  step_4[\"4. Increment Verification\"]\n  step_5[\"5. Milestone Review & Replanning\"]\n  step_6[\"6. Final Acceptance\"]\n  exit([\"All increments accepted by @product-owner + clean regression suite = epic d...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_5 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_1 -. owns .-> step_6\n  step_6 -. iterate if blocked .-> step_1",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-epic\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  role_6[\"devops-engineer\"]\n  step_1[\"1. Epic Decomposition & Milestone Planning\"]\n  step_2[\"2. Architecture Runway Definition\"]\n  step_3[\"3. Increment Implementation\"]\n  step_4[\"4. Increment Verification\"]\n  step_5[\"5. Milestone Review & Replanning\"]\n  step_6[\"6. Deployment (optional)\"]\n  step_7[\"7. Final Acceptance\"]\n  exit([\"All increments accepted by @product-owner + clean regression suite = epic d...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_5 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_6 -. owns .-> step_6\n  role_1 -. owns .-> step_7\n  step_7 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -1958,7 +1959,8 @@
             "team-lead",
             "developer",
             "qa",
-            "designer"
+            "analyst",
+            "devops-engineer"
           ],
           "related_rules": [
             "architecture.md",
@@ -1989,7 +1991,7 @@
             "scope and acceptance criteria approved before implementation",
             "all automated checks pass (lint / test / build)"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-feature\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"designer\"]\n  role_5[\"developer\"]\n  role_6[\"qa\"]\n  step_1[\"1. Requirements & Value Framing\"]\n  step_2[\"2. Solution Design & Risk Plan\"]\n  step_3[\"3. Implementation\"]\n  step_4[\"4. Risk-Based Verification\"]\n  step_5[\"5. Code Review & Architecture Sign-off\"]\n  step_6[\"6. Fix / Retest Loop\"]\n  step_7[\"7. Acceptance & Final Report\"]\n  exit([\"@product-owner acceptance + no unresolved blockers = feature complete and r...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_2\n  role_5 -. owns .-> step_3\n  role_6 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_5 -. owns .-> step_6\n  role_6 -. owns .-> step_6\n  role_2 -. owns .-> step_6\n  role_1 -. owns .-> step_7\n  role_2 -. owns .-> step_7\n  step_7 -. iterate if blocked .-> step_1",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-feature\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"analyst\"]\n  role_5[\"developer\"]\n  role_6[\"qa\"]\n  role_7[\"devops-engineer\"]\n  step_1[\"1. Requirements & Value Framing\"]\n  step_2[\"2. Solution Design & Risk Plan\"]\n  step_3[\"3. Implementation\"]\n  step_4[\"4. Risk-Based Verification\"]\n  step_5[\"5. Code Review & Architecture Sign-off\"]\n  step_6[\"6. Fix / Retest Loop\"]\n  step_7[\"7. Deployment (optional)\"]\n  step_8[\"8. Acceptance & Final Report\"]\n  exit([\"@product-owner acceptance + no unresolved blockers = feature complete and r...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_2\n  role_5 -. owns .-> step_3\n  role_6 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_5 -. owns .-> step_6\n  role_6 -. owns .-> step_6\n  role_2 -. owns .-> step_6\n  role_7 -. owns .-> step_7\n  role_1 -. owns .-> step_8\n  role_2 -. owns .-> step_8\n  step_8 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -2535,7 +2537,7 @@
           ],
           "roles": [
             "qa",
-            "designer",
+            "analyst",
             "developer",
             "team-lead"
           ],
@@ -2561,13 +2563,13 @@
             "no blocking WCAG A issues remaining",
             "keyboard and screen-reader critical paths validated"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /a11y-fix\"])\n  role_1[\"qa\"]\n  role_2[\"designer\"]\n  role_3[\"developer\"]\n  role_4[\"team-lead\"]\n  step_1[\"1. Audit & Severity Classification\"]\n  step_2[\"2. UX Decision for Ambiguous Fixes\"]\n  step_3[\"3. Implement Fixes\"]\n  step_4[\"4. Re-test & Regression Checks\"]\n  step_5[\"5. Final Review & Acceptance\"]\n  exit([\"Zero WCAG A issues + screen reader path validated + @team-lead approval = a...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_4 -. owns .-> step_5",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /a11y-fix\"])\n  role_1[\"qa\"]\n  role_2[\"analyst\"]\n  role_3[\"developer\"]\n  role_4[\"team-lead\"]\n  step_1[\"1. Audit & Severity Classification\"]\n  step_2[\"2. UX Decision for Ambiguous Fixes\"]\n  step_3[\"3. Implement Fixes\"]\n  step_4[\"4. Re-test & Regression Checks\"]\n  step_5[\"5. Final Review & Acceptance\"]\n  exit([\"Zero WCAG A issues + screen reader path validated + @team-lead approval = a...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_4 -. owns .-> step_5",
           "examples": {
             "both": [
               {
                 "number": 1,
                 "title": "Audit findings batch fix",
-                "en": "/a11y-fix\n\nTarget: /checkout route (all 3 steps)\nAudit tool: axe-core via jest-axe + manual keyboard testing\nFindings:\n  - [Critical] Step 2 payment form: credit card number input has no label (axe: label-content-name-mismatch)\n  - [Critical] Error messages appear visually but not announced by screen reader\n  - [Serious] \"Continue\" button disabled state not conveyed to AT (missing aria-disabled)\n  - [Moderate] Focus order on mobile: jumps from address field to order summary (skips city/zip)\nDesigner decisions needed: error message copy (ARIA live region wording)",
+                "en": "/a11y-fix\n\nTarget: /checkout route (all 3 steps)\nAudit tool: axe-core via jest-axe + manual keyboard testing\nFindings:\n  - [Critical] Step 2 payment form: credit card number input has no label (axe: label-content-name-mismatch)\n  - [Critical] Error messages appear visually but not announced by screen reader\n  - [Serious] \"Continue\" button disabled state not conveyed to AT (missing aria-disabled)\n  - [Moderate] Focus order on mobile: jumps from address field to order summary (skips city/zip)\nAnalyst (UX) decisions needed: error message copy (ARIA live region wording)",
                 "ru": "/a11y-fix\n\nЦель: маршрут /checkout (все 3 шага)\nИнструмент аудита: axe-core через jest-axe + ручное тестирование клавиатурой\nНаходки:\n  - [Critical] Шаг 2 форма оплаты: поле номера карты без label (axe: label-content-name-mismatch)\n  - [Critical] Сообщения об ошибках отображаются визуально, но не объявляются screen reader'ом\n  - [Serious] Состояние disabled кнопки \"Продолжить\" не передаётся AT (отсутствует aria-disabled)\n  - [Moderate] Порядок фокуса на мобильном: перескакивает с поля адреса на сводку заказа (пропускает city/zip)\nРешения дизайнера нужны: текст сообщений об ошибках (формулировка ARIA live region)"
               },
               {
@@ -2723,7 +2725,7 @@
           ],
           "roles": [
             "product-owner",
-            "designer",
+            "analyst",
             "developer",
             "qa",
             "team-lead"
@@ -2756,7 +2758,7 @@
             "component API documented (props, events, slots)",
             "all component states implemented (loading, empty, error, success)"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /scaffold-component\"])\n  role_1[\"product-owner\"]\n  role_2[\"designer\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  role_5[\"team-lead\"]\n  step_1[\"1. Component Intent & Acceptance Criteria\"]\n  step_2[\"2. Design System Alignment\"]\n  step_3[\"3. Component Implementation\"]\n  step_4[\"4. Functional & Accessibility Verification\"]\n  step_5[\"5. Code Review & Merge Readiness\"]\n  exit([\"Accepted component + passing tests + a11y clear = ready to merge and publis...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_5",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /scaffold-component\"])\n  role_1[\"product-owner\"]\n  role_2[\"analyst\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  role_5[\"team-lead\"]\n  step_1[\"1. Component Intent & Acceptance Criteria\"]\n  step_2[\"2. Design System Alignment\"]\n  step_3[\"3. Component Implementation\"]\n  step_4[\"4. Functional & Accessibility Verification\"]\n  step_5[\"5. Code Review & Merge Readiness\"]\n  exit([\"Accepted component + passing tests + a11y clear = ready to merge and publis...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_5",
           "examples": {
             "both": [
               {
@@ -2795,7 +2797,7 @@
           "roles": [
             "developer",
             "qa",
-            "designer",
+            "analyst",
             "team-lead"
           ],
           "related_rules": [
@@ -2818,22 +2820,22 @@
             }
           ],
           "quality_gates": [
-            "critical diffs reviewed by designer before baseline update",
+            "critical diffs reviewed by analyst before baseline update",
             "accepted diffs documented with rationale"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /visual-regression\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"designer\"]\n  role_4[\"team-lead\"]\n  step_1[\"1. Determine Visual Test Scope\"]\n  step_2[\"2. Run Capture & Comparison Suite\"]\n  step_3[\"3. Classify Diffs\"]\n  step_4[\"4. Fix or Approve Baseline Updates\"]\n  step_5[\"5. Final Gate Decision\"]\n  exit([\"Zero unexpected diffs + all baseline updates designer-approved + @team-lead...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_3 -. owns .-> step_4\n  role_4 -. owns .-> step_5",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /visual-regression\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"analyst\"]\n  role_4[\"team-lead\"]\n  step_1[\"1. Determine Visual Test Scope\"]\n  step_2[\"2. Run Capture & Comparison Suite\"]\n  step_3[\"3. Classify Diffs\"]\n  step_4[\"4. Fix or Approve Baseline Updates\"]\n  step_5[\"5. Final Gate Decision\"]\n  exit([\"Zero unexpected diffs + all baseline updates analyst-approved + @team-lead...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_3 -. owns .-> step_4\n  role_4 -. owns .-> step_5",
           "examples": {
             "both": [
               {
                 "number": 1,
                 "title": "PR visual diff review",
-                "en": "/visual-regression\n\nScope: components changed in PR #156 (Button, Card, Modal)\nBaseline: main branch snapshots (Percy baseline)\nChanged: updated design tokens (spacing +4px, border-radius change)\nExpected diffs: all Button, Card sizes will have slightly more padding - intentional\nUnexpected diffs to catch: any text overflow, icon misalignment, broken dark mode\nDesigner must review: all diffs before baseline is updated",
+                "en": "/visual-regression\n\nScope: components changed in PR #156 (Button, Card, Modal)\nBaseline: main branch snapshots (Percy baseline)\nChanged: updated design tokens (spacing +4px, border-radius change)\nExpected diffs: all Button, Card sizes will have slightly more padding - intentional\nUnexpected diffs to catch: any text overflow, icon misalignment, broken dark mode\nAnalyst (UX) must review: all diffs before baseline is updated",
                 "ru": "/visual-regression\n\nСкоуп: компоненты изменённые в PR #156 (Button, Card, Modal)\nBaseline: снапшоты ветки main (Percy baseline)\nИзменено: обновлены design tokens (spacing +4px, изменение border-radius)\nОжидаемые diff: все размеры Button, Card будут иметь немного больше отступов - намеренно\nНеожиданные diff для обнаружения: любое переполнение текста, смещение иконок, сломанный dark mode\nДизайнер должен проверить: все diff перед обновлением baseline"
               },
               {
                 "number": 2,
                 "title": "Release candidate route sweep",
-                "en": "/visual-regression\n\nScope: release candidate v4.3.0 on routes /pricing, /signup, /checkout, /account/billing\nBaseline source: Chromatic snapshots from main after design system token freeze\nRecent changes:\n- pricing cards switched to responsive CSS grid\n- signup flow moved validation messages from inline text to floating summary panel\n- checkout uses a new sticky order summary on tablet widths\nAcceptance criteria:\n- no overlap or clipping in EN + DE locales\n- loading and error states reviewed in light and dark themes\n- approved intentional diffs documented before updating the baseline\nOutput: visual diff report grouped by route, list of blocker diffs, and approved baseline updates with designer sign-off",
+                "en": "/visual-regression\n\nScope: release candidate v4.3.0 on routes /pricing, /signup, /checkout, /account/billing\nBaseline source: Chromatic snapshots from main after design system token freeze\nRecent changes:\n- pricing cards switched to responsive CSS grid\n- signup flow moved validation messages from inline text to floating summary panel\n- checkout uses a new sticky order summary on tablet widths\nAcceptance criteria:\n- no overlap or clipping in EN + DE locales\n- loading and error states reviewed in light and dark themes\n- approved intentional diffs documented before updating the baseline\nOutput: visual diff report grouped by route, list of blocker diffs, and approved baseline updates with analyst sign-off",
                 "ru": "/visual-regression\n\nСкоуп: release candidate v4.3.0 для маршрутов /pricing, /signup, /checkout, /account/billing\nИсточник baseline: Chromatic snapshots из main после заморозки design system token'ов\nНедавние изменения:\n- pricing cards переведены на responsive CSS grid\n- signup flow перенёс validation messages из inline текста в floating summary panel\n- checkout использует новый sticky order summary на tablet-ширинах\nКритерии приёмки:\n- отсутствие overlap или clipping в локалях EN + DE\n- loading и error состояния проверены в light и dark themes\n- все намеренные diff'ы задокументированы до обновления baseline\nРезультат: visual diff report, сгруппированный по маршрутам, список blocker diff'ов и approved baseline updates с sign-off от дизайнера"
               }
             ]
@@ -2867,7 +2869,8 @@
             "pm",
             "team-lead",
             "developer",
-            "qa"
+            "qa",
+            "devops-engineer"
           ],
           "related_rules": [
             "project-guide.md",
@@ -2900,7 +2903,7 @@
             "plan explicitly approved by user before any code is written",
             "unit tests pass with coverage ≥ 70%"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /backend-project-full-cycle\"])\n  role_1[\"team-lead\"]\n  role_2[\"pm\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  step_1[\"1.1 — Define Tech Stack\"]\n  step_2[\"1.2 — Requirements Clarification\"]\n  step_3[\"1.3 — Architecture Plan\"]\n  step_4[\"1.4 — Plan Approval\"]\n  step_5[\"2.1 — Backend Logic\"]\n  step_6[\"2.2 — Unit Tests & Quality\"]\n  step_7[\"2.3 — Code Review\"]\n  step_8[\"3.1 — E2E Validation\"]\n  step_9[\"3.2 — Results Review & Report\"]\n  exit([\"Green E2E tests + @team-lead sign-off + delivery report = production-ready...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> step_9\n  step_9 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_4 -. owns .-> step_6\n  role_1 -. owns .-> step_7\n  role_4 -. owns .-> step_8\n  role_1 -. owns .-> step_9\n  role_2 -. owns .-> step_9\n  step_9 -. iterate if blocked .-> step_1",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /backend-project-full-cycle\"])\n  role_1[\"team-lead\"]\n  role_2[\"pm\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  role_5[\"devops-engineer\"]\n  step_1[\"1.1 — Define Tech Stack\"]\n  step_2[\"1.2 — Requirements Clarification\"]\n  step_3[\"1.3 — Architecture Plan\"]\n  step_4[\"1.4 — Plan Approval\"]\n  step_5[\"2.1 — Backend Logic\"]\n  step_6[\"2.2 — Unit Tests & Quality\"]\n  step_7[\"2.3 — Code Review\"]\n  step_8[\"3.1 — E2E Validation\"]\n  step_9[\"3.2 — Results Review & Report\"]\n  step_10[\"3.3 — Deployment (optional)\"]\n  exit([\"Green E2E tests + @team-lead sign-off + delivery report = production-ready...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> step_9\n  step_9 --> step_10\n  step_10 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_4 -. owns .-> step_6\n  role_1 -. owns .-> step_7\n  role_4 -. owns .-> step_8\n  role_1 -. owns .-> step_9\n  role_2 -. owns .-> step_9\n  role_5 -. owns .-> step_10\n  step_10 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -3019,7 +3022,8 @@
           "roles": [
             "team-lead",
             "developer",
-            "qa"
+            "qa",
+            "devops-engineer"
           ],
           "related_rules": [
             "backend-architecture-rule.md",
@@ -3047,7 +3051,7 @@
             "no mypy/ruff errors",
             "architecture layer boundaries respected (no cross-layer imports)"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-feature-fullstack\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  step_1[\"1. Design\"]\n  step_2[\"2. DB Model & Migration\"]\n  step_3[\"3. Repository Layer\"]\n  step_4[\"4. Service Layer\"]\n  step_5[\"5. API Endpoint\"]\n  step_6[\"6. Frontend / UI\"]\n  step_7[\"7. QA & PR\"]\n  step_8[\"8. Document & Version\"]\n  exit([\"Merged PR with passing CI, docs and CHANGELOG updated, version bumped. Feat...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_2 -. owns .-> step_6\n  role_3 -. owns .-> step_7\n  role_1 -. owns .-> step_7\n  role_2 -. owns .-> step_8\n  step_8 -. iterate if blocked .-> step_1",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-feature-fullstack\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  role_4[\"devops-engineer\"]\n  step_1[\"1. Design\"]\n  step_2[\"2. DB Model & Migration\"]\n  step_3[\"3. Repository Layer\"]\n  step_4[\"4. Service Layer\"]\n  step_5[\"5. API Endpoint\"]\n  step_6[\"6. Frontend / UI\"]\n  step_7[\"7. QA & PR\"]\n  step_8[\"8. Deployment (optional)\"]\n  step_9[\"9. Document & Version\"]\n  exit([\"Merged PR with passing CI, docs and CHANGELOG updated, version bumped. Feat...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> step_9\n  step_9 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_2 -. owns .-> step_6\n  role_3 -. owns .-> step_7\n  role_1 -. owns .-> step_7\n  role_4 -. owns .-> step_8\n  role_2 -. owns .-> step_9\n  step_9 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {
@@ -3092,9 +3096,10 @@
           "roles": [
             "pm",
             "team-lead",
-            "designer",
+            "analyst",
             "developer",
-            "qa"
+            "qa",
+            "devops-engineer"
           ],
           "related_rules": [
             "backend-architecture-rule.md",
@@ -3114,7 +3119,7 @@
             "layered architecture rules respected (no business logic in API layer)",
             "unit and integration tests pass"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /feature-implementation-flow\"])\n  role_1[\"pm\"]\n  role_2[\"team-lead\"]\n  role_3[\"designer\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Requirement Analysis & Models\"]\n  step_2[\"2. Design & Planning\"]\n  step_3[\"3. Implementation — Inner to Outer\"]\n  step_4[\"4. Verification\"]\n  step_5[\"5. Review\"]\n  step_6[\"6. Fix / Retest Loop\"]\n  exit([\"@team-lead approval + passing checks = feature ready to merge.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_4 -. owns .-> step_6\n  role_5 -. owns .-> step_6",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /feature-implementation-flow\"])\n  role_1[\"pm\"]\n  role_2[\"team-lead\"]\n  role_3[\"analyst\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  role_6[\"devops-engineer\"]\n  step_1[\"1. Requirement Analysis & Models\"]\n  step_2[\"2. Design & Planning\"]\n  step_3[\"3. Implementation — Inner to Outer\"]\n  step_4[\"4. Verification\"]\n  step_5[\"5. Review\"]\n  step_6[\"6. Fix / Retest Loop\"]\n  step_7[\"7. Deployment (optional)\"]\n  exit([\"@team-lead approval + passing checks = feature ready to merge.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_4 -. owns .-> step_6\n  role_5 -. owns .-> step_6\n  role_6 -. owns .-> step_7",
           "examples": {
             "both": [
               {
@@ -3296,7 +3301,8 @@
             "pm",
             "team-lead",
             "developer",
-            "qa"
+            "qa",
+            "devops-engineer"
           ],
           "related_rules": [
             "git-workflow-guide.md",
@@ -3317,7 +3323,7 @@
             "acceptance criteria confirmed before implementation starts",
             "all checks pass (lint / test / build)"
           ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /development-cycle-workflow\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Requirements Framing\"]\n  step_2[\"2. Technical Design\"]\n  step_3[\"3. Implementation\"]\n  step_4[\"4. Verification\"]\n  step_5[\"5. Pull Request\"]\n  step_6[\"6. Review & Merge\"]\n  exit([\"Merged PR + acceptance criteria validated in staging = task complete. Spec-...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_2 -. owns .-> step_6\n  step_6 -. iterate if blocked .-> step_1",
+          "workflow_diagram": "flowchart TD\n  start([\"Start /development-cycle-workflow\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  role_6[\"devops-engineer\"]\n  step_1[\"1. Requirements Framing\"]\n  step_2[\"2. Technical Design\"]\n  step_3[\"3. Implementation\"]\n  step_4[\"4. Verification\"]\n  step_5[\"5. Pull Request\"]\n  step_6[\"6. Review & Merge\"]\n  step_7[\"7. Deployment (optional)\"]\n  exit([\"Merged PR + acceptance criteria validated in staging = task complete. Spec-...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_2 -. owns .-> step_6\n  role_6 -. owns .-> step_7\n  step_7 -. iterate if blocked .-> step_1",
           "examples": {
             "both": [
               {

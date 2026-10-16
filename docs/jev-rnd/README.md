@@ -450,7 +450,7 @@ acceptance. Official provider пока без оплаченных real calls: �
 - Rerank Context7/MemPalace результатов по relevance/contradiction, сохраняя
   обязательные guidance и conflicts. Это фильтр поверх retrieval, не замена поиска.
   [RAG passage classification](https://docs.typesafe.ai/cookbooks/classifying_rag_passages).
-- Durable-fact triage/canonical-home для memory_curator; executor сохраняет
+- Durable-fact triage/canonical-home для memory-curator; executor сохраняет
   approved факт, JEV не делает automatic store/delete.
   [Memory example](https://docs.typesafe.ai/cookbooks/basic_memory).
 - Context keep/truncate/drop для устаревших tool results после локальных фильтров;

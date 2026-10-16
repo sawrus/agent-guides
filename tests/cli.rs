@@ -152,10 +152,10 @@ fn jev_hooks_enable_provider_replay_and_explicit_disable() {
     let root = std::fs::read_to_string(project.path().join("AGENTS.md")).unwrap();
     assert!(!root.contains("Optional JEV decisions"));
     let hooks: Value = serde_json::from_str(&std::fs::read_to_string(&hooks).unwrap()).unwrap();
-    assert!(hooks["hooks"]["UserPromptSubmit"]
-        .as_array()
-        .unwrap()
-        .is_empty());
+    assert!(hooks["hooks"]
+        .get("UserPromptSubmit")
+        .and_then(Value::as_array)
+        .is_none_or(|groups| groups.is_empty()));
     assert!(!project
         .path()
         .join(".opencode/plugins/agentic-jev/index.ts")
@@ -446,7 +446,7 @@ fn review_profiles_install_for_each_environment() {
             ])
             .assert()
             .success();
-        for specialist in ["instruction_reviewer", "memory_curator"] {
+        for specialist in ["instruction-reviewer", "memory-curator"] {
             let extension = if environment == "codex" { "toml" } else { "md" };
             let path = project
                 .path()
@@ -1096,4 +1096,225 @@ fn jev_user_modified_hook_is_preserved_and_disable_is_persisted() {
     .unwrap();
     assert_eq!(manifest["settings"]["jev"]["enabled"], false);
     assert!(project.path().join(".agent/jev/hook.py").is_file());
+}
+
+fn claude_install(home: &Path, project: &Path, extra: &[&str]) {
+    agentic(home)
+        .env_remove("AGENTIC_ENABLE_JEV")
+        .env_remove("AGENTIC_CLAUDE_PROFILE")
+        .args(["install", "--project-dir"])
+        .arg(project)
+        .args([
+            "--agent-os",
+            "claude",
+            "--areas",
+            "software",
+            "--specializations",
+            "software.backend,software.general",
+            "--no-doctor",
+        ])
+        .args(extra)
+        .assert()
+        .success();
+}
+
+fn frontmatter(path: &Path) -> String {
+    let text = std::fs::read_to_string(path).unwrap();
+    text.split("\n---").next().unwrap().to_string()
+}
+
+#[test]
+fn claude_install_writes_native_layout() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let p = project.path();
+    claude_install(home.path(), p, &[]);
+    assert!(p.join(".claude/skills/api-design/SKILL.md").is_file());
+    assert!(p
+        .join(".claude/rules/sdlc-role-responsibilities.md")
+        .is_file());
+    assert!(p.join(".agent/workflows/develop-feature.md").is_file());
+    assert!(!p.join(".claude/workflows").exists());
+    let command = frontmatter(&p.join(".claude/commands/develop-feature.md"));
+    assert!(command.contains("argument-hint: \"[feature_request] [acceptance_criteria]\""));
+    assert!(!command.contains("trigger:"));
+    assert!(!command.contains("roles:"));
+    let claude_md = std::fs::read_to_string(p.join(".claude/CLAUDE.md")).unwrap();
+    assert!(claude_md.contains("@../AGENTS.md"));
+    for role in [
+        "product-owner",
+        "team-lead",
+        "developer",
+        "qa",
+        "devops-engineer",
+        "analyst",
+        "pm",
+        "instruction-reviewer",
+        "memory-curator",
+    ] {
+        assert!(
+            p.join(format!(".claude/agents/{role}.md")).is_file(),
+            "{role}"
+        );
+    }
+    assert!(!p.join(".claude/agents/designer.md").exists());
+    assert!(!p.join(".claude/profiles").exists());
+    // Default anthropic profile pins aliases; reviewers are read-only.
+    let developer = frontmatter(&p.join(".claude/agents/developer.md"));
+    assert!(developer.contains("\nmodel: sonnet"));
+    let reviewer = frontmatter(&p.join(".claude/agents/instruction-reviewer.md"));
+    assert!(reviewer.contains("\ntools: Read, Grep, Glob\n"));
+    assert!(reviewer.contains("\nmodel: haiku"));
+    let settings: Value =
+        serde_json::from_str(&std::fs::read_to_string(p.join(".claude/settings.json")).unwrap())
+            .unwrap();
+    assert_eq!(settings["agent"], "product-owner");
+    assert!(settings.get("hooks").is_none());
+    let manifest: Value =
+        serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap()).unwrap();
+    assert_eq!(manifest["settings"]["claude_profile"], "anthropic");
+
+    claude_install(home.path(), p, &["--claude-profile", "none"]);
+    assert!(!frontmatter(&p.join(".claude/agents/developer.md")).contains("model:"));
+}
+
+#[test]
+fn claude_jev_and_telegram_hooks_are_owned_and_removable() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let p = project.path();
+    let settings_path = p.join(".claude/settings.json");
+    std::fs::create_dir_all(p.join(".claude")).unwrap();
+    let user_hook =
+        serde_json::json!({"matcher":"","hooks":[{"type":"command","command":"echo user"}]});
+    std::fs::write(
+        &settings_path,
+        serde_json::json!({"env":{"KEEP":"1"},"hooks":{"Stop":[user_hook.clone()]}}).to_string(),
+    )
+    .unwrap();
+    claude_install(home.path(), p, &["--enable-jev", "--enable-telegram"]);
+    let settings: Value =
+        serde_json::from_str(&std::fs::read_to_string(&settings_path).unwrap()).unwrap();
+    assert_eq!(settings["env"]["KEEP"], "1");
+    let text = settings.to_string();
+    assert!(text.contains(".agent/jev/hook.py\\\" --host claude"));
+    assert!(text.contains("--event stop"));
+    assert_eq!(settings["hooks"]["PreToolUse"][0]["matcher"], "Agent|Task");
+    assert_eq!(settings["hooks"]["Stop"].as_array().unwrap().len(), 2);
+    assert!(p.join(".agent/jev/hook.py").is_file());
+    assert!(p.join(".agent/notify/telegram.py").is_file());
+    // JEV leaves Claude models open for routing; the pool holds aliases.
+    assert!(!frontmatter(&p.join(".claude/agents/developer.md")).contains("model:"));
+    let defaults: Value = serde_json::from_str(
+        &std::fs::read_to_string(p.join(".agent/jev/model-defaults.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(defaults["developer"], "sonnet");
+    let manifest: Value =
+        serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap()).unwrap();
+    assert_eq!(
+        manifest["settings"]["notifications"]["telegram"]["enabled"],
+        true
+    );
+
+    // Replay keeps both enabled; explicit disables remove only owned entries.
+    claude_install(home.path(), p, &[]);
+    assert!(std::fs::read_to_string(&settings_path)
+        .unwrap()
+        .contains("telegram.py"));
+    claude_install(home.path(), p, &["--disable-jev", "--disable-telegram"]);
+    let settings: Value =
+        serde_json::from_str(&std::fs::read_to_string(&settings_path).unwrap()).unwrap();
+    assert_eq!(settings["hooks"], serde_json::json!({"Stop":[user_hook]}));
+    assert_eq!(settings["env"]["KEEP"], "1");
+    assert!(!p.join(".agent/notify/telegram.py").exists());
+}
+
+#[test]
+fn codex_telegram_hooks_share_hooks_file_with_jev() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    agentic(home.path())
+        .env_remove("AGENTIC_ENABLE_JEV")
+        .args(["install", "--project-dir"])
+        .arg(project.path())
+        .args([
+            "--agent-os",
+            "codex",
+            "--areas",
+            "software",
+            "--specializations",
+            "software.backend",
+            "--no-doctor",
+            "--enable-jev",
+            "--enable-telegram",
+        ])
+        .assert()
+        .success();
+    let hooks: Value = serde_json::from_str(
+        &std::fs::read_to_string(project.path().join(".codex/hooks.json")).unwrap(),
+    )
+    .unwrap();
+    assert!(hooks["hooks"]["Stop"][0]["hooks"][0]["command"]
+        .as_str()
+        .unwrap()
+        .contains("telegram.py --host codex --event stop"));
+    assert_eq!(
+        hooks["hooks"]["PermissionRequest"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+}
+
+#[test]
+fn upgrade_migrates_renamed_role_agents() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let p = project.path();
+    claude_install(home.path(), p, &[]);
+    // Simulate a pre-1.4 install: legacy role files tracked by the manifest.
+    let manifest_path = p.join(".agentic.json");
+    let mut manifest: Value =
+        serde_json::from_str(&std::fs::read_to_string(&manifest_path).unwrap()).unwrap();
+    for (name, content) in [
+        ("designer.md", "legacy designer\n"),
+        ("memory_curator.md", "legacy curator\n"),
+    ] {
+        let path = p.join(".claude/agents").join(name);
+        std::fs::write(&path, content).unwrap();
+        let hash = format!("{:x}", sha2_digest(content.as_bytes()));
+        manifest["managed_files"]
+            .as_array_mut()
+            .unwrap()
+            .push(serde_json::json!({
+                "path": format!(".claude/agents/{name}"),
+                "source": format!("extensions/claude/agents/{name}"),
+                "content_hash": hash,
+                "marker": "internal",
+            }));
+    }
+    std::fs::write(
+        &manifest_path,
+        serde_json::to_string_pretty(&manifest).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(p.join(".claude/agents/memory_curator.md"), "user edited\n").unwrap();
+    agentic(home.path())
+        .args(["__sync-project", "--project-dir"])
+        .arg(p)
+        .assert()
+        .success();
+    assert!(!p.join(".claude/agents/designer.md").exists());
+    assert!(p.join(".claude/agents/analyst.md").is_file());
+    assert_eq!(
+        std::fs::read_to_string(p.join(".claude/agents/memory_curator.md")).unwrap(),
+        "user edited\n"
+    );
+}
+
+fn sha2_digest(bytes: &[u8]) -> impl std::fmt::LowerHex {
+    use sha2::Digest;
+    sha2::Sha256::digest(bytes)
 }

@@ -15,6 +15,7 @@ roles:
   - team-lead
   - developer
   - qa
+  - devops-engineer
 execution:
   initiator: team-lead
 agent: team-lead
@@ -125,6 +126,12 @@ quality-gates:
 - **Output:** `docs/delivery/delivery_report_<task_id>.md` — plan vs. delivered, test evidence, known gaps
 - **Done when:** `@team-lead` signs off; report complete; `CHANGELOG.md` and version bump committed
 
+### Step 3.3 — Deployment (optional) — `@devops-engineer`
+- **Input:** QA go recommendation and the infrastructure, pipeline, configuration, or rollout changes the increment needs
+- **Actions:** skip with a one-line note when no CI/CD, infrastructure, or deployment change is needed; otherwise apply changes through code (IaC / pipeline definitions), run the pipeline, and verify the rollback path
+- **Output:** pipeline run evidence and `ops_notes.md` (or the documented skip)
+- **Done when:** deployment evidence is attached, or the step is explicitly skipped as not needed
+
 ## Agent Interaction Diagram
 
 <!-- agent-diagram:start -->
@@ -135,6 +142,7 @@ flowchart TD
   role_2["pm"]
   role_3["developer"]
   role_4["qa"]
+  role_5["devops-engineer"]
   step_1["1.1 — Define Tech Stack"]
   step_2["1.2 — Requirements Clarification"]
   step_3["1.3 — Architecture Plan"]
@@ -144,6 +152,7 @@ flowchart TD
   step_7["2.3 — Code Review"]
   step_8["3.1 — E2E Validation"]
   step_9["3.2 — Results Review & Report"]
+  step_10["3.3 — Deployment (optional)"]
   exit(["Green E2E tests + @team-lead sign-off + delivery report = production-ready..."])
   start --> step_1
   step_1 --> step_2
@@ -154,7 +163,8 @@ flowchart TD
   step_6 --> step_7
   step_7 --> step_8
   step_8 --> step_9
-  step_9 --> exit
+  step_9 --> step_10
+  step_10 --> exit
   role_1 -. owns .-> step_1
   role_2 -. owns .-> step_2
   role_1 -. owns .-> step_2
@@ -167,7 +177,8 @@ flowchart TD
   role_4 -. owns .-> step_8
   role_1 -. owns .-> step_9
   role_2 -. owns .-> step_9
-  step_9 -. iterate if blocked .-> step_1
+  role_5 -. owns .-> step_10
+  step_10 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->
 
@@ -178,7 +189,7 @@ Phase 2 Steps 2.1–2.3 repeat until `@team-lead` approves (maximum 3 revision c
 
 - **Coordinator:** `@team-lead` (`execution.initiator`).
 - **When:** after successful acceptance/sign-off and docs, CHANGELOG, and version completion, before the final user response.
-- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction_reviewer` and `memory_curator` as read-only specialists outside SDLC `roles`.
+- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction-reviewer` and `memory-curator` as read-only specialists outside SDLC `roles`.
 - **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
 - **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
 - **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.

@@ -1,3 +1,8 @@
+---
+name: lineage-governance
+description: "Covers data lineage tracing in dbt, column-change impact assessment, and data catalog standards; use when tracing data origins, assessing the impact of schema changes, or managing the data catalog."
+---
+
 # Skill: Data Lineage & Governance
 
 ## When to load

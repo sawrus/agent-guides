@@ -1,6 +1,7 @@
 ---
-name: memory_curator
+name: memory-curator
 description: "Read-only post-task documentation and memory hygiene review with compact recommendations; never writes memory."
+tools: Read, Grep, Glob, mcp__mempalace__mempalace_search
 ---
 
 # Memory Curator

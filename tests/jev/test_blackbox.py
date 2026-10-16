@@ -90,3 +90,69 @@ const a=state.left,b=Number(state.entry); return {...state,entry:String({'+':a+b
             self.assertTrue(probe.main(directory)['verified'])
             path.write_text(code.replace("'/':a/b", "'/':a*b"))
             self.assertFalse(probe.main(directory)['verified'])
+
+
+class ClaudeBlackboxVerification(unittest.TestCase):
+    def test_claude_trace_alias_routing_and_native_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            journal = project / '.agentic/jev'
+            journal.mkdir(parents=True)
+            skills = project / '.claude/skills/api-design'
+            skills.mkdir(parents=True)
+            (skills / 'SKILL.md').write_text('---\nname: api-design\ndescription: x\n---\n')
+            task = {'session_id': 's1', 'task_id': 't1'}
+            records = [
+                {'context': {'kind': 'prompt', 'prompt': blackbox.PROMPT, **task}, 'result': {'status': 'evaluated', 'workflow': {'id': 'wf', 'path': '.agent/workflows/wf.md'}}},
+                {'context': {'kind': 'tool', 'resources': ['.agent/workflows/wf.md'], **task}, 'result': {'status': 'observed'}},
+                {'context': {'kind': 'spawn', 'agent': 'developer', **task}, 'result': {'status': 'evaluated', 'model': 'haiku'}},
+                {'context': {'kind': 'observation', 'agent': 'developer', **task}, 'result': {'status': 'observed', 'observed_model': 'claude-haiku-5-5'}},
+            ]
+            for index, record in enumerate(records):
+                (journal / f'event-{index}.json').write_text(json.dumps(record))
+            run = project / 'run'
+            run.mkdir()
+            trace = run / 'trace.jsonl'
+            init = {'type': 'system', 'subtype': 'init', 'session_id': 's1', 'agents': list(blackbox.CLAUDE_ROLES) + ['general-purpose'],
+                    'slash_commands': ['develop-feature', 'compact'], 'skills': ['api-design']}
+            trace.write_text(json.dumps(init) + '\n{"type":"result","subtype":"success"}\n')
+            (run / 'instructions.jsonl').write_text(json.dumps({'file_path': str(project / '.claude/rules/testing.md')}) + '\n')
+            (run / 'telegram.json').write_text(json.dumps({'messages': ['✅ Задача завершена — p\n\nГотово']}))
+            with patch.object(blackbox.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout='{"verified":true}')), patch.object(blackbox, 'key_for', return_value=''):
+                result = blackbox.verify(project, trace, 0, 'claude')
+            self.assertEqual(result['status'], 'passed', result['checks'])
+            (run / 'telegram.json').unlink()
+            (run / 'instructions.jsonl').unlink()
+            with patch.object(blackbox.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout='{"verified":true}')), patch.object(blackbox, 'key_for', return_value=''):
+                result = blackbox.verify(project, trace, 0, 'claude')
+            self.assertFalse(result['checks']['telegram_fired'])
+            self.assertFalse(result['checks']['rules_loaded'])
+            self.assertEqual(result['status'], 'failed')
+
+
+class PackageCalculatorProbe(unittest.TestCase):
+    def write_package(self, project, divide):
+        package = project / 'src/calc'
+        package.mkdir(parents=True)
+        (package / '__init__.py').write_text('')
+        (package / 'errors.py').write_text('class CalcError(Exception):\n    pass\n')
+        (package / 'core.py').write_text(
+            'from decimal import Decimal\nfrom .errors import CalcError\n\n'
+            'def evaluate(expression):\n'
+            '    a, op, b = expression.split()\n'
+            '    a, b = Decimal(a), Decimal(b)\n'
+            '    if op == "/" and b == 0:\n'
+            '        raise CalcError("division by zero")\n'
+            f'    return {{"+": a + b, "-": a - b, "*": a * b, "/": {divide}}}[op]\n')
+
+    def test_src_package_with_relative_imports_and_decimal_results(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.write_package(Path(directory), 'a / b')
+            result = probe.main(directory)
+            self.assertTrue(result['verified'], result)
+            self.assertEqual(result['entrypoint'], 'src/calc/core.py:evaluate')
+
+    def test_src_package_with_wrong_division_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.write_package(Path(directory), 'a // b')
+            self.assertFalse(probe.main(directory)['verified'])

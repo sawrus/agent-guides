@@ -5,10 +5,12 @@ See [native verification results](verification.md) for measured outcomes and lim
 ## Behavior and acceptance criteria
 
 Agentic 1.3.0 replaces JEV skill calls and workflow-specific Markdown checkpoints
-with native hooks for **Codex 0.161.0+** and **OpenCode V2 2.0.28+**. Rust handles
-activation and installation; `.agent/jev/hook.py` handles typed decisions and
+with native hooks for **Codex 0.161.0+** and **OpenCode V2 2.0.28+**. Agentic 1.4.0
+adds **Claude Code** (hooks in `.claude/settings.json`; see
+[Claude Code adapter](#claude-code-adapter)). Rust handles activation and
+installation; `.agent/jev/hook.py` handles typed decisions and
 `.opencode/plugins/agentic-jev/index.ts` adapts the OpenCode V2 API. Python 3.10+
-is required at runtime. Claude/Gemini adapters, semantic test-evidence evaluation,
+is required at runtime. The Gemini adapter, semantic test-evidence evaluation,
 fix-loop control and epic prioritization are deferred. No extra workflow runner
 or JEV MCP server is installed.
 
@@ -72,6 +74,31 @@ marks `assignment_unavailable`; JEV receives original scope and role metadata,
 not decrypted content. Confidence assesses capability fit, while price and quota
 can remain unknown. Ambiguous capability requirements still trigger fallback.
 
+## Claude Code adapter
+
+`agentic install --agent-os claude --enable-jev` merges six owned hook groups into
+`.claude/settings.json`. Each runs
+`python3 "$CLAUDE_PROJECT_DIR/.agent/jev/hook.py" --host claude`. Ownership is
+recorded in `.agentic/claude-jev-hook-entries.json`. User hooks and other settings
+keys stay unchanged. Disable removes only unmodified owned groups.
+
+| Claude event | JEV decision | Native application |
+| --- | --- | --- |
+| `UserPromptSubmit` | Workflow from `.agent/workflows/` | `additionalContext`: load the workflow, act as its initiator, delegate through the Agent tool |
+| `PreToolUse` (`Agent\|Task`) | Model for the role in `subagent_type` | `updatedInput.model` with `permissionDecision: allow` |
+| `PermissionRequest` | allow / deny / ask | `decision.behavior`; `ask` keeps the native prompt |
+| `PostToolUse` | Observation | Records reads of `.agent/workflows/*.md` and `.claude/commands/*.md` |
+| `SubagentStart` | Observation | Review packet path for `instruction-reviewer` |
+| `SubagentStop` | Observation | Observed model from `agent_transcript_path` |
+
+The Agent tool accepts only the aliases `opus`, `sonnet` and `haiku`.
+Candidates are those aliases, restricted to the aliases that the selected Claude
+profile assigns (`.agent/jev/model-defaults.json`). An answer that is not an alias
+is never applied. `haiku` is the lightweight reviewer model. When JEV is enabled,
+`model:` is left out of `.claude/agents/*.md` so the hooks can route each spawn.
+An explicit `model` in the Agent call, or a `model:` that a user adds to a role
+file, is a pin and is preserved. Claude does not need a hook trust review.
+
 ## Enable and disable
 
 ```sh
@@ -79,14 +106,14 @@ make build
 ./target/debug/agentic tui --no-doctor
 ```
 
-Select the target project, Codex/OpenCode, areas and JEV beside Context7.
+Select the target project, Codex/OpenCode/Claude, areas and JEV beside Context7.
 Activation and masked key entry stay in the existing TUI. There is no server
 picker. Key entry preserves unrelated `.env` assignments, ignores `.env`, and
 restricts Unix permissions to 0600. Installation itself makes no paid requests.
 
 ```sh
 ./target/debug/agentic install --project-dir /path/to/project \
-  --agent-os codex,opencode --areas software \
+  --agent-os codex,opencode,claude --areas software \
   --specializations software.backend,software.general --enable-jev --no-doctor
 ```
 
@@ -151,6 +178,7 @@ JEV_API_URL=https://jevtypesafeai.com/api/v1/decide make blackbox
 # Individual hosts:
 make blackbox-codex
 make blackbox-opencode
+make blackbox-claude
 # Recheck saved execution and arithmetic without any paid requests:
 make blackbox-opencode BLACKBOX_ARGS='--verify-only --run-dir /absolute/path/.agentic-blackbox/<run>'
 ```
@@ -178,11 +206,31 @@ codex --no-daemon -C /tmp/agentic-jev-blackbox-codex-<id>
 make blackbox-codex BLACKBOX_ARGS='--run-dir /absolute/path/.agentic-blackbox/<run>'
 ```
 
+Claude runs `claude -p --output-format stream-json --verbose --permission-mode
+acceptEdits --model ${BLACKBOX_CLAUDE_MODEL:-sonnet}` with a narrow
+`--allowedTools` list for test commands (`python`, `node`, `npm`, `pytest`, `ruff`,
+`make`, `git`, `ls`, `mkdir`, `cat`); the prompt goes to stdin. The list exists only on the
+blackbox command line and is never written into the project. Project guidance
+requires explicit approval for new root files (`Makefile`, `CHANGELOG.md`, …), so
+the coordinator may stop and ask. When the first turn ends without a verifiable
+calculator, the run sends exactly one bounded approval reply
+(`claude -p --resume <session>`) and then judges the result; no other input is
+supplied. The run also enables
+Telegram hooks against a local fake Bot API with run-local credentials
+(`AGENTIC_CONFIG_DIR`), and writes an `InstructionsLoaded` recorder into the run
+project's `.claude/settings.local.json`. Extra Claude checks: all nine role agents,
+the `/develop-feature` command and at least one installed skill appear in the
+`init` event; a `.claude/rules/` file is loaded; the Telegram `Stop` hook sends the
+final answer. Requested aliases match observed transcript model ids (`haiku` ↔
+`claude-haiku-…`).
+
 Passing requires real JEV workflow selection, native workflow-load evidence,
 requested/observed model agreement for the same role/session, successful CLI
 completion and independent arithmetic checks. A fallback, provider error,
 clarification stall or recommendation without application cannot pass.
-The built-in arithmetic probe supports public Python/JavaScript calculator evaluators.
+The built-in arithmetic probe supports public Python/JavaScript calculator evaluators,
+including `src/` packages with relative imports, numeric results such as `Decimal`,
+and domain errors that name the division by zero.
 Other stacks require `BLACKBOX_VERIFIER=/absolute/path/to/executable`; it receives
 the project path and must independently execute calculator checks, returning JSON
 `{"verified":true}` and exit zero. Agent-authored assertions are not accepted.

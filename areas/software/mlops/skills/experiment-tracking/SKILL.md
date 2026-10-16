@@ -1,3 +1,8 @@
+---
+name: experiment-tracking
+description: "Applies an MLflow tracking pattern for reproducible ML experiments; use when running training experiments, comparing runs, or reproducing a historical experiment."
+---
+
 # Skill: Experiment Tracking (MLflow)
 
 ## When to load
