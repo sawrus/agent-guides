@@ -236,7 +236,9 @@ clarification stall or recommendation without application cannot pass.
 The built-in arithmetic probe supports public Python/JavaScript calculator evaluators,
 including `src/` packages with relative imports, numeric results such as `Decimal`,
 domain errors that name the division by zero, and one consistent operator spelling
-per run: ASCII (`- * /`), typographic (`− × ÷`) or words (`subtract`, …).
+per run: ASCII (`- * /`), typographic (`− × ÷`) or words (`subtract`, …). JavaScript
+keypad state APIs (`createCalculator` with `inputDigit`/`enterDigit`,
+`chooseOperation`/`chooseOperator`, `calculate`/`equals`) are driven key by key.
 Other stacks require `BLACKBOX_VERIFIER=/absolute/path/to/executable`; it receives
 the project path and must independently execute calculator checks, returning JSON
 `{"verified":true}` and exit zero. Agent-authored assertions are not accepted.

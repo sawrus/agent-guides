@@ -91,6 +91,23 @@ const a=state.left,b=Number(state.entry); return {...state,entry:String({'+':a+b
             path.write_text(code.replace("'/':a/b", "'/':a*b"))
             self.assertFalse(probe.main(directory)['verified'])
 
+    def test_mutating_keypad_api_with_typographic_operators_is_verified(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'calculator.js'
+            code = """const ops = {'+':(a,b)=>a+b,'−':(a,b)=>a-b,'×':(a,b)=>a*b,'÷':(a,b)=>a/b};
+module.exports = {
+createCalculator: () => ({display:'0', input:'', left:null, operator:null, error:false}),
+enterDigit: (s, d) => { s.input += d; s.display = s.input; return s; },
+chooseOperator: (s, op) => { s.left = Number(s.input); s.operator = op; s.input = ''; return s; },
+equals: (s) => { const b = Number(s.input);
+  if (s.operator === '÷' && b === 0) { s.error = true; s.display = 'Error'; return s; }
+  s.display = String(ops[s.operator](s.left, b)); return s; },
+};"""
+            path.write_text(code)
+            self.assertTrue(probe.main(directory)['verified'])
+            path.write_text(code.replace("'÷':(a,b)=>a/b", "'÷':(a,b)=>a*b"))
+            self.assertFalse(probe.main(directory)['verified'])
+
 
 class ClaudeBlackboxVerification(unittest.TestCase):
     def test_claude_trace_alias_routing_and_native_evidence(self):

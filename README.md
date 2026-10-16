@@ -245,7 +245,7 @@ make blackbox-claude   # paid real-CLI check; also blackbox-codex, blackbox-open
 
 | Feature | OpenCode | Codex | Claude Code | Gemini | Cursor · Kilocode · Antigravity |
 |:--|:-:|:-:|:-:|:-:|:-:|
-| SDLC role subagents (9 roles incl. `analyst`, reviewers) | ✅ | ☑️ | ✅ | ☑️ | ➖ |
+| SDLC role subagents (9 roles incl. `analyst`, reviewers) | ✅ | ✅ | ✅ | ☑️ | ➖ |
 | Rules (auto-loaded) | ☑️ | ☑️ ¹ | ✅ | ☑️ ¹ | ☑️ |
 | Skills | ☑️ | ☑️ ¹ | ✅ | ☑️ ¹ | ☑️ |
 | Workflows as commands | ✅ | ✅ ¹ | ✅ | ☑️ ¹ | ☑️ ¹ |
@@ -273,10 +273,11 @@ Real runs:
   selected the workflow, and the agent ran PO → `pm` → `team-lead` → `developer` → `qa` → `instruction-reviewer` +
   `memory-curator` with the new role names. An independent probe verified the calculator. JEV answered `no_decision`
   for all ten spawns, so subagent model routing was not re-confirmed (it was in the 1.3.0 run).
-- **Codex 0.163.0, Agentic 1.4.0, 2026-10-16** (`.agentic-blackbox/20261016-232317`): JEV selected and the agent read the
-  workflow, and the Codex Telegram `Stop` hook delivered. Codex could not run commands: its `workspace-write` sandbox
-  (bubblewrap) is blocked on hosts with `kernel.apparmor_restrict_unprivileged_userns=1`. On such hosts, rerun with
-  `BLACKBOX_CODEX_SANDBOX=danger-full-access`.
+- **Codex 0.163.0, Agentic 1.4.0, 2026-10-17** (`.agentic-blackbox/20261016-232317`): all six checks passed. JEV selected
+  the workflow and applied `gpt-6-luna` to 8 of 9 spawns (PO, `pm`, `team-lead`, `developer`, `qa`, both reviewers);
+  the calculator was verified independently, and the Telegram `Stop` hook delivered. The run used
+  `BLACKBOX_CODEX_SANDBOX=danger-full-access`, because this host (`kernel.apparmor_restrict_unprivileged_userns=1`)
+  blocks the bubblewrap `workspace-write` sandbox.
 - **Codex 0.161.0 and OpenCode V2, Agentic 1.3.0, 2026-10-14:** model routing and calculator checks passed.
 
 Details: [JEV verification](docs/jev-integration/verification.md).

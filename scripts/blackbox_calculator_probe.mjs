@@ -37,25 +37,29 @@ for (const file of process.argv.slice(2)) {
         }
       } catch {}
     }
-    if (['createCalculator','inputDigit','chooseOperation','calculate'].every(name => typeof exports[name] === 'function')) {
-      for (const symbolic of [false, true]) {
-        const names = {'+':'add','-':'subtract','*':'multiply','/':'divide'};
+    // Keypad state APIs: one function per key, state object with display and an error flag.
+    const keypad = {digit: ['inputDigit', 'enterDigit'], operator: ['chooseOperation', 'chooseOperator'], equals: ['calculate', 'equals']};
+    const pick = names => names.find(name => typeof exports[name] === 'function');
+    const [digitFn, operatorFn, equalsFn] = [pick(keypad.digit), pick(keypad.operator), pick(keypad.equals)];
+    if (typeof exports.createCalculator === 'function' && digitFn && operatorFn && equalsFn) {
+      for (const dialect of [...dialects.slice(0, 2), {'+':'add','-':'subtract','*':'multiply','/':'divide'}]) {
         const execute = (a, op, b) => {
           let state = exports.createCalculator();
-          for (const digit of String(a)) state = exports.inputDigit(state, digit) ?? state;
-          state = exports.chooseOperation(state, symbolic ? op : names[op]) ?? state;
-          for (const digit of String(b)) state = exports.inputDigit(state, digit) ?? state;
-          return exports.calculate(state) ?? state;
+          for (const digit of String(a)) state = exports[digitFn](state, digit) ?? state;
+          state = exports[operatorFn](state, dialect[op]) ?? state;
+          for (const digit of String(b)) state = exports[digitFn](state, digit) ?? state;
+          return exports[equalsFn](state) ?? state;
         };
+        const failed = state => state.hasError === true || state.error === true;
         try {
           const checks = {};
           for (const [label, , a, op, b, expected] of cases) {
             const state = execute(a, op, b);
-            checks[label] = !state.hasError && Number(state.display) === expected;
+            checks[label] = !failed(state) && Number(state.display) === expected;
           }
           try {
             const state = execute(9,'/',0);
-            checks.division_by_zero = state.hasError === true || /error|ошиб|zero|нол/i.test(String(state.display));
+            checks.division_by_zero = failed(state) || /error|ошиб|zero|нол/i.test(String(state.display));
           } catch (error) { checks.division_by_zero = /zero|division|нол|делен/i.test(String(error)); }
           if (Object.values(checks).every(Boolean)) {
             console.log(JSON.stringify({verified:true,checks,entrypoint:`${file}:public calculator state API`}));
