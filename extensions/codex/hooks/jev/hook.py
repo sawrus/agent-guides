@@ -110,6 +110,11 @@ CLAUDE_MODELS = (
     {'id': 'opus', 'description': 'Claude Opus: most capable and most expensive model for complex planning and architecture.', 'prices': None},
 )
 CLAUDE_AGENT_TOOLS = ('Agent', 'Task')
+# Questions to the user and plan approval are dialogs, not permission boundaries: JEV must never answer them.
+CLAUDE_DIALOG_TOOLS = ('AskUserQuestion', 'ExitPlanMode')
+# Claude Code delivers subagent hand-backs and background task notifications through UserPromptSubmit;
+# they continue the current task and must not replace the original request.
+CLAUDE_HARNESS_PROMPT = re.compile(r'\s*(?:Another Claude session sent a message:\s*)?<(?:agent-message|task-notification)\b')
 
 
 def canonical_role(role):
@@ -123,6 +128,28 @@ def claude_models(project):
     pool = {m for m in defaults.values() if isinstance(m, str)} if isinstance(defaults, dict) else set()
     aliases = pool & {m['id'] for m in CLAUDE_MODELS}
     return [dict(m) for m in CLAUDE_MODELS if len(aliases) < 2 or m['id'] in aliases]
+
+
+def claude_alias(model):
+    model = model.lower() if isinstance(model, str) else ''
+    return next((m['id'] for m in CLAUDE_MODELS if m['id'] in model), None)
+
+
+def claude_session_model(project, payload):
+    """Model alias of the main session: transcript first, then the settings chain, then sonnet."""
+    configured = os.environ.get('AGENTIC_JEV_DEFAULT_MODEL')
+    if configured:
+        return configured
+    model = claude_alias(payload.get('model')) or claude_alias(observed_transcript_model(project, payload.get('transcript_path')))
+    if model:
+        return model
+    model = claude_alias(os.environ.get('ANTHROPIC_MODEL'))
+    for path in (project / '.claude/settings.local.json', project / '.claude/settings.json', Path.home() / '.claude/settings.json'):
+        if model:
+            break
+        settings = read_json(path, {})
+        model = claude_alias(settings.get('model')) if isinstance(settings, dict) else None
+    return model or 'sonnet'
 
 
 def frontmatter_field(text, name):
@@ -542,10 +569,14 @@ def claude_event(project, payload):
     data = payload.get('tool_input') or {}
     if not isinstance(data, dict):
         data = {}
+    if name == 'UserPromptSubmit' and CLAUDE_HARNESS_PROMPT.match(str(payload.get('prompt', ''))):
+        return {}
+    if name == 'PermissionRequest' and payload.get('tool_name') in CLAUDE_DIALOG_TOOLS:
+        return {}
     event = {'host': 'claude', 'session_id': payload.get('session_id'),
              'event_id': payload.get('tool_use_id') or payload.get('agent_id') or payload.get('prompt_id'),
              'input': data, 'action': payload.get('tool_name'),
-             'default_model': os.environ.get('AGENTIC_JEV_DEFAULT_MODEL') or 'sonnet'}
+             'default_model': claude_session_model(project, payload)}
     if name == 'UserPromptSubmit':
         event.update(kind='prompt', prompt=payload.get('prompt', ''))
     elif name == 'PreToolUse' and payload.get('tool_name') in CLAUDE_AGENT_TOOLS:

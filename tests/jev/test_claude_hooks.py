@@ -12,7 +12,7 @@ class ClaudeHooks(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.project = Path(self.temp.name)
-        self.environment = patch.dict(os.environ, {}, clear=True)
+        self.environment = patch.dict(os.environ, {'HOME': str(self.project / 'home')}, clear=True)
         self.environment.start()
         (self.project / '.agentic.json').write_text(json.dumps({'settings': {'jev': {'enabled': True}}}))
         workflows = self.project / '.agent/workflows'
@@ -102,6 +102,44 @@ class ClaudeHooks(unittest.TestCase):
         with patch.object(hook, 'run_event', side_effect=lambda p, e: result.update(e) or {}):
             hook.claude_event(self.project, self.payload('PostToolUse', tool_name='Read', tool_input={'file_path': str(self.project / '.claude/commands/develop-feature.md')}))
         self.assertEqual(result['resources'], ['.claude/commands/develop-feature.md'])
+
+    def test_subagent_handback_keeps_original_request(self):
+        hook.claude_event(self.project, self.payload('UserPromptSubmit', prompt='/develop-feature calculator', prompt_id='u1'))
+        with patch.object(hook, 'evaluate', side_effect=AssertionError('paid call')):
+            for prompt in ('<agent-message from="a1">\n[Subagent hand-back] report', '<task-notification> done',
+                           'Another Claude session sent a message: <agent-message from="a2">x'):
+                self.assertEqual(hook.claude_event(self.project, self.payload('UserPromptSubmit', prompt=prompt, prompt_id='h')), {})
+        seen = {}
+        def respond(project, settings, request):
+            seen['original'] = request['state']['original_prompt']
+            return self.answer(request, 'haiku')
+        with patch.object(hook, 'evaluate', side_effect=respond):
+            hook.claude_event(self.project, self.payload('PreToolUse', tool_name='Agent', tool_use_id='t5',
+                              tool_input={'subagent_type': 'developer', 'prompt': 'add sum()'}))
+        self.assertEqual(seen['original'], '/develop-feature calculator')
+
+    def test_user_dialogs_are_never_sent_as_permissions(self):
+        with patch.object(hook, 'evaluate', side_effect=AssertionError('paid call')):
+            for tool in ('AskUserQuestion', 'ExitPlanMode'):
+                out = hook.claude_event(self.project, self.payload('PermissionRequest', tool_name=tool, tool_use_id='q',
+                                        tool_input={'questions': [{'question': 'Which?'}]}))
+                self.assertEqual(out, {})
+        self.assertFalse(list((self.project / '.agentic/jev').glob('event-*.json')))
+
+    def test_session_model_comes_from_transcript_then_settings(self):
+        payload = self.payload('UserPromptSubmit', prompt='x')
+        self.assertEqual(hook.claude_session_model(self.project, payload), 'sonnet')
+        user = self.project / 'home/.claude'
+        user.mkdir(parents=True)
+        (user / 'settings.json').write_text(json.dumps({'model': 'opus'}))
+        self.assertEqual(hook.claude_session_model(self.project, payload), 'opus')
+        (self.project / '.claude/settings.json').write_text(json.dumps({'model': 'claude-haiku-5-5'}))
+        self.assertEqual(hook.claude_session_model(self.project, payload), 'haiku')
+        transcript = self.project / 'main.jsonl'
+        transcript.write_text(json.dumps({'type': 'assistant', 'message': {'model': 'claude-sonnet-5-5', 'content': []}}))
+        self.assertEqual(hook.claude_session_model(self.project, {**payload, 'transcript_path': str(transcript)}), 'sonnet')
+        with patch.dict(os.environ, {'AGENTIC_JEV_DEFAULT_MODEL': 'opus'}):
+            self.assertEqual(hook.claude_session_model(self.project, {**payload, 'transcript_path': str(transcript)}), 'opus')
 
 
 if __name__ == '__main__':

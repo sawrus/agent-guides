@@ -99,6 +99,19 @@ is never applied. `haiku` is the lightweight reviewer model. When JEV is enabled
 An explicit `model` in the Agent call, or a `model:` that a user adds to a role
 file, is a pin and is preserved. Claude does not need a hook trust review.
 
+Claude-specific rules:
+
+- Claude Code delivers subagent hand-backs (`<agent-message …>`) and background
+  task notifications (`<task-notification>`) through `UserPromptSubmit`. The hook
+  ignores them: they continue the current task, so the original request stays the
+  context for the next spawn decisions, and no extra workflow selection runs.
+- `AskUserQuestion` and `ExitPlanMode` are dialogs with the user, not permission
+  boundaries. The hook never sends them to JEV.
+- `default_model` is the main session's alias: `AGENTIC_JEV_DEFAULT_MODEL`, else
+  the last model in the main transcript, else `ANTHROPIC_MODEL`, else `model` in
+  `.claude/settings.local.json`, `.claude/settings.json` or `~/.claude/settings.json`,
+  else `sonnet`. A spawn that falls back inherits this model.
+
 ## Enable and disable
 
 ```sh
