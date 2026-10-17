@@ -96,6 +96,8 @@ pub fn apply_agent_model(app: &App, rel: &str, content: &str) -> String {
             .and_then(|id| profile_agents(app, &id))
             .and_then(|agents| agents.get(role).and_then(Value::as_str).map(str::to_owned))
     };
+    // Windows checkouts may embed CRLF sources; the frontmatter scan below expects LF.
+    let content = &content.replace("\r\n", "\n");
     let Some(rest) = content.strip_prefix("---\n") else {
         return content.to_string();
     };
@@ -124,6 +126,7 @@ struct WorkflowMeta {
 }
 
 fn workflow_meta(text: &str) -> WorkflowMeta {
+    let text = text.replace("\r\n", "\n");
     let front = text
         .strip_prefix("---\n")
         .and_then(|rest| rest.find("\n---").map(|end| &rest[..end]))
@@ -362,6 +365,14 @@ mod tests {
         assert!(text.contains("@.agent/workflows/x.md"));
         assert!(text.contains("`product-owner`"));
         assert!(!text.contains("trigger:"));
+    }
+
+    #[test]
+    fn command_wrapper_reads_crlf_workflow() {
+        let meta = workflow_meta("---\r\ndescription: Do X.\r\ninputs:\r\n  - feature_request\r\nexecution:\r\n  initiator: qa\r\n---\r\nbody");
+        let text = command_text("x", &meta);
+        assert!(text.contains("argument-hint: \"[feature_request]\"\n"));
+        assert!(text.contains("`qa`"));
     }
 
     #[test]
