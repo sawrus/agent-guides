@@ -1,3 +1,8 @@
+---
+name: k8s-manifests
+description: "Provides production Kubernetes deployment, HPA, and PodDisruptionBudget templates; use when writing Kubernetes YAML, designing Helm charts, setting resource limits, configuring probes, or reviewing pod security."
+---
+
 # Skill: Kubernetes Manifests & Helm
 
 ## When to load

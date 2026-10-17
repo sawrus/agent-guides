@@ -1,3 +1,8 @@
+---
+name: performance-tuning
+description: "Tunes frontend performance through re-render prevention, code splitting, image optimization, and bundle analysis; use when optimizing Core Web Vitals, reducing bundle size, diagnosing render performance, or reviewing images and fonts."
+---
+
 # Skill: Frontend Performance Tuning
 
 ## When to load

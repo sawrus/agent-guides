@@ -8,6 +8,7 @@ import importlib.util
 import inspect
 import json
 import math
+import numbers
 from pathlib import Path
 import sys
 import subprocess
@@ -15,6 +16,34 @@ import shutil
 
 CASES = [('addition', '9 + 4', 9, '+', 4, 13), ('subtraction', '9 - 4', 9, '-', 4, 5),
          ('multiplication', '9 * 4', 9, '*', 4, 36), ('division', '9 / 4', 9, '/', 4, 2.25)]
+# One spelling per run: every case must pass with the same operator dialect.
+DIALECTS = [{'+': '+', '-': '-', '*': '*', '/': '/'}, {'+': '+', '-': '−', '*': '×', '/': '÷'},
+            {'+': 'add', '-': 'subtract', '*': 'multiply', '/': 'divide'}]
+
+
+ZERO_WORDS = ('zero', 'ноль', 'нуль', 'нол', 'делени', 'ошиб', 'error')
+
+
+def load_module(project, path):
+    """Import package modules by dotted name so relative imports work; load loose files directly."""
+    if (path.parent / '__init__.py').is_file():
+        for root in (project / 'src', project):
+            try:
+                relative = path.with_suffix('').relative_to(root)
+            except ValueError:
+                continue
+            parts = relative.parts
+            if all((root.joinpath(*parts[:i]) / '__init__.py').is_file() for i in range(1, len(parts))):
+                # Never reuse a cached package of the same name from another project.
+                for name in [m for m in sys.modules if m == parts[0] or m.startswith(parts[0] + '.')]:
+                    del sys.modules[name]
+                importlib.invalidate_caches()
+                return importlib.import_module('.'.join(parts))
+    spec = importlib.util.spec_from_file_location('blackbox_calculator', path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def main(project):
@@ -33,10 +62,7 @@ def main(project):
             classes = [node.name for node in tree.body if isinstance(node, ast.ClassDef) and any(isinstance(method, ast.FunctionDef) and method.name == 'press' for method in node.body)]
             if not candidates and not classes:
                 continue
-            spec = importlib.util.spec_from_file_location('blackbox_calculator', path)
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[spec.name] = module
-            spec.loader.exec_module(module)
+            module = load_module(project, path)
             for name in classes:
                 cls = getattr(module, name)
                 def press_expression(expression):
@@ -72,17 +98,24 @@ def main(project):
                         return function(*args)
                 else:
                     continue
-                verified = {}
-                for label, expr, a, op, b, expected in CASES:
-                    actual = invoke(expr, a, op, b)
-                    verified[label] = isinstance(actual, (int, float)) and not isinstance(actual, bool) and math.isclose(actual, expected)
-                try:
-                    zero = invoke('9 / 0', 9, '/', 0)
-                    verified['division_by_zero'] = zero is None or isinstance(zero, str) and any(word in zero.lower() for word in ('zero', 'ноль', 'нуль', 'ошиб', 'error'))
-                except (ZeroDivisionError, ValueError):
-                    verified['division_by_zero'] = True
-                if all(verified.values()):
-                    return {'verified': True, 'checks': verified, 'entrypoint': str(path.relative_to(project)) + ':' + name}
+                for dialect in DIALECTS:
+                    verified = {}
+                    try:
+                        for label, expr, a, op, b, expected in CASES:
+                            actual = invoke(expr, a, dialect[op], b)
+                            # Decimal/Fraction results are numbers too; booleans and strings are not.
+                            verified[label] = isinstance(actual, numbers.Number) and not isinstance(actual, bool) and math.isclose(float(actual), expected)
+                    except (TypeError, ValueError, KeyError):
+                        continue
+                    try:
+                        zero = invoke('9 / 0', 9, dialect['/'], 0)
+                        verified['division_by_zero'] = zero is None or isinstance(zero, str) and any(word in zero.lower() for word in ZERO_WORDS)
+                    except (ZeroDivisionError, ValueError):
+                        verified['division_by_zero'] = True
+                    except Exception as error:  # noqa: BLE001 - a domain error must still name the zero division
+                        verified['division_by_zero'] = not isinstance(error, (TypeError, AttributeError, NameError)) and any(word in str(error).lower() for word in ZERO_WORDS)
+                    if all(verified.values()):
+                        return {'verified': True, 'checks': verified, 'entrypoint': str(path.relative_to(project)) + ':' + name}
         except (Exception, SystemExit):
             continue
     if shutil.which('node'):

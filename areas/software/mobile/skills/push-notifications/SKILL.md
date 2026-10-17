@@ -1,3 +1,8 @@
+---
+name: push-notifications
+description: "Implements mobile push notifications with well-timed permission requests and deep-linking notification categories; use when implementing push notifications, handling notification permissions, or debugging delivery."
+---
+
 # Skill: Push Notifications
 
 ## When to load

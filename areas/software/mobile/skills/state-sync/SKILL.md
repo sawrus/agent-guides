@@ -1,3 +1,8 @@
+---
+name: state-sync
+description: "Implements offline-first mobile state sync with optimistic updates and an MMKV offline queue; use when implementing offline-first features, handling optimistic updates, or building sync queues."
+---
+
 # Skill: Offline State Sync
 
 ## When to load

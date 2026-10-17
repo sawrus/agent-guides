@@ -1,3 +1,8 @@
+---
+name: native-modules
+description: "Guides native module integration, including when to bridge native SDKs and biometric authentication; use when integrating device APIs, bridging to native SDKs, or debugging platform-specific behavior."
+---
+
 # Skill: Native Module Integration
 
 ## When to load

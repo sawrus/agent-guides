@@ -1,3 +1,8 @@
+---
+name: a11y-audit
+description: "Audits and fixes frontend accessibility with common WCAG violation fixes and a keyboard navigation checklist; use when building interactive components, reviewing a PR for accessibility, or fixing a11y lint errors."
+---
+
 # Skill: Accessibility Audit & Remediation
 
 ## When to load

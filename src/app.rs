@@ -21,6 +21,8 @@ pub struct App {
     pub selected_specs: Vec<String>,
     pub selected_mcps: Vec<String>,
     pub selected_opencode_profile: String,
+    pub selected_claude_profile: String,
+    pub claude_profile_explicit: bool,
     pub install_settings_replay: bool,
 
     pub upgrade_mode: bool,
@@ -49,6 +51,8 @@ pub struct App {
     pub opencode_telegram_chat_id: String,
     pub opencode_agent_model_mapper_enabled: String,
     pub opencode_plugins_configured: bool,
+    /// Explicit --enable-telegram/--disable-telegram; wins over saved settings.
+    pub telegram_cli: Option<bool>,
 
     pub run_log_active: bool,
     pub run_log_file: String,
@@ -89,6 +93,8 @@ impl App {
             selected_specs: Vec::new(),
             selected_mcps: Vec::new(),
             selected_opencode_profile: String::new(),
+            selected_claude_profile: String::new(),
+            claude_profile_explicit: false,
             install_settings_replay: false,
             upgrade_mode: false,
             upgrade_force: false,
@@ -123,6 +129,7 @@ impl App {
             opencode_telegram_chat_id: String::new(),
             opencode_agent_model_mapper_enabled: String::new(),
             opencode_plugins_configured: false,
+            telegram_cli: None,
             run_log_active: false,
             run_log_file: String::new(),
             changed_paths_report_file: String::new(),

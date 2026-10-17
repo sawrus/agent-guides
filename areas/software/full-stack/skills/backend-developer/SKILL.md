@@ -10,7 +10,7 @@ outputs:
 related-rules:
   - backend-architecture-rule.md
   - code-style-guide.md
-allowed-tools: Read, Write, Edit, Grep, Run
+allowed-tools: Read, Write, Edit, Grep, Bash
 ---
 
 # Backend Developer Skill

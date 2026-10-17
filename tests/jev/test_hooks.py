@@ -71,12 +71,12 @@ class Hooks(unittest.TestCase):
             hook.run_event(self.project, self.event('spawn', event_id='developer', agent='developer', models=[{'id':'light'}, {'id':'heavy'}]))
         ciphertext = 'gAAAA-opaque-assignment'
         payload = {'hook_event_name':'PreToolUse', 'session_id':'root', 'tool_use_id':'reviewer',
-                   'tool_name':'spawn_agent', 'tool_input':{'agent_type':'instruction_reviewer', 'message':ciphertext}}
+                   'tool_name':'spawn_agent', 'tool_input':{'agent_type':'instruction-reviewer', 'message':ciphertext}}
         with patch.object(hook, 'codex_models', return_value=[{'id':'gpt-6-luna'}, {'id':'heavy'}]):
             result = hook.codex_event(self.project, payload)['hookSpecificOutput']
         self.assertEqual(result['updatedInput']['message'], ciphertext)
         start = hook.codex_event(self.project, {'hook_event_name':'SubagentStart', 'session_id':'root',
-                 'agent_id':'review-child', 'agent_type':'instruction_reviewer', 'model':'gpt-6-luna'})
+                 'agent_id':'review-child', 'agent_type':'instruction-reviewer', 'model':'gpt-6-luna'})
         self.assertIn('.agentic/jev/review-', start['hookSpecificOutput']['additionalContext'])
         packet = json.loads(next((self.project / '.agentic/jev').glob('review-*.json')).read_text())
         self.assertTrue(any(d['questions'] for d in packet['decisions']))
@@ -86,12 +86,12 @@ class Hooks(unittest.TestCase):
 
     def test_opencode_review_packet_is_delivered_once_per_event_without_paid_review_call(self):
         hook.run_event(self.project, self.event('prompt', prompt='/develop-feature calculator'))
-        event = self.event('spawn', event_id='reviewer', agent='instruction_reviewer', models=[{'id':'gpt-6-luna'}, {'id':'heavy'}])
+        event = self.event('spawn', event_id='reviewer', agent='instruction-reviewer', models=[{'id':'gpt-6-luna'}, {'id':'heavy'}])
         with patch.object(hook, 'evaluate', side_effect=AssertionError('paid review call')):
             result = hook.run_event(self.project, event)
             self.assertTrue((self.project / result['review_packet']).is_file())
             self.assertNotIn('review_packet', hook.run_event(self.project, event))
-            handoff = hook.run_event(self.project, self.event('review_handoff', session_id='child', root_session_id='root', event_id='child-review', agent='instruction_reviewer'))
+            handoff = hook.run_event(self.project, self.event('review_handoff', session_id='child', root_session_id='root', event_id='child-review', agent='instruction-reviewer'))
             self.assertEqual(handoff['review_packet'], result['review_packet'])
 
     def test_workflow_context_model_and_repeat_are_scoped(self):

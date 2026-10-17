@@ -33,7 +33,7 @@ for the task, use it instead of the general one.
 
 ## Cross-cutting constraints
 
-- **Standard roles** — workflows use only: `product-owner`, `pm`, `team-lead`, `developer`, `qa`, `designer`,
+- **Standard roles** — workflows use only: `product-owner`, `pm`, `team-lead`, `developer`, `qa`, `analyst`,
   `devops-engineer`. The initiator appears in the workflow's own `roles` list.
 - **Bounded loops** — every fix/retest or review loop states a maximum (default 3 iterations) and an escalation
   path; cross-workflow trigger chains are acyclic or carry a circuit breaker.

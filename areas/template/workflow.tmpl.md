@@ -13,7 +13,7 @@ roles:
   - {{role-1 — function name, e.g. "copywriter", "campaign-manager"}}
   - {{role-2}}
 execution:
-  initiator: {{role — must be one of: product-owner | pm | team-lead | developer | qa | designer | devops-engineer}}
+  initiator: {{role — must be one of: product-owner | pm | team-lead | developer | qa | analyst | devops-engineer}}
 agent: {{same role as execution.initiator}}
 related-rules:
   - {{rule-filename.md}}

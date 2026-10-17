@@ -11,7 +11,7 @@ outputs:
   - validation_evidence
 roles:
   - product-owner
-  - designer
+  - analyst
   - developer
   - qa
   - team-lead
@@ -34,13 +34,13 @@ quality-gates:
 
 ## Steps
 
-### 1. Component Intent & Acceptance Criteria — `@product-owner` + `@designer`
+### 1. Component Intent & Acceptance Criteria — `@product-owner` + `@analyst`
 - **Input:** component request
-- **Actions:** define component purpose, consumer context, and expected states (loading / empty / error / success / permission-denied); `@designer` specifies interaction design, token usage, and accessibility requirements
+- **Actions:** define component purpose, consumer context, and expected states (loading / empty / error / success / permission-denied); `@analyst` specifies interaction design, token usage, and accessibility requirements
 - **Output:** component spec with acceptance criteria and design reference
 - **Done when:** spec approved; all states defined
 
-### 2. Design System Alignment — `@designer`
+### 2. Design System Alignment — `@analyst`
 - **Input:** component spec
 - **Actions:** verify component fits within existing design system (tokens, spacing, typography, color); flag any new patterns needing design system addition; provide annotated interaction spec or Figma link
 - **Output:** design sign-off; annotated spec with accessibility notes (ARIA roles, keyboard interactions)
@@ -71,7 +71,7 @@ quality-gates:
 flowchart TD
   start(["Start /scaffold-component"])
   role_1["product-owner"]
-  role_2["designer"]
+  role_2["analyst"]
   role_3["developer"]
   role_4["qa"]
   role_5["team-lead"]

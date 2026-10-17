@@ -65,3 +65,87 @@ Permission checks include outside paths, secret files, deletion, patch move
 destinations, symlink escapes, shell working directories and indirect shell file
 reads. Independent calculator probes reject broken arithmetic and self-reported
 acceptance. A run lock prevents overlapping tests from corrupting a shared trace.
+
+# Native verification, 2026-10-16 (Claude Code)
+
+Real Claude Code 2.1.301 received the exact prompt `разработай калькулятор` in a
+temporary Git project installed by Agentic 1.4.0 (`software.backend` +
+`software.general`, JEV and Telegram hooks enabled, coordinator model `sonnet`).
+The run used `make blackbox-claude`. Cleansed artifacts are in
+`.agentic-blackbox/20261016-165654/claude/`.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Native exit | passed | Every stream-json `result` event is `success` |
+| JEV workflow selection | passed | JEV selected `development-cycle-workflow`; the agent read the file (PostToolUse) |
+| Model routing | passed | `haiku` was requested for the Explore subagent and observed as `claude-haiku-5-5` (SubagentStop transcript) |
+| Agents / commands / skills | passed | The `init` event lists all nine roles, `/develop-feature` and the installed skills |
+| Rules and imports | passed | `InstructionsLoaded` recorded `.claude/rules/*.md`, `AGENTS.md` and `MEMORY.md` (via `@` imports) |
+| Telegram `Stop` hook | passed | The local fake Bot API received `✅ Задача завершена — …` with the final answer |
+| Calculator | passed | Independent probe: `calculator/…:evaluate`, the four operations and division by zero |
+| Post-task review | passed | `instruction-reviewer` and `memory-curator` ran once; reports were saved in `.reviews/CALC-001/`; a JEV review packet was produced |
+
+Limitations:
+
+- Most spawn decisions (team-lead, developer, qa, memory-curator) fell back to
+  native models below confidence 0.9.
+- `instruction-reviewer` was routed to `haiku` by the configured lightweight rule,
+  without a paid call.
+- All 14 permission evaluations fell back (`low_confidence`), so automatic
+  approval was not exercised in this run.
+- The gateway reported no cost (`jev_reported_cost_usd: 0`). Coding-model cost
+  reported by Claude was $1.56.
+- The coordinator first stopped to request approval for new root files, as the
+  project rules require. The run then sent its single bounded approval follow-up
+  through `--resume`.
+
+# Native verification, 2026-10-16 (OpenCode and Codex, Agentic 1.4.0)
+
+| Host | Run | Outcome |
+| --- | --- | --- |
+| OpenCode 2.0.29, `openai/gpt-6-luna` | `.agentic-blackbox/20261016-233233` | JEV selected `development-cycle-workflow`; the agent read it and ran PO → `pm` → `team-lead` → `developer` → `qa` → `instruction-reviewer` + `memory-curator` with the 1.4.0 names, after one approval follow-up. The independent probe verified `docs/calculator/app.js:calculate` (typographic operators). JEV returned `no_decision` for all ten spawns, so `model_applied_to_subagent` failed. |
+| Codex 0.163.0 | `.agentic-blackbox/20261016-232317` | First attempts: JEV selected the workflow and the Telegram `Stop` hook delivered, but commands failed with `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted` (the host sets `kernel.apparmor_restrict_unprivileged_userns=1`, so the `workspace-write` sandbox cannot start). Rerun on 2026-10-17 with `BLACKBOX_CODEX_SANDBOX=danger-full-access`, after one approval follow-up: **passed all six checks**. JEV applied `gpt-6-luna` to PO, `pm`, `team-lead`, `developer`, `qa`, `instruction-reviewer` (review packet routed) and `memory-curator`; one `team-lead` spawn fell back and ran on the session model `gpt-6-astra`. The probe verified `calculator/src/calculator.js` (keypad state API, typographic operators). Both permission evaluations fell back. |
+
+`openai/gpt-5.5` is no longer served for ChatGPT-account OAuth in OpenCode, so the
+blackbox default moved to `openai/gpt-6-luna`. Hooks were trusted manually in Codex
+`/hooks` before the run.
+
+Telegram (real bot and fake API, outside the blackbox target): OpenCode V2 did not
+load the 1.3.0 plugin (`Plugin must export a default definition`). The 1.4.0 plugin
+uses `Plugin.define` and delivered both `⏳ Ожидает ввода` (`permission.asked`) and
+`✅ Задача завершена` with Telegram HTML formatting.
+
+# Native verification, 2026-10-17 (Claude Code, opus session, Agentic 1.4.0)
+
+A manual Claude session in an installed project (session model `opus`) showed
+that 6 of 7 spawns fell back and inherited `opus`. Two hook defects caused this:
+
+- Claude Code delivers subagent hand-backs (`<agent-message …>`) and task
+  notifications through `UserPromptSubmit`. The hook treated each one as a new
+  task and replaced the original request, so JEV judged spawns against a
+  subagent report.
+- `AskUserQuestion` was sent to JEV as a permission request.
+
+After the fix, `BLACKBOX_CLAUDE_MODEL=opus make blackbox-claude` with Claude Code
+2.1.302 passed all ten checks (`.agentic-blackbox/20261017-232709`). Every spawn
+decision saw the original request `разработай калькулятор`, and the hook read
+`default_model: opus` from the session.
+
+| Role | JEV answer | Applied | Observed |
+| --- | --- | --- | --- |
+| Explore (exploration) | haiku 0.98 | haiku (JEV) | `claude-haiku-5-5` |
+| team-lead (design) | opus 0.37 | opus (profile default) | `claude-opus-5-5` |
+| developer | haiku 0.40 | sonnet (profile default) | `claude-sonnet-5-5` |
+| qa | haiku 0.31 | sonnet (profile default) | `claude-sonnet-5-5` |
+| team-lead (review) | haiku 0.64 | opus (profile default) | `claude-opus-5-5` |
+| instruction-reviewer | — | haiku (lightweight reviewer rule) | `claude-haiku-5-5` |
+| memory-curator | haiku 0.85 | haiku (profile default) | `claude-haiku-5-5` |
+
+Limits:
+
+- JEV answered above the 0.9 threshold only for exploration. The other spawns
+  used the Claude profile role defaults, not JEV routing; the blackbox counts only
+  `evaluated` answers as JEV routing.
+- All 16 permission evaluations fell back below 0.9 (10 leaned `allow`, but only
+  one request was inside the automatic allow boundary). Claude's native permission
+  handling decided them.

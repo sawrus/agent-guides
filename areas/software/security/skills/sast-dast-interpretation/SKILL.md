@@ -1,3 +1,8 @@
+---
+name: sast-dast-interpretation
+description: "Interprets SAST and DAST results with a triage matrix, common false positives, and OWASP ZAP priority findings; use when reviewing security scan results, triaging vulnerabilities, or deciding which findings to fix or accept."
+---
+
 # Skill: SAST/DAST Results Interpretation
 
 ## When to load

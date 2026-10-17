@@ -1,3 +1,8 @@
+---
+name: streaming-patterns
+description: "Provides Kafka producer and consumer best practices and dead letter queue patterns for streaming data; use when designing Kafka consumers or producers or implementing real-time pipelines."
+---
+
 # Skill: Streaming Data Patterns
 
 ## When to load

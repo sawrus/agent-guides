@@ -69,14 +69,14 @@ Common options:
 
 ## Core commands
 
-### Optional JEV workflow skill
+### Optional JEV native hooks
 
 Select `jev` beside Context7 in TUI. The server defaults to the official TypeSafe
 AI API without a picker. Use `--jev-api-url` or `JEV_API_URL` for your test server.
 For a non-interactive install:
 
 ```bash
-agentic install --project-dir /path/to/project --agent-os codex \
+agentic install --project-dir /path/to/project --agent-os codex,opencode,claude \
   --areas software --specializations software.backend \
   --enable-jev --no-doctor
 ```
@@ -84,9 +84,22 @@ agentic install --project-dir /path/to/project --agent-os codex \
 Use `--disable-jev` on a later install to turn it off. The project manifest stores
 `settings.jev.enabled/api_url`; keys stay in environment or project `.env`.
 Hosted uses `JEV_API_KEY`; official TypeSafe uses `TYPESAFE_API_KEY`.
-No MCP server or extra Rust API client is installed. Workflows conditionally load
-`.agent/skills/jev/SKILL.md` and call its Python standard-library helper.
-See [activation and local checks](jev-integration/README.md).
+No MCP server or extra Rust API client is installed. Native hooks (Codex
+`.codex/hooks.json`, OpenCode plugin, Claude `.claude/settings.json`) call
+`.agent/jev/hook.py`. See [activation and local checks](jev-integration/README.md).
+
+### Telegram notifications and Claude model profiles
+
+```bash
+agentic install --project-dir /path/to/project --agent-os claude,codex \
+  --areas software --specializations software.backend \
+  --enable-telegram --claude-profile anthropic --no-doctor
+```
+
+`--enable-telegram` / `--disable-telegram` control notifications on every host
+(OpenCode plugin, Claude and Codex hooks); see [notifications](notifications/README.md).
+`--claude-profile anthropic|none` (or `AGENTIC_CLAUDE_PROFILE`) pins or clears
+per-role model aliases in `.claude/agents`; see [Claude Code](claude-code/README.md).
 
 Start TUI:
 
@@ -175,7 +188,7 @@ When `opencode` is selected, interactive installs ask whether to enable `Telegra
 ~/.config/agentic/opencode-plugins.json
 ```
 
-Non-interactive installs create a disabled config when no config exists. Interactive installs ask for Telegram `botToken` and `chatId` when `telegram-notification` is selected for the first time, then save those credentials in `$HOME/.config/agentic/config.json` under `opencode.plugins.telegram`. Later interactive `agentic install` and `agentic tui` runs offer to reuse the saved Telegram credentials instead of immediately asking for raw input. The target project `.agentic.json` records Telegram enablement only and does not store raw Telegram secrets. When enabled, `agent-model-mapper` runs during interactive `agentic install`/`agentic tui`, uses `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after a Confirm action. OpenCode startup does not load a mapper runtime plugin or prompt for model mapping.
+Non-interactive installs create a disabled config when no config exists. Interactive installs ask for Telegram `botToken` and `chatId` when `telegram-notification` is selected for the first time, then save those credentials in `$HOME/.config/agentic/config.json` under `opencode.plugins.telegram`. Later interactive `agentic install` and `agentic tui` runs offer to reuse the saved Telegram credentials instead of immediately asking for raw input. The target project `.agentic.json` records Telegram enablement only and does not store raw Telegram secrets. When enabled, `agent-model-mapper` runs during interactive `agentic install`/`agentic tui`, uses `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after a Confirm action. OpenCode startup does not load a mapper runtime plugin or prompt for model mapping. The Telegram plugin targets the OpenCode V2 plugin API and forwards events to the shared `.agent/notify/telegram.py` (installed with it), so OpenCode, Claude Code and Codex send identical messages; see [Telegram notifications](notifications/README.md).
 
 OpenCode model profiles are stored in `extensions/opencode/profiles` and appear in the same optional OpenCode selection menu as the plugin choices. The built-in choices are `OpenAI Model Profile` and `GitHub Copilot Model Profile`; non-interactive installs can choose them with `AGENTIC_OPENCODE_PROFILE=openai` or `AGENTIC_OPENCODE_PROFILE=githubcopilot`. Users can add local profiles under `$HOME/.config/agentic/opencode/profiles/<profile-id>/opencode.json`; for example, `DT/opencode.json` appears as `DT profile` and `GH/opencode.json` appears as `GH profile`. Profile selection merges agent model mappings into `.opencode/opencode.json`, then MCP configuration is merged afterward.
 

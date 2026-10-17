@@ -1,3 +1,8 @@
+---
+name: security-headers
+description: "Defines required HTTP security headers and API-specific header rules; use when configuring web servers or API gateways or when reviewing HTTP responses."
+---
+
 # Skill: HTTP Security Headers
 
 ## When to load

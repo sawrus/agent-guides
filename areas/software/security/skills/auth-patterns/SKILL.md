@@ -1,3 +1,8 @@
+---
+name: auth-patterns
+description: "Provides authentication and authorization patterns for JWT handling and RBAC; use when implementing login, token management, OAuth integration, or RBAC, or when reviewing auth code."
+---
+
 # Skill: Authentication & Authorization Patterns
 
 ## When to load

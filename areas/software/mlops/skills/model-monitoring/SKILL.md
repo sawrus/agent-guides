@@ -1,3 +1,8 @@
+---
+name: model-monitoring
+description: "Defines model monitoring dimensions and PSI-based drift detection; use when setting up monitoring for a deployed model or responding to drift alerts."
+---
+
 # Skill: Model Monitoring
 
 ## When to load

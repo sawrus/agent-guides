@@ -1,3 +1,8 @@
+---
+name: secrets-management
+description: "Defines a secrets hierarchy, the ExternalSecrets pattern, and a rotation checklist; use when provisioning a new service, rotating credentials, or setting up CI/CD secrets."
+---
+
 # Skill: Secrets Management
 
 ## When to load

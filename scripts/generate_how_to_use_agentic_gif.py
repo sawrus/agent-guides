@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROMPT = "Define acceptance criteria for a tiny CLI that greets a user by name. Keep it short."
-ROLE_ORDER = ["product-owner", "pm", "team-lead", "developer", "qa", "designer", "devops-engineer"]
+ROLE_ORDER = ["product-owner", "pm", "team-lead", "developer", "qa", "analyst", "devops-engineer"]
 GIF_WIDTH = 820
 GIF_HEIGHT = 522
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")

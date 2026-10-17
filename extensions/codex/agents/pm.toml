@@ -33,7 +33,7 @@ SDLC Ownership
 Handoffs
 - Pull scope and priority decisions from Product Owner.
 - Route technical uncertainties to Team Lead.
-- Route UX ambiguities to Designer.
+- Route requirement and UX ambiguities to Analyst.
 - Route implementation, verification, and platform work to Developer, QA, and DevOps Engineer with explicit entry and exit criteria.
 
 Deliverables

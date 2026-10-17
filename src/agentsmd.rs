@@ -15,6 +15,8 @@ pub fn get_dest_dir(agent_os: &str, bucket: &str) -> String {
             "-",
         ]),
         "cursor" => Some([".cursor/rules", ".cursor/skills", "-", "-"]),
+        // Workflows stay in .agent/workflows; .claude/commands holds thin wrappers.
+        "claude" => Some([".claude/rules", ".claude/skills", "-", "-"]),
         "kilocode" | "antigravity" => Some([
             ".kilocode/rules",
             ".kilocode/skills",
@@ -142,6 +144,9 @@ mod tests {
         assert_eq!(get_dest_dir("antigravity", "rules"), ".kilocode/rules");
         assert_eq!(get_dest_dir("default", "rules"), ".agent/rules");
         assert_eq!(get_dest_dir("codex", "prompts"), ".agent/prompts");
+        assert_eq!(get_dest_dir("claude", "rules"), ".claude/rules");
+        assert_eq!(get_dest_dir("claude", "skills"), ".claude/skills");
+        assert_eq!(get_dest_dir("claude", "workflows"), "-");
         assert_eq!(get_dest_dir("agents", "skills"), ".agent/skills");
     }
 

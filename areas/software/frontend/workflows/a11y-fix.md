@@ -10,7 +10,7 @@ outputs:
   - a11y_report
 roles:
   - qa
-  - designer
+  - analyst
   - developer
   - team-lead
 execution:
@@ -36,11 +36,11 @@ quality-gates:
 - **Output:** `a11y_audit.md` — finding list with WCAG criterion, severity, and affected element
 - **Done when:** all findings classified; critical path issues flagged
 
-### 2. UX Decision for Ambiguous Fixes — `@designer`
+### 2. UX Decision for Ambiguous Fixes — `@analyst`
 - **Input:** audit findings that require UX judgment (alt text wording, focus order, label copy)
 - **Actions:** review findings requiring design input; provide decisions on: alt text wording, ARIA label content, focus order, color contrast alternatives
 - **Output:** design decisions documented per ambiguous finding
-- **Done when:** all ambiguous findings have designer-approved decisions
+- **Done when:** all ambiguous findings have analyst-approved decisions
 
 ### 3. Implement Fixes — `@developer`
 - **Input:** audit + design decisions
@@ -67,7 +67,7 @@ quality-gates:
 flowchart TD
   start(["Start /a11y-fix"])
   role_1["qa"]
-  role_2["designer"]
+  role_2["analyst"]
   role_3["developer"]
   role_4["team-lead"]
   step_1["1. Audit & Severity Classification"]

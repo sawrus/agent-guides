@@ -12,9 +12,10 @@ outputs:
 roles:
   - pm
   - team-lead
-  - designer
+  - analyst
   - developer
   - qa
+  - devops-engineer
 execution:
   initiator: pm
 agent: pm
@@ -34,11 +35,11 @@ quality-gates:
 
 ### 1. Requirement Analysis & Models — `@pm` + `@team-lead`
 - **Input:** feature request
-- **Actions:** `@pm` captures requirements; `@team-lead` identifies impacted domain entities and determines if schema changes are needed; if UI is involved, `@designer` delivers the UI spec/mockup artifact (`docs/<feature>/ui_spec.md` or linked mockup)
-- **Output:** confirmed feature spec with data model notes (+ `@designer` UI spec/mockup when UI is involved)
+- **Actions:** `@pm` captures requirements; `@team-lead` identifies impacted domain entities and determines if schema changes are needed; if UI is involved, `@analyst` delivers the UI spec/mockup artifact (`docs/<feature>/ui_spec.md` or linked mockup)
+- **Output:** confirmed feature spec with data model notes (+ `@analyst` UI spec/mockup when UI is involved)
 - **Done when:** impacted layers identified; `@developer` briefed
 
-### 2. Design & Planning — `@team-lead` + `@designer`
+### 2. Design & Planning — `@team-lead` + `@analyst`
 - **Input:** confirmed feature spec
 - **Actions:** design layer changes (models → repository → service → API); specify Pydantic/DTO schemas for input/output; plan Alembic migration if schema changes needed; define UX states (loading / empty / error / success) if frontend involved
 - **Output:** brief implementation plan presented to `@pm` for user confirmation
@@ -77,11 +78,17 @@ quality-gates:
 - **Done when:** zero blocking issues; all checks green; docs, `CHANGELOG.md`, and version bump committed
 
 
+### 7. Deployment (optional) — `@devops-engineer`
+- **Input:** QA go recommendation and the infrastructure, pipeline, configuration, or rollout changes the increment needs
+- **Actions:** skip with a one-line note when no CI/CD, infrastructure, or deployment change is needed; otherwise apply changes through code (IaC / pipeline definitions), run the pipeline, and verify the rollback path
+- **Output:** pipeline run evidence and `ops_notes.md` (or the documented skip)
+- **Done when:** deployment evidence is attached, or the step is explicitly skipped as not needed
+
 ## Post-task review
 
 - **Coordinator:** `@pm` (`execution.initiator`).
 - **When:** after successful acceptance/sign-off and docs, CHANGELOG, and version completion, before the final user response.
-- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction_reviewer` and `memory_curator` as read-only specialists outside SDLC `roles`.
+- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction-reviewer` and `memory-curator` as read-only specialists outside SDLC `roles`.
 - **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
 - **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
 - **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.
@@ -94,15 +101,17 @@ flowchart TD
   start(["Start /feature-implementation-flow"])
   role_1["pm"]
   role_2["team-lead"]
-  role_3["designer"]
+  role_3["analyst"]
   role_4["developer"]
   role_5["qa"]
+  role_6["devops-engineer"]
   step_1["1. Requirement Analysis & Models"]
   step_2["2. Design & Planning"]
   step_3["3. Implementation — Inner to Outer"]
   step_4["4. Verification"]
   step_5["5. Review"]
   step_6["6. Fix / Retest Loop"]
+  step_7["7. Deployment (optional)"]
   exit(["@team-lead approval + passing checks = feature ready to merge."])
   start --> step_1
   step_1 --> step_2
@@ -110,7 +119,8 @@ flowchart TD
   step_3 --> step_4
   step_4 --> step_5
   step_5 --> step_6
-  step_6 --> exit
+  step_6 --> step_7
+  step_7 --> exit
   role_1 -. owns .-> step_1
   role_2 -. owns .-> step_1
   role_2 -. owns .-> step_2
@@ -121,6 +131,7 @@ flowchart TD
   role_2 -. owns .-> step_5
   role_4 -. owns .-> step_6
   role_5 -. owns .-> step_6
+  role_6 -. owns .-> step_7
 ```
 <!-- agent-diagram:end -->
 

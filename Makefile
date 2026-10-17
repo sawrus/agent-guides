@@ -6,7 +6,7 @@ COVERAGE_MIN ?= 80
 
 .PHONY: help install dev build release-build test test-unit test-integration \
 	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
-	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode test-jev-hooks test-jev-sdk
+	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode blackbox-claude test-jev-hooks test-notify test-jev-sdk
 
 help:
 	@echo "Agentic Makefile targets:"
@@ -26,9 +26,11 @@ help:
 	@echo "  sync-diagrams    - sync workflow diagrams (content tooling)"
 	@echo "  assess-areas     - area quality scorecards (content tooling)"
 	@echo "  jev-rnd-verify   - inspect saved research results offline"
-	@echo "  blackbox         - real local Codex/OpenCode + JEV calculator checks (paid)"
+	@echo "  test-notify      - offline Telegram notifier tests (fake Bot API)"
+	@echo "  blackbox         - real local Codex/OpenCode/Claude + JEV calculator checks (paid)"
 	@echo "  blackbox-codex   - real Codex + JEV calculator check"
 	@echo "  blackbox-opencode - real OpenCode V2 + JEV calculator check"
+	@echo "  blackbox-claude  - real Claude Code + JEV + Telegram hook calculator check"
 
 build:
 	$(CARGO) build
@@ -47,8 +49,14 @@ blackbox-codex: build
 blackbox-opencode: build
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/blackbox_jev.py --host opencode $(BLACKBOX_ARGS)
 
+blackbox-claude: build
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/blackbox_jev.py --host claude $(BLACKBOX_ARGS)
+
 test-jev-hooks:
-	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=extensions/codex/hooks/jev python3 -m unittest discover -s tests/jev
+	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=extensions/codex/hooks/jev:tests/notify python3 -m unittest discover -s tests/jev
+
+test-notify:
+	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=extensions/codex/hooks/notify:tests/notify python3 -m unittest discover -s tests/notify
 
 release-build:
 	$(CARGO) build --release
@@ -59,7 +67,7 @@ install: release-build
 dev:
 	@echo "Run: cargo run -- tui"
 
-test: test-unit test-integration e2e test-content test-jev-hooks
+test: test-unit test-integration e2e test-content test-jev-hooks test-notify
 
 test-content:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m unittest discover -s tests/content

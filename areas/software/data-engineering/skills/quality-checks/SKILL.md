@@ -1,3 +1,8 @@
+---
+name: quality-checks
+description: "Defines a dbt test taxonomy and volume anomaly detection for data quality; use when adding tests to dbt models, implementing data validation, or investigating data quality incidents."
+---
+
 # Skill: Data Quality Checks
 
 ## When to load

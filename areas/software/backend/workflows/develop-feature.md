@@ -15,7 +15,8 @@ roles:
   - team-lead
   - developer
   - qa
-  - designer
+  - analyst
+  - devops-engineer
 execution:
   initiator: product-owner
 agent: product-owner
@@ -42,11 +43,11 @@ quality-gates:
 - **Output:** `docs/<feature>/README.md` with acceptance criteria
 - **Done when:** criteria are testable and approved by `@product-owner`
 
-### 2. Solution Design & Risk Plan — `@team-lead` + `@designer`
+### 2. Solution Design & Risk Plan — `@team-lead` + `@analyst`
 - **Input:** approved acceptance criteria
 - **Actions:** identify impacted domain entities and service boundaries; design API contracts and data model changes; define UX states and interaction constraints; flag security and performance risks; confirm approach with `@developer` for feasibility
 - **Output:** `docs/<feature>/implementation_plan.md` — layers affected, risks, migration notes if any
-- **Done when:** `@team-lead` and `@designer` approve plan; no open architecture blockers
+- **Done when:** `@team-lead` and `@analyst` approve plan; no open architecture blockers
 
 ### 3. Implementation — `@developer`
 - **Input:** approved implementation plan
@@ -80,7 +81,13 @@ quality-gates:
 - **Output:** updated code + updated test report
 - **Done when:** zero open blocking issues
 
-### 7. Acceptance & Final Report — `@product-owner` + `@pm`
+### 7. Deployment (optional) — `@devops-engineer`
+- **Input:** QA go recommendation and the infrastructure, pipeline, configuration, or rollout changes the increment needs
+- **Actions:** skip with a one-line note when no CI/CD, infrastructure, or deployment change is needed; otherwise apply changes through code (IaC / pipeline definitions), run the pipeline, and verify the rollback path
+- **Output:** pipeline run evidence and `ops_notes.md` (or the documented skip)
+- **Done when:** deployment evidence is attached, or the step is explicitly skipped as not needed
+
+### 8. Acceptance & Final Report — `@product-owner` + `@pm`
 - **Input:** verified increment + risk summary
 - **Actions:** `@product-owner` validates acceptance criteria; `@pm` produces delivery summary with decisions and follow-ups; update feature docs under `docs/**`, add a `CHANGELOG.md` entry, and bump the project version
 - **Output:** `docs/<feature>/delivery_summary.md` — accepted / deferred with rationale
@@ -95,16 +102,18 @@ flowchart TD
   role_1["product-owner"]
   role_2["pm"]
   role_3["team-lead"]
-  role_4["designer"]
+  role_4["analyst"]
   role_5["developer"]
   role_6["qa"]
+  role_7["devops-engineer"]
   step_1["1. Requirements & Value Framing"]
   step_2["2. Solution Design & Risk Plan"]
   step_3["3. Implementation"]
   step_4["4. Risk-Based Verification"]
   step_5["5. Code Review & Architecture Sign-off"]
   step_6["6. Fix / Retest Loop"]
-  step_7["7. Acceptance & Final Report"]
+  step_7["7. Deployment (optional)"]
+  step_8["8. Acceptance & Final Report"]
   exit(["@product-owner acceptance + no unresolved blockers = feature complete and r..."])
   start --> step_1
   step_1 --> step_2
@@ -113,7 +122,8 @@ flowchart TD
   step_4 --> step_5
   step_5 --> step_6
   step_6 --> step_7
-  step_7 --> exit
+  step_7 --> step_8
+  step_8 --> exit
   role_1 -. owns .-> step_1
   role_2 -. owns .-> step_1
   role_3 -. owns .-> step_2
@@ -124,9 +134,10 @@ flowchart TD
   role_5 -. owns .-> step_6
   role_6 -. owns .-> step_6
   role_2 -. owns .-> step_6
-  role_1 -. owns .-> step_7
-  role_2 -. owns .-> step_7
-  step_7 -. iterate if blocked .-> step_1
+  role_7 -. owns .-> step_7
+  role_1 -. owns .-> step_8
+  role_2 -. owns .-> step_8
+  step_8 -. iterate if blocked .-> step_1
 ```
 <!-- agent-diagram:end -->
 
@@ -134,17 +145,17 @@ flowchart TD
 Steps 3–6 repeat per increment for large features (bounded by the increment list from step 2). `@pm` tracks scope changes and timeline impact.
 
 ## Mandatory Role Delegation
-- For `/develop-feature`, the executor must spawn exactly 6 SDLC subagents, one per role: `@product-owner`, `@pm`, `@team-lead`, `@developer`, `@qa`, `@designer`.
+- For `/develop-feature`, the executor must spawn exactly 6 SDLC subagents, one per role: `@product-owner`, `@pm`, `@team-lead`, `@developer`, `@qa`, `@analyst`; add `@devops-engineer` as a seventh only when step 7 is not skipped.
 - The two Post-task review specialists are additional read-only agents outside this six-agent SDLC matrix.
 - Role consolidation is forbidden: one subagent cannot own multiple roles.
-- Implementation work may start only after requirements outputs from `@product-owner` and `@pm`, and design outputs from `@team-lead` and `@designer`, are complete.
+- Implementation work may start only after requirements outputs from `@product-owner` and `@pm`, and design outputs from `@team-lead` and `@analyst`, are complete.
 - Final delivery requires QA recommendation and team-lead sign-off.
 
 ## Post-task review
 
 - **Coordinator:** `@product-owner` (`execution.initiator`).
 - **When:** after successful acceptance/sign-off and docs, CHANGELOG, and version completion, before the final user response.
-- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction_reviewer` and `memory_curator` as read-only specialists outside SDLC `roles`.
+- **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction-reviewer` and `memory-curator` as read-only specialists outside SDLC `roles`.
 - **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
 - **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
 - **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.

@@ -1,3 +1,8 @@
+---
+name: model-evaluation
+description: "Guides model evaluation with threshold selection and subgroup fairness analysis; use when evaluating a trained model, comparing model versions, or performing fairness analysis."
+---
+
 # Skill: Model Evaluation
 
 ## When to load

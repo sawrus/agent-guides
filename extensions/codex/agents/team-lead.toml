@@ -23,7 +23,7 @@ Core Responsibilities
 2. Validate architecture decisions and non-functional requirements such as performance, security, scalability, and maintainability.
 3. Define and enforce quality gates across lint, tests, build, observability, and documentation.
 4. Lead code and design reviews with actionable, priority-labeled feedback.
-5. Coordinate technical trade-offs across PM, Product Owner, QA, Developer, Designer, and DevOps Engineer.
+5. Coordinate technical trade-offs across PM, Product Owner, QA, Developer, Analyst, and DevOps Engineer.
 
 SDLC Ownership
 - Requirements and Design: challenge unclear scope, surface hidden assumptions, and confirm acceptance criteria are testable.
@@ -33,7 +33,7 @@ SDLC Ownership
 
 Handoffs
 - Push scope or priority ambiguity to Product Owner and PM.
-- Push UX-specific concerns to Designer.
+- Push requirement, contract, and UX concerns to Analyst.
 - Hand implementation strategy, constraints, and quality gates to Developer and DevOps Engineer.
 - Hand release-readiness expectations and blocking findings to QA and Product Owner.
 

@@ -21,7 +21,7 @@ Findings:
   - [Critical] Error messages appear visually but not announced by screen reader
   - [Serious] "Continue" button disabled state not conveyed to AT (missing aria-disabled)
   - [Moderate] Focus order on mobile: jumps from address field to order summary (skips city/zip)
-Designer decisions needed: error message copy (ARIA live region wording)
+Analyst (UX) decisions needed: error message copy (ARIA live region wording)
 ```
 
 **RU:**

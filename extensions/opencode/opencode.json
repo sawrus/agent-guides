@@ -1,24 +1,21 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": [
-    "telegram-notification"
-  ],
   "agent": {
     "product-owner": {
       "description": "Main coordinator for feature development workflow",
       "mode": "primary",
       "model": "",
-      "fallback": [
-      ],
+      "fallback": [],
       "permission": {
         "task": {
           "pm": "allow",
           "team-lead": "allow",
-          "designer": "allow",
+          "analyst": "allow",
           "developer": "allow",
           "qa": "allow",
-          "instruction_reviewer": "allow",
-          "memory_curator": "allow"
+          "devops-engineer": "allow",
+          "instruction-reviewer": "allow",
+          "memory-curator": "allow"
         }
       }
     },
@@ -26,14 +23,16 @@
       "description": "Project Manager - coordinates workflow",
       "mode": "subagent",
       "model": "",
-      "fallback": [
-      ],
+      "fallback": [],
       "permission": {
         "task": {
           "team-lead": "allow",
-          "designer": "allow",
+          "analyst": "allow",
           "developer": "allow",
-          "qa": "allow"
+          "qa": "allow",
+          "devops-engineer": "allow",
+          "instruction-reviewer": "allow",
+          "memory-curator": "allow"
         }
       }
     },
@@ -41,12 +40,15 @@
       "description": "Team Lead - planning and code review",
       "mode": "all",
       "model": "",
-      "fallback": [
-      ],
+      "fallback": [],
       "permission": {
         "task": {
+          "analyst": "allow",
           "developer": "allow",
-          "qa": "allow"
+          "qa": "allow",
+          "devops-engineer": "allow",
+          "instruction-reviewer": "allow",
+          "memory-curator": "allow"
         }
       }
     },
@@ -54,43 +56,45 @@
       "description": "Developer - implements code",
       "mode": "all",
       "model": "",
-      "fallback": [
-      ]
+      "fallback": []
     },
     "devops-engineer": {
       "description": "DevOps Engineer - infrastructure, CI/CD, and platform reliability",
       "mode": "all",
       "model": "",
-      "fallback": [
-      ]
+      "fallback": []
     },
-    "instruction_reviewer": {
+    "instruction-reviewer": {
       "description": "Instruction Reviewer - post-task review of instruction effectiveness and tool discipline",
       "mode": "all",
       "model": "",
-      "fallback": [
-      ]
+      "fallback": [],
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
     },
-    "memory_curator": {
+    "memory-curator": {
       "description": "Memory Curator - post-task memory hygiene recommendations without automatic writes",
       "mode": "all",
       "model": "",
-      "fallback": [
-      ]
+      "fallback": [],
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
     },
     "qa": {
       "description": "QA Engineer - runs tests",
       "mode": "subagent",
       "model": "",
-      "fallback": [
-      ]
+      "fallback": []
     },
-    "designer": {
-      "description": "Designer - UI/UX validation",
+    "analyst": {
+      "description": "Analyst - requirements, contracts, and UX specification",
       "mode": "subagent",
       "model": "",
-      "fallback": [
-      ]
+      "fallback": []
     }
   }
 }

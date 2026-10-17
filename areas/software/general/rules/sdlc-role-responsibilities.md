@@ -15,14 +15,18 @@ description: Role matrix for SDLC responsibilities, handoffs, and decision right
 | `@team-lead` | Technical strategy, architecture quality, engineering sign-off |
 | `@developer` | Implementation, technical correctness, test coverage |
 | `@qa` | Verification strategy, quality evidence, go/no-go recommendation |
-| `@designer` | UX quality, information architecture, interaction consistency |
+| `@analyst` | Requirements analysis, scenarios, API/data contracts, testable acceptance criteria, UX states |
+| `@devops-engineer` | CI/CD, infrastructure-as-code, deployment, observability (optional stage) |
+
+`@pm` and `@analyst` are optional: involve them when the change needs delivery planning or requirements/contract analysis.
+Post-task specialists `@instruction-reviewer` and `@memory-curator` are outside this matrix; see `REVIEW_PIPELINE.md`.
 
 ---
 
 ## Mandatory Subagent Mapping
 
 - When subagent execution is required for SDLC workflows, spawn exactly **one subagent per role**.
-- Mandatory one-to-one mapping: `@product-owner`, `@pm`, `@team-lead`, `@developer`, `@qa`, `@designer`.
+- Mandatory one-to-one mapping for every role the workflow lists: `@product-owner`, `@team-lead`, `@developer`, `@qa`, plus `@pm`, `@analyst`, and `@devops-engineer` when involved.
 - **Role consolidation is forbidden** — assigning multiple SDLC roles to one subagent is a process violation.
 - If a role's output is missing, execution **must stop** and request that role's output before continuing.
 
@@ -33,10 +37,10 @@ description: Role matrix for SDLC responsibilities, handoffs, and decision right
 | SDLC Phase | Primary owner(s) | Key outputs |
 |:---|:---|:---|
 | Requirements | `@product-owner`, `@pm` | Problem statement, acceptance criteria, scope decisions, explicit non-goals |
-| Design | `@team-lead`, `@designer` | Implementation plan, UX brief, architecture notes, risk register |
+| Design | `@team-lead`, `@analyst` | Implementation plan, analysis spec (incl. UX brief), architecture notes, risk register |
 | Implementation | `@developer` | Code changes, tests, `implementation_notes.md` |
 | Verification | `@qa`, `@team-lead` | Test report, defect log, review feedback, go/no-go |
-| Deployment | `@pm`, `@team-lead` | Go/no-go decision, rollout plan, rollback procedure |
+| Deployment (optional) | `@devops-engineer`, `@team-lead` | Pipeline/IaC changes, rollout plan, rollback procedure, deployment evidence |
 | Maintenance | `@developer`, `@qa`, `@team-lead` | Incident fixes, postmortems, hardening backlog |
 
 ---
@@ -46,15 +50,19 @@ description: Role matrix for SDLC responsibilities, handoffs, and decision right
 Phases must execute in this order when subagent execution is required. Do not skip or reorder without documented justification.
 
 ```
-Requirements (@product-owner, @pm)
+Requirements (@product-owner, optional @pm, @analyst)
     ↓
-Design (@team-lead, @designer)
+Design (@team-lead, optional @analyst)
     ↓
 Implementation (@developer)
     ↓
 Verification (@qa, @team-lead)
     ↓
-Acceptance / Release (@product-owner, @pm)
+Deployment (optional @devops-engineer)
+    ↓
+Acceptance / Release (@product-owner)
+    ↓
+Post-task review (@instruction-reviewer + @memory-curator, read-only, when the workflow has a review hook)
 ```
 
 ---
@@ -78,7 +86,12 @@ Every handoff must include the following artifacts. A handoff without these item
 - Known limitations or deferred items
 - Migration / release notes if behavior changed
 
-**4. Verification → Acceptance / Release**
+**4. Verification → Deployment (optional)**
+- Go recommendation with test evidence
+- Required infrastructure, pipeline, and configuration changes
+- Rollback expectations
+
+**5. Verification / Deployment → Acceptance / Release**
 - Blocking defect status (resolved / accepted with rationale)
 - Residual risks with owner and mitigation
 - Go / no-go recommendation with written rationale

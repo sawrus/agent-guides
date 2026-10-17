@@ -1,3 +1,8 @@
+---
+name: testing-patterns
+description: "Provides frontend testing patterns for component tests, custom hook tests, and MSW API mocks; use when writing tests for components, hooks, or integration flows."
+---
+
 # Skill: Frontend Testing Patterns
 
 ## When to load

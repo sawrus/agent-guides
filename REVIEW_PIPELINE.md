@@ -49,7 +49,7 @@ review JEV, launch extra reviews on every Stop event, or recurse on these report
 
 ## Dispatch and failure handling
 
-Invoke `instruction_reviewer` and `memory_curator` independently with the same
+Invoke `instruction-reviewer` and `memory-curator` independently with the same
 packet; they may run in parallel when the environment supports it. Prefer the
 native installed agent definitions. If only generic delegation exists, pass the
 corresponding installed profile as a read-only assignment. If neither is available,

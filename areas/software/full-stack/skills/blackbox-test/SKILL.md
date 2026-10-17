@@ -1,5 +1,5 @@
 ---
-name: blackbox-testing
+name: blackbox-test
 description: Automates end-to-end and system validation tests. Runs services via Docker, feeds inputs, executes scenarios, and verifies outputs.
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---

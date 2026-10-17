@@ -1,3 +1,8 @@
+---
+name: inference-serving
+description: "Provides a FastAPI inference endpoint pattern and a latency checklist for model serving; use when deploying a model to an API endpoint or optimizing inference latency."
+---
+
 # Skill: Inference Serving
 
 ## When to load

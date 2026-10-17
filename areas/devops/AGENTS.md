@@ -28,7 +28,7 @@ If the task spans multiple specs, load the primary spec's full chain, then the s
 
 ## Cross-cutting constraints
 
-- **Standard roles** — workflows use only: `product-owner`, `pm`, `team-lead`, `developer`, `qa`, `designer`,
+- **Standard roles** — workflows use only: `product-owner`, `pm`, `team-lead`, `developer`, `qa`, `analyst`,
   `devops-engineer`. No parenthetical annotations; the initiator appears in the workflow's own `roles` list.
 - **Bounded loops** — every retry or iteration states a maximum (default 3) and an escalation path; cross-workflow
   trigger chains are acyclic or carry a circuit breaker.

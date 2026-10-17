@@ -1,3 +1,8 @@
+---
+name: mobile-testing
+description: "Provides Detox end-to-end test patterns for mobile apps; use when writing mobile E2E tests or configuring Detox."
+---
+
 # Skill: Mobile Testing (Detox)
 
 ## When to load

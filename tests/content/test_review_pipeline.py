@@ -15,7 +15,7 @@ class ReviewContractTests(unittest.TestCase):
         self.assertEqual(validate(), [])
 
     def test_specialist_cannot_replace_sdlc_owner(self):
-        changed = self.text.replace('  - designer\n', '  - instruction_reviewer\n')
+        changed = self.text.replace('  - analyst\n', '  - instruction-reviewer\n')
         self.assertIn('SDLC role matrix changed', workflow_issues(changed, self.roles))
 
     def test_wrong_coordinator_rejected(self):
@@ -29,12 +29,12 @@ class ReviewContractTests(unittest.TestCase):
                 self.assertIn(f'hook missing contract: {token}', workflow_issues(changed, self.roles))
 
     def test_specialist_step_rejected(self):
-        changed = self.text + '\n### Review — `@memory_curator`\n'
+        changed = self.text + '\n### Review — `@memory-curator`\n'
         self.assertIn('specialists must not be SDLC steps', workflow_issues(changed, self.roles))
 
     def test_codex_write_capability_rejected(self):
         with TemporaryDirectory() as directory:
-            path = Path(directory) / 'memory_curator.toml'
+            path = Path(directory) / 'memory-curator.toml'
             path.write_text('sandbox_mode = "workspace-write"\ndeveloper_instructions = "example"\n')
             with self.assertRaisesRegex(ValueError, 'read-only'):
                 profile_body(path)

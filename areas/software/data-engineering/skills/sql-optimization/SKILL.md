@@ -1,3 +1,8 @@
+---
+name: sql-optimization
+description: "Applies SQL optimization patterns, window functions, and Snowflake-specific tuning; use when writing complex queries, optimizing slow queries, designing indexes, or reviewing query performance."
+---
+
 # Skill: SQL Optimization
 
 ## When to load

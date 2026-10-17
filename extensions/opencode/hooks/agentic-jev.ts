@@ -70,7 +70,7 @@ export default Plugin.define({
       if (!(await enabled())) return;
       const session = await ctx.session.get({ sessionID: event.sessionID });
       if (session.parentID) {
-        if (session.agent === "instruction_reviewer" && !(event.prompt.text ?? "").includes("[Agentic JEV review evidence]")) {
+        if (session.agent === "instruction-reviewer" && !(event.prompt.text ?? "").includes("[Agentic JEV review evidence]")) {
           const handoff = await decide({kind:"review_handoff", session_id:event.sessionID, event_id:event.messageID, agent:session.agent});
           if (handoff.review_packet) event.prompt.text += await reviewEvidence(handoff.review_packet);
         }
@@ -110,7 +110,7 @@ export default Plugin.define({
       const profileDefaults = await readConfig(".agent/jev/opencode-profile-defaults.json");
       const localModel = config.agent?.[input.agent]?.model;
       const localPin = rootJSONC.agent?.[input.agent]?.model || rootConfig.agent?.[input.agent]?.model || (localModel && mapping.model_defaults?.[input.agent] !== localModel && profileDefaults[input.agent] !== localModel ? localModel : undefined);
-      const lightweight = process.env.AGENTIC_JEV_LIGHTWEIGHT_MODEL || refID(agents.find((a) => a.id === "instruction_reviewer")?.model);
+      const lightweight = process.env.AGENTIC_JEV_LIGHTWEIGHT_MODEL || refID(agents.find((a) => a.id === "instruction-reviewer")?.model);
       const provider = process.env.AGENTIC_JEV_MODEL_PROVIDER;
       const pool = new Set(agents.filter(a => projectRoles.has(a.id)).map(a => refID(a.model)).filter(Boolean));
       const models = (await ctx.model.list()).data.filter((m) => pool.has(`${m.providerID}/${m.id}`) && m.capabilities.tools && (!provider || m.providerID === provider)).map((m) => ({
@@ -124,7 +124,7 @@ export default Plugin.define({
       if (result.model) {
         input.model = result.model;
       }
-      if (result.review_packet && input.agent === "instruction_reviewer") {
+      if (result.review_packet && input.agent === "instruction-reviewer") {
         input.prompt += await reviewEvidence(result.review_packet);
       }
     }));

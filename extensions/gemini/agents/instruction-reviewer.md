@@ -1,5 +1,5 @@
 ---
-name: instruction_reviewer
+name: instruction-reviewer
 description: "Read-only post-task instruction effectiveness review with evidence-backed compact recommendations."
 ---
 

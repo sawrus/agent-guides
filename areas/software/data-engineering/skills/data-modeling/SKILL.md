@@ -1,3 +1,8 @@
+---
+name: data-modeling
+description: "Guides warehouse data modeling with a Kimball/wide-table/Data Vault decision tree, medallion dbt layering, and fact table templates; use when designing a warehouse schema, choosing a modeling approach, or refactoring an existing model."
+---
+
 # Skill: Data Modeling
 
 ## When to load

@@ -46,12 +46,12 @@ QA/sign-off, observed friction, and available tool/MemPalace activity. Missing
 evidence is named explicitly. No full transcript, repository scan, or memory
 inventory is required.
 
-`instruction_reviewer` links instruction conflicts, repeated reads/searches,
+`instruction-reviewer` links instruction conflicts, repeated reads/searches,
 excess calls, and avoidable rework to their instruction source and proposes exact
 edits. Code quality and product requirements remain outside its review scope.
 Useful security, acceptance, and operational constraints must be preserved.
 
-`memory_curator` checks changed/consulted docs for sufficiency, freshness,
+`memory-curator` checks changed/consulted docs for sufficiency, freshness,
 duplication, contradictions, and retrieval. It assigns each durable fact a
 canonical home and evaluates observed MemPalace use. Existing docs should not
 be copied into memory without a specific retrieval benefit. At most two extra
