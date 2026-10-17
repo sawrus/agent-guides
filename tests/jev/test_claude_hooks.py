@@ -141,6 +141,26 @@ class ClaudeHooks(unittest.TestCase):
         with patch.dict(os.environ, {'AGENTIC_JEV_DEFAULT_MODEL': 'opus'}):
             self.assertEqual(hook.claude_session_model(self.project, {**payload, 'transcript_path': str(transcript)}), 'opus')
 
+    def test_low_confidence_spawn_uses_profile_role_default(self):
+        (self.project / '.agent/jev').mkdir(parents=True, exist_ok=True)
+        (self.project / '.agent/jev/model-defaults.json').write_text(json.dumps({'developer': 'sonnet', 'team-lead': 'opus', 'pm': 'haiku'}))
+        hook.claude_event(self.project, self.payload('UserPromptSubmit', prompt='/develop-feature calculator'))
+        confidences = iter((.58, .58, .95))
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'haiku', next(confidences))):
+            low = hook.claude_event(self.project, self.payload('PreToolUse', tool_name='Agent', tool_use_id='t6',
+                                    tool_input={'subagent_type': 'developer', 'prompt': 'add sum()'}))
+            unknown = hook.claude_event(self.project, self.payload('PreToolUse', tool_name='Agent', tool_use_id='t7',
+                                        tool_input={'subagent_type': 'Explore', 'prompt': 'look'}))
+            sure = hook.claude_event(self.project, self.payload('PreToolUse', tool_name='Agent', tool_use_id='t8',
+                                     tool_input={'subagent_type': 'developer', 'prompt': 'add sum()'}))
+        self.assertEqual(low['hookSpecificOutput']['updatedInput']['model'], 'sonnet')
+        self.assertIn('Profile default', low['hookSpecificOutput']['permissionDecisionReason'])
+        self.assertEqual(unknown, {})
+        self.assertEqual(sure['hookSpecificOutput']['updatedInput']['model'], 'haiku')
+        records = [json.loads(p.read_text())['result'] for p in (self.project / '.agentic/jev').glob('event-*.json')]
+        self.assertIn({'status': 'fallback', 'reason_code': 'low_confidence', 'model': 'sonnet', 'model_source': 'profile_default'},
+                      [{k: r.get(k) for k in ('status', 'reason_code', 'model', 'model_source')} for r in records])
+
 
 if __name__ == '__main__':
     unittest.main()

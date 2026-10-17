@@ -130,6 +130,11 @@ def claude_models(project):
     return [dict(m) for m in CLAUDE_MODELS if len(aliases) < 2 or m['id'] in aliases]
 
 
+def claude_role_default(project, role):
+    defaults = read_json(project / '.agent/jev/model-defaults.json', {})
+    return claude_alias(defaults.get(role)) if isinstance(defaults, dict) and isinstance(role, str) else None
+
+
 def claude_alias(model):
     model = model.lower() if isinstance(model, str) else ''
     return next((m['id'] for m in CLAUDE_MODELS if m['id'] in model), None)
@@ -452,6 +457,12 @@ def run_event(project, event):
                         result['model'] = selected
                     elif kind == 'permission':
                         result['decision'] = selected if selected != 'allow' or event['auto_allow_eligible'] else 'ask'
+        if kind == 'spawn' and event.get('host') == 'claude' and result.get('status') == 'fallback' and not result.get('model'):
+            # Without a confident answer a Claude subagent would inherit the (often opus) session model;
+            # the selected profile's role default is the cheaper, intended behaviour.
+            profile_model = claude_role_default(project, event.get('agent'))
+            if profile_model in {m['id'] for m in models}:
+                result.update(model=profile_model, model_source='profile_default')
         if kind == 'prompt' and result.get('workflow'):
             context['workflow'] = result['workflow']
             save_json(context_path, context)
@@ -610,7 +621,7 @@ def claude_event(project, payload):
         return {'hookSpecificOutput': {'hookEventName': name, 'additionalContext': 'JEV selected installed workflow ' + workflow['id'] + '. Load ' + workflow['path'] + ' and execute it for the ORIGINAL user request. Act as its declared initiator in this main session and coordinate delivery. Delegate repository exploration and implementation to its declared role agents through the Agent tool (subagent_type = role name). Keep the calculator/CRUD scope minimal. Model routing happens automatically through Agent hooks; omit guessed model overrides. ' + review_context(project)}}
     if name == 'PreToolUse' and result.get('model') in {m['id'] for m in CLAUDE_MODELS}:
         updated = {**data, 'model': result['model']}
-        return {'hookSpecificOutput': {'hookEventName': name, 'permissionDecision': 'allow', 'updatedInput': updated, 'permissionDecisionReason': 'JEV selected ' + result['model'] + '; native role tools still apply.'}}
+        return {'hookSpecificOutput': {'hookEventName': name, 'permissionDecision': 'allow', 'updatedInput': updated, 'permissionDecisionReason': ('Profile default ' if result.get('model_source') == 'profile_default' else 'JEV selected ') + result['model'] + '; native role tools still apply.'}}
     if name == 'PermissionRequest' and result.get('decision') in ('allow', 'deny'):
         return {'hookSpecificOutput': {'hookEventName': name, 'decision': {'behavior': result['decision'], 'message': 'Agentic JEV bounded permission decision'}}}
     return {}

@@ -110,7 +110,14 @@ Claude-specific rules:
 - `default_model` is the main session's alias: `AGENTIC_JEV_DEFAULT_MODEL`, else
   the last model in the main transcript, else `ANTHROPIC_MODEL`, else `model` in
   `.claude/settings.local.json`, `.claude/settings.json` or `~/.claude/settings.json`,
-  else `sonnet`. A spawn that falls back inherits this model.
+  else `sonnet`. JEV sees it as the more capable option next to `haiku`.
+- When JEV gives no confident answer (`low_confidence`, `no_decision`, request
+  failure), the hook applies the role's alias from the selected Claude profile
+  (`.agent/jev/model-defaults.json`, for example `developer` → `sonnet`). The
+  record keeps `status: fallback` and adds `model_source: profile_default`;
+  blackbox counts only `evaluated` answers as JEV routing. A role without a
+  profile alias, an explicit `model` and a role-file pin are left unchanged, so
+  only those spawns inherit the session model.
 
 ## Enable and disable
 
