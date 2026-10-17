@@ -269,6 +269,10 @@ Real runs:
 
 - **Claude Code 2.1.301, Agentic 1.4.0, 2026-10-16:** all ten checks passed (`.agentic-blackbox/20261016-165654`).
   JEV permission evaluations fell back below confidence 0.9 in that run.
+- **Claude Code 2.1.302, Agentic 1.4.0, 2026-10-17, `opus` session:** all ten checks passed (`.agentic-blackbox/20261017-232709`)
+  after the hand-back and profile-fallback fixes. JEV routed exploration to `haiku`; the other spawns fell back to
+  the Claude profile role models (`developer`/`qa` → `sonnet`, `team-lead` → `opus`, reviewers → `haiku`) instead of
+  inheriting `opus`. See [verification](docs/jev-integration/verification.md).
 - **OpenCode 2.0.29 (`openai/gpt-6-luna`), Agentic 1.4.0, 2026-10-16** (`.agentic-blackbox/20261016-233233`): JEV
   selected the workflow, and the agent ran PO → `pm` → `team-lead` → `developer` → `qa` → `instruction-reviewer` +
   `memory-curator` with the new role names. An independent probe verified the calculator. JEV answered `no_decision`

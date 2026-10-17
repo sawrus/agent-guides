@@ -114,3 +114,38 @@ Telegram (real bot and fake API, outside the blackbox target): OpenCode V2 did n
 load the 1.3.0 plugin (`Plugin must export a default definition`). The 1.4.0 plugin
 uses `Plugin.define` and delivered both `⏳ Ожидает ввода` (`permission.asked`) and
 `✅ Задача завершена` with Telegram HTML formatting.
+
+# Native verification, 2026-10-17 (Claude Code, opus session, Agentic 1.4.0)
+
+A manual Claude session in an installed project (session model `opus`) showed
+that 6 of 7 spawns fell back and inherited `opus`. Two hook defects caused this:
+
+- Claude Code delivers subagent hand-backs (`<agent-message …>`) and task
+  notifications through `UserPromptSubmit`. The hook treated each one as a new
+  task and replaced the original request, so JEV judged spawns against a
+  subagent report.
+- `AskUserQuestion` was sent to JEV as a permission request.
+
+After the fix, `BLACKBOX_CLAUDE_MODEL=opus make blackbox-claude` with Claude Code
+2.1.302 passed all ten checks (`.agentic-blackbox/20261017-232709`). Every spawn
+decision saw the original request `разработай калькулятор`, and the hook read
+`default_model: opus` from the session.
+
+| Role | JEV answer | Applied | Observed |
+| --- | --- | --- | --- |
+| Explore (exploration) | haiku 0.98 | haiku (JEV) | `claude-haiku-5-5` |
+| team-lead (design) | opus 0.37 | opus (profile default) | `claude-opus-5-5` |
+| developer | haiku 0.40 | sonnet (profile default) | `claude-sonnet-5-5` |
+| qa | haiku 0.31 | sonnet (profile default) | `claude-sonnet-5-5` |
+| team-lead (review) | haiku 0.64 | opus (profile default) | `claude-opus-5-5` |
+| instruction-reviewer | — | haiku (lightweight reviewer rule) | `claude-haiku-5-5` |
+| memory-curator | haiku 0.85 | haiku (profile default) | `claude-haiku-5-5` |
+
+Limits:
+
+- JEV answered above the 0.9 threshold only for exploration. The other spawns
+  used the Claude profile role defaults, not JEV routing; the blackbox counts only
+  `evaluated` answers as JEV routing.
+- All 16 permission evaluations fell back below 0.9 (10 leaned `allow`, but only
+  one request was inside the automatic allow boundary). Claude's native permission
+  handling decided them.
