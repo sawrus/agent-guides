@@ -108,9 +108,12 @@ fn jev_hooks_enable_provider_replay_and_explicit_disable() {
     assert!(!project.path().join(".codex/model-tiers.json").exists());
     // OpenCode reads its tier map from `.agent/jev/` only; the default profile pins no role models (QR-D2).
     let opencode_tiers = project.path().join(".agent/jev/opencode-model-tiers.json");
+    // Windows checkouts embed CRLF sources while the installer writes LF; compare content only.
     assert_eq!(
-        std::fs::read_to_string(&opencode_tiers).unwrap(),
-        include_str!("../extensions/opencode/model-tiers.json")
+        std::fs::read_to_string(&opencode_tiers)
+            .unwrap()
+            .replace("\r\n", "\n"),
+        include_str!("../extensions/opencode/model-tiers.json").replace("\r\n", "\n")
     );
     assert!(!project.path().join(".opencode/model-tiers.json").exists());
     let profile_defaults = project

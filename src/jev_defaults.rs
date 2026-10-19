@@ -156,10 +156,13 @@ mod tests {
         app.jev_enabled = Some(true);
         crate::jev_hooks::install(&mut app, project.path()).unwrap();
         let read = |rel: &str| std::fs::read_to_string(project.path().join(rel)).unwrap();
-        let shipped = include_str!("../extensions/opencode/model-tiers.json");
-        assert_eq!(read(".agent/jev/opencode-model-tiers.json"), shipped);
+        // Windows checkouts embed CRLF sources while the installer re-serializes JSON with LF;
+        // "verbatim" means identical content, so compare with normalized line endings.
+        let lf = |text: &str| text.replace("\r\n", "\n");
+        let shipped = lf(include_str!("../extensions/opencode/model-tiers.json"));
+        assert_eq!(lf(&read(".agent/jev/opencode-model-tiers.json")), shipped);
         assert_eq!(
-            app.kb.read_file(OPENCODE_TIERS_SOURCE).as_deref(),
+            app.kb.read_file(OPENCODE_TIERS_SOURCE).as_deref().map(lf),
             Some(shipped)
         );
         let profile: Value =
