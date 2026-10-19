@@ -64,6 +64,29 @@ class CalculatorAcceptance(unittest.TestCase):
         self.assertFalse(self.verify_routes(native, {'agent': None, 'native_agent_type': 'general-purpose'}))
         self.assertFalse(self.verify_routes({'agent': 'developer'}, {'agent': 'qa'}))
 
+    def test_verify_counts_calls_and_rejects_a_paid_follow_up(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            journal = project / '.agentic/jev'
+            journal.mkdir(parents=True)
+            base = {'session_id': 'new', 'task_id': 'task', 'kind': 'prompt'}
+            usage = {'status': 'evaluated', 'usage': {'input_tokens': 2000}}
+            records = [{'context': {**base, 'prompt': blackbox.PROMPT}, 'request': {'q': 1}, 'result': usage},
+                       {'context': {**base, 'prompt': 'ok', 'follow_up': True}, 'request': None, 'result': {'status': 'fallback'}}]
+            trace = project / 'trace.jsonl'
+            trace.write_text('{"type":"thread.started","thread_id":"new"}\n')
+            def verify():
+                for index, record in enumerate(records):
+                    (journal / f'event-{index}.json').write_text(json.dumps(record))
+                with patch.object(blackbox.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout='{"verified":true}')), patch.object(blackbox, 'key_for', return_value=''):
+                    return blackbox.verify(project, trace, 0)
+            result = verify()
+            self.assertEqual((result['jev_calls'], result['jev_input_tokens'], result['follow_up_prompts']), (1, 2000, 1))
+            self.assertTrue(result['checks']['follow_up_without_jev_call'])
+            self.assertNotIn('jev_reported_cost_usd', result)
+            records[1]['request'] = {'q': 2}
+            self.assertFalse(verify()['checks']['follow_up_without_jev_call'])
+
     def test_overlapping_native_runs_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

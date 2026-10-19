@@ -78,7 +78,14 @@ findings, explaining missing links without retries or blocking acceptance.
 
 Summary records `completed`, `unavailable`, or `failed` per specialist, limitations,
 and prioritized follow-ups. Failed/unavailable reviews receive short status
-placeholders. The final response links all three artifacts. Examples are under
+placeholders. The final response links all three artifacts.
+
+Since 1.5.0, `summary.md` and the final response end with a `Manual acceptance`
+section. It lists copy-paste commands from the project root in execution order
+(setup, run, checks; Makefile targets first), the expected result of each command,
+manual steps for checks without a command, and rollback or cleanup. Commands that
+delivery did not run are marked `not run`; no credentials or hosts are invented.
+Examples are under
 [examples](review-pipeline/examples/summary.example.md).
 
 Acceptance scenarios:

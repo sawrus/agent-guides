@@ -160,7 +160,7 @@ class EndToEnd(unittest.TestCase):
 
         def respond(project, settings, request):
             seen['state'] = request['state']
-            return {'status': 'evaluated', 'usage': {'cost_usd': .0001},
+            return {'status': 'evaluated', 'usage': {'input_tokens': 100},
                     'answers': {'model': {'type': 'choice', 'choice': choice, 'confidence': confidence}}}
         event = {'host': 'opencode', 'kind': 'spawn', 'session_id': 'root', 'event_id': event_id, 'agent': 'developer',
                  'prompt': 'Implement the change', 'role_default': None, 'models': catalog([LUNA, SOL, ASTRA])}
@@ -186,7 +186,7 @@ class EndToEnd(unittest.TestCase):
 
     def test_opencode_spawn_with_assignment_unavailable_still_asks(self):
         """P3-1: the QR-D12 skip is Codex-only."""
-        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: {'status': 'evaluated', 'usage': {'cost_usd': .0001},
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: {'status': 'evaluated', 'usage': {'input_tokens': 100},
                           'answers': {'model': {'type': 'choice', 'choice': 'fast', 'confidence': .95}}}) as client:
             result = hook.run_event(self.project, {'host': 'opencode', 'kind': 'spawn', 'session_id': 'root', 'event_id': 'flag',
                                                    'agent': 'developer', 'prompt': 'x', 'assignment_unavailable': True,

@@ -13,9 +13,9 @@ import tempfile
 import time
 
 try:
-    from api import budget_lock, evaluate, read_json, save_json, scrub
+    from api import evaluate, file_lock, read_json, save_json, scrub
 except (ImportError, SyntaxError):
-    budget_lock = evaluate = read_json = save_json = scrub = None
+    file_lock = evaluate = read_json = save_json = scrub = None
 
 RUNTIME_VERSION = 2
 
@@ -46,6 +46,9 @@ OPENCODE_TIERS_FILE = Path('.agent/jev/opencode-model-tiers.json')
 KINDS = ('prompt', 'spawn', 'permission', 'observation', 'tool', 'availability', 'review_handoff')
 QUESTION = {'prompt': 'workflow', 'spawn': 'model', 'permission': 'permission'}
 WORKFLOW_FALLBACKS = {'native': 'native_request', 'clarify': 'clarification_needed'}
+# `/jev off` as typed (Codex accepts the bare `jev off`), or the expanded `.claude|.opencode/commands/jev.md` body.
+SWITCH_PROMPT = re.compile(r'\s*/?jev\s+(on|off|status)\s*', re.I)
+SWITCH_MARKER = re.compile(r'Agentic JEV switch:\s*(on|off|status)\b', re.I)
 INCOMPLETE_KEYS = ('kind', 'hook_event_name', 'session_id', 'event_id', 'tool_use_id', 'tool_name', 'action')
 IDENTITY_KEYS = ('host', 'kind', 'session_id', 'event_id', 'input', 'action', 'resources', 'prompt', 'model',
                  'observed_model', 'agent', 'child_session_id')
@@ -73,14 +76,14 @@ def fallback(reason):
     return {'status': 'fallback', 'reason_code': reason}
 
 
-def model_defaults(project):
-    return routing.load_defaults(read_json(project / DEFAULTS_FILE, {}))
+def model_defaults(project, host):
+    return routing.load_defaults(read_json(project / DEFAULTS_FILE, {}), host)
 
 
 def codex_models(project):
     cache = Path(os.environ.get('CODEX_HOME', str(Path.home() / '.codex'))) / 'models_cache.json'
     profiles = [p.read_text(encoding='utf-8') for p in (project / '.codex/agents').glob('*.toml') if not p.is_symlink()]
-    return routing.codex_models(read_json(cache, {}), model_defaults(project), profiles)
+    return routing.codex_models(read_json(cache, {}), model_defaults(project, 'codex'), profiles)
 
 
 def bounded_path(project, raw):
@@ -213,9 +216,13 @@ def open_turn(project, settings, event):
     if event['kind'] == 'prompt':
         if event.get('parent_session_id'):
             return fallback('child_prompt')
-        task_id = event.get('event_id') or hashlib.sha256(event.get('prompt', '').encode()).hexdigest()
-        if context.get('task_id') != task_id:
-            context = {'original_prompt': event.get('prompt', ''), 'task_id': task_id, 'workflow': None}
+        switch = session_switch(event.get('prompt', ''))
+        if switch:
+            return apply_switch(context_path, context, switch)
+        # Only the first root prompt opens a task; later user messages continue it (one workflow question per session).
+        event['follow_up'] = bool(context.get('task_id'))
+        if not event['follow_up']:
+            context = {**new_task(event), 'jev': context.get('jev', 'on'), 'off_reason': context.get('off_reason')}
             save_json(context_path, context)
     event['original_prompt'] = context.get('original_prompt', event.get('original_prompt', ''))
     event['workflow'] = context.get('workflow')
@@ -224,6 +231,30 @@ def open_turn(project, settings, event):
     if event['kind'] in ('spawn', 'observation', 'permission'):
         label_agent(project, event)
     return Turn(project, settings, event, context, context_path, directory, session)
+
+
+def new_task(event):
+    prompt = event.get('prompt', '')
+    return {'original_prompt': prompt, 'task_id': event.get('event_id') or hashlib.sha256(prompt.encode()).hexdigest(),
+            'workflow': None}
+
+
+def session_switch(prompt):
+    match = SWITCH_PROMPT.fullmatch(prompt) or SWITCH_MARKER.search(prompt)
+    return match[1].lower() if match else None
+
+
+def apply_switch(context_path, context, state):
+    """Manual per-session switch; `on` also forgets the task so the next prompt asks for a workflow again."""
+    if state == 'on':
+        context = {'jev': 'on'}
+    elif state == 'off':
+        context = {**context, 'jev': 'off', 'off_reason': 'manual'}
+    if state != 'status':
+        save_json(context_path, context)
+    current = context.get('jev', 'on')
+    reason = ' (' + str(context.get('off_reason')) + ')' if current == 'off' and context.get('off_reason') else ''
+    return {'status': 'switched', 'jev': current, 'message': 'Agentic JEV is ' + current + ' for this session' + reason + '.'}
 
 
 def label_agent(project, event):
@@ -265,6 +296,8 @@ def decide(turn):
     kind = turn.event['kind']
     if kind not in QUESTION:
         return {'request': None, 'result': OBSERVERS[kind](turn)}
+    if turn.context.get('jev') == 'off' and kind != 'spawn':
+        return finish_record(turn, {'result': fallback('session_off')})
     plan = HANDLERS[kind](turn)
     turn.request = plan.get('request')
     if plan.get('request'):
@@ -281,7 +314,11 @@ def handle_prompt(turn):
     catalog = questions.workflow_catalog(turn.project)
     prompt = turn.event.get('prompt', '')
     explicit = [w for w in catalog if explicit_workflow(w, prompt)]
+    if turn.event['follow_up'] and len(explicit) != 1:
+        return {'result': fallback('session_follow_up')}
     if len(explicit) == 1:
+        if turn.event['follow_up']:
+            restart_task(turn)
         result = {'status': 'preserved', 'workflow': questions.workflow_summary(explicit[0]), 'reason_code': 'explicit_workflow'}
         return {'result': result, 'fields': {'outcome': 'rule_applied'}}
     if not catalog:
@@ -290,12 +327,19 @@ def handle_prompt(turn):
     return {'request': questions.workflow_request(prompt, catalog, turn.project, manifest), 'catalog': catalog}
 
 
+def restart_task(turn):
+    """A follow-up that names a workflow explicitly starts a new task without a JEV call."""
+    turn.context.update(new_task(turn.event))
+    turn.event.update(original_prompt=turn.context['original_prompt'], task_id=turn.context['task_id'], follow_up=False)
+    save_json(turn.context_path, turn.context)
+
+
 def spawn_models(turn):
     host = turn.event.get('host', '')
     if host == 'opencode':
         models = turn.event.get('models')
     else:
-        models = routing.claude_models(model_defaults(turn.project)) if host == 'claude' else codex_models(turn.project)
+        models = routing.claude_models(model_defaults(turn.project, host)) if host == 'claude' else codex_models(turn.project)
     unavailable = read_json(turn.directory / 'availability.json', {})
     return [{**m, 'quota_status': m.get('quota_status', 'unknown')} for m in (models or [])
             if isinstance(m, dict) and m.get('id') and unavailable.get(host + ':' + m['id'], 0) <= time.time()]
@@ -306,7 +350,11 @@ def handle_spawn(turn):
     event['models'] = models = spawn_models(turn)
     # A missing or malformed map loads as empty: today's price-only OpenCode behaviour.
     tier_data = read_json(turn.project / OPENCODE_TIERS_FILE, {}) if event.get('host') == 'opencode' else None
-    plan = routing.plan_spawn(event, models, model_defaults(turn.project), turn.settings, routing.load_tier_map(tier_data))
+    plan = routing.plan_spawn(event, models, model_defaults(turn.project, event.get('host')), turn.settings, routing.load_tier_map(tier_data))
+    if 'result' not in plan and turn.context.get('jev') == 'off':
+        # The role default still applies, so an off session never inherits the coordinator's model.
+        plan.pop('role_ctx'), plan.pop('pool')
+        plan['result'] = fallback('session_off')
     if 'result' not in plan:
         plan['request'] = questions.model_request(plan.pop('role_ctx'), plan.pop('pool'), turn.context.get('workflow'),
                                                   event.get('original_prompt'), plan['fields']['cost_source'])
@@ -367,18 +415,31 @@ def finish_record(turn, plan):
     kind, result = turn.event['kind'], plan['result']
     if kind == 'spawn':
         routing.apply_role_default(plan)
-    if kind == 'prompt' and result.get('workflow'):
-        turn.context['workflow'] = result['workflow']
-        save_json(turn.context_path, turn.context)
+    if kind == 'prompt':
+        gate_session(turn, result)
     fields = {'decision': None, 'threshold': questions.threshold(turn.settings, QUESTION[kind]),
               'applied': False, 'outcome': 'native', **plan.get('fields', {})}
     return {'request': plan.get('request'), 'result': result, **fields}
 
 
+def gate_session(turn, result):
+    """The first prompt decides the session: a workflow keeps JEV on; native, low confidence or an error turns it
+    off until `/jev on`. `clarify` leaves the session undecided so the next prompt is asked again."""
+    if result.get('workflow'):
+        turn.context.update(workflow=result['workflow'], jev='on', off_reason=None)
+    elif turn.event.get('follow_up') or turn.context.get('jev') == 'off':
+        return
+    elif result.get('reason_code') == 'clarification_needed':
+        turn.context.pop('task_id', None)
+    else:
+        turn.context.update(jev='off', off_reason=result.get('reason_code'))
+    save_json(turn.context_path, turn.context)
+
+
 def observe_availability(turn):
     event, state_path = turn.event, turn.directory / 'availability.json'
     cooldown = min(max(event.get('cooldown_seconds', COOLDOWN_DEFAULT), COOLDOWN_MIN), COOLDOWN_MAX)
-    with budget_lock(state_path):
+    with file_lock(state_path):
         unavailable = read_json(state_path, {})
         unavailable[event.get('host', '') + ':' + str(event.get('model'))] = time.time() + cooldown
         save_json(state_path, unavailable)
@@ -389,7 +450,7 @@ def observe_model(turn):
     event = turn.event
     if event.get('host') in ('codex', 'claude') and event.get('child_session_id') and turn.context:
         save_json(turn.directory / ('context-' + short_hash(event['child_session_id']) + '.json'), turn.context)
-    return {'status': 'observed', 'observed_model': event.get('observed_model'), 'requested_model': event.get('requested_model'), 'agent': event.get('agent')}
+    return {'status': 'observed', 'observed_model': event.get('observed_model'), 'agent': event.get('agent')}
 
 
 HANDLERS = {'prompt': handle_prompt, 'spawn': handle_spawn, 'permission': handle_permission}

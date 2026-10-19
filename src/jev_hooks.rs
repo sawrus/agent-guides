@@ -253,6 +253,11 @@ fn claude_hooks(app: &mut App, project: &Path, enabled: bool) -> crate::Result<(
     hookmerge::sync(app, project, &set, enabled)
 }
 
+/// `/jev on|off|status`: the hooks handle the switch before any model turn.
+const CLAUDE_SWITCH_COMMAND: &str = ".claude/commands/jev.md";
+const OPENCODE_SWITCH_COMMAND: &str = ".opencode/commands/jev.md";
+const SWITCH_COMMAND_SOURCE: &str = "extensions/codex/hooks/jev/jev-command.md";
+
 /// Runtime data that only the OpenCode plugin and its hook events read.
 const OPENCODE_ONLY: [&str; 2] = [
     ".agent/jev/opencode-profile-defaults.json",
@@ -323,6 +328,14 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
             ".opencode/plugins/agentic-jev/index.ts",
             include_str!("../extensions/opencode/hooks/agentic-jev.ts"),
         ),
+        (
+            CLAUDE_SWITCH_COMMAND,
+            include_str!("../extensions/codex/hooks/jev/jev-command.md"),
+        ),
+        (
+            OPENCODE_SWITCH_COMMAND,
+            include_str!("../extensions/codex/hooks/jev/jev-command.md"),
+        ),
     ];
     for (rel, content) in assets {
         let host_specific = OPENCODE_ONLY.contains(&rel) || rel == ".agent/jev/model-defaults.json";
@@ -336,7 +349,10 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
             || (rel.starts_with(".agent/") && !host_specific && (enabled || retained_reference))
             || (enabled
                 && app.selected_agent_os_contains("opencode")
-                && rel.starts_with(".opencode/"));
+                && rel.starts_with(".opencode/"))
+            || (rel == CLAUDE_SWITCH_COMMAND
+                && enabled
+                && app.selected_agent_os_contains("claude"));
         let path = project.join(rel);
         if wanted {
             let source = match rel {
@@ -351,6 +367,7 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
                 ".agent/jev/opencode-model-tiers.json" => {
                     crate::jev_defaults::OPENCODE_TIERS_SOURCE
                 }
+                CLAUDE_SWITCH_COMMAND | OPENCODE_SWITCH_COMMAND => SWITCH_COMMAND_SOURCE,
                 _ => "generated:jev-profile-model-defaults",
             };
             write_file_with_agentic_marker(app, content, &path, source)?;
@@ -429,6 +446,23 @@ mod tests {
             .path()
             .join(".agent/jev/model-defaults.json")
             .exists());
+        assert!(project.path().join(OPENCODE_SWITCH_COMMAND).is_file());
+        assert!(!project.path().join(CLAUDE_SWITCH_COMMAND).exists());
+    }
+
+    #[test]
+    fn switch_command_follows_the_selected_host() {
+        let project = tempfile::tempdir().unwrap();
+        let mut app = App::new().unwrap();
+        app.project_dir = project.path().to_string_lossy().into();
+        app.selected_agent_os = vec!["claude".into()];
+        app.jev_enabled = Some(true);
+        install(&mut app, project.path()).unwrap();
+        let command = project.path().join(CLAUDE_SWITCH_COMMAND);
+        assert!(std::fs::read_to_string(&command)
+            .unwrap()
+            .contains("Agentic JEV switch: $ARGUMENTS"));
+        assert!(!project.path().join(OPENCODE_SWITCH_COMMAND).exists());
     }
 
     #[test]

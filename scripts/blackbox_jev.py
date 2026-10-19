@@ -19,8 +19,11 @@ sys.path.insert(0, str(ROOT / 'tests/notify'))
 from api import key_for, redact  # noqa: E402
 from fake_telegram import FakeTelegram  # noqa: E402
 
-PROMPT = 'разработай калькулятор'
-# One bounded reply when the coordinator stops to ask for approval (for example new root files).
+# The smallest request that still selects a development workflow: one file keeps every role's work short.
+PROMPT = 'разработай простой калькулятор на Python в одном файле'
+# Follow-ups answer a coordinator that stopped for approval; they also prove that a follow-up makes no JEV call.
+MAX_TURNS = 3
+DEFAULT_TIMEOUT = 480
 FOLLOWUP = ('Подтверждаю: создавай нужные файлы, включая файлы в корне, и используй предложенный минимальный scope. '
             'Доведи работу до конца без дополнительных вопросов.')
 HOSTS = ('codex', 'opencode', 'claude')
@@ -212,6 +215,8 @@ def verify(project, trace, exit_code, host=None):
     reads = [json.dumps(r['context'], ensure_ascii=False) for r in records if r['context']['kind'] == 'tool']
     workflow_applied = any(w['path'] in row for w in workflows for row in reads)
     routes = [r for r in records if r['context']['kind'] == 'spawn' and r['result'].get('model')]
+    calls = [r for r in records if r['result'].get('usage')]
+    follow_ups = [r for r in records if r['context']['kind'] == 'prompt' and r['context'].get('follow_up')]
     observed = [r for r in records if r['context']['kind'] == 'observation' and r['result'].get('observed_model')]
     # Match a child/role observation to the routed parent/role, rather than any mentioned model string.
     def same_model(requested, observed):
@@ -222,18 +227,18 @@ def verify(project, trace, exit_code, host=None):
                         and agent_label(a) == agent_label(b) for a in routes for b in observed)
     checks = {'native_exit_success': exit_code == 0, 'real_jev_workflow': bool(workflow_records),
               'workflow_read_by_agent': workflow_applied, 'model_applied_to_subagent': model_applied,
-              'calculator_verified': False}
+              'calculator_verified': False, 'follow_up_without_jev_call': not any(r.get('request') for r in follow_ups)}
     if host == 'claude':
         checks.update(claude_checks(project, trace))
     elif host in TELEGRAM_HOSTS:
         checks['telegram_fired'] = telegram_fired(trace)
     checks['calculator_verified'], evidence = calculator_probe(project)
     (trace.parent / 'calculator-check.json').write_text(clean(json.dumps(evidence, ensure_ascii=False, indent=2)))
-    cost = sum(r['result'].get('usage', {}).get('cost_usd') or 0 for r in records)
     return {'status': 'passed' if all(checks.values()) else 'failed', 'checks': checks,
             'workflow': [w['id'] for w in workflows], 'requested_models': [r['result']['model'] for r in routes],
             'observed_models': [r['result']['observed_model'] for r in observed],
-            'jev_reported_cost_usd': cost, 'trace': str(trace), 'project': str(project),
+            'jev_calls': len(calls), 'jev_input_tokens': sum(r['result']['usage'].get('input_tokens') or 0 for r in calls),
+            'follow_up_prompts': len(follow_ups), 'trace': str(trace), 'project': str(project),
             'calculator_evidence': str(trace.parent / 'calculator-check.json'),
             'limitation': 'Built-in arithmetic probe supports Python/JavaScript public evaluators; other stacks require BLACKBOX_VERIFIER. Self-reported tests do not pass.'}
 
@@ -248,11 +253,6 @@ def run(host, project, root, timeout):
     # Keep CODEX_HOME and all sandbox/permission policy variables intact.
     for name in ('CODEX_REMOTE_PAYLOAD', 'CODEX_THREAD_ID', 'CODEX_SESSION_ID'):
         env.pop(name, None)
-    budget = ROOT / '.agentic-blackbox/jev-budget.json'
-    if not budget.exists():
-        budget.parent.mkdir(parents=True, exist_ok=True)
-        budget.write_text(json.dumps({'limit_usd': 5, 'committed_usd': .02, 'calls': 0, 'pending': {}}))
-    env['AGENTIC_JEV_BUDGET_FILE'] = str(budget)
     for key in ('JEV_API_KEY', 'TYPESAFE_API_KEY'):
         value = key_for(ROOT, key)
         if value:
@@ -330,11 +330,14 @@ def run(host, project, root, timeout):
 
     trace.write_text('')
     returncode, reason = turn(command, PROMPT if host in ('opencode', 'claude') else None)
-    if not reason and returncode == 0 and not calculator_probe(project)[0]:
+    for _ in range(MAX_TURNS - 1):
+        if reason or returncode != 0 or calculator_probe(project)[0]:
+            break
         followup = followup_turn(host, executable, command, trace)
-        if followup:
-            print(f'{host}: coordinator stopped before delivery; sending one approval follow-up', flush=True)
-            returncode, reason = turn(*followup)
+        if not followup:
+            break
+        print(f'{host}: coordinator stopped before delivery; sending an approval follow-up', flush=True)
+        returncode, reason = turn(*followup)
     if telegram:
         # The notifier sends from a detached child; give it a moment, then save evidence.
         for _ in range(40):
@@ -389,7 +392,7 @@ def main():
     parser.add_argument('--prepare-only', action='store_true')
     parser.add_argument('--verify-only', action='store_true', help='Recheck saved native execution without any model requests; requires --run-dir')
     parser.add_argument('--run-dir', type=Path, help='Reuse prepared projects after native hook trust review')
-    parser.add_argument('--timeout', type=int, default=1200)
+    parser.add_argument('--timeout', type=int, default=DEFAULT_TIMEOUT, help='Seconds per host for all turns together')
     args = parser.parse_args()
     if args.verify_only and not args.run_dir:
         parser.error('--verify-only requires --run-dir')

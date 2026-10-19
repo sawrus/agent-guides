@@ -87,6 +87,21 @@ For unavailable/failed specialists, write a short status placeholder rather than
 inventing findings. Summary lists each status (`completed`, `unavailable`, `failed`),
 evidence limits, and prioritized follow-up actions without repeating the reports.
 The final user response links all three artifacts and notes material limitations.
+
+## Manual acceptance instructions
+
+`summary.md` and the final user response both end with a `Manual acceptance`
+section, so the user can accept any task by hand without reading the reports:
+- copy-paste commands, run from the project root, in execution order: setup,
+  run or reproduce, and checks (prefer existing Makefile targets);
+- the expected result of each command: output, exit code, or changed file;
+- manual steps for checks without a command, such as a UI flow or a document
+  to read, with the expected observation;
+- how to roll back or clean up when the commands change local state.
+
+Use only commands that the delivery actually ran or that its docs define; mark
+any command that was not run during delivery as `not run`. Do not invent
+credentials, hosts, or data. When no manual check is possible, state why.
 If report persistence is unavailable, finish accepted delivery with an inline status
 and concise findings; explain missing links instead of blocking delivery or retrying.
 Recommendations are advisory; apply instruction/docs/memory edits in a separate
