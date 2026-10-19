@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "The request asks to find or fix accessibility problems in UI routes or components against WCAG."
 related-rules:
   - accessibility.md
   - quality.md

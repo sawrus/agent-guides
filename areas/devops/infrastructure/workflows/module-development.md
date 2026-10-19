@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "The request asks to build and publish a new reusable Terraform module with examples, tests and a versioned release."
 related-rules:
   - iac-standards.md
   - state-management.md

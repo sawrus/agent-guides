@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "The request asks only to add or improve automated tests for existing backend behaviour."
 related-rules:
   - testing.md
   - architecture.md

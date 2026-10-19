@@ -15,6 +15,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "Terraform state and real cloud resources differ and the request asks to classify and fix the drift."
 related-rules:
   - immutability.md
   - iac-standards.md

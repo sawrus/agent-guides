@@ -18,6 +18,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "A P0 or P1 production incident is in progress and needs coordinated mitigation and communication."
 related-rules:
   - on-call-standards.md
   - error-budget-policy.md

@@ -20,7 +20,7 @@ ENVIRONMENTS = ('claude', 'codex', 'opencode', 'gemini')
 # Roles renamed in v1.4.0; only migration code and alias tables may mention old names.
 LEGACY_ROLES = re.compile(r'\b(?:instruction_reviewer|memory_curator)\b|@designer\b|^\s+- designer$|"designer"', re.M)
 LEGACY_SCAN = ('areas', 'extensions', 'AGENTS.md', 'REVIEW_PIPELINE.md', 'MEMORY.md', 'README.md')
-LEGACY_ALLOWED = ('extensions/codex/hooks/jev/hook.py',)
+LEGACY_ALLOWED = ('extensions/codex/hooks/jev/routing.py',)
 
 
 def section(text: str, heading: str) -> str:

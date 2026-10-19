@@ -18,6 +18,9 @@ roles:
 execution:
   initiator: product-owner
 agent: product-owner
+selection:
+  general: false
+  use-when: "The request asks whether a frontend release is ready, with quality, performance and accessibility checks and release notes."
 related-rules:
   - quality.md
   - performance.md

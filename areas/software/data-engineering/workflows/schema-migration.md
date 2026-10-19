@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "The request asks to change a data warehouse table schema and manage the impact on downstream consumers."
 related-rules:
   - schema-management.md
   - pipeline-integrity.md

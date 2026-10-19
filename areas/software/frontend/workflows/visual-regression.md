@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to find or approve unintended visual changes in UI snapshots before a release."
 related-rules:
   - quality.md
   - accessibility.md

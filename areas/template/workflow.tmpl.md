@@ -15,6 +15,10 @@ roles:
 execution:
   initiator: {{role — must be one of: product-owner | pm | team-lead | developer | qa | analyst | devops-engineer}}
 agent: {{same role as execution.initiator}}
+selection:
+  general: {{false — true only for the one catch-all workflow of a top-level area}}
+  use-when: "{{ONE_SENTENCE — the requests this workflow fits, judged by purpose, inputs and outputs}}"
+  avoid-when: "{{OPTIONAL — a near-miss request that belongs to another workflow; delete the line if none}}"
 related-rules:
   - {{rule-filename.md}}
 uses-skills:
@@ -37,34 +41,40 @@ AGENT INSTRUCTIONS:
 4. "execution.initiator" must be one of the seven standard roles and must
    also appear in the workflow's own "roles" list. The top-level "agent"
    field must exactly match "execution.initiator".
-5. "quality-gates" must be objectively checkable. "Looks good" is NOT a gate.
+5. "selection" tells JEV routing when to pick this workflow. "use-when" is
+   required, quoted, at most 300 characters, and names the kind of request
+   (not a test example). "avoid-when" is optional and names the nearest
+   request that belongs elsewhere. Set "general: true" only for the single
+   catch-all workflow of a top-level area; all others use "general: false".
+   `make lint-content` rejects a missing or invalid block.
+6. "quality-gates" must be objectively checkable. "Looks good" is NOT a gate.
    Good gate: "All copy variants pass brand-voice rule 2 and score ≥ 70 on Flesch-Kincaid."
-6. Every step MUST have: @role, Input, Actions (specific), Done when (checkable criterion).
+7. Every step MUST have: @role, Input, Actions (specific), Done when (checkable criterion).
    When the @role changes between steps, the Input MUST name the artifact
    handed over (e.g. "implementation_plan.md from step 2"), never just
    "output of step N".
-7. Use imperative voice: "Create", "Check", "Verify", "Ask" — not "You should" or "Consider".
-8. Include a failure path for at least one step.
-9. Every loop or retry (in steps, failure paths, or an "Iteration Loop"
+8. Use imperative voice: "Create", "Check", "Verify", "Ask" — not "You should" or "Consider".
+9. Include a failure path for at least one step.
+10. Every loop or retry (in steps, failure paths, or an "Iteration Loop"
    section) MUST be bounded: state the maximum iterations (default: 3) and
    the escalation path when the bound is hit (e.g. "escalate to @team-lead
    with the open blocker list"). "Loop until done" without a bound is a defect.
-10. If this workflow triggers another workflow (by /trigger name), the
+11. If this workflow triggers another workflow (by /trigger name), the
     combined chain must be acyclic. If two workflows can trigger each other,
     add a circuit-breaker clause (e.g. "at most one automatic re-trigger;
     afterwards escalate to a human decision").
-11. Delivery workflows MUST end with a "Document & Version" step: update the
+12. Delivery workflows MUST end with a "Document & Version" step: update the
     affected docs under docs/**, CHANGELOG.md, and the version source.
     Incident workflows MUST end with a root-cause document at
     docs/incidents/<date>-<slug>-root-cause.md.
-12. End the Exit section with an explicit handoff: "Next: /<trigger>" for the
+13. End the Exit section with an explicit handoff: "Next: /<trigger>" for the
     follow-up workflow, or "Next: terminal — no follow-up workflow."
-13. Target: 60–200 lines total. Over 200 lines = split into two workflows.
-14. Delivery workflows opting into post-task review use a second-level
+14. Target: 60–200 lines total. Over 200 lines = split into two workflows.
+15. Delivery workflows opting into post-task review use a second-level
     "Post-task review" heading, coordinated by execution.initiator. Load
     project-root REVIEW_PIPELINE.md after successful delivery; specialists stay
     outside roles. Run once at the top level, never in nested/retest loops.
-15. Delete all AGENT INSTRUCTIONS comments before finalising.
+16. Delete all AGENT INSTRUCTIONS comments before finalising.
 -->
 
 ## Steps

@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "Wrong, missing or duplicated data was found in a model and the request asks to quarantine, fix and prevent it."
 related-rules:
   - pipeline-integrity.md
   - data-governance.md

@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "The request asks to run an OWASP Top 10 penetration test simulation against a staging target."
 related-rules:
   - secure-coding.md
   - compliance-baseline.md

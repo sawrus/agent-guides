@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "The request asks to measure test coverage and plan where to add tests by business risk."
 related-rules:
   - quality-gates.md
   - test-strategy.md

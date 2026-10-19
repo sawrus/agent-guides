@@ -9,9 +9,13 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
+import question_fixtures
+
 
 ROOT = Path(__file__).resolve().parents[2]
 ENDPOINT = "https://jevtypesafeai.com/api/v1/decide"
+# JEV_RND_SUITE=questions runs the hook-question families into their own results file.
+RESULTS = {"core": "docs/jev-rnd/results.json", "questions": "docs/jev-rnd/questions-results.json"}
 
 
 def choice(instructions, options):
@@ -116,20 +120,55 @@ def load_key():
     raise RuntimeError("JEV_API_KEY missing")
 
 
-def main():
+def suite_cases():
+    suite = os.environ.get("JEV_RND_SUITE", "core")
+    if suite not in RESULTS:
+        raise RuntimeError("JEV_RND_SUITE must be one of: " + ", ".join(RESULTS))
+    return suite, question_fixtures.fixtures() if suite == "questions" else fixtures()
+
+
+def hosted_sender():
+    """Core suite: the paid research gateway with JEV_API_KEY."""
     key = load_key()
+    def send(payload):
+        request = urllib.request.Request(ENDPOINT, json.dumps(payload, ensure_ascii=False).encode(),
+            {"Authorization": "Bearer " + key, "Content-Type": "application/json"})
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return json.load(response)
+    return ENDPOINT, send
+
+
+def hook_client_sender():
+    """Questions suite: the hook's own client, endpoint and key (TYPESAFE_API_KEY for api.typesafe.ai, else JEV_API_KEY)."""
+    api = question_fixtures.load_runtime("api")
+    settings = (api.read_json(ROOT / ".agentic.json", {}) or {}).get("settings", {}).get("jev", {})
+    endpoint, key_name = api.hook_endpoint(settings)
+    if not endpoint or not api.key_for(ROOT, key_name):
+        raise RuntimeError((key_name or "valid JEV endpoint") + " missing")
+    def send(payload):
+        outcome = api.evaluate(ROOT, settings, {"state": payload["state"], "questions": payload["questions"]})
+        if outcome["status"] != "evaluated":
+            raise RuntimeError("client fallback: " + outcome["reason_code"])
+        return outcome["response"]
+    return endpoint, send
+
+
+def main():
     budget = float(os.environ.get("JEV_RND_BUDGET_USD", "0.01"))
     if not 0 < budget <= 1:
         raise RuntimeError("R&D budget must be in (0, 1] USD")
-    cases = fixtures()
+    suite, cases = suite_cases()
+    endpoint, send = hook_client_sender() if suite == "questions" else hosted_sender()
+    results_path = ROOT / RESULTS[suite]
     output = {"started_utc": datetime.now(timezone.utc).isoformat(),
-              "endpoint": ENDPOINT, "budget_usd": budget,
-              "fixture_kind": "synthetic, manually labelled; not actual test executions",
+              "endpoint": endpoint, "budget_usd": budget,
+              "suite": suite, "fixture_kind": "synthetic, manually labelled; not actual test executions",
               "runs": []}
     spent = 0.0
     variants = ("normal", "reversed")
     if os.environ.get("JEV_RND_PRIMITIVES") == "1":
-        output = json.loads((ROOT / "docs/jev-rnd/results.json").read_text())
+        results_path = ROOT / RESULTS["core"]
+        output = json.loads(results_path.read_text())
         spent = output["total_cost_usd"]
         budget = output["budget_usd"]
         output.pop("stop_reason", None)
@@ -149,8 +188,9 @@ def main():
     for case in cases:
         for variant in variants:
             questions = json.loads(json.dumps(case["questions"]))
-            if variant == "reversed" and questions["verdict"]["type"] == "choice":
-                questions["verdict"]["criteria"] = dict(reversed(list(questions["verdict"]["criteria"].items())))
+            primary = next(iter(questions))
+            if variant == "reversed" and questions[primary]["type"] == "choice":
+                questions[primary]["criteria"] = dict(reversed(list(questions[primary]["criteria"].items())))
             payload = {"model": "jev-1.13.0", "state": case["state"], "questions": questions}
             body = json.dumps(payload, ensure_ascii=False).encode()
             # Conservative admission estimate: one token per UTF-8 byte plus overhead.
@@ -158,30 +198,30 @@ def main():
             if spent + reserve > budget:
                 output["stop_reason"] = "budget admission limit"
                 break
-            request = urllib.request.Request(ENDPOINT, body,
-                {"Authorization": "Bearer " + key, "Content-Type": "application/json"})
             start = time.monotonic()
             try:
-                with urllib.request.urlopen(request, timeout=30) as response:
-                    result = json.load(response)
+                result = send(payload)
             except urllib.error.HTTPError as error:
                 output["stop_reason"] = "HTTP " + str(error.code)
                 break
-            except (urllib.error.URLError, TimeoutError):
+            except (urllib.error.URLError, TimeoutError, OSError):
                 output["stop_reason"] = "network error; no automatic retry"
+                break
+            except (RuntimeError, ValueError) as error:
+                output["stop_reason"] = str(error)
                 break
             usage = result.get("usage", {})
             cost = usage.get("cost_usd")
-            if not isinstance(cost, (int, float)) or cost < 0:
-                output["stop_reason"] = "unavailable cost; no further paid calls"
-            else:
-                spent += cost
+            reported = isinstance(cost, (int, float)) and cost >= 0
+            # The official API may omit cost; count the conservative admission estimate so the cap still holds.
+            cost = cost if reported else round(reserve, 9)
+            spent += cost
             output["runs"].append({"case_id": case["id"], "variant": variant,
                 "family": case["family"], "expected": case["expected"], "request": payload,
                 "model": result.get("model"), "answers": result.get("answers"),
-                "input_tokens": usage.get("input_tokens"), "cost_usd": cost,
+                "input_tokens": usage.get("input_tokens"), "cost_usd": cost, "cost_reported": reported,
                 "latency_ms": round((time.monotonic() - start) * 1000, 1)})
-            answer = result.get("answers", {}).get("verdict", {})
+            answer = result.get("answers", {}).get(primary, {})
             observed = answer.get("choice", answer.get("score"))
             print(json.dumps({"case": case["id"], "variant": variant, "observed": observed,
                               "confidence": answer.get("confidence"), "cost_usd": cost}), flush=True)
@@ -191,7 +231,7 @@ def main():
             break
     output["total_cost_usd"] = round(spent, 9)
     output["finished_utc"] = datetime.now(timezone.utc).isoformat()
-    (ROOT / "docs/jev-rnd/results.json").write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n")
+    results_path.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps({"calls": len(output["runs"]), "cost_usd": spent,
                       "stop_reason": output.get("stop_reason", "completed")}))
 

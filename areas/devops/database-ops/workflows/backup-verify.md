@@ -14,6 +14,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "The request asks to prove that database backups restore correctly, or to automate restore tests and backup alerts."
 related-rules:
   - backup-policy.md
 uses-skills:

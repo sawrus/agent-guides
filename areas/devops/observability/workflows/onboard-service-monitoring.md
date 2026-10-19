@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to add metrics, logs, traces, alerts or a dashboard to one existing service."
 related-rules:
   - golden-signals.md
   - alerting-standards.md

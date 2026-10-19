@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "A deployment just finished and the request asks to check the critical paths quickly."
 related-rules:
   - quality-gates.md
   - test-strategy.md

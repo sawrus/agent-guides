@@ -17,6 +17,10 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to create a CI/CD pipeline for a repository that has none, with quality gates and deployment automation."
+  avoid-when: "The pipeline already exists and only fails; use pipeline-debug."
 related-rules:
   - pipeline-standards.md
   - quality-gates.md

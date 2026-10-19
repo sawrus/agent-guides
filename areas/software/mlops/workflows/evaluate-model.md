@@ -15,6 +15,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "The request asks to evaluate a trained model run with metrics, fairness and business impact for a promotion decision."
 related-rules:
   - model-governance.md
   - data-integrity.md

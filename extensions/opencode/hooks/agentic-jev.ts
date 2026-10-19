@@ -20,6 +20,10 @@ export default Plugin.define({
         if (model) profilePins.set(file.slice(0, -3), model);
       }
     }
+    // Shipped tier-map models widen the spawn pool; the hook resolves tiers and role defaults (I1).
+    // Own catch: a bad map must not mark the project configuration unavailable.
+    const tierMap = await readFile(join(project, ".agent/jev/opencode-model-tiers.json"), "utf8").then(JSON.parse).catch(() => ({}));
+    const tierModels = Object.values(tierMap?.providers ?? {}).flatMap((tiers: any) => Object.values(tiers ?? {})).filter((m): m is string => typeof m === "string");
     const refID = (model: any): string | undefined => typeof model === "string" ? model : model?.id && model?.providerID ? `${model.providerID}/${model.id}` : undefined;
     const original = new Map<string, string>();
     const toolInputs = new Map<string, {action: string; input: unknown}>();
@@ -97,7 +101,6 @@ export default Plugin.define({
       const input = event.input as {agent: string; prompt: string; model?: string; sessionID?: string};
       const agents = (await ctx.agent.list()).data;
       const agent = agents.find((a) => a.id === input.agent);
-      const session = await ctx.session.get({sessionID: event.sessionID});
       let configReadable = true;
       const readConfig = async (path: string): Promise<any> => {
         try { return JSON.parse(await readFile(join(project, path), "utf8")); }
@@ -112,13 +115,14 @@ export default Plugin.define({
       const localPin = rootJSONC.agent?.[input.agent]?.model || rootConfig.agent?.[input.agent]?.model || (localModel && mapping.model_defaults?.[input.agent] !== localModel && profileDefaults[input.agent] !== localModel ? localModel : undefined);
       const lightweight = process.env.AGENTIC_JEV_LIGHTWEIGHT_MODEL || refID(agents.find((a) => a.id === "instruction-reviewer")?.model);
       const provider = process.env.AGENTIC_JEV_MODEL_PROVIDER;
-      const pool = new Set(agents.filter(a => projectRoles.has(a.id)).map(a => refID(a.model)).filter(Boolean));
+      const pool = new Set([...agents.filter(a => projectRoles.has(a.id)).map(a => refID(a.model)).filter(Boolean), ...tierModels]);
       const models = (await ctx.model.list()).data.filter((m) => pool.has(`${m.providerID}/${m.id}`) && m.capabilities.tools && (!provider || m.providerID === provider)).map((m) => ({
         id: `${m.providerID}/${m.id}`, description: m.name, capabilities: m.capabilities, prices: m.cost,
       }));
       const result = await decide({kind: "spawn", session_id: event.sessionID, event_id: event.id,
         original_prompt: await rootPrompt(event.sessionID), input, agent: input.agent, prompt: input.prompt,
-        models, default_model: refID(session.model), lightweight_model: lightweight, role_description: agent?.description,
+        // Without a confident tier the hook falls back to this role default, never to the session model.
+        models, role_default: refID(agent?.model) ?? profileDefaults[input.agent], lightweight_model: lightweight, role_description: agent?.description,
         configuration_unavailable: !configReadable,
         pinned_model: input.model || profilePins.get(input.agent) || localPin, continuation: !!input.sessionID});
       if (result.model) {
@@ -137,7 +141,9 @@ export default Plugin.define({
     disposables.push(await ctx.permission.hook("evaluate", async (event) => {
       if (!(await enabled()) || event.effect !== "ask") return;
       const tool = event.source?.type === "tool" ? toolInputs.get(`${event.sessionID}:${event.source.id}`) : undefined;
-      const result = await decide({kind: "permission", session_id: event.sessionID,
+      // The hook keeps this label only when it names an installed role agent.
+      const requester = await ctx.session.get({ sessionID: event.sessionID }).then((session) => session.agent).catch(() => undefined);
+      const result = await decide({kind: "permission", session_id: event.sessionID, agent: requester,
         event_id: `${event.source?.type ?? "permission"}:${JSON.stringify(event.source ?? {})}:${event.action}:${event.resources.join(",")}`,
         action: tool?.action === "apply_patch" ? tool.action : event.action,
         input: tool?.input, resources: event.resources, metadata: event.metadata,

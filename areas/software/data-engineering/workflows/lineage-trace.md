@@ -15,6 +15,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks which downstream models, dashboards or consumers depend on a column or table before it changes."
 related-rules:
   - data-governance.md
   - schema-management.md

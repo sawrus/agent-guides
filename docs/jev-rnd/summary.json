@@ -40,5 +40,33 @@
   "models": [
     "jev-1.13.0"
   ],
-  "limitations": "Hand-labelled simple synthetic fixtures; paired variants are not independent samples. No model quality, production calibration or total-workflow cost comparison."
+  "limitations": "Hand-labelled simple synthetic fixtures; paired variants are not independent samples. No model quality, production calibration or total-workflow cost comparison.",
+  "questions": {
+    "calls": 40,
+    "unique_cases": 20,
+    "families": {
+      "workflow_routing": {
+        "calls": 24,
+        "agreed": 24
+      },
+      "model_tier": {
+        "calls": 16,
+        "agreed": 16
+      }
+    },
+    "label_changed_by_option_order": [],
+    "max_confidence_shift": 0.16,
+    "cost_usd": 0.092379,
+    "input_tokens": 52252,
+    "latency_ms": {
+      "min": 237.5,
+      "median": 285.05,
+      "p95_nearest_rank": 337.0,
+      "max": 362.9
+    },
+    "models": [
+      "jev-1.13.0"
+    ],
+    "limitations": "Hand-labelled simple synthetic fixtures; paired variants are not independent samples. No model quality, production calibration or total-workflow cost comparison."
+  }
 }

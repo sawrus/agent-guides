@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "A mobile app crashes and the request asks to symbolicate, reproduce and fix it with a regression test."
 related-rules:
   - platform-compliance.md
   - security-mobile.md

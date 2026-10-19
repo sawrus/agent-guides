@@ -401,7 +401,7 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
             "specializations": app.selected_specs,
             "mcp_integrations": app.selected_mcps,
             "context7": {"api_key_mode": app.context7_api_key_mode.clone().unwrap_or_else(|| if app.context7_api_key.is_empty() { "without_api_key".to_string() } else { "api_key".to_string() })},
-            "jev": {"enabled": app.jev_enabled.unwrap_or(false), "api_url": app.jev_api_url.as_deref().unwrap_or(crate::jev_hooks::DEFAULT_API_URL)},
+            "jev": crate::jev_defaults::manifest_settings(app, &old_settings),
             "opencode_profile": app.selected_opencode_profile,
             "opencode_plugins": Value::Object(opencode_plugins),
             "notifications": notifications,
@@ -592,6 +592,31 @@ mod tests {
         assert_eq!(app2.selected_agent_os, vec!["opencode"]);
         assert_eq!(app2.selected_areas, vec!["software"]);
         assert_eq!(app2.selected_specs, vec!["software.backend"]);
+    }
+
+    #[test]
+    fn reinstall_keeps_jev_tuning() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut app = test_app(tmp.path());
+        app.jev_enabled = Some(true);
+        write_agentic_manifest(&mut app, tmp.path()).unwrap();
+        let path = tmp.path().join(".agentic.json");
+        let mut data: Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        let tuning = json!({"thresholds": {"workflow": 0.8, "model": 0.6, "permission": 0.95},
+            "lightweight_model": "gpt-6-luna", "tiers": {"fast": "gpt-6-luna"}});
+        for (key, value) in tuning.as_object().unwrap() {
+            data["settings"]["jev"][key] = value.clone();
+        }
+        std::fs::write(&path, data.to_string()).unwrap();
+        let mut again = test_app(tmp.path());
+        again.jev_enabled = Some(true);
+        write_agentic_manifest(&mut again, tmp.path()).unwrap();
+        let jev = &read_manifest(&path).unwrap()["settings"]["jev"];
+        assert_eq!(jev["enabled"], true);
+        for key in ["thresholds", "lightweight_model", "tiers"] {
+            assert_eq!(jev[key], tuning[key], "{key}");
+        }
     }
 
     #[test]

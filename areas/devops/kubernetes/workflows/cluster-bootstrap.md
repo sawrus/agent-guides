@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "The request asks to build a new self-hosted Kubernetes cluster on bare-metal or virtual machines with kubeadm."
 related-rules:
   - cluster-standards.md
   - workload-security.md

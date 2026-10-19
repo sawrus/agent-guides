@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "The request asks to deploy a trained model as a serving endpoint with shadow, canary and full rollout."
 related-rules:
   - production-safety.md
   - model-governance.md

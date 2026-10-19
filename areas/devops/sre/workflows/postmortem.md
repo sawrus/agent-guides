@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "An incident is resolved and the request asks for a blameless postmortem with root cause and action items."
 related-rules:
   - on-call-standards.md
   - error-budget-policy.md

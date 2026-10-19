@@ -1,19 +1,44 @@
 #!/usr/bin/env python3
-"""Shared TypeSafe/JEV request validation, credential loading and redaction."""
+"""Shared TypeSafe/JEV client: request validation, credentials, redaction, budget ledger and hook evaluation."""
 
 import argparse
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
 import re
+import tempfile
+import time
 import urllib.error
 import urllib.request
 import urllib.parse
+import uuid
 
 PROVIDERS = {
     "hosted": ("https://jevtypesafeai.com/api/v1/decide", "JEV_API_KEY"),
     "typesafe": ("https://api.typesafe.ai/v1/systemone", "TYPESAFE_API_KEY"),
 }
+JSON_FILE_LIMIT = 2_000_000
+JEV_MODEL = "jev-1.13.0"
+REQUEST_LIMIT = 32768
+RESPONSE_LIMIT = 262144
+HOOK_TIMEOUT_SECONDS = 8
+RESERVATION_USD = .02
+MAX_CHARGE_USD = 5
+BUDGET_LOCK_ATTEMPTS = 20
+BUDGET_LOCK_WAIT = .02
+
+
+# Every token family matches only at a token start, so identifiers such as tests_and_review_evidence,
+# parts_inventory_service or task-ask-me stay intact (QR-D3). `ts_` is also a common word part, so it needs a digit;
+# OpenAI/Anthropic (`sk-`, `sk-proj-`, `sk-ant-`) and gateway (`jv_live_`) keys need a digit or 20+ characters.
+TOKEN = re.compile(
+    r"(?<![A-Za-z0-9_-])(?:"
+    r"ts_(?=[A-Za-z0-9_-]*[0-9])[A-Za-z0-9_-]{8,}"
+    r"|(?:sk-|jv_live_)(?:[A-Za-z0-9_-]{20,}|(?=[A-Za-z0-9_-]*[0-9])[A-Za-z0-9_-]{8,})"
+    r"|gh[pousr]_[A-Za-z0-9]{20,}"
+    r"|AKIA[0-9A-Z]{16}(?![0-9A-Z])"
+    r"|xox[abprs]-[A-Za-z0-9-]{10,})")
 
 
 def key_for(project, name):
@@ -40,7 +65,7 @@ def redact(value):
     if isinstance(value, list):
         return [redact(v) for v in value]
     if isinstance(value, str):
-        return re.sub(r"(?:jv_live_|ts_|sk-)[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._-]+|[A-Z_]*(?:API_KEY|PASSWORD|SECRET|TOKEN)[A-Z_]*\s*=\s*[^\s]+|-----BEGIN[\s\S]*?PRIVATE KEY-----[\s\S]*?-----END[\s\S]*?PRIVATE KEY-----", "[REDACTED]", value, flags=re.I)
+        return TOKEN.sub("[REDACTED]", re.sub(r"Bearer\s+[A-Za-z0-9._-]+|[A-Z_]*(?:API_KEY|PASSWORD|SECRET|TOKEN)[A-Z_]*\s*=\s*[^\s]+|-----BEGIN[\s\S]*?PRIVATE KEY-----[\s\S]*?-----END[\s\S]*?PRIVATE KEY-----", "[REDACTED]", value, flags=re.I))
     return value
 
 
@@ -101,6 +126,134 @@ def answers_for(result, questions):
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
+
+
+def read_json(path, default=None):
+    try:
+        if path.stat().st_size > JSON_FILE_LIMIT:
+            return default
+        return json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return default
+
+
+def scrub(value, project):
+    value = redact(value)
+    # Also remove exact locally configured credentials, including unknown key formats.
+    keys = [key_for(project, name) for name in ('JEV_API_KEY', 'TYPESAFE_API_KEY')]
+    def clean(v):
+        if isinstance(v, dict):
+            return {k: clean(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [clean(x) for x in v]
+        if isinstance(v, str):
+            for key in keys:
+                if key:
+                    v = v.replace(key, '[REDACTED]')
+            v = re.sub(r'(?i)(password|secret|token|api[_-]?key|authorization)\s*[:=]\s*["\']?[^\s"\',;]+', r'\1=[REDACTED]', v)
+        return v
+    return clean(value)
+
+
+def save_json(path, data):
+    if path.is_symlink():
+        raise ValueError('redirected runtime file')
+    fd, temporary = tempfile.mkstemp(dir=path.parent)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as handle:
+            json.dump(data, handle, ensure_ascii=False)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+@contextmanager
+def budget_lock(path):
+    lock = path.with_suffix('.lock')
+    acquired = False
+    for _ in range(BUDGET_LOCK_ATTEMPTS):
+        try:
+            lock.mkdir()
+            acquired = True
+            break
+        except FileExistsError:
+            time.sleep(BUDGET_LOCK_WAIT)
+    if not acquired:
+        raise ValueError('budget busy')
+    try:
+        yield
+    finally:
+        lock.rmdir()
+
+
+def reserve_budget():
+    configured = os.environ.get('AGENTIC_JEV_BUDGET_FILE')
+    if not configured:
+        return None
+    path = Path(configured)
+    if path.is_symlink() or any(p.is_symlink() for p in path.parents):
+        raise ValueError('redirected budget')
+    token = uuid.uuid4().hex
+    with budget_lock(path):
+        data = read_json(path)
+        if not isinstance(data, dict) or data.get('committed_usd', MAX_CHARGE_USD) + sum(data.get('pending', {}).values()) + RESERVATION_USD > data.get('limit_usd', 0):
+            raise ValueError('budget exhausted')
+        data.setdefault('pending', {})[token] = RESERVATION_USD
+        save_json(path, data)
+    return path, token
+
+
+def settle_budget(reservation, cost):
+    if not reservation:
+        return
+    path, token = reservation
+    with budget_lock(path):
+        data = read_json(path)
+        estimate = data['pending'].pop(token)
+        data['committed_usd'] += cost if isinstance(cost, (int, float)) and 0 <= cost <= MAX_CHARGE_USD else estimate
+        data['calls'] = data.get('calls', 0) + 1
+        save_json(path, data)
+
+
+def hook_endpoint(settings):
+    """(endpoint, key variable) the hooks use: JEV_API_URL > settings.jev.api_url > official; None if unsafe."""
+    endpoint = os.environ.get('JEV_API_URL') or settings.get('api_url') or PROVIDERS["typesafe"][0]
+    url = urllib.parse.urlsplit(endpoint)
+    if url.scheme != 'https' or not url.hostname or url.username or url.password or url.fragment:
+        return None, None
+    return endpoint, 'TYPESAFE_API_KEY' if url.hostname == 'api.typesafe.ai' else 'JEV_API_KEY'
+
+
+def evaluate(project, settings, request):
+    endpoint, key_name = hook_endpoint(settings)
+    if not endpoint:
+        return {'status': 'fallback', 'reason_code': 'invalid_endpoint'}
+    key = key_for(project, key_name)
+    if not key:
+        return {'status': 'fallback', 'reason_code': 'missing_key'}
+    validate(request)
+    # Non-ASCII stays UTF-8: escaped Cyrillic costs about six bytes per character against the request limit.
+    if len(json.dumps(request, ensure_ascii=False).encode()) > REQUEST_LIMIT:
+        return {'status': 'fallback', 'reason_code': 'request_too_large'}
+    body = json.dumps({'model': JEV_MODEL, **request}, ensure_ascii=False).encode()
+    req = urllib.request.Request(endpoint, body, {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json; charset=utf-8'})
+    reservation = reserve_budget()
+    cost = None
+    try:
+        with urllib.request.build_opener(NoRedirect()).open(req, timeout=HOOK_TIMEOUT_SECONDS) as response:
+            raw = response.read(RESPONSE_LIMIT + 1)
+        if len(raw) > RESPONSE_LIMIT:
+            raise ValueError('response too large')
+        result = json.loads(raw)
+        cost = result.get('usage', {}).get('cost_usd')
+        if result.get('model') != JEV_MODEL:
+            raise ValueError('unexpected model')
+        return {'status': 'evaluated', 'answers': answers_for(result, request['questions']),
+                'usage': {k: result.get('usage', {}).get(k) for k in ('input_tokens', 'cost_usd')},
+                'response': result}
+    finally:
+        settle_budget(reservation, cost)
 
 
 def run(args):

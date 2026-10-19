@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks why a frontend bundle grew or how to reduce its size."
 related-rules:
   - performance.md
   - architecture.md

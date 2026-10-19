@@ -196,6 +196,11 @@ def calculator_probe(project):
         return False, {'verified': False, 'reason': 'Independent calculator probe failed'}
 
 
+def agent_label(record):
+    """Installed roles are labelled `agent`; native helpers such as Explore keep `native_agent_type` (QR-D6)."""
+    return record['context'].get('agent') or record['context'].get('native_agent_type')
+
+
 def verify(project, trace, exit_code, host=None):
     records = [json.loads(p.read_text()) for p in (project / '.agentic/jev').glob('event-*.json')]
     session = native_session(trace)
@@ -214,7 +219,7 @@ def verify(project, trace, exit_code, host=None):
         return requested == observed or (host == 'claude' and isinstance(observed, str) and f'-{requested}-' in f'-{observed}-')
     model_applied = any(a['result']['status'] == 'evaluated' and same_model(a['result']['model'], b['result']['observed_model'])
                         and a['context'].get('session_id') == b['context'].get('session_id')
-                        and a['context'].get('agent') == b['context'].get('agent') for a in routes for b in observed)
+                        and agent_label(a) == agent_label(b) for a in routes for b in observed)
     checks = {'native_exit_success': exit_code == 0, 'real_jev_workflow': bool(workflow_records),
               'workflow_read_by_agent': workflow_applied, 'model_applied_to_subagent': model_applied,
               'calculator_verified': False}
@@ -370,6 +375,14 @@ def run_lock(root):
         lock.rmdir()
 
 
+def run_root(args):
+    """Absolute artifact root (QR-D9): hosts run in the project directory, so a relative --run-dir would
+    resolve AGENTIC_CONFIG_DIR and other derived paths against the wrong directory."""
+    if args.run_dir:
+        return args.run_dir.resolve()
+    return ROOT / '.agentic-blackbox' / time.strftime('%Y%m%d-%H%M%S')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', choices=(*HOSTS, 'all'), default='all')
@@ -380,7 +393,7 @@ def main():
     args = parser.parse_args()
     if args.verify_only and not args.run_dir:
         parser.error('--verify-only requires --run-dir')
-    root = args.run_dir or ROOT / '.agentic-blackbox' / time.strftime('%Y%m%d-%H%M%S')
+    root = run_root(args)
     endpoint = os.environ.get('JEV_API_URL') or 'https://api.typesafe.ai/v1/systemone'
     with run_lock(root):
         return execute(args, root, endpoint)

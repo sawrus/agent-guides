@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "The request asks to review SLO targets against reliability data or to change the error budget policy."
 related-rules:
   - slo-policy.md
   - error-budget-policy.md

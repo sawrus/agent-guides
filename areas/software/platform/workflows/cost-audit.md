@@ -15,6 +15,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "The request asks to analyze cloud spending and recommend savings."
 related-rules:
   - cost-governance.md
   - immutability.md

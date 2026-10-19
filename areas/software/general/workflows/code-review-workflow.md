@@ -16,6 +16,10 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to review an existing pull request, merge request or diff and give review comments."
+  avoid-when: "The request asks to write or change code."
 related-rules:
   - code-style-guide.md
   - git-workflow-guide.md

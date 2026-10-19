@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "roles": {
+    "product-owner": "balanced",
+    "team-lead": "balanced",
+    "developer": "balanced",
+    "qa": "balanced",
+    "devops-engineer": "balanced",
+    "analyst": "fast",
+    "pm": "fast",
+    "instruction-reviewer": "fast",
+    "memory-curator": "fast",
+    "explore": "fast",
+    "general": "balanced"
+  },
+  "providers": {
+    "openai": {
+      "fast": "openai/gpt-6-luna",
+      "balanced": "openai/gpt-6.1-sol",
+      "frontier": "openai/gpt-6-astra"
+    }
+  }
+}

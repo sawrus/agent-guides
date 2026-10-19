@@ -18,7 +18,7 @@ class ClaudeHooks(unittest.TestCase):
         workflows = self.project / '.agent/workflows'
         workflows.mkdir(parents=True)
         for name, desc in [('develop-feature', 'Implement a feature'), ('code-review', 'Review code')]:
-            (workflows / (name + '.md')).write_text(f'---\nname: {name}\ntrigger: /{name}\ndescription: {desc}\nagent: product-owner\n---\n')
+            (workflows / (name + '.md')).write_text(f'---\nname: {name}\ntype: workflow\ntrigger: /{name}\ndescription: {desc}\nagent: product-owner\n---\n')
         agents = self.project / '.claude/agents'
         agents.mkdir(parents=True)
         (agents / 'developer.md').write_text('---\nname: developer\ndescription: Dev role\ntools: Read\n---\nbody\n')
@@ -43,17 +43,24 @@ class ClaudeHooks(unittest.TestCase):
         self.assertIn('.agent/workflows/develop-feature.md', context)
         self.assertIn('Agent tool', context)
         self.assertNotIn('spawn_agent', context)
+        self.assertNotIn('calculator', context.replace('/develop-feature calculator', '').lower())
+        self.assertNotIn('crud', context.lower())
 
     def test_agent_spawn_routes_only_to_aliases(self):
         hook.claude_event(self.project, self.payload('UserPromptSubmit', prompt='/develop-feature calculator'))
         seen = {}
         def respond(project, settings, request):
             seen['criteria'] = set(request['questions']['model']['criteria'])
-            return self.answer(request, 'haiku')
+            seen['state'] = request['state']
+            return self.answer(request, 'fast')
         with patch.object(hook, 'evaluate', side_effect=respond):
             out = hook.claude_event(self.project, self.payload('PreToolUse', tool_name='Agent', tool_use_id='t1',
                                     tool_input={'subagent_type': 'developer', 'description': 'd', 'prompt': 'add sum()'}))
-        self.assertEqual(seen['criteria'], {'haiku', 'sonnet', 'opus'})
+        self.assertEqual(seen['criteria'], {'fast', 'balanced', 'frontier', 'clarify'})
+        self.assertEqual([c['model'] for c in seen['state']['candidates']], ['haiku', 'sonnet', 'opus'])
+        self.assertEqual(seen['state']['cost_source'], 'tier_order')
+        self.assertNotIn('default_model', seen['state'])
+        self.assertEqual(seen['state']['role_description'], 'Dev role')
         specific = out['hookSpecificOutput']
         self.assertEqual(specific['permissionDecision'], 'allow')
         self.assertEqual(specific['updatedInput'], {'subagent_type': 'developer', 'description': 'd', 'prompt': 'add sum()', 'model': 'haiku'})
@@ -111,8 +118,8 @@ class ClaudeHooks(unittest.TestCase):
                 self.assertEqual(hook.claude_event(self.project, self.payload('UserPromptSubmit', prompt=prompt, prompt_id='h')), {})
         seen = {}
         def respond(project, settings, request):
-            seen['original'] = request['state']['original_prompt']
-            return self.answer(request, 'haiku')
+            seen['original'] = request['state']['original_request']
+            return self.answer(request, 'fast')
         with patch.object(hook, 'evaluate', side_effect=respond):
             hook.claude_event(self.project, self.payload('PreToolUse', tool_name='Agent', tool_use_id='t5',
                               tool_input={'subagent_type': 'developer', 'prompt': 'add sum()'}))
@@ -126,27 +133,52 @@ class ClaudeHooks(unittest.TestCase):
                 self.assertEqual(out, {})
         self.assertFalse(list((self.project / '.agentic/jev').glob('event-*.json')))
 
-    def test_session_model_comes_from_transcript_then_settings(self):
-        payload = self.payload('UserPromptSubmit', prompt='x')
-        self.assertEqual(hook.claude_session_model(self.project, payload), 'sonnet')
-        user = self.project / 'home/.claude'
-        user.mkdir(parents=True)
-        (user / 'settings.json').write_text(json.dumps({'model': 'opus'}))
-        self.assertEqual(hook.claude_session_model(self.project, payload), 'opus')
-        (self.project / '.claude/settings.json').write_text(json.dumps({'model': 'claude-haiku-5-5'}))
-        self.assertEqual(hook.claude_session_model(self.project, payload), 'haiku')
-        transcript = self.project / 'main.jsonl'
-        transcript.write_text(json.dumps({'type': 'assistant', 'message': {'model': 'claude-sonnet-5-5', 'content': []}}))
-        self.assertEqual(hook.claude_session_model(self.project, {**payload, 'transcript_path': str(transcript)}), 'sonnet')
-        with patch.dict(os.environ, {'AGENTIC_JEV_DEFAULT_MODEL': 'opus'}):
-            self.assertEqual(hook.claude_session_model(self.project, {**payload, 'transcript_path': str(transcript)}), 'opus')
+    def test_permission_agent_label_only_for_installed_roles(self):
+        seen = []
+        def respond(project, settings, request):
+            seen.append(request['state'])
+            return self.answer(request, 'ask')
+        with patch.object(hook, 'evaluate', side_effect=respond):
+            for index, agent in enumerate(('developer', 'Explore', None)):
+                payload = self.payload('PermissionRequest', tool_name='Write', tool_use_id=f'l{index}',
+                                       tool_input={'file_path': str(self.project / 'a.py'), 'content': 'secret body'})
+                if agent:
+                    payload['agent_type'] = agent
+                self.assertEqual(hook.claude_event(self.project, payload), {})
+        self.assertEqual([(s['agent'], s['native_agent_type']) for s in seen], [('developer', None), (None, 'Explore'), (None, None)])
+        self.assertNotIn('secret body', json.dumps(seen))
+        observation = hook.claude_event(self.project, self.payload('SubagentStart', agent_id='e1', agent_type='Explore'))
+        self.assertEqual(observation, {})
+        records = [json.loads(p.read_text()) for p in (self.project / '.agentic/jev').glob('event-*.json')]
+        explore = next(r for r in records if r['context']['kind'] == 'observation')
+        self.assertIsNone(explore['result']['agent'])
+
+    def test_spawn_and_observation_label_agents_the_same_way(self):
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'fast')):
+            for index, role in enumerate(('Explore', 'developer')):
+                hook.claude_event(self.project, self.payload('PreToolUse', tool_name='Agent', tool_use_id=f'sp{index}',
+                                  tool_input={'subagent_type': role, 'prompt': 'look'}))
+                hook.claude_event(self.project, self.payload('SubagentStop', agent_id=f'ch{index}', agent_type=role))
+        records = [json.loads(p.read_text())['context'] for p in (self.project / '.agentic/jev').glob('event-*.json')]
+        labels = {(c['kind'], c.get('agent'), c.get('native_agent_type')) for c in records}
+        self.assertEqual(labels, {('spawn', None, 'Explore'), ('observation', None, 'Explore'),
+                                  ('spawn', 'developer', None), ('observation', 'developer', None)})
+
+    def test_confident_tiers_map_to_aliases(self):
+        for index, (tier, alias) in enumerate((('fast', 'haiku'), ('balanced', 'sonnet'), ('frontier', 'opus'))):
+            with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, tier)):
+                out = hook.claude_event(self.project, self.payload('PreToolUse', tool_name='Agent', tool_use_id=f'tier{index}',
+                                        tool_input={'subagent_type': 'developer', 'prompt': 'x'}))
+            self.assertEqual(out['hookSpecificOutput']['updatedInput']['model'], alias)
+            self.assertTrue(out['hookSpecificOutput']['permissionDecisionReason'].startswith('JEV selected ' + alias))
 
     def test_low_confidence_spawn_uses_profile_role_default(self):
         (self.project / '.agent/jev').mkdir(parents=True, exist_ok=True)
-        (self.project / '.agent/jev/model-defaults.json').write_text(json.dumps({'developer': 'sonnet', 'team-lead': 'opus', 'pm': 'haiku'}))
+        (self.project / '.agent/jev/model-defaults.json').write_text(json.dumps(
+            {'version': 2, 'roles': {'developer': 'sonnet', 'team-lead': 'opus', 'pm': 'haiku'}, 'tiers': {'fast': 'haiku', 'balanced': 'sonnet', 'frontier': 'opus'}}))
         hook.claude_event(self.project, self.payload('UserPromptSubmit', prompt='/develop-feature calculator'))
         confidences = iter((.58, .58, .95))
-        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'haiku', next(confidences))):
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'fast', next(confidences))):
             low = hook.claude_event(self.project, self.payload('PreToolUse', tool_name='Agent', tool_use_id='t6',
                                     tool_input={'subagent_type': 'developer', 'prompt': 'add sum()'}))
             unknown = hook.claude_event(self.project, self.payload('PreToolUse', tool_name='Agent', tool_use_id='t7',
@@ -154,12 +186,12 @@ class ClaudeHooks(unittest.TestCase):
             sure = hook.claude_event(self.project, self.payload('PreToolUse', tool_name='Agent', tool_use_id='t8',
                                      tool_input={'subagent_type': 'developer', 'prompt': 'add sum()'}))
         self.assertEqual(low['hookSpecificOutput']['updatedInput']['model'], 'sonnet')
-        self.assertIn('Profile default', low['hookSpecificOutput']['permissionDecisionReason'])
+        self.assertIn('Role default', low['hookSpecificOutput']['permissionDecisionReason'])
         self.assertEqual(unknown, {})
         self.assertEqual(sure['hookSpecificOutput']['updatedInput']['model'], 'haiku')
         records = [json.loads(p.read_text())['result'] for p in (self.project / '.agentic/jev').glob('event-*.json')]
-        self.assertIn({'status': 'fallback', 'reason_code': 'low_confidence', 'model': 'sonnet', 'model_source': 'profile_default'},
-                      [{k: r.get(k) for k in ('status', 'reason_code', 'model', 'model_source')} for r in records])
+        self.assertIn({'status': 'fallback', 'reason_code': 'low_confidence', 'model': 'sonnet', 'model_source': 'role_default', 'tier': 'balanced'},
+                      [{k: r.get(k) for k in ('status', 'reason_code', 'model', 'model_source', 'tier')} for r in records])
 
 
 if __name__ == '__main__':

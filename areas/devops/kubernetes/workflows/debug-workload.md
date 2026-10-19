@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "A Kubernetes workload crashes, stays pending or misbehaves and the request asks for the root cause and a fix."
 related-rules:
   - workload-security.md
   - resource-governance.md

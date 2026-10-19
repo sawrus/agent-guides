@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "A monitoring alert is firing and the request asks to find its cause, mitigate it or improve the alert."
 related-rules:
   - golden-signals.md
   - alerting-standards.md

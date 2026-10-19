@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to build, sign and validate a production iOS or Android release artifact."
 related-rules:
   - platform-compliance.md
   - security-mobile.md

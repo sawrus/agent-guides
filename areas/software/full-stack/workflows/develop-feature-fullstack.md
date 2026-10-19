@@ -19,6 +19,9 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "The request asks for a feature in a full-stack Python FastAPI project that touches the backend layers and possibly the UI."
 related-rules:
   - backend-architecture-rule.md
   - api-design-guide.md

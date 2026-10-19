@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "Tests pass and fail intermittently and the request asks to find the cause and stabilize them."
 related-rules:
   - flakiness-policy.md
   - test-strategy.md

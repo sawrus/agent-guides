@@ -19,6 +19,9 @@ roles:
 execution:
   initiator: product-owner
 agent: product-owner
+selection:
+  general: false
+  use-when: "The request is a large backend initiative that needs several planned increments, milestones and replanning."
 related-rules:
   - architecture.md
   - data_access.md

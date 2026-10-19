@@ -4,6 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 import json
+import os
 from unittest.mock import patch
 from types import SimpleNamespace
 
@@ -35,6 +36,33 @@ class CalculatorAcceptance(unittest.TestCase):
                 result = blackbox.verify(project, trace, 0)
             self.assertFalse(result['checks']['real_jev_workflow'])
             self.assertFalse(result['checks']['model_applied_to_subagent'])
+
+    def verify_routes(self, spawn_context, observation_context):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            journal = project / '.agentic/jev'
+            journal.mkdir(parents=True)
+            base = {'session_id': 'new', 'task_id': 'task'}
+            records = [
+                {'context': {**base, 'kind': 'prompt', 'prompt': blackbox.PROMPT}, 'result': {'status': 'fallback'}},
+                {'context': {**base, 'kind': 'spawn', **spawn_context}, 'result': {'status': 'evaluated', 'model': 'light'}},
+                {'context': {**base, 'kind': 'observation', **observation_context}, 'result': {'status': 'observed', 'observed_model': 'light'}},
+            ]
+            for index, record in enumerate(records):
+                (journal / f'event-{index}.json').write_text(json.dumps(record))
+            trace = project / 'trace.jsonl'
+            trace.write_text('{"type":"thread.started","thread_id":"new"}\n')
+            with patch.object(blackbox.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout='{"verified":true}')), patch.object(blackbox, 'key_for', return_value=''):
+                return blackbox.verify(project, trace, 0)['checks']['model_applied_to_subagent']
+
+    def test_native_helpers_are_matched_by_native_agent_type(self):
+        native = {'agent': None, 'native_agent_type': 'Explore'}
+        self.assertTrue(self.verify_routes(native, native))
+        self.assertTrue(self.verify_routes({'agent': 'developer'}, {'agent': 'developer'}))
+        # A pre-QR-D6 spawn record (raw label in `agent`) still pairs with a labelled observation.
+        self.assertTrue(self.verify_routes({'agent': 'Explore'}, native))
+        self.assertFalse(self.verify_routes(native, {'agent': None, 'native_agent_type': 'general-purpose'}))
+        self.assertFalse(self.verify_routes({'agent': 'developer'}, {'agent': 'qa'}))
 
     def test_overlapping_native_runs_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -173,6 +201,21 @@ class FollowupTurn(unittest.TestCase):
             self.assertEqual((command[2:4], command[-2:], text), (['exec', 'resume'], ['th_1', blackbox.FOLLOWUP], None))
             trace.write_text('')
             self.assertIsNone(blackbox.followup_turn('codex', 'codex', [], trace))
+
+
+class RunRoot(unittest.TestCase):
+    def test_relative_run_dir_becomes_absolute(self):
+        """QR-D9: the host runs in the project directory, so derived paths such as AGENTIC_CONFIG_DIR must be absolute."""
+        with tempfile.TemporaryDirectory() as directory:
+            previous = Path.cwd()
+            os.chdir(directory)
+            try:
+                root = blackbox.run_root(SimpleNamespace(run_dir=Path('.agentic-blackbox/run')))
+            finally:
+                os.chdir(previous)
+            self.assertEqual(root, Path(directory).resolve() / '.agentic-blackbox/run')
+            self.assertTrue((root / 'opencode' / 'agentic-config').is_absolute())
+        self.assertTrue(blackbox.run_root(SimpleNamespace(run_dir=None)).is_relative_to(blackbox.ROOT / '.agentic-blackbox'))
 
 
 class PackageCalculatorProbe(unittest.TestCase):

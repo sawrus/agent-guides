@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "The request asks to upgrade the Kubernetes version of a cluster without downtime."
 related-rules:
   - upgrade-policy.md
   - cluster-standards.md

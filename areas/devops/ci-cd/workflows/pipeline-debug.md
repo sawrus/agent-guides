@@ -14,6 +14,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "A CI/CD pipeline or job is failing and the request asks to find the cause and fix it."
 related-rules:
   - pipeline-standards.md
 uses-skills:

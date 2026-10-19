@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "The request asks to create an isolated preview environment for a branch, or a standing environment, with Terraform."
 related-rules:
   - immutability.md
   - cost-governance.md

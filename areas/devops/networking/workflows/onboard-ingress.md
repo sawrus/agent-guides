@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "The request asks to expose a Kubernetes service outside the cluster with Ingress, TLS or rate limiting."
 related-rules:
   - ingress-standards.md
   - tls-policy.md

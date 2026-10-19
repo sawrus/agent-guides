@@ -18,6 +18,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "The request asks to add or enforce Kubernetes admission policies with OPA Gatekeeper or Kyverno."
 related-rules:
   - policy-as-code.md
   - container-security.md

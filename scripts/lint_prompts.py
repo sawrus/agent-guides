@@ -2,11 +2,16 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AREAS = ROOT / "areas"
+# JEV builds workflow options with this parser; linting with it keeps both readings identical.
+JEV_QUESTIONS = ROOT / "extensions/codex/hooks/jev/questions.py"
+SELECTION_KEYS = frozenset({"general", "use-when", "avoid-when"})
+SELECTION_TEXT_MAX = 300
 
 FRONTMATTER = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 WORKFLOW_KEY = re.compile(r"^workflow:\s*([a-z0-9][a-z0-9-]*)\s*$", re.MULTILINE)
@@ -114,6 +119,52 @@ def check_skills(areas: Path) -> list[str]:
     return issues
 
 
+def load_questions():
+    spec = importlib.util.spec_from_file_location("jev_questions", JEV_QUESTIONS)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def selection_issues(rel: Path, front: dict) -> list[str]:
+    """Problems in one workflow's `selection` block (shape and text limits)."""
+    selection = front.get("selection")
+    if not isinstance(selection, dict):
+        return [f"{rel}: missing `selection` block with `general` and `use-when`"]
+    issues = [f"{rel}: unknown `selection` key `{key}`" for key in sorted(set(selection) - SELECTION_KEYS)]
+    if not isinstance(selection.get("general"), bool):
+        issues.append(f"{rel}: `selection.general` must be true or false")
+    for key in ("use-when", "avoid-when"):
+        value = selection.get(key)
+        if key == "avoid-when" and key not in selection:
+            continue
+        if not isinstance(value, str) or not value.strip() or "{{" in value:
+            issues.append(f"{rel}: `selection.{key}` must be a non-empty quoted sentence")
+        elif len(value) > SELECTION_TEXT_MAX:
+            issues.append(f"{rel}: `selection.{key}` exceeds {SELECTION_TEXT_MAX} chars")
+    return issues
+
+
+def check_workflows(areas: Path) -> list[str]:
+    """Every workflow needs `type: workflow` and a valid `selection`; at most one general workflow per top-level area."""
+    questions = load_questions()
+    issues: list[str] = []
+    general: dict[str, list[str]] = {}
+    for path in sorted(areas.glob("**/workflows/*.md")):
+        rel = path.relative_to(areas.parent)
+        front = questions.parse_front(path.read_text(encoding="utf-8"))
+        if front.get("type") != "workflow":
+            issues.append(f"{rel}: missing `type: workflow`; JEV ignores this file")
+            continue
+        issues.extend(selection_issues(rel, front))
+        if isinstance(front.get("selection"), dict) and front["selection"].get("general") is True:
+            general.setdefault(path.relative_to(areas).parts[0], []).append(str(rel))
+    for area, paths in sorted(general.items()):
+        if len(paths) > 1:
+            issues.append(f"areas/{area}: more than one `selection.general: true` workflow: {', '.join(paths)}")
+    return issues
+
+
 def workflow_stems_for_prompt(prompt_path: Path) -> set[str]:
     wf_dir = prompt_path.parent.parent / "workflows"
     if not wf_dir.exists():
@@ -188,6 +239,7 @@ def main() -> int:
             issues.append(f"{rel}: no /<workflow-file-name> command reference found")
 
     issues.extend(check_skills(AREAS))
+    issues.extend(check_workflows(AREAS))
 
     if issues:
         print("Prompt lint issues:")
@@ -195,7 +247,7 @@ def main() -> int:
             print(f"- {issue}")
         return 1 if args.strict else 0
 
-    print("All prompts and skills pass format checks.")
+    print("All prompts, skills and workflow selection blocks pass format checks.")
     return 0
 
 

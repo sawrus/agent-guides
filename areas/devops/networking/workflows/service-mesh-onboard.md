@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "The request asks to add a service to a Linkerd or Istio mesh, verify mTLS or set retry and timeout policies."
 related-rules:
   - network-segmentation.md
   - tls-policy.md

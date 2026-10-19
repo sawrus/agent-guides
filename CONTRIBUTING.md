@@ -98,8 +98,19 @@ Each specialization follows this consistent layout:
 2. Create a matching `areas/<domain>/<spec>/prompts/<kebab-case-name>.md`.
 3. Use `areas/template/workflow.tmpl.md` and `areas/template/prompt.tmpl.md`.
 4. Every step must have `@role`, Input, Actions (specific), and a checkable "Done when".
-5. Update the spec's `AGENTS.md` spec map.
-6. Target: 60–200 lines for the workflow.
+5. Add a `selection` block right after `agent:`. JEV workflow routing shows it to the model as the option text:
+   ```yaml
+   selection:
+     general: false
+     use-when: "The request asks to rotate a production secret, credential or key."
+     avoid-when: "The request only asks how rotation works."   # optional
+   ```
+   - `use-when` is required: one quoted sentence, at most 300 characters. Describe the kind of request by purpose, inputs and outputs. Do not copy a test prompt.
+   - `avoid-when` is optional. Name the nearest request that belongs to another workflow.
+   - `general: true` marks the catch-all workflow for ordinary requests. Each top-level area (`areas/software`, `areas/devops`) may have at most one; today it is `software/general/development-cycle-workflow`.
+   - `make lint-content` fails on a missing or invalid block.
+6. Update the spec's `AGENTS.md` spec map.
+7. Target: 60–200 lines for the workflow.
 
 ### Adding a new rule
 

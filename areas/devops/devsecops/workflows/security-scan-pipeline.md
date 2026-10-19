@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "The request asks to run or set up SAST, dependency, secret, image and IaC scanning with an SBOM for a service build."
 related-rules:
   - shift-left-policy.md
   - container-security.md

@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to scan code, dependencies, secrets or IaC for vulnerabilities and report the findings."
 related-rules:
   - secure-coding.md
   - dependency-policy.md
