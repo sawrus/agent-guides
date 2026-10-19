@@ -78,6 +78,9 @@ def shared_output(core, project, name, event, result, delegation):
     if name == 'SubagentStart' and event.get('agent') == 'instruction-reviewer' and result.get('status') == 'observed':
         packet = core.review_packet(project, event['session_id'])
         return {'hookSpecificOutput': {'hookEventName': name, 'additionalContext': review_additional_context(packet)}} if packet else None
+    if name == 'UserPromptSubmit' and result.get('status') == 'switched':
+        # Blocking erases the switch prompt, so `/jev off|on|status` costs no model turn.
+        return {'decision': 'block', 'reason': result['message']}
     if name == 'UserPromptSubmit' and result.get('workflow'):
         return {'hookSpecificOutput': {'hookEventName': name, 'additionalContext': workflow_context(result['workflow'], delegation)}}
     if name == 'PermissionRequest' and result.get('decision') in ('allow', 'deny'):

@@ -150,6 +150,10 @@ class Tiers(unittest.TestCase):
         self.assertEqual(v2, {'roles': {'developer': 'sonnet'}, 'tiers': {'fast': 'haiku'}})
         self.assertEqual(routing.load_defaults({'developer': 'sonnet', 'n': 1}), {'roles': {'developer': 'sonnet'}, 'tiers': {}})
         self.assertEqual(routing.load_defaults([]), {'roles': {}, 'tiers': {}})
+        combined = {'version': 2, 'roles': {'developer': 'gpt-6.1-sol'}, 'tiers': {'fast': 'gpt-6-luna'},
+                    'hosts': {'claude': {'roles': {'developer': 'sonnet'}, 'tiers': {'fast': 'haiku'}}}}
+        self.assertEqual(routing.load_defaults(combined, 'claude'), {'roles': {'developer': 'sonnet'}, 'tiers': {'fast': 'haiku'}})
+        self.assertEqual(routing.load_defaults(combined, 'codex')['roles'], {'developer': 'gpt-6.1-sol'})
 
     def test_claude_and_codex_host_tiers(self):
         claude = routing.claude_models({'roles': {}, 'tiers': {}})
@@ -260,8 +264,9 @@ class Thresholds(unittest.TestCase):
     def test_threshold_range_and_default(self):
         self.assertEqual(questions.threshold({'thresholds': {'model': .5}}, 'model'), .5)
         for invalid in (.49, 1.01, None, '0.7', False):
-            self.assertEqual(questions.threshold({'thresholds': {'model': invalid}}, 'model'), questions.DEFAULT_THRESHOLD)
-        self.assertEqual(questions.threshold(None, 'model'), .9)
+            self.assertEqual(questions.threshold({'thresholds': {'model': invalid}}, 'model'), questions.DEFAULT_THRESHOLDS['model'])
+        self.assertEqual(questions.threshold(None, 'model'), .6)
+        self.assertEqual((questions.threshold(None, 'workflow'), questions.threshold(None, 'permission')), (.9, .9))
 
 
 class NoTestCaseInInstructions(unittest.TestCase):

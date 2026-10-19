@@ -25,7 +25,7 @@ The runtime has five stdlib modules:
 | `questions.py` | Workflow catalog, repository snapshot, request builders, permission metadata, thresholds |
 | `routing.py` | Model pools, tiers, prices, role defaults, deterministic spawn rules |
 | `adapters.py` | Codex and Claude Code payload translation and hook output |
-| `api.py` | JEV client: validation, credentials, redaction, budget ledger, evaluation |
+| `api.py` | JEV client: validation, credentials, redaction, evaluation |
 
 `hook.py` asks JEV only when `api.py`, `questions.py`, `routing.py` and
 `adapters.py` are present with runtime version 2. Otherwise every event returns
@@ -86,7 +86,7 @@ PermissionRequest represents escalation/network approval and is never auto-allow
 JEV does not execute commands or grant sandbox exemptions.
 
 Errors, unavailable keys/catalogs, timeout (eight seconds), oversized requests,
-confidence below the question's threshold (default 0.9) and duplicate in-flight
+confidence below the question's threshold (model 0.6, workflow and permission 0.9) and duplicate in-flight
 events retain native behavior; a spawn fallback applies the role default instead
 (see [Model question](#model-question)).
 The same native event is evaluated once; no retry requests for a preferred answer.
@@ -245,7 +245,10 @@ Sent before a subagent spawn, after these rules (no JEV call):
 ```
 
 Claude-only installs record the Claude profile aliases; any install with Codex
-records Codex ids and `model-tiers.json`. The hook still reads the legacy flat
+records Codex ids and `model-tiers.json`. Since 1.5.0 an install with Codex and
+Claude also writes `hosts.claude` (`{roles, tiers}` from the Claude profile), and
+Claude spawns read that section. Before, the Codex ids gave Claude no alias, so a
+low-confidence Claude spawn inherited the coordinator's model (for example opus). The hook still reads the legacy flat
 `{role: model}` file: roles work, tiers are empty, so the model question is not
 asked and the role default applies.
 
@@ -253,7 +256,9 @@ asked and the role default applies.
 
 `settings.jev.thresholds.{workflow, model, permission}` in `.agentic.json` set the
 minimum confidence per question. A value is used only when it is a number in
-[0.5, 1]; anything else gives 0.9. Reinstall keeps `thresholds`,
+[0.5, 1]; anything else gives the default: 0.6 for `model`, 0.9 for `workflow`
+and `permission`. A wrong tier costs one subagent run, and below the threshold the
+role default from the installed profile applies, never the parent session model. Reinstall keeps `thresholds`,
 `lightweight_model` and `tiers`.
 
 ```json
@@ -269,6 +274,8 @@ never auto-allow or auto-deny a request that `permission_boundaries` rejects.
 | Code | Meaning |
 | --- | --- |
 | `explicit_workflow` | A `/trigger` or workflow id in the prompt; JEV not asked |
+| `session_follow_up` | A later user prompt in a session that already has a task; JEV not asked |
+| `session_off` | JEV is off for this session (first prompt chose no workflow, or `/jev off`); JEV not asked, spawns get the role default |
 | `native_request` | JEV chose `native` |
 | `clarification_needed` | JEV chose `clarify` (workflow or model) |
 | `low_confidence` | Confidence below the question's threshold |
@@ -354,6 +361,31 @@ Claude-specific rules:
 - `PermissionRequest` sends `agent_type` as `agent` only when it names an
   installed role in `.claude/agents/`; otherwise `agent` is `null` and the raw
   value is kept as `native_agent_type`. Observations follow the same rule.
+
+## Session gate and manual switch
+
+Since 1.5.0 JEV decides once per session, at the first root prompt
+([requirements](session-gate/README.md)):
+
+- **First prompt.** One workflow question. A selected workflow keeps JEV on for
+  the session. `native`, low confidence or an error turns JEV **off** for the
+  rest of the session (`off_reason` in the context file). `clarify` leaves the
+  session undecided, so the next prompt is asked again.
+- **Later prompts.** No workflow question and no new task: answers, approvals and
+  "how did JEV do" questions stay bound to the first task. A prompt that names a
+  workflow (`/develop-feature`, or its id) starts a new task without a call.
+- **Off session.** Prompts and permissions make no calls (`session_off`). Spawns
+  make no calls either but still get the role default, so they never inherit the
+  coordinator's model.
+- **Manual switch.** `/jev off`, `/jev on` and `/jev status` work in every host.
+  Claude Code and OpenCode get a `jev.md` command; in Codex type `jev off`
+  (without the slash) if the TUI rejects the unknown command. Claude Code and
+  Codex hooks block the prompt, so the switch costs no model turn; OpenCode
+  replaces it with a one-line confirmation. `/jev on` also forgets the task, so
+  the next prompt asks for a workflow again.
+
+The switch is per session. The project switch (`settings.jev.enabled`) and
+`AGENTIC_ENABLE_JEV=0` still turn JEV off for every session.
 
 ## Enable and disable
 
@@ -441,13 +473,14 @@ make blackbox-opencode BLACKBOX_ARGS='--verify-only --run-dir /absolute/path/.ag
 
 Each host receives a separate temporary Git project. The built Agentic installs
 `software.backend` + `software.general`, enables JEV and installs hooks. The
-real CLI receives exactly **«разработай калькулятор»** with no workflow flag.
+real CLI receives exactly **«разработай простой калькулятор на Python в одном файле»**
+with no workflow flag; the one-file scope keeps every role's work short.
 Following the requested OpenAI restriction, the OpenCode coordinator uses the
 configured `openai/gpt-6-luna` (ChatGPT-account OAuth no longer serves `gpt-5.5`; `BLACKBOX_OPENCODE_MODEL` can override it with another
 OpenAI model); JEV subagent candidates are restricted to OpenAI through
 `AGENTIC_JEV_MODEL_PROVIDER=openai`. Codex has no model flag. Routing uses the same
 default-versus-pin rules in tests and production, without a test-only routing override.
-Global files remain unchanged. Tests run sequentially, with a 20-minute limit per host, and leave projects
+Global files remain unchanged. Tests run sequentially, with at most three prompts and an 8-minute limit per host (`--timeout` sets seconds), and leave projects
 available for inspection. Cleansed traces/results are saved in
 `.agentic-blackbox/<run>/`; `project.json` records each temporary project's path.
 These targets are opt-in and paid; `make test`/CI remain offline.
@@ -469,8 +502,8 @@ acceptEdits --model ${BLACKBOX_CLAUDE_MODEL:-sonnet}` with a narrow
 blackbox command line and is never written into the project. Project guidance
 requires explicit approval for new root files (`Makefile`, `CHANGELOG.md`, …), so
 the coordinator may stop and ask. On every host, when the first turn ends without a
-verifiable calculator, the run sends exactly one bounded approval reply into the same
-native session (`claude -p --resume <session>`, `opencode run --session <id>`,
+verifiable calculator, the run sends a bounded approval reply into the same
+native session, at most twice (`claude -p --resume <session>`, `opencode run --session <id>`,
 `codex exec resume <thread>`) and then judges the result; no other input is
 supplied. Every host also enables
 Telegram against a local fake Bot API with run-local credentials
@@ -487,7 +520,9 @@ final answer. Requested aliases match observed transcript model ids (`haiku` ↔
 
 Passing requires real JEV workflow selection, native workflow-load evidence,
 requested/observed model agreement for the same role/session, successful CLI
-completion and independent arithmetic checks. A fallback, provider error,
+completion, independent arithmetic checks and `follow_up_without_jev_call` (no
+follow-up prompt sent a JEV request). `results.json` reports `jev_calls`,
+`jev_input_tokens` and `follow_up_prompts` for the task. A fallback, provider error,
 clarification stall or recommendation without application cannot pass.
 The built-in arithmetic probe supports public Python/JavaScript calculator evaluators,
 including `src/` packages with relative imports, numeric results such as `Decimal`,
@@ -501,16 +536,12 @@ the project path and must independently execute calculator checks, returning JSO
 
 Native hook trust and valid host provider authorization are prerequisites. A key
 for JEV does not authenticate coding models. Inspect `results.json` and the
-cleansed trace for failed/blocked prerequisites. The shared `.agentic-blackbox/jev-budget.json` ledger reserves $0.02 per call,
-settles reported costs, and stops before the configured $5 limit. Unknown costs
-retain the reservation; it is a conservative guard, not a provider billing cap.
-The official endpoint currently reports no `usage.cost_usd`, so every such call
-books the full $0.02 reservation. The R&D questions suite
-(`JEV_RND_SUITE=questions`) caps itself with `JEV_RND_BUDGET_USD` using its own,
-smaller size-based estimate (`cost_reported: false`). When both run, the two
-totals differ: for 40 calls the suite counted $0.092 while the ledger booked
-$0.80. Neither is the provider's bill.
-Existing test quota remains bounded by the agreed $5 JEV budget; coding agents use their existing host quota.
+cleansed trace for failed/blocked prerequisites. The endpoint reports token counts
+but no price, so the hooks and the blackbox record `input_tokens` and
+`output_tokens` only; the former `cost_usd` field and the `AGENTIC_JEV_BUDGET_FILE`
+ledger were removed in 1.5.0. The R&D questions suite (`JEV_RND_SUITE=questions`)
+keeps its own `JEV_RND_BUDGET_USD` estimate.
+JEV spend per run is bounded by the three-prompt limit and the session gate; coding agents use their existing host quota.
 
 ## Source contracts
 

@@ -32,7 +32,7 @@ class ClaudeHooks(unittest.TestCase):
     def answer(request, selected, confidence=1):
         name, question = next(iter(request['questions'].items()))
         return {'status': 'evaluated', 'answers': {name: {'type': 'choice', 'choice': selected, 'confidence': confidence,
-                'probabilities': {k: int(k == selected) for k in question['criteria']}}}, 'usage': {'cost_usd': .0001}}
+                'probabilities': {k: int(k == selected) for k in question['criteria']}}}, 'usage': {'input_tokens': 100}}
 
     def payload(self, name, **kwargs):
         return {'hook_event_name': name, 'session_id': 'root', 'transcript_path': '/dev/null', 'cwd': str(self.project), **kwargs}
@@ -192,6 +192,29 @@ class ClaudeHooks(unittest.TestCase):
         records = [json.loads(p.read_text())['result'] for p in (self.project / '.agentic/jev').glob('event-*.json')]
         self.assertIn({'status': 'fallback', 'reason_code': 'low_confidence', 'model': 'sonnet', 'model_source': 'role_default', 'tier': 'balanced'},
                       [{k: r.get(k) for k in ('status', 'reason_code', 'model', 'model_source', 'tier')} for r in records])
+
+
+    def test_combined_install_uses_the_claude_host_defaults(self):
+        (self.project / '.agent/jev').mkdir(parents=True, exist_ok=True)
+        (self.project / '.agent/jev/model-defaults.json').write_text(json.dumps(
+            {'version': 2, 'roles': {'developer': 'gpt-6.1-sol'}, 'tiers': {'fast': 'gpt-6-luna', 'balanced': 'gpt-6.1-sol'},
+             'hosts': {'claude': {'roles': {'developer': 'sonnet'}, 'tiers': {'fast': 'haiku', 'balanced': 'sonnet', 'frontier': 'opus'}}}}))
+        hook.claude_event(self.project, self.payload('UserPromptSubmit', prompt='/develop-feature calculator'))
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'balanced', .4)):
+            out = hook.claude_event(self.project, self.payload('PreToolUse', tool_name='Agent', tool_use_id='c1',
+                                    tool_input={'subagent_type': 'developer', 'prompt': 'add sum()'}))
+        # Before hosts.claude the Codex ids gave no alias and the spawn inherited the coordinator's opus.
+        self.assertEqual(out['hookSpecificOutput']['updatedInput']['model'], 'sonnet')
+
+    def test_switch_prompt_is_blocked_before_the_model(self):
+        with patch.object(hook, 'evaluate', side_effect=AssertionError('switch is local')):
+            off = hook.claude_event(self.project, self.payload('UserPromptSubmit', prompt='/jev off', prompt_id='s1'))
+            expanded = hook.claude_event(self.project, self.payload('UserPromptSubmit', prompt_id='s2',
+                                         prompt='Agentic JEV switch: status\n\nThe Agentic JEV hook applies this switch'))
+            after = hook.claude_event(self.project, self.payload('UserPromptSubmit', prompt='/develop-feature calculator', prompt_id='s3'))
+        self.assertEqual(off, {'decision': 'block', 'reason': 'Agentic JEV is off for this session (manual).'})
+        self.assertEqual(expanded['decision'], 'block')
+        self.assertEqual(after, {})
 
 
 if __name__ == '__main__':

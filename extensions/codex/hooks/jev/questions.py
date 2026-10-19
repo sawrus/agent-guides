@@ -11,6 +11,9 @@ import time
 
 VERSION = 2
 DEFAULT_THRESHOLD = 0.9
+# A wrong tier costs one subagent run and the role default is a safe floor, so model answers need less confidence
+# than workflow and permission answers.
+DEFAULT_THRESHOLDS = {'workflow': DEFAULT_THRESHOLD, 'model': 0.6, 'permission': DEFAULT_THRESHOLD}
 THRESHOLD_FLOOR, THRESHOLD_CEILING = 0.5, 1.0
 ORIGINAL_LIMIT = 3000
 ASSIGNMENT_LIMIT = 2500
@@ -395,4 +398,4 @@ def threshold(settings, name):
     configured = settings.get('thresholds') if isinstance(settings, dict) else None
     value = configured.get(name) if isinstance(configured, dict) else None
     valid = isinstance(value, (int, float)) and not isinstance(value, bool) and THRESHOLD_FLOOR <= value <= THRESHOLD_CEILING
-    return float(value) if valid else DEFAULT_THRESHOLD
+    return float(value) if valid else DEFAULT_THRESHOLDS.get(name, DEFAULT_THRESHOLD)

@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.5.0
+
+JEV now decides once per session and spends fewer calls; review reports end with manual acceptance commands. Requirements: `docs/jev-integration/session-gate/README.md`.
+
+- JEV session gate (all hosts). Only the first root prompt of a session asks the workflow question. A selected workflow keeps JEV on; `native`, low confidence or an error turns JEV off for the rest of the session (`session_off`); `clarify` asks again on the next prompt. Later prompts make no call and stay bound to the first task (`session_follow_up`), so answers such as «да» or «как отработал JEV» no longer open a new task or move spawns and review packets to it. A later prompt that names a workflow (`/develop-feature`) starts a new task without a call. In an off session, spawns still get the role default without a call.
+- Manual switch: `/jev off`, `/jev on`, `/jev status` per session, with no JEV call. Install adds `.claude/commands/jev.md` and `.opencode/commands/jev.md`; in Codex type `jev off` if the TUI rejects the slash command. Claude Code and Codex hooks block the switch prompt, so it costs no model turn; OpenCode answers with one line. `/jev on` restarts workflow selection.
+- Model threshold default is now 0.6 (workflow and permission stay 0.9). Below it, the role default from the installed profile applies.
+- Claude in an install with Codex: `model-defaults.json` gains `hosts.claude` with the Claude profile roles and tiers. Before, the Codex ids gave Claude no alias, and low-confidence spawns inherited the coordinator's model (often opus).
+- Removed fields that were always empty: `usage.cost_usd` (records now keep `input_tokens` and `output_tokens`), observation `requested_model`, and the `AGENTIC_JEV_BUDGET_FILE` ledger that booked a fixed $0.02 guess per call.
+- Blackbox: the prompt is «разработай простой калькулятор на Python в одном файле», at most three prompts and 8 minutes per host (was 20 minutes), and a new `follow_up_without_jev_call` check. `results.json` reports `jev_calls`, `jev_input_tokens` and `follow_up_prompts` instead of `jev_reported_cost_usd`.
+- Post-task review: `summary.md` and the final response end with a `Manual acceptance` section: copy-paste commands from the project root, the expected result of each, manual steps and cleanup. Commands not run during delivery are marked `not run`.
+- Migration: reinstall the target project to get the new runtime, `hosts.claude` and the `jev.md` commands. Hook entries are unchanged, so Codex needs no new `/hooks` review. Remove `AGENTIC_JEV_BUDGET_FILE` from local scripts. Custom `settings.jev.thresholds.model` values are kept; remove them to use the new 0.6 default. Old `context-*.json` files without `jev` count as on.
+
 ## v1.4.1
 
 Bug-fix release for 1.4.0. It fixes the JEV questions, which caused most JEV fallbacks, and the Telegram "done" mark.

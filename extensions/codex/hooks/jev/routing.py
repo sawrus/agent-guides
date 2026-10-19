@@ -38,10 +38,14 @@ def _string_map(value):
     return {k: v for k, v in value.items() if isinstance(k, str) and isinstance(v, str)} if isinstance(value, dict) else {}
 
 
-def load_defaults(data):
-    """Parsed model-defaults.json: v2 `{version, roles, tiers}` or the legacy flat role map."""
+def load_defaults(data, host=None):
+    """Parsed model-defaults.json: v2 `{version, roles, tiers, hosts: {host: {roles, tiers}}}` or the legacy flat
+    role map. A host section wins: a combined install keeps Codex ids at the top level, which Claude cannot use."""
     if not isinstance(data, dict):
         return {'roles': {}, 'tiers': {}}
+    section = (data.get('hosts') or {}).get(host) if isinstance(data.get('hosts'), dict) else None
+    if data.get('version') == VERSION and isinstance(section, dict):
+        return load_defaults({**section, 'version': VERSION})
     if data.get('version') == VERSION:
         tiers = _string_map(data.get('tiers'))
         return {'roles': _string_map(data.get('roles')), 'tiers': {t: m for t, m in tiers.items() if t in TIERS}}

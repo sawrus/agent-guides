@@ -83,6 +83,11 @@ export default Plugin.define({
       original.set(event.sessionID, event.prompt.text ?? "");
       const result = await decide({kind: "prompt", session_id: event.sessionID,
         event_id: event.messageID, prompt: event.prompt.text});
+      if (result.status === "switched") {
+        // The prompt hook cannot cancel a turn; keep it to one short confirmation.
+        event.prompt.text = `[Agentic JEV hook] ${result.message} Reply with exactly this sentence and do nothing else.`;
+        return;
+      }
       if (!result.workflow) return;
       // Let the workflow's installed coordinator own delivery rather than the default build role.
       if (session.agent === "build" && result.workflow.initiator) {

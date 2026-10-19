@@ -39,7 +39,8 @@ pub fn codex_tiers(app: &App) -> Map<String, Value> {
 }
 
 /// `{"version": 2, "roles": {...}, "tiers": {...}}`. Claude's Agent tool accepts aliases only,
-/// so a Claude-only install uses its profile; any Codex host keeps Codex model ids (D7).
+/// so a Claude-only install uses its profile; any Codex host keeps Codex model ids (D7) and adds
+/// `hosts.claude` so Claude spawns still get a profile role default instead of the session model.
 pub fn model_defaults(app: &App) -> Value {
     let claude_only =
         app.selected_agent_os_contains("claude") && !app.selected_agent_os_contains("codex");
@@ -51,7 +52,14 @@ pub fn model_defaults(app: &App) -> Value {
     } else {
         (codex_roles(app), codex_tiers(app))
     };
-    json!({"version": DEFAULTS_VERSION, "roles": roles, "tiers": tiers})
+    let mut defaults = json!({"version": DEFAULTS_VERSION, "roles": roles, "tiers": tiers});
+    if !claude_only && app.selected_agent_os_contains("claude") {
+        defaults["hosts"] = json!({"claude": {
+            "roles": crate::claude::profile_models(app),
+            "tiers": crate::claude::profile_tiers(app),
+        }});
+    }
+    defaults
 }
 
 /// Role -> explicit model of the selected OpenCode profile; `{}` for the default install.
@@ -122,6 +130,9 @@ mod tests {
         );
         let combined = model_defaults(&app_for(&["claude", "codex"]));
         assert_eq!(combined["tiers"]["fast"], "gpt-6-luna");
+        assert_eq!(combined["hosts"]["claude"]["roles"]["developer"], "sonnet");
+        assert_eq!(combined["hosts"]["claude"]["tiers"]["fast"], "haiku");
+        assert!(model_defaults(&app_for(&["codex"])).get("hosts").is_none());
     }
 
     #[test]

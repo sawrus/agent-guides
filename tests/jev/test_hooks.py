@@ -53,7 +53,7 @@ class Hooks(unittest.TestCase):
     def answer(self, request, selected, confidence=1):
         name, question = next(iter(request['questions'].items()))
         return {'status': 'evaluated', 'answers': {name: {'type': 'choice', 'choice': selected, 'confidence': confidence,
-                'probabilities': {k: int(k == selected) for k in question['criteria']}}}, 'usage': {'cost_usd': .0001}}
+                'probabilities': {k: int(k == selected) for k in question['criteria']}}}, 'usage': {'input_tokens': 100}}
 
     def event(self, kind, **kwargs):
         return {'host': 'opencode', 'kind': kind, 'session_id': 'root', 'event_id': 'first', **kwargs}
@@ -187,7 +187,7 @@ class Hooks(unittest.TestCase):
         with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'develop-feature', .8)):
             self.assertEqual(hook.run_event(self.project, self.event('prompt', prompt='Build API'))['reason_code'], 'low_confidence')
         with patch.object(hook, 'evaluate', side_effect=TimeoutError()):
-            self.assertEqual(hook.run_event(self.project, self.event('prompt', event_id='second', prompt='Build API'))['reason_code'], 'request_failed')
+            self.assertEqual(hook.run_event(self.project, self.event('prompt', session_id='other', prompt='Build API'))['reason_code'], 'request_failed')
 
     def test_full_qa_is_redacted_and_retained(self):
         (self.project / '.env').write_text('JEV_API_KEY=unusual-paid-key\n')
@@ -276,19 +276,64 @@ class Hooks(unittest.TestCase):
         self.assertEqual(routing.review_model(models, {'lightweight_model': 'small'}), ('small', 'configured_lightweight_price_unknown'))
         self.assertIsNone(routing.review_model(models, {}))
 
-    def test_budget_reservation_and_unknown_charge_are_conservative(self):
-        ledger = self.project / 'budget.json'
-        ledger.write_text(json.dumps({'limit_usd': .02, 'committed_usd': 0, 'pending': {}}))
-        with patch.dict(os.environ, {'AGENTIC_JEV_BUDGET_FILE': str(ledger)}):
-            reservation = api.reserve_budget()
-            with self.assertRaises(ValueError):
-                api.reserve_budget()
-            api.settle_budget(reservation, .0002)
-            self.assertAlmostEqual(json.loads(ledger.read_text())['committed_usd'], .0002)
-            ledger.write_text(json.dumps({'limit_usd': 5, 'committed_usd': 0, 'pending': {}}))
-            reservation = api.reserve_budget()
-            api.settle_budget(reservation, None)
-            self.assertEqual(json.loads(ledger.read_text())['committed_usd'], .02)
+    def test_follow_up_prompts_continue_the_task_without_a_call(self):
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'develop-feature')) as client:
+            first = hook.run_event(self.project, self.event('prompt', prompt='Build API'))
+            follow = hook.run_event(self.project, self.event('prompt', event_id='second', prompt='yes, go on'))
+        self.assertEqual((first['workflow']['id'], client.call_count), ('develop-feature', 1))
+        self.assertEqual(follow['reason_code'], 'session_follow_up')
+        with patch.object(hook, 'evaluate', side_effect=AssertionError('explicit workflow needs no call')):
+            explicit = hook.run_event(self.project, self.event('prompt', event_id='third', prompt='now run /code-review'))
+            spawn = hook.run_event(self.project, self.event('spawn', event_id='s', agent='developer', models=[{'id': 'a'}]))
+        self.assertEqual(explicit['workflow']['id'], 'code-review')
+        self.assertEqual(spawn['model'], 'a')
+        tasks = {r['context']['event_id']: r['context']['task_id'] for r in self.records()}
+        self.assertEqual((tasks['second'], tasks['third'], tasks['s']), ('first', 'third', 'third'))
+
+    def test_native_first_prompt_turns_the_session_off_but_keeps_role_defaults(self):
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'native')):
+            self.assertEqual(hook.run_event(self.project, self.event('prompt', prompt='Explain'))['reason_code'], 'native_request')
+        with patch.object(hook, 'evaluate', side_effect=AssertionError('session is off')):
+            self.assertEqual(hook.run_event(self.project, self.event('prompt', event_id='2', prompt='Build API'))['reason_code'], 'session_off')
+            spawn = hook.run_event(self.project, self.event('spawn', event_id='3', agent='developer', models=PRICED, role_default='local/light'))
+            permission = hook.run_event(self.project, self.event('permission', event_id='4', action='edit', resources=['a.py']))
+        self.assertEqual((spawn['reason_code'], spawn['model'], spawn['model_source']), ('session_off', 'local/light', 'role_default'))
+        self.assertEqual(permission['reason_code'], 'session_off')
+        with patch.object(hook, 'evaluate', side_effect=AssertionError('other sessions are independent')):
+            other = hook.run_event(self.project, self.event('prompt', session_id='other', prompt='Follow /develop-feature'))
+        self.assertEqual(other['status'], 'preserved')
+
+    def test_clarify_and_low_confidence_gate_the_session(self):
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'clarify')):
+            hook.run_event(self.project, self.event('prompt', prompt='Change it'))
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'develop-feature')) as client:
+            result = hook.run_event(self.project, self.event('prompt', event_id='2', prompt='Add a login endpoint'))
+        self.assertEqual((result['workflow']['id'], client.call_count), ('develop-feature', 1))
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'develop-feature', .5)):
+            hook.run_event(self.project, self.event('prompt', session_id='low', prompt='Build API'))
+        context = json.loads(next(p for p in (self.project / '.agentic/jev').glob('context-*.json')
+                                  if json.loads(p.read_text()).get('off_reason')).read_text())
+        self.assertEqual((context['jev'], context['off_reason']), ('off', 'low_confidence'))
+
+    def test_manual_switch_needs_no_call_and_on_restarts_workflow_selection(self):
+        with patch.object(hook, 'evaluate', side_effect=AssertionError('switch is local')):
+            off = hook.run_event(self.project, self.event('prompt', prompt=' /jev OFF '))
+            self.assertEqual((off['status'], off['jev']), ('switched', 'off'))
+            self.assertIn('manual', off['message'])
+            self.assertEqual(hook.run_event(self.project, self.event('prompt', event_id='2', prompt='Build API'))['reason_code'], 'session_off')
+            status = hook.run_event(self.project, self.event('prompt', event_id='3', prompt='Agentic JEV switch: status\nmore text'))
+            self.assertEqual(status['jev'], 'off')
+            self.assertEqual(hook.run_event(self.project, self.event('prompt', event_id='4', prompt='jev on'))['jev'], 'on')
+        self.assertIsNone(hook.session_switch('please turn jev off later'))
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'develop-feature')) as client:
+            hook.run_event(self.project, self.event('prompt', event_id='5', prompt='Build API'))
+        self.assertEqual(client.call_count, 1)
+
+    def test_observation_has_no_requested_model_and_usage_has_no_price(self):
+        result = hook.run_event(self.project, self.event('observation', agent='developer', observed_model='small'))
+        self.assertNotIn('requested_model', result)
+        self.assertEqual(api.USAGE_KEYS, ('input_tokens', 'output_tokens'))
+        self.assertFalse(hasattr(api, 'reserve_budget'))
 
     def test_multiple_subagents_keep_distinct_native_observations(self):
         for agent in ('developer', 'qa'):
@@ -317,7 +362,7 @@ class Hooks(unittest.TestCase):
     def test_native_and_clarify_answers_keep_native_behaviour_with_reason_codes(self):
         for index, (selected, reason) in enumerate((('native', 'native_request'), ('clarify', 'clarification_needed'))):
             with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, selected)):
-                result = hook.run_event(self.project, self.event('prompt', event_id=f'p{index}', prompt='Explain the module'))
+                result = hook.run_event(self.project, self.event('prompt', session_id=f's{index}', event_id=f'p{index}', prompt='Explain the module'))
             self.assertEqual((result['status'], result['reason_code']), ('fallback', reason))
             self.assertNotIn('workflow', result)
         record = self.records('prompt')[0]
@@ -349,15 +394,16 @@ class Hooks(unittest.TestCase):
             self.assertEqual((result['reason_code'], result['model'], result['tier']), (reason, 'local/light', 'fast'))
 
     def test_configured_thresholds_and_invalid_values(self):
-        for thresholds, expected in (({'model': .6}, 'local/frontier'), ({'model': .3}, None), ({'model': 'x'}, None)):
+        # Model answers default to 0.6: below it the role default applies, above it JEV's tier.
+        for thresholds, expected in (({'model': .5}, 'local/frontier'), ({'model': .3}, None), ({'model': 'x'}, None)):
             settings = {'jev': {'enabled': True, 'thresholds': thresholds}}
             (self.project / '.agentic.json').write_text(json.dumps({'settings': settings}))
-            with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'frontier', .7)):
+            with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'frontier', .55)):
                 result = hook.run_event(self.project, self.event('spawn', event_id=json.dumps(thresholds), agent='x', models=PRICED))
             self.assertEqual(result.get('model'), expected)
         self.assertEqual(questions.threshold({'thresholds': {'workflow': 1}}, 'workflow'), 1.0)
         self.assertEqual(questions.threshold({'thresholds': {'workflow': True}}, 'workflow'), .9)
-        self.assertEqual(sorted(r['threshold'] for r in self.records('spawn')), [.6, .9, .9])
+        self.assertEqual(sorted(r['threshold'] for r in self.records('spawn')), [.5, .6, .6])
 
     def test_legacy_flat_codex_defaults_still_give_role_default(self):
         self.write_defaults({'developer': 'gpt-6.1-sol'})

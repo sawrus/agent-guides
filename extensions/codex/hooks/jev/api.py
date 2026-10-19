@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared TypeSafe/JEV client: request validation, credentials, redaction, budget ledger and hook evaluation."""
+"""Shared TypeSafe/JEV client: request validation, credentials, redaction and hook evaluation."""
 
 import argparse
 from contextlib import contextmanager
@@ -12,7 +12,6 @@ import time
 import urllib.error
 import urllib.request
 import urllib.parse
-import uuid
 
 PROVIDERS = {
     "hosted": ("https://jevtypesafeai.com/api/v1/decide", "JEV_API_KEY"),
@@ -23,10 +22,10 @@ JEV_MODEL = "jev-1.13.0"
 REQUEST_LIMIT = 32768
 RESPONSE_LIMIT = 262144
 HOOK_TIMEOUT_SECONDS = 8
-RESERVATION_USD = .02
-MAX_CHARGE_USD = 5
-BUDGET_LOCK_ATTEMPTS = 20
-BUDGET_LOCK_WAIT = .02
+FILE_LOCK_ATTEMPTS = 20
+FILE_LOCK_WAIT = .02
+# Token counts are the only usage the endpoint reports; it returns no price.
+USAGE_KEYS = ("input_tokens", "output_tokens")
 
 
 # Every token family matches only at a token start, so identifiers such as tests_and_review_evidence,
@@ -169,51 +168,22 @@ def save_json(path, data):
 
 
 @contextmanager
-def budget_lock(path):
+def file_lock(path):
     lock = path.with_suffix('.lock')
     acquired = False
-    for _ in range(BUDGET_LOCK_ATTEMPTS):
+    for _ in range(FILE_LOCK_ATTEMPTS):
         try:
             lock.mkdir()
             acquired = True
             break
         except FileExistsError:
-            time.sleep(BUDGET_LOCK_WAIT)
+            time.sleep(FILE_LOCK_WAIT)
     if not acquired:
-        raise ValueError('budget busy')
+        raise ValueError('state file busy')
     try:
         yield
     finally:
         lock.rmdir()
-
-
-def reserve_budget():
-    configured = os.environ.get('AGENTIC_JEV_BUDGET_FILE')
-    if not configured:
-        return None
-    path = Path(configured)
-    if path.is_symlink() or any(p.is_symlink() for p in path.parents):
-        raise ValueError('redirected budget')
-    token = uuid.uuid4().hex
-    with budget_lock(path):
-        data = read_json(path)
-        if not isinstance(data, dict) or data.get('committed_usd', MAX_CHARGE_USD) + sum(data.get('pending', {}).values()) + RESERVATION_USD > data.get('limit_usd', 0):
-            raise ValueError('budget exhausted')
-        data.setdefault('pending', {})[token] = RESERVATION_USD
-        save_json(path, data)
-    return path, token
-
-
-def settle_budget(reservation, cost):
-    if not reservation:
-        return
-    path, token = reservation
-    with budget_lock(path):
-        data = read_json(path)
-        estimate = data['pending'].pop(token)
-        data['committed_usd'] += cost if isinstance(cost, (int, float)) and 0 <= cost <= MAX_CHARGE_USD else estimate
-        data['calls'] = data.get('calls', 0) + 1
-        save_json(path, data)
 
 
 def hook_endpoint(settings):
@@ -238,22 +208,15 @@ def evaluate(project, settings, request):
         return {'status': 'fallback', 'reason_code': 'request_too_large'}
     body = json.dumps({'model': JEV_MODEL, **request}, ensure_ascii=False).encode()
     req = urllib.request.Request(endpoint, body, {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json; charset=utf-8'})
-    reservation = reserve_budget()
-    cost = None
-    try:
-        with urllib.request.build_opener(NoRedirect()).open(req, timeout=HOOK_TIMEOUT_SECONDS) as response:
-            raw = response.read(RESPONSE_LIMIT + 1)
-        if len(raw) > RESPONSE_LIMIT:
-            raise ValueError('response too large')
-        result = json.loads(raw)
-        cost = result.get('usage', {}).get('cost_usd')
-        if result.get('model') != JEV_MODEL:
-            raise ValueError('unexpected model')
-        return {'status': 'evaluated', 'answers': answers_for(result, request['questions']),
-                'usage': {k: result.get('usage', {}).get(k) for k in ('input_tokens', 'cost_usd')},
-                'response': result}
-    finally:
-        settle_budget(reservation, cost)
+    with urllib.request.build_opener(NoRedirect()).open(req, timeout=HOOK_TIMEOUT_SECONDS) as response:
+        raw = response.read(RESPONSE_LIMIT + 1)
+    if len(raw) > RESPONSE_LIMIT:
+        raise ValueError('response too large')
+    result = json.loads(raw)
+    if result.get('model') != JEV_MODEL:
+        raise ValueError('unexpected model')
+    return {'status': 'evaluated', 'answers': answers_for(result, request['questions']),
+            'usage': {k: result.get('usage', {}).get(k) for k in USAGE_KEYS}, 'response': result}
 
 
 def run(args):
@@ -296,7 +259,7 @@ def run(args):
     if result.get("model") != "jev-1.13.0":
         raise ValueError("unexpected model")
     usage = result.get("usage", {})
-    return {"status": "evaluated", "provider": provider, "model": result["model"], "answers": answers_for(result, body["questions"]), "usage": {k: usage[k] for k in ("input_tokens", "cost_usd") if isinstance(usage.get(k), (int, float))}}
+    return {"status": "evaluated", "provider": provider, "model": result["model"], "answers": answers_for(result, body["questions"]), "usage": {k: usage[k] for k in USAGE_KEYS if isinstance(usage.get(k), (int, float))}}
 
 
 def main():
