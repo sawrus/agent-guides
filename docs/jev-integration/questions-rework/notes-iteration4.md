@@ -15,9 +15,9 @@ D1 to D7 in `notes.md` stay binding. For OpenCode, this note replaces `notes.md`
 | I1 | Tier and role-default resolution runs in the **hook** (`routing.py`). The plugin only widens the model pool. In a default install, the raw plugin `context.role_default` stays `null`. The resolved `request.state.role_default.model` and the fallback `result.model` are non-null. |
 | I2 | Candidates = host catalog (tool-capable) ∩ (installed role models ∪ every model in the shipped tier map). Tiers come from **one provider only**. |
 | I3 | Tier source, in order. (1) Runtime prices, when every pooled model is priced and min ≠ max → `catalog_price`. (2) Otherwise the tier map filtered to the catalog, if ≥2 tiers remain → `tier_map`. (3) Otherwise no tiers → `fallback/no_tier_routing`. `settings.jev.tiers` overrides still apply on top and must be candidates. |
-| I4 | Role tiers mirror the Codex role defaults. `balanced`: product-owner, team-lead, developer, qa, devops-engineer, and native `general`. `fast`: analyst, pm, instruction-reviewer, memory-curator, and native `explore`. Frontier is never a role default; JEV may still pick it with confidence. A content test enforces parity with Codex. |
+| I4 | Role tiers mirror the Codex role defaults. `balanced`: product-owner, team-lead, developer, qa, devops-engineer, and native `general`. `fast`: analyst, pm, instruction-reviewer, memory-curator, and native `explore`. Frontier is never a role default; JEV may still pick it with confidence. A content test enforces parity with Codex. **Customer change 2026-10-19: qa → fast / gpt-6-luna.** |
 | I5 | Explicit pins stay authoritative: `input.model`, Markdown `model:`, root `opencode.json(c)`, and a user-changed `.opencode/opencode.json`. They go through `spawn_rule` → `preserved`. A profile role model (`opencode-profile-defaults.json`) wins over the role tier only when it is in the catalog. Otherwise the role tier applies. |
-| I6 | AC-20 changes: fix `profiles/openai/opencode.json` (§1.6); set Codex `qa.toml` → `gpt-6.1-sol` (balanced). **The githubcopilot profile is not changed** (see §0a). |
+| I6 | AC-20 changes: fix `profiles/openai/opencode.json` (§1.6); set Codex `qa.toml` → `gpt-6.1-sol` (balanced). **The githubcopilot profile is not changed** (see §0a). **Customer change 2026-10-19: qa → fast / gpt-6-luna.** |
 | I7 | The tier map has no `anthropic` or `github-copilot` entry: neither catalog is verified. Follow-up F1. |
 | I8 | QR-D12: on a spawn with `assignment_unavailable: true` (Codex), the hook does not ask JEV. It returns `fallback/assignment_unavailable` and applies the role default. |
 | I9 | QR-D9: `scripts/blackbox_jev.py` resolves `--run-dir` to an absolute path, via `run_root(args)`. |
@@ -50,6 +50,7 @@ D1 to D7 in `notes.md` stay binding. For OpenCode, this note replaces `notes.md`
 
 - Ids are always `provider/id`.
 - The order of `providers` in the file is significant: it is the tie-break in §2.
+- Customer change 2026-10-19: qa → fast / gpt-6-luna: `roles.qa` is `"fast"` in the shipped file.
 
 ### 1.2 `extensions/codex/hooks/jev/routing.py` (≤400 lines, functions ≤30 lines)
 

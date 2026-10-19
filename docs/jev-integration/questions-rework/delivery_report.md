@@ -51,6 +51,7 @@
 - Preferred-provider rule: tiers are never taken from a provider the user did not choose.
 - The `openai` profile now uses catalog ids only.
 - Codex qa default is `gpt-6.1-sol` (D6).
+- Customer change 2026-10-19: qa → `fast` tier in every model-tiers file; Codex qa default is now `gpt-6-luna`.
 - Codex spawns with an encrypted assignment skip JEV and use the role default (QR-D12, AC-6 amended).
 - The blackbox `--run-dir` is resolved to an absolute path (QR-D9).
 

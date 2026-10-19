@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn codex_role_defaults_are_tier_models() {
         let defaults = model_defaults(&app_for(&["codex"]));
-        assert_eq!(defaults["roles"]["qa"], "gpt-6.1-sol");
+        assert_eq!(defaults["roles"]["qa"], "gpt-6-luna");
         let tiers: Vec<&Value> = defaults["tiers"].as_object().unwrap().values().collect();
         for (role, model) in defaults["roles"].as_object().unwrap() {
             assert!(

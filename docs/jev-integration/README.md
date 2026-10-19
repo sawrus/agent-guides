@@ -198,7 +198,7 @@ Sent before a subagent spawn, after these rules (no JEV call):
     (`role_default_source: profile`).
   - Otherwise the role's tier from the map `roles` applies
     (`role_default_source: role_tier`). `balanced`: product-owner, team-lead,
-    developer, qa, devops-engineer and native `general`. `fast`: analyst, pm,
+    developer, devops-engineer and native `general`. `fast`: qa, analyst, pm,
     instruction-reviewer, memory-curator and native `explore`. These mirror the
     Codex role defaults; a content test checks the parity. `frontier` is never a
     role default.
@@ -207,7 +207,7 @@ Sent before a subagent spawn, after these rules (no JEV call):
   So a default OpenCode install (`opencode-profile-defaults.json` is `{}`) still
   resolves a role default for every installed role. Pinned spawns and
   `project_configuration_unavailable` never get a role default. The Codex `qa`
-  default is `gpt-6.1-sol` (`balanced`), so it is a tier candidate.
+  default is `gpt-6-luna` (`fast`), so it is a tier candidate.
 
 ### Permission question
 
