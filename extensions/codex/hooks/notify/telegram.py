@@ -20,16 +20,27 @@ import urllib.error
 import urllib.request
 import uuid
 
+# The helper is imported from the user's project; bytecode there would be an untracked
+# `.agent/notify/__pycache__` that uninstall leaves behind.
+sys.dont_write_bytecode = True
+try:
+    import telegram_turn
+except ImportError:  # partial install: send without the agent line and never mark the turn final
+    telegram_turn = None
+
 MAX_PAYLOAD = 131072
 TELEGRAM_LIMIT = 4096
 PREVIEW_LIMIT = 3000
 OFF = {'0', 'false', 'no', 'n', 'off'}
 HOSTS = {'claude': 'Claude Code', 'codex': 'Codex', 'opencode': 'OpenCode'}
+LABEL_LIMIT = 64
+KINDS = {'final': ('✅', 'Задача завершена'), 'interim': ('💬', 'Промежуточный ответ'),
+         'waiting': ('⏳', 'Ожидает ввода')}
 
 
 def read_json(path, default=None):
     try:
-        if path.is_symlink() or path.stat().st_size > 2_000_000:
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > 2_000_000:
             return default
         return json.loads(path.read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -227,27 +238,62 @@ def preview(text, limit):
     return cut.rstrip() + '\n…'
 
 
-def build(project, host, event, payload):
-    """Return (header_html, header_plain, body_markdown) or None when nothing should be sent."""
-    name = project.name or 'project'
-    where = f'{name} · {HOSTS.get(host, host)}'
-    if event == 'waiting':
-        detail = payload.get('message') or payload.get('tool_name') or 'нужно действие пользователя'
-        tool_input = payload.get('tool_input')
-        command = tool_input.get('command') if isinstance(tool_input, dict) else None
-        body = f'{detail}\n```\n{command}\n```' if isinstance(command, str) else str(detail)
-        return f'⏳ <b>Ожидает ввода</b> — {esc(where)}', f'⏳ Ожидает ввода — {where}', body
-    if payload.get('stop_hook_active'):
-        return None
+def facts(project, host, payload, with_final):
+    """Agent, model and final flag of the turn; unknown values degrade to an interim message."""
+    unknown = {'agent': None, 'model': None, 'final': False}
+    if telegram_turn is None:
+        return unknown
+    try:
+        return telegram_turn.turn_facts(host, payload, project, read_json, with_final)
+    except Exception as error:  # noqa: BLE001 - a broken fact source must not drop the message
+        log(project, f'telegram turn facts failed: {error}', credentials())
+        return unknown
+
+
+def header(kind, where, turn, title=None):
+    """Return (html, plain) header lines: kind and place, then `🤖 agent · model`, then the title."""
+    mark, label = KINDS[kind]
+    rich, text = [f'{mark} <b>{label}</b> — {esc(where)}'], [f'{mark} {label} — {where}']
+    who = ' · '.join(str(part)[:LABEL_LIMIT] for part in (turn.get('agent'), turn.get('model')) if part)
+    if who:
+        rich.append(f'🤖 {esc(who)}')
+        text.append(f'🤖 {who}')
+    if isinstance(title, str) and title.strip():
+        rich.append(f'<i>{inline(title.strip())}</i>')
+        text.append(title.strip())
+    return '\n'.join(rich), '\n'.join(text)
+
+
+def waiting_body(project, host, where, payload):
+    detail = payload.get('message') or payload.get('tool_name') or 'нужно действие пользователя'
+    tool_input = payload.get('tool_input')
+    command = tool_input.get('command') if isinstance(tool_input, dict) else None
+    body = f'{detail}\n```\n{command}\n```' if isinstance(command, str) else str(detail)
+    return (*header('waiting', where, facts(project, host, payload, False)), body)
+
+
+def stop_body(project, host, where, payload):
     reply = payload.get('last_assistant_message')
     if not isinstance(reply, str) or not reply.strip():
         reply = transcript_reply(payload.get('transcript_path'))
-    header_html, header_plain = f'✅ <b>Задача завершена</b> — {esc(where)}', f'✅ Задача завершена — {where}'
-    title = payload.get('title')
-    if isinstance(title, str) and title.strip():
-        header_html += f'\n<i>{inline(title.strip())}</i>'
-        header_plain += f'\n{title.strip()}'
-    return header_html, header_plain, (reply or '').strip()
+    turn = facts(project, host, payload, True)
+    kind = 'final' if turn.get('final') is True else 'interim'
+    return (*header(kind, where, turn, payload.get('title')), (reply or '').strip())
+
+
+def skipped(event, payload):
+    """A Stop hook re-entered by its own continuation must not notify again."""
+    return event == 'stop' and bool(payload.get('stop_hook_active'))
+
+
+def build(project, host, event, payload):
+    """Return (header_html, header_plain, body_markdown) or None when nothing should be sent."""
+    where = f'{project.name or "project"} · {HOSTS.get(host, host)}'
+    if event == 'waiting':
+        return waiting_body(project, host, where, payload)
+    if skipped(event, payload):
+        return None
+    return stop_body(project, host, where, payload)
 
 
 def post(url, data, headers):
@@ -306,6 +352,17 @@ def send(project, message, session):
         log(project, f'telegram send failed: {error}', secrets)
 
 
+def detach(args, project, raw):
+    """Hand the payload to a detached `--sync` child so the agent never waits for the scan or Telegram."""
+    child = subprocess.Popen(
+        [sys.executable, os.path.abspath(__file__), '--host', args.host, '--event', args.event,
+         '--project-dir', str(project), '--sync'],
+        stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True)
+    child.stdin.write(raw.encode('utf-8'))
+    child.stdin.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', choices=tuple(HOSTS), required=True)
@@ -319,18 +376,11 @@ def main():
         payload = json.loads(raw) if raw.strip() and len(raw) <= MAX_PAYLOAD else {}
         if not isinstance(payload, dict):
             payload = {}
-        if enabled(project):
-            message = build(project, args.host, args.event, payload)
-            if message and args.sync:
+        if enabled(project) and not skipped(args.event, payload):
+            if not args.sync:
+                detach(args, project, raw)
+            elif message := build(project, args.host, args.event, payload):
                 send(project, message, str(payload.get('session_id') or ''))
-            elif message:
-                child = subprocess.Popen(
-                    [sys.executable, os.path.abspath(__file__), '--host', args.host, '--event', args.event,
-                     '--project-dir', str(project), '--sync'],
-                    stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    start_new_session=True)
-                child.stdin.write(raw.encode('utf-8'))
-                child.stdin.close()
     except Exception as error:  # noqa: BLE001
         log(project, f'telegram hook error: {error}', credentials())
     if not args.sync:

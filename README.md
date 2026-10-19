@@ -338,6 +338,8 @@ project/.claude/                 ← with --agent-os claude
   question).
 - Agent Markdown is rendered as Telegram formatting: bold, code, links, lists, tables as monospace blocks. Long answers
   arrive as a `.md` attachment with a preview.
+- The header names the agent and the model (`🤖 product-owner · claude-opus-5-5`). Only the coordinator's final turn,
+  with no background work left, says `✅ Задача завершена`; other turns say `💬 Промежуточный ответ`.
 - Enable with `--enable-telegram` or the interactive prompt; credentials stay in `~/.config/agentic/config.json`.
   See [Telegram notifications](docs/notifications/README.md).
 

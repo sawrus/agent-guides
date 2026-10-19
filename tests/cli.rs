@@ -1221,6 +1221,7 @@ fn claude_jev_and_telegram_hooks_are_owned_and_removable() {
     assert_eq!(settings["hooks"]["Stop"].as_array().unwrap().len(), 2);
     assert!(p.join(".agent/jev/hook.py").is_file());
     assert!(p.join(".agent/notify/telegram.py").is_file());
+    assert!(p.join(".agent/notify/telegram_turn.py").is_file());
     // JEV leaves Claude models open for routing; the pool holds aliases.
     assert!(!frontmatter(&p.join(".claude/agents/developer.md")).contains("model:"));
     let defaults: Value = serde_json::from_str(
@@ -1248,6 +1249,7 @@ fn claude_jev_and_telegram_hooks_are_owned_and_removable() {
     assert_eq!(settings["hooks"], serde_json::json!({"Stop":[user_hook]}));
     assert_eq!(settings["env"]["KEEP"], "1");
     assert!(!p.join(".agent/notify/telegram.py").exists());
+    assert!(!p.join(".agent/notify/telegram_turn.py").exists());
 }
 
 #[test]
