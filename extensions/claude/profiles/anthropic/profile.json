@@ -10,5 +10,10 @@
     "pm": "haiku",
     "instruction-reviewer": "haiku",
     "memory-curator": "haiku"
+  },
+  "tiers": {
+    "fast": "haiku",
+    "balanced": "sonnet",
+    "frontier": "opus"
   }
 }

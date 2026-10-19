@@ -253,6 +253,12 @@ fn claude_hooks(app: &mut App, project: &Path, enabled: bool) -> crate::Result<(
     hookmerge::sync(app, project, &set, enabled)
 }
 
+/// Runtime data that only the OpenCode plugin and its hook events read.
+const OPENCODE_ONLY: [&str; 2] = [
+    ".agent/jev/opencode-profile-defaults.json",
+    ".agent/jev/opencode-model-tiers.json",
+];
+
 pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
     cleanup_legacy(app, project)?;
     let enabled = app.jev_enabled == Some(true);
@@ -279,44 +285,10 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
                 .ok()
                 .is_some_and(|s| s.contains(".agent/jev/hook.py"))
         });
-    let defaults: serde_json::Map<String, serde_json::Value> = app
-        .kb
-        .walk_files("extensions/codex/agents")
-        .into_iter()
-        .filter_map(|(path, text)| {
-            let model = text.lines().find_map(|line| {
-                line.trim()
-                    .strip_prefix("model =")
-                    .map(|v| v.trim().trim_matches('"').to_string())
-            })?;
-            Some((
-                path.trim_end_matches(".toml").to_string(),
-                serde_json::Value::String(model),
-            ))
-        })
-        .collect();
-    // Claude's Agent tool accepts aliases only; a Codex host keeps its model ids.
-    let defaults =
-        if app.selected_agent_os_contains("claude") && !app.selected_agent_os_contains("codex") {
-            crate::claude::profile_models(app)
-        } else {
-            defaults
-        };
+    let defaults = crate::jev_defaults::model_defaults(app);
     let defaults_json = serde_json::to_string_pretty(&defaults)?;
-    let profile = crate::install::opencode_profile_source(app, &app.selected_opencode_profile)
-        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
-        .unwrap_or_default();
-    let opencode_defaults: serde_json::Map<String, serde_json::Value> = profile["agent"]
-        .as_object()
-        .into_iter()
-        .flatten()
-        .filter_map(|(role, config)| {
-            config["model"]
-                .as_str()
-                .map(|model| (role.clone(), serde_json::json!(model)))
-        })
-        .collect();
-    let opencode_defaults_json = serde_json::to_string_pretty(&opencode_defaults)?;
+    let opencode_defaults_json =
+        serde_json::to_string_pretty(&crate::jev_defaults::opencode_profile_defaults(app))?;
     let assets = [
         (
             ".agent/jev/api.py",
@@ -326,10 +298,26 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
             ".agent/jev/hook.py",
             include_str!("../extensions/codex/hooks/jev/hook.py"),
         ),
+        (
+            ".agent/jev/questions.py",
+            include_str!("../extensions/codex/hooks/jev/questions.py"),
+        ),
+        (
+            ".agent/jev/routing.py",
+            include_str!("../extensions/codex/hooks/jev/routing.py"),
+        ),
+        (
+            ".agent/jev/adapters.py",
+            include_str!("../extensions/codex/hooks/jev/adapters.py"),
+        ),
         (".agent/jev/model-defaults.json", defaults_json.as_str()),
         (
             ".agent/jev/opencode-profile-defaults.json",
             opencode_defaults_json.as_str(),
+        ),
+        (
+            ".agent/jev/opencode-model-tiers.json",
+            include_str!("../extensions/opencode/model-tiers.json"),
         ),
         (
             ".opencode/plugins/agentic-jev/index.ts",
@@ -337,17 +325,15 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
         ),
     ];
     for (rel, content) in assets {
-        let wanted = (rel == ".agent/jev/opencode-profile-defaults.json"
+        let host_specific = OPENCODE_ONLY.contains(&rel) || rel == ".agent/jev/model-defaults.json";
+        let wanted = (OPENCODE_ONLY.contains(&rel)
             && enabled
             && app.selected_agent_os_contains("opencode"))
             || (rel == ".agent/jev/model-defaults.json"
                 && enabled
                 && (app.selected_agent_os_contains("codex")
                     || app.selected_agent_os_contains("claude")))
-            || (rel.starts_with(".agent/")
-                && rel != ".agent/jev/model-defaults.json"
-                && rel != ".agent/jev/opencode-profile-defaults.json"
-                && (enabled || retained_reference))
+            || (rel.starts_with(".agent/") && !host_specific && (enabled || retained_reference))
             || (enabled
                 && app.selected_agent_os_contains("opencode")
                 && rel.starts_with(".opencode/"));
@@ -356,8 +342,14 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
             let source = match rel {
                 ".agent/jev/api.py" => "extensions/codex/hooks/jev/api.py",
                 ".agent/jev/hook.py" => "extensions/codex/hooks/jev/hook.py",
+                ".agent/jev/questions.py" => "extensions/codex/hooks/jev/questions.py",
+                ".agent/jev/routing.py" => "extensions/codex/hooks/jev/routing.py",
+                ".agent/jev/adapters.py" => "extensions/codex/hooks/jev/adapters.py",
                 ".opencode/plugins/agentic-jev/index.ts" => {
                     "extensions/opencode/hooks/agentic-jev.ts"
+                }
+                ".agent/jev/opencode-model-tiers.json" => {
+                    crate::jev_defaults::OPENCODE_TIERS_SOURCE
                 }
                 _ => "generated:jev-profile-model-defaults",
             };

@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: pm
 agent: pm
+selection:
+  general: false
+  use-when: "A backend service has a reported defect, error or incident and the request asks for a diagnosed and verified fix."
 related-rules:
   - architecture.md
   - security.md

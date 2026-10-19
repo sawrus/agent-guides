@@ -76,6 +76,7 @@ Workflows are orchestrated processes. Each workflow:
 - Bounds every loop or retry (max iterations + escalation path) — "loop until done" is a defect
 - Ends with a "Document & Version" step (delivery) or a `docs/incidents/` root-cause doc (incident), and an explicit `Next: /<trigger>` or `Next: terminal` handoff
 - Has measurable quality gates in the frontmatter
+- Has a `selection` block after `agent:`: a quoted `use-when` sentence (≤ 300 characters), an optional `avoid-when`, and `general: false` unless it is the single catch-all workflow of its top-level area. JEV routing shows `use-when` to the model; `make lint-content` rejects a missing or invalid block
 
 ### 7. Author prompts using `prompt.tmpl.md`
 

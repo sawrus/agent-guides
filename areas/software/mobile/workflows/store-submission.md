@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "The request asks to submit a validated mobile build to the App Store or Google Play."
 related-rules:
   - platform-compliance.md
   - security-mobile.md

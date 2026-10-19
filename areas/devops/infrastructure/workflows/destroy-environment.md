@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "The request asks to tear down a Terraform-managed environment and clean up its state."
 related-rules:
   - state-management.md
   - immutability.md

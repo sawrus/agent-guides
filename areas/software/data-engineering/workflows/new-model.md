@@ -19,6 +19,9 @@ roles:
 execution:
   initiator: pm
 agent: pm
+selection:
+  general: false
+  use-when: "The request asks for a new dbt model with SQL, documentation, tests and lineage."
 related-rules:
   - schema-management.md
   - pipeline-integrity.md

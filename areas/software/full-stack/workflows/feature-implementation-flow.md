@@ -19,6 +19,9 @@ roles:
 execution:
   initiator: pm
 agent: pm
+selection:
+  general: false
+  use-when: "The request asks to add one feature to an existing full-stack service with a layered architecture, in any stack."
 related-rules:
   - backend-architecture-rule.md
   - code-quality-guide.md

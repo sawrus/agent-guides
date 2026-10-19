@@ -19,6 +19,10 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "The request explicitly asks for a new production backend service, such as an HTTP API server, built from an empty project through planning, implementation and blackbox validation."
+  avoid-when: "Small programs, scripts or command-line tools, and changes to an existing service."
 related-rules:
   - project-guide.md
   - backend-architecture-rule.md

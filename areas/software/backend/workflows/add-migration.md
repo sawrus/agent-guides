@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "The request explicitly needs a database schema change in a backend service, delivered with expand and contract steps."
 related-rules:
   - data_access.md
   - architecture.md

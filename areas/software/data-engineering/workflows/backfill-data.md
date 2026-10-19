@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to reprocess historical data for a model or date range without disrupting live pipelines."
 related-rules:
   - pipeline-integrity.md
   - data-governance.md

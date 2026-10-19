@@ -18,6 +18,9 @@ roles:
 execution:
   initiator: product-owner
 agent: product-owner
+selection:
+  general: false
+  use-when: "The request asks for a new reusable UI component that follows a design system, with tests and accessibility checks."
 related-rules:
   - architecture.md
   - quality.md

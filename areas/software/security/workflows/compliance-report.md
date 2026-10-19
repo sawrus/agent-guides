@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "The request asks for SOC2, ISO 27001, GDPR or PCI control evidence and a gap analysis."
 related-rules:
   - compliance-baseline.md
   - secrets-policy.md

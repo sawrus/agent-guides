@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "A deployed model shows degradation, drift, bias or an outage and needs triage, rollback or a postmortem."
 related-rules:
   - production-safety.md
   - model-governance.md

@@ -54,7 +54,7 @@ class JevApiTests(unittest.TestCase):
             self.configure(provider=provider)
             (self.project / ".env").write_text(f"export {key_name}='mock-secret'\n")
             response = MagicMock()
-            response.__enter__.return_value.read.return_value = json.dumps({"model":"jev-1.13.0","answers":{"tier":{"type":"choice","choice":"fast","confidence":1,"probabilities":{"fast":1,"balanced":0,"frontier":0,"clarify":0},"leak":"mock-secret"}},"usage":{"cost_usd":.0001,"credits_remaining_usd":100}}).encode()
+            response.__enter__.return_value.read.return_value = json.dumps({"model":"jev-1.13.0","answers":{"model":{"type":"choice","choice":"fast","confidence":1,"probabilities":{"fast":1,"balanced":0,"frontier":0,"clarify":0},"leak":"mock-secret"}},"usage":{"cost_usd":.0001,"credits_remaining_usd":100}}).encode()
             opener = MagicMock()
             opener.open.return_value = response
             with patch.object(jev.urllib.request, "build_opener", return_value=opener):
@@ -68,4 +68,4 @@ class JevApiTests(unittest.TestCase):
 
     def test_invalid_distribution_is_rejected(self):
         with self.assertRaises(ValueError):
-            jev.answers_for({"answers":{"tier":{"type":"choice","choice":"fast","confidence":1,"probabilities":{"fast":0,"balanced":1,"frontier":0,"clarify":0}}}}, self.request["questions"])
+            jev.answers_for({"answers":{"model":{"type":"choice","choice":"fast","confidence":1,"probabilities":{"fast":0,"balanced":1,"frontier":0,"clarify":0}}}}, self.request["questions"])

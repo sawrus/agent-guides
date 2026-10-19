@@ -29,13 +29,17 @@ pub fn selected_profile(app: &App) -> Option<String> {
     Some(raw.to_string())
 }
 
-fn profile_agents(app: &App, id: &str) -> Option<Map<String, Value>> {
+fn profile_section(app: &App, id: &str, section: &str) -> Option<Map<String, Value>> {
     let text = app
         .kb
         .read_file(&format!("extensions/claude/profiles/{id}/profile.json"))?;
-    serde_json::from_str::<Value>(&text).ok()?["agents"]
+    serde_json::from_str::<Value>(&text).ok()?[section]
         .as_object()
         .cloned()
+}
+
+fn profile_agents(app: &App, id: &str) -> Option<Map<String, Value>> {
+    profile_section(app, id, "agents")
 }
 
 /// Choose and validate the profile; unknown ids warn and fall back to no pinning.
@@ -79,6 +83,14 @@ pub fn profile_models(app: &App) -> Map<String, Value> {
     let id = selected_profile(app).unwrap_or_else(|| DEFAULT_PROFILE.into());
     profile_agents(app, &id)
         .or_else(|| profile_agents(app, DEFAULT_PROFILE))
+        .unwrap_or_default()
+}
+
+/// Tier (`fast`, `balanced`, `frontier`) → model alias for JEV tier routing.
+pub fn profile_tiers(app: &App) -> Map<String, Value> {
+    let id = selected_profile(app).unwrap_or_else(|| DEFAULT_PROFILE.into());
+    profile_section(app, &id, "tiers")
+        .or_else(|| profile_section(app, DEFAULT_PROFILE, "tiers"))
         .unwrap_or_default()
 }
 

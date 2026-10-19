@@ -15,6 +15,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to ship a JavaScript-only over-the-air update to a mobile app with a staged rollout."
 related-rules:
   - platform-compliance.md
   - offline-first.md

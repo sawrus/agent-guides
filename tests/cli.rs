@@ -99,7 +99,27 @@ fn jev_hooks_enable_provider_replay_and_explicit_disable() {
         &std::fs::read_to_string(project.path().join(".agent/jev/model-defaults.json")).unwrap(),
     )
     .unwrap();
-    assert_eq!(defaults["developer"], "gpt-6.1-sol");
+    assert_eq!(defaults["version"], 2);
+    assert_eq!(defaults["roles"]["developer"], "gpt-6.1-sol");
+    assert_eq!(defaults["tiers"]["frontier"], "gpt-6-astra");
+    for runtime in ["questions.py", "routing.py", "adapters.py"] {
+        assert!(project.path().join(".agent/jev").join(runtime).is_file());
+    }
+    assert!(!project.path().join(".codex/model-tiers.json").exists());
+    // OpenCode reads its tier map from `.agent/jev/` only; the default profile pins no role models (QR-D2).
+    let opencode_tiers = project.path().join(".agent/jev/opencode-model-tiers.json");
+    // Windows checkouts embed CRLF sources while the installer writes LF; compare content only.
+    assert_eq!(
+        std::fs::read_to_string(&opencode_tiers)
+            .unwrap()
+            .replace("\r\n", "\n"),
+        include_str!("../extensions/opencode/model-tiers.json").replace("\r\n", "\n")
+    );
+    assert!(!project.path().join(".opencode/model-tiers.json").exists());
+    let profile_defaults = project
+        .path()
+        .join(".agent/jev/opencode-profile-defaults.json");
+    assert_eq!(std::fs::read_to_string(profile_defaults).unwrap(), "{}\n");
     assert!(!profile.contains("\nmodel_reasoning_effort ="));
     assert!(profile.contains("sandbox_mode = \"workspace-write\""));
     assert!(profile.contains("You are the Software Developer"));
@@ -145,6 +165,7 @@ fn jev_hooks_enable_provider_replay_and_explicit_disable() {
     );
     install(&["--disable-jev"]);
     assert_eq!(manifest()["settings"]["jev"]["enabled"], false);
+    assert!(!opencode_tiers.exists());
     assert!(!manifest()["settings"]["mcp_integrations"]
         .as_array()
         .unwrap()
@@ -1203,13 +1224,16 @@ fn claude_jev_and_telegram_hooks_are_owned_and_removable() {
     assert_eq!(settings["hooks"]["Stop"].as_array().unwrap().len(), 2);
     assert!(p.join(".agent/jev/hook.py").is_file());
     assert!(p.join(".agent/notify/telegram.py").is_file());
+    assert!(p.join(".agent/notify/telegram_turn.py").is_file());
     // JEV leaves Claude models open for routing; the pool holds aliases.
     assert!(!frontmatter(&p.join(".claude/agents/developer.md")).contains("model:"));
     let defaults: Value = serde_json::from_str(
         &std::fs::read_to_string(p.join(".agent/jev/model-defaults.json")).unwrap(),
     )
     .unwrap();
-    assert_eq!(defaults["developer"], "sonnet");
+    assert_eq!(defaults["roles"]["developer"], "sonnet");
+    assert_eq!(defaults["tiers"]["fast"], "haiku");
+    assert!(p.join(".agent/jev/questions.py").is_file());
     let manifest: Value =
         serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap()).unwrap();
     assert_eq!(
@@ -1228,6 +1252,7 @@ fn claude_jev_and_telegram_hooks_are_owned_and_removable() {
     assert_eq!(settings["hooks"], serde_json::json!({"Stop":[user_hook]}));
     assert_eq!(settings["env"]["KEEP"], "1");
     assert!(!p.join(".agent/notify/telegram.py").exists());
+    assert!(!p.join(".agent/notify/telegram_turn.py").exists());
 }
 
 #[test]

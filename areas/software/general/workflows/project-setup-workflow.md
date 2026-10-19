@@ -20,6 +20,10 @@ roles:
 execution:
   initiator: product-owner
 agent: product-owner
+selection:
+  general: false
+  use-when: "The request explicitly asks to initialize tooling, CI and documentation for a new repository, without building product features."
+  avoid-when: "The request asks to build a program or feature, even in an empty repository; use the general development workflow."
 related-rules:
   - git-workflow-guide.md
   - makefile-guide.md

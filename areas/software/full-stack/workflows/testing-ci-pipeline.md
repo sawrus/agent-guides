@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to run the complete test and CI pipeline of a project and report a quality verdict."
 related-rules:
   - testing-ci-guide.md
   - code-quality-guide.md

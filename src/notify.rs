@@ -11,6 +11,10 @@ use std::path::Path;
 pub const RUNTIME_REL: &str = ".agent/notify/telegram.py";
 const RUNTIME_SOURCE: &str = "extensions/codex/hooks/notify/telegram.py";
 const RUNTIME: &str = include_str!("../extensions/codex/hooks/notify/telegram.py");
+/// Header facts (agent, model, final turn) imported by the runtime; shipped and removed with it.
+pub const TURN_REL: &str = ".agent/notify/telegram_turn.py";
+const TURN_SOURCE: &str = "extensions/codex/hooks/notify/telegram_turn.py";
+const TURN: &str = include_str!("../extensions/codex/hooks/notify/telegram_turn.py");
 const CLAUDE_OWNERSHIP: &str = ".agentic/claude-notify-hook-entries.json";
 const CODEX_OWNERSHIP: &str = ".agentic/codex-notify-hook-entries.json";
 
@@ -114,11 +118,24 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
     let runtime_hosts = hook_hosts(app) || app.selected_agent_os_contains("opencode");
     if (on && runtime_hosts) || referenced {
         crate::manifest::write_file_with_agentic_marker(app, RUNTIME, &path, RUNTIME_SOURCE)?;
+        crate::manifest::write_file_with_agentic_marker(
+            app,
+            TURN,
+            &project.join(TURN_REL),
+            TURN_SOURCE,
+        )?;
         if on && app.selected_agent_os_contains("codex") && !app.dry_run {
             ui::log(app, "Codex Telegram hooks installed. Review and trust them through /hooks in the target project.");
         }
-    } else if !app.dry_run && path.is_file() {
-        crate::legacy::remove_if_unmodified(app, project, RUNTIME_REL, "Telegram runtime")?;
+    } else if !app.dry_run {
+        for (rel, label) in [
+            (RUNTIME_REL, "Telegram runtime"),
+            (TURN_REL, "Telegram turn facts"),
+        ] {
+            if project.join(rel).is_file() {
+                crate::legacy::remove_if_unmodified(app, project, rel, label)?;
+            }
+        }
     }
     Ok(())
 }
@@ -142,6 +159,7 @@ mod tests {
         let codex = std::fs::read_to_string(p.join(".codex/hooks.json")).unwrap();
         assert!(codex.contains("--host codex --event waiting"));
         assert!(p.join(RUNTIME_REL).is_file());
+        assert!(p.join(TURN_REL).is_file());
         crate::manifest::write_agentic_manifest(&mut app, p).unwrap();
 
         let mut app = App::new().unwrap();
@@ -153,6 +171,7 @@ mod tests {
             .unwrap()
             .contains(RUNTIME_REL));
         assert!(!p.join(RUNTIME_REL).exists());
+        assert!(!p.join(TURN_REL).exists());
     }
 
     #[test]
@@ -165,6 +184,7 @@ mod tests {
         app.opencode_telegram_enabled = "true".into();
         install(&mut app, p).unwrap();
         assert!(p.join(RUNTIME_REL).is_file());
+        assert!(p.join(TURN_REL).is_file());
         assert!(!p.join(".claude/settings.json").exists());
         assert!(!p.join(".codex/hooks.json").exists());
     }

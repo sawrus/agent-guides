@@ -471,7 +471,24 @@ make jev-rnd-verify
 make -f docs/jev-rnd/Makefile live
 make -f docs/jev-rnd/Makefile live-primitives
 make jev-prototype-live
+# Вопросы хуков (workflow_routing, model_tier): отдельный файл результатов.
+JEV_RND_SUITE=questions JEV_RND_BUDGET_USD=0.15 make -f docs/jev-rnd/Makefile live
 ```
+
+Набор `questions` строится из [question_fixtures.py](question_fixtures.py) теми же
+функциями `questions.py`, что и в хуке, поэтому формулировки не расходятся.
+Семья `workflow_routing` — 12 запросов RU/EN против каталога software.backend +
+software.general; исходный проблемный запрос в неё намеренно не входит
+(held-out). Семья `model_tier` — 8 заданий субагентов против уровней Claude.
+`expected` — список допустимых ответов. Набор отправляется клиентом хука
+(`extensions/codex/hooks/jev/api.py`, `evaluate`) с тем же адресом и ключом, что
+и хук: `JEV_API_URL` > `settings.jev.api_url` > официальный API; ключ
+`TYPESAFE_API_KEY` для `api.typesafe.ai`, иначе `JEV_API_KEY`, из окружения или
+`.env` репозитория. Если API не вернул стоимость, в бюджет записывается
+консервативная оценка (`cost_reported: false`), и лимит `JEV_RND_BUDGET_USD`
+продолжает действовать. Результаты пишутся в
+`questions-results.json`; `make jev-rnd-verify` проверяет его, если файл есть,
+и добавляет раздел `questions` в `summary.json`. Без файла проверка тоже проходит.
 
 R&D harness по умолчанию ограничен $0.01 за основной набор; additional primitives
 использует тот же сохранённый бюджет. Prototype smoke — пять небольших hosted

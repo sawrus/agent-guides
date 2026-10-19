@@ -15,6 +15,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to train a model in a reproducible experiment with a recorded environment and evaluation."
 related-rules:
   - reproducibility.md
   - data-integrity.md

@@ -18,6 +18,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to run an existing application on Kubernetes for the first time: namespace, RBAC, Helm chart, ArgoCD and autoscaling."
 related-rules:
   - cluster-standards.md
   - workload-security.md

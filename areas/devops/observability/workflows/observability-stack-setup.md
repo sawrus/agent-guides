@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "The request asks to install Prometheus, Loki, Tempo and Grafana on a cluster that has no observability stack."
 related-rules:
   - golden-signals.md
   - alerting-standards.md

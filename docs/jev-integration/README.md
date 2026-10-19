@@ -17,20 +17,37 @@ or JEV MCP server is installed.
 Adapter sources belong to `extensions/codex/hooks/jev/` and
 `extensions/opencode/hooks/agentic-jev.ts`. The common Python runtime is deployed
 to `.agent/jev/`; the OpenCode adapter is deployed to its native plugin directory.
+The runtime has five stdlib modules:
+
+| File | Purpose |
+| --- | --- |
+| `hook.py` | Entry point, event pipeline, permission boundaries, audit records, review packet |
+| `questions.py` | Workflow catalog, repository snapshot, request builders, permission metadata, thresholds |
+| `routing.py` | Model pools, tiers, prices, role defaults, deterministic spawn rules |
+| `adapters.py` | Codex and Claude Code payload translation and hook output |
+| `api.py` | JEV client: validation, credentials, redaction, budget ledger, evaluation |
+
+`hook.py` asks JEV only when `api.py`, `questions.py`, `routing.py` and
+`adapters.py` are present with runtime version 2. Otherwise every event returns
+`fallback/runtime_incomplete` (Codex and Claude get an empty hook output) and the
+host keeps its native behavior. When JEV is enabled, the hook still writes one
+record per event with identifiers only (host, kind, session, event and tool ids),
+never the prompt or tool input.
 
 On the original user prompt, JEV chooses from the workflows actually installed
 in `.agent/workflows/`. The host receives context directing it to load and execute
 the selected workflow with its native roles. Explicit workflow requests remain
 unchanged. This is a context instruction; actual execution must be verified from
-native tool evidence, not merely from JEV's recommendation.
+native tool evidence, not merely from JEV's recommendation. The exact questions
+are in [Questions, tiers and records](#questions-tiers-and-records).
 
-Before creating a subagent, JEV chooses the least expensive sufficient available
-model for the original task and exact role assignment. Candidates are restricted
-to the models assigned by the installed project's role profiles, intersected with
-the host's available catalog and known availability restrictions. An empty
-intersection retains native behavior. Role title alone must not
-inflate complexity. Codex uses its native model cache; OpenCode uses its runtime
-catalog, capabilities and prices. Codex `PreToolUse` rewrites the native spawn
+Before creating a subagent, JEV chooses the least expensive sufficient model
+**tier** for the role's assignment. The hook maps the tier to a concrete model.
+Candidates are restricted to the models assigned by the installed project's role
+profiles and tiers, intersected with the host's available catalog and known
+availability restrictions. Role title alone must not inflate complexity. Codex
+uses its native model cache; OpenCode uses its runtime catalog, capabilities and
+prices. Codex `PreToolUse` rewrites the native spawn
 arguments; OpenCode rewrites `subagent.model`. Native role permissions remain.
 Explicit tool model assignments, models written in local role Markdown, manual
 local configuration changes and continuing existing children are preserved.
@@ -38,7 +55,9 @@ Inherited role models and unchanged Agentic mapper assignments are defaults that
 JEV can route. Mapper state records `model_defaults`; changing a local role model
 relative to that snapshot makes it a pin. Selected bundled/custom OpenCode profile
 defaults are recorded in `.agent/jev/opencode-profile-defaults.json`; unchanged
-profile assignments are also routable. Legacy mapper states without a snapshot
+profile assignments are also routable. OpenCode installs also get
+`.agent/jev/opencode-model-tiers.json`, the shipped tier map; its models join the
+candidate pool (see [Model question](#model-question)). Legacy mapper states without a snapshot
 conservatively retain local model pins. To reconfigure them, back up and move
 `.opencode/agent-model-mapper.state.json` out of that path, then select the mapper
 in Agentic TUI and confirm the desired defaults again. Root `opencode.json` role
@@ -48,14 +67,16 @@ Production considers all active providers, not just OpenAI. Catalog visibility
 means quota is unknown unless verified. Observed OpenCode HTTP auth/quota failures
 exclude that model from subsequent decisions for 15 minutes (429: one minute);
 no paid availability probes or unproven quota claims are made.
-Bundled Codex role defaults are recorded in `.agent/jev/model-defaults.json`
+Bundled Codex role defaults and tiers are recorded in `.agent/jev/model-defaults.json`
 and omitted from native TOML when enabled so they do not override hook decisions;
 explicit models in user profiles also enter the pool and remain pinned for that role. User-edited profiles are
 protected. Missing/unknown prices do not prove cheapest. Reviewer selection uses
 comparable input+output catalog prices, otherwise `AGENTIC_JEV_REVIEW_MODEL` or
 `settings.jev.lightweight_model`; the Codex default is available `gpt-6-luna`.
 
-Permission evaluation can return allow/deny/ask. Explicit native denials remain
+Permission evaluation can return allow/deny/ask. JEV receives metadata only: no
+file content and no full command text. Requests that cannot be auto-allowed are not sent
+to JEV; the host decides natively. Explicit native denials remain
 final. Automatic approval is bounded to project/system temporary paths with
 sandbox preserved. Secrets, deletion, outside paths, network/escalation and
 symlink escapes require native approval. Arbitrary shell commands are assessed,
@@ -65,7 +86,9 @@ PermissionRequest represents escalation/network approval and is never auto-allow
 JEV does not execute commands or grant sandbox exemptions.
 
 Errors, unavailable keys/catalogs, timeout (eight seconds), oversized requests,
-confidence below 0.9 and duplicate in-flight events retain native behavior.
+confidence below the question's threshold (default 0.9) and duplicate in-flight
+events retain native behavior; a spawn fallback applies the role default instead
+(see [Model question](#model-question)).
 The same native event is evaluated once; no retry requests for a preferred answer.
 Disabled integration makes no requests and does not read credentials.
 
@@ -73,6 +96,214 @@ Some Codex transports expose encrypted subagent assignments to hooks. The audit
 marks `assignment_unavailable`; JEV receives original scope and role metadata,
 not decrypted content. Confidence assesses capability fit, while price and quota
 can remain unknown. Ambiguous capability requirements still trigger fallback.
+
+## Questions, tiers and records
+
+JEV receives one question per event. All state is untrusted evidence. Requests
+are serialized as UTF-8 (`ensure_ascii=False`) and must stay under 32 KiB; a
+catalog of 80 workflows with a Cyrillic prompt fits.
+
+### Workflow question
+
+Sent on the original user prompt when no explicit `/trigger` or workflow id
+matches.
+
+- **Options:** every `.agent/workflows/*.md` with `type: workflow`, plus `native`
+  and `clarify`. Each option text holds the description, `inputs → outputs`,
+  roles and `selection.use-when` (and `avoid-when` when present). The workflow
+  with `selection.general: true` starts with `GENERAL.`. A large catalog drops
+  roles, then inputs/outputs, then shortens `use-when` to fit a 20 000-byte
+  option budget.
+- **State:** `original_request` (≤ 3000 characters, with
+  `original_request_truncated`), `installed_areas` (from `.agentic.json`) and
+  `repository`: `is_git`, `source_files`, `top_languages`, `has_makefile`,
+  `has_ci`, `only_agent_guidance`, `truncated`. The snapshot walks at most 5000
+  entries, depth 6, for 0.3 s; it does not follow symlinks or enter hidden,
+  `node_modules`, `target`, `vendor`, `dist` and `build` directories. The workflow
+  catalog itself is not repeated in state.
+- **Instruction (summary):** choose the workflow whose purpose, inputs and outputs
+  fit the original request; `GENERAL` covers ordinary requests; missing details do
+  not make the choice uncertain; an empty repository does not turn a build request
+  into a setup request; `native` for answers, explanations and analysis; `clarify`
+  when a change is asked but its goal or target is unknown.
+- **Result:** a confident workflow id adds `result.workflow` with `id`, `path`,
+  `description`, `trigger`, `initiator` and `roles`. `native` gives
+  `fallback/native_request`, `clarify` gives `fallback/clarification_needed`; both
+  keep native host behavior.
+
+### Model question
+
+Sent before a subagent spawn, after these rules (no JEV call):
+
+1. `project_configuration_unavailable`, an explicit model or a role-file pin, or
+   a continued child keeps native behavior (`model_source: pinned`).
+2. A single eligible model is routed (`single_eligible`).
+3. `instruction-reviewer` gets the cheapest priced or configured lightweight
+   model. When neither exists, it gets the `fast` tier model with reason
+   `tier_fast_price_unknown`. All three use `model_source: review_model`.
+4. Fewer than two resolved tiers give `fallback/no_tier_routing`.
+5. A Codex spawn (only Codex) with an encrypted assignment (`assignment_unavailable: true`)
+   gives `fallback/assignment_unavailable`, and the role default applies. JEV
+   always answered `clarify` for these spawns, so the call could not change the
+   outcome (QR-D12).
+
+- **Options:** the available tiers `fast`, `balanced`, `frontier`, plus `clarify`.
+  The rubric: `fast` for bounded work with an established pattern; `balanced` for
+  ordinary multi-file work that needs engineering judgment; `frontier` only when
+  the assignment itself needs novel architecture, security, concurrency or
+  migration decisions; `clarify` when the sufficient capability is unknown.
+- **State:** `original_request`, `role`, `role_description`, `role_default
+  {model, tier}`, `assignment` (≤ 2500 characters, with `assignment_truncated`),
+  `assignment_unavailable`, `workflow {id, roles}`, `candidates [{tier, model,
+  relative_cost}]`, `cost_source` and `quota: "unknown"`. The session model is not
+  sent.
+- **Tier mapping per host:**
+
+  | Host | Tier source | `relative_cost` / `cost_source` |
+  | --- | --- | --- |
+  | Claude | profile `tiers`: haiku / sonnet / opus | 1 / 2 / 3, `tier_order` |
+  | Codex | `extensions/codex/model-tiers.json`: `gpt-6-luna` / `gpt-6.1-sol` / `gpt-6-astra` | 1 / 2 / 3, `tier_order` |
+  | OpenCode | catalog prices (`m.cost`, input + output) | price ÷ cheapest, `catalog_price` |
+  | OpenCode, no usable prices | shipped tier map `.agent/jev/opencode-model-tiers.json` (source `extensions/opencode/model-tiers.json`) | 1 / 2 / 3, `tier_map` |
+
+  OpenCode with two priced candidates gets `fast` and `frontier`; three or more
+  add `balanced` at the lower median price. Prices are used only when every
+  candidate is priced and the prices differ. Otherwise the hook uses the shipped
+  tier map (OpenAI oauth reports `cost: []`, QR-D10):
+  - The map lists `provider/id` models per provider. The current map has only
+    `openai`: `openai/gpt-6-luna` / `openai/gpt-6.1-sol` / `openai/gpt-6-astra`.
+  - Only map models in the host catalog count. A provider needs at least two of
+    them. Tiers come from one provider only. The preferred provider is
+    `AGENTIC_JEV_MODEL_PROVIDER`, else the provider of the role default. A
+    preferred provider must qualify itself; otherwise there are no map tiers
+    (for example, a `github-copilot/…` role default is never routed to OpenAI
+    models). Only without a preference does the first qualifying provider in
+    file order apply.
+  - The plugin adds every map model to the spawn pool. The pool keeps the
+    catalog, tool-capability and `AGENTIC_JEV_MODEL_PROVIDER` filters.
+  - A missing, unreadable or malformed map (or a `version` other than 1) means
+    no map: the price-only behavior applies, and hooks never fail on it.
+
+  With no tiers, `cost_source` is `null` and the result is
+  `fallback/no_tier_routing`. `settings.jev.tiers` in `.agentic.json` overrides
+  a tier only with a candidate model. If only overrides give tiers, they are
+  ranked 1 / 2 / 3 with `cost_source: tier_order`.
+- **Fallback:** `clarify`, low confidence, an API error or `no_tier_routing`
+  apply the role default when it is a candidate, on every host:
+  `status: fallback`, `model_source: role_default`. Codex and Claude read it from
+  `model-defaults.json` (`role_default_source: defaults`). On OpenCode the hook
+  resolves it:
+  - The plugin sends `role_default` (the agent's model, else the selected
+    profile default). If that model is in the catalog, it wins
+    (`role_default_source: profile`).
+  - Otherwise the role's tier from the map `roles` applies
+    (`role_default_source: role_tier`). `balanced`: product-owner, team-lead,
+    developer, devops-engineer and native `general`. `fast`: qa, analyst, pm,
+    instruction-reviewer, memory-curator and native `explore`. These mirror the
+    Codex role defaults; a content test checks the parity. `frontier` is never a
+    role default.
+  - A role with no tier keeps the native model (`model_source: none`).
+
+  So a default OpenCode install (`opencode-profile-defaults.json` is `{}`) still
+  resolves a role default for every installed role. Pinned spawns and
+  `project_configuration_unavailable` never get a role default. The Codex `qa`
+  default is `gpt-6-luna` (`fast`), so it is a tier candidate.
+
+### Permission question
+
+- **When it is asked:** only when `permission_boundaries` marks the request
+  `auto_allow_eligible`. An ineligible request is never sent to JEV: JEV could not
+  allow it, and metadata alone cannot prove hostility. The record shows
+  `status: fallback`, `reason_code: not_auto_allow_eligible`, `outcome: native`,
+  `applied: false`, `decision: null`, and the host asks the user natively
+  (Codex and Claude get an empty hook output; OpenCode gets no decision).
+- **Options:** `allow`, `deny`, `ask`.
+- **State:** `original_request`, `action`, `targets [{path, in_project, new_file,
+  bytes, kind}]`, `command {program, length,
+  args, shell_operators}`, `agent` (an installed role or `null`),
+  `native_agent_type`, `workflow {id, roles}`, `approved_decisions` (the last 10
+  applied `{action, targets, decision}` of the task) and `auto_allow_eligible`.
+- **Targets:** the hook inspects only paths that resolve inside the project or the
+  system temporary directory (`$TMPDIR/…`) and do not look sensitive. For those,
+  `bytes` is the current size on disk (0 for a new file) and `kind` is `source`,
+  `test`, `docs`, `config`, `directory` or `other`. A path that resolves outside
+  both roots, including through a symlink, is shown as `[outside project]` with
+  `kind: outside`; a sensitive path (`.env`, keys, credentials) gets
+  `kind: secret_like`. Neither is stat-ed: `bytes` and `new_file` are `null`, and
+  the raw outside path is never sent.
+- **Instruction additions:** earlier approved decisions show task context but do
+  not authorize this request; if `auto_allow_eligible` is false, do not choose
+  `allow`. The `allow` → `ask` downgrade (`outcome: ask_downgrade`) stays as a
+  safeguard. `permission_boundaries` decides eligibility and is unchanged.
+
+### `model-defaults.json` v2
+
+```json
+{"version": 2,
+ "roles": {"developer": "sonnet", "team-lead": "opus"},
+ "tiers": {"fast": "haiku", "balanced": "sonnet", "frontier": "opus"}}
+```
+
+Claude-only installs record the Claude profile aliases; any install with Codex
+records Codex ids and `model-tiers.json`. The hook still reads the legacy flat
+`{role: model}` file: roles work, tiers are empty, so the model question is not
+asked and the role default applies.
+
+### Thresholds
+
+`settings.jev.thresholds.{workflow, model, permission}` in `.agentic.json` set the
+minimum confidence per question. A value is used only when it is a number in
+[0.5, 1]; anything else gives 0.9. Reinstall keeps `thresholds`,
+`lightweight_model` and `tiers`.
+
+```json
+{"settings": {"jev": {"enabled": true, "thresholds": {"workflow": 0.9, "model": 0.8, "permission": 0.95}}}}
+```
+
+The permission floor of 0.5 is safe only because `auto_allow_eligible` still
+applies: rejected requests are not sent to JEV at all, so a low threshold can
+never auto-allow or auto-deny a request that `permission_boundaries` rejects.
+
+### Reason codes
+
+| Code | Meaning |
+| --- | --- |
+| `explicit_workflow` | A `/trigger` or workflow id in the prompt; JEV not asked |
+| `native_request` | JEV chose `native` |
+| `clarification_needed` | JEV chose `clarify` (workflow or model) |
+| `low_confidence` | Confidence below the question's threshold |
+| `no_tier_routing` | Fewer than two tiers resolved; role default applies |
+| `assignment_unavailable` | Codex spawn with an encrypted assignment; JEV not asked, role default applies |
+| `tier_fast_price_unknown` | `instruction-reviewer` routed to the `fast` tier: no prices and no lightweight model |
+| `not_auto_allow_eligible` | Permission request outside the automatic boundary; JEV not asked, host decides |
+| `runtime_incomplete` | `api.py`, `questions.py`, `routing.py` or `adapters.py` missing or of another version; one identifier-only record is written |
+| `explicit_model_or_continuation` | Pinned model or continued child |
+| `single_eligible_model` | One candidate |
+| `request_failed`, `missing_key`, `invalid_endpoint`, `request_too_large` | Client or API failure |
+
+`no_matching_workflow` is no longer produced.
+
+### Decision record fields
+
+Every `event-*.json` for a prompt, spawn or permission event has these top-level
+fields next to `context`, `request` and `result`:
+
+| Field | Values |
+| --- | --- |
+| `decision` | Raw JEV choice, or `null` when JEV was not asked or failed |
+| `threshold` | Threshold used for this question type |
+| `applied` | `true` when the confident JEV choice decided the outcome (including `native` and permission `ask`) |
+| `outcome` | `jev_applied`, `role_default_applied`, `rule_applied`, `ask_downgrade` or `native` |
+| `tier` | Spawns: tier of the applied model, or `null` |
+| `model_source` | Spawns: `jev_tier`, `role_default`, `single_eligible`, `review_model`, `pinned` or `none` |
+| `cost_source` | Spawns: `catalog_price`, `tier_map`, `tier_order` or `null` (no tiers) |
+| `role_default_source` | Spawns: `profile`, `role_tier`, `defaults`, or `null` (none resolved, or a deterministic rule decided) |
+
+Spawn results also carry `tier` and `model_source`. `result.status`,
+`result.model` (always a concrete model, never a tier) and `context` keep their
+meaning for `scripts/blackbox_jev.py`. Observations of subagent types that are
+not installed roles have `agent: null`. Claude `SubagentStart` has no model; the
+observed model comes from the transcript at `SubagentStop`.
 
 ## Claude Code adapter
 
@@ -88,12 +319,15 @@ keys stay unchanged. Disable removes only unmodified owned groups.
 | `PreToolUse` (`Agent\|Task`) | Model for the role in `subagent_type` | `updatedInput.model` with `permissionDecision: allow` |
 | `PermissionRequest` | allow / deny / ask | `decision.behavior`; `ask` keeps the native prompt |
 | `PostToolUse` | Observation | Records reads of `.agent/workflows/*.md` and `.claude/commands/*.md` |
-| `SubagentStart` | Observation | Review packet path for `instruction-reviewer` |
+| `SubagentStart` | Observation (Claude sends no model here) | Review packet path for `instruction-reviewer` |
 | `SubagentStop` | Observation | Observed model from `agent_transcript_path` |
 
 The Agent tool accepts only the aliases `opus`, `sonnet` and `haiku`.
 Candidates are those aliases, restricted to the aliases that the selected Claude
-profile assigns (`.agent/jev/model-defaults.json`). An answer that is not an alias
+profile assigns (`.agent/jev/model-defaults.json`). Tiers map to aliases:
+`fast` → `haiku`, `balanced` → `sonnet`, `frontier` → `opus` (profile `tiers`).
+If the recorded tiers are not aliases (a combined Claude + Codex install records
+Codex ids), the hook uses this built-in alias map. A result that is not an alias
 is never applied. `haiku` is the lightweight reviewer model. When JEV is enabled,
 `model:` is left out of `.claude/agents/*.md` so the hooks can route each spawn.
 An explicit `model` in the Agent call, or a `model:` that a user adds to a role
@@ -107,17 +341,19 @@ Claude-specific rules:
   context for the next spawn decisions, and no extra workflow selection runs.
 - `AskUserQuestion` and `ExitPlanMode` are dialogs with the user, not permission
   boundaries. The hook never sends them to JEV.
-- `default_model` is the main session's alias: `AGENTIC_JEV_DEFAULT_MODEL`, else
-  the last model in the main transcript, else `ANTHROPIC_MODEL`, else `model` in
-  `.claude/settings.local.json`, `.claude/settings.json` or `~/.claude/settings.json`,
-  else `sonnet`. JEV sees it as the more capable option next to `haiku`.
-- When JEV gives no confident answer (`low_confidence`, `no_decision`, request
-  failure), the hook applies the role's alias from the selected Claude profile
-  (`.agent/jev/model-defaults.json`, for example `developer` → `sonnet`). The
-  record keeps `status: fallback` and adds `model_source: profile_default`;
-  blackbox counts only `evaluated` answers as JEV routing. A role without a
-  profile alias, an explicit `model` and a role-file pin are left unchanged, so
-  only those spawns inherit the session model.
+- The session model is not part of the model question. JEV judges the
+  assignment against the tiers only.
+- When JEV gives no confident answer (`low_confidence`, `clarification_needed`,
+  request failure), the hook applies the role's alias from the selected Claude
+  profile (`.agent/jev/model-defaults.json`, for example `developer` → `sonnet`).
+  The record keeps `status: fallback` and adds `model_source: role_default`; the
+  hook reason reads `Role default sonnet`. Blackbox counts only `evaluated`
+  answers as JEV routing. A role without a profile alias (for example `Explore`),
+  an explicit `model` and a role-file pin are left unchanged, so only those spawns
+  inherit the session model.
+- `PermissionRequest` sends `agent_type` as `agent` only when it names an
+  installed role in `.claude/agents/`; otherwise `agent` is `null` and the raw
+  value is kept as `native_agent_type`. Observations follow the same rule.
 
 ## Enable and disable
 
@@ -268,6 +504,12 @@ for JEV does not authenticate coding models. Inspect `results.json` and the
 cleansed trace for failed/blocked prerequisites. The shared `.agentic-blackbox/jev-budget.json` ledger reserves $0.02 per call,
 settles reported costs, and stops before the configured $5 limit. Unknown costs
 retain the reservation; it is a conservative guard, not a provider billing cap.
+The official endpoint currently reports no `usage.cost_usd`, so every such call
+books the full $0.02 reservation. The R&D questions suite
+(`JEV_RND_SUITE=questions`) caps itself with `JEV_RND_BUDGET_USD` using its own,
+smaller size-based estimate (`cost_reported: false`). When both run, the two
+totals differ: for 40 calls the suite counted $0.092 while the ledger booked
+$0.80. Neither is the provider's bill.
 Existing test quota remains bounded by the agreed $5 JEV budget; coding agents use their existing host quota.
 
 ## Source contracts

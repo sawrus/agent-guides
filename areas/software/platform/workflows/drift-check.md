@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "The request asks to compare IaC definitions with the real cloud state and report the differences."
 related-rules:
   - immutability.md
   - security-posture.md

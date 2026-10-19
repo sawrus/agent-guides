@@ -19,6 +19,9 @@ roles:
 execution:
   initiator: product-owner
 agent: product-owner
+selection:
+  general: false
+  use-when: "The request asks for one new HTTP or RPC API endpoint with its contract, authorization, validation and tests."
 related-rules:
   - architecture.md
   - data_access.md

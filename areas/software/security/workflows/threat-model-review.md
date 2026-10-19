@@ -15,6 +15,9 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "The request asks for a STRIDE threat model of a new feature or component with the required mitigations."
 related-rules:
   - secure-coding.md
   - compliance-baseline.md

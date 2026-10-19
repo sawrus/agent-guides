@@ -20,6 +20,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to ship a versioned production release with supply-chain checks, progressive delivery and rollback criteria."
 related-rules:
   - pipeline-standards.md
   - quality-gates.md

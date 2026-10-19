@@ -20,6 +20,10 @@ roles:
 execution:
   initiator: product-owner
 agent: product-owner
+selection:
+  general: false
+  use-when: "The request explicitly asks for a server-side feature in a backend service, such as business logic, persistence or an API change with acceptance criteria."
+  avoid-when: "Standalone programs, scripts or small apps without a backend service; use the general development workflow."
 related-rules:
   - architecture.md
   - data_access.md

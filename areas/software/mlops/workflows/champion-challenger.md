@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to compare a challenger model against the production champion in a live A/B experiment."
 related-rules:
   - production-safety.md
   - model-governance.md

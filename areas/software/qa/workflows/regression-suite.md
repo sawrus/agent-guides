@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "The request asks to run regression tests for a release and give a go or no-go recommendation."
 related-rules:
   - quality-gates.md
   - test-strategy.md

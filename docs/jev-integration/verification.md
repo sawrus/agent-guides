@@ -149,3 +149,200 @@ Limits:
 - All 16 permission evaluations fell back below 0.9 (10 leaned `allow`, but only
   one request was inside the automatic allow boundary). Claude's native permission
   handling decided them.
+
+# Native verification, 2026-10-19 (JEV questions rework, Agentic 1.4.0)
+
+Prompt `разработай калькулятор`, areas `software.backend` + `software.general`. JEV ledger
+`committed_usd` 1.94 → 2.12 (+$0.18; the endpoint returned `cost_usd: null`, so the ledger counts a
+conservative reservation per call). Full evidence: `questions-rework/test_report.md`.
+
+| Host | Run | Status | Questions (workflow / model / permission) | Applied vs fallback |
+| --- | --- | --- | --- | --- |
+| Codex 0.163.0, `danger-full-access` | `.agentic-blackbox/20261019-003813` | blocked: no JEV hook event within 60 s; project hooks are not trusted | 0 / 0 / 0 | — |
+| OpenCode 2.0.29, `openai/gpt-6-luna` | `.agentic-blackbox/20261019-003942` | failed `model_applied_to_subagent`; other 5 checks pass | 2 / 0 / 0 | 1 / 1 |
+| Claude Code 2.1.302, session `sonnet` | `.agentic-blackbox/20261019-004345` | passed 10/10 | 1 / 3 / 3 | 2 / 5 (baseline 2 / 9) |
+
+**Codex.** The manual step is for the user: in `/tmp/agentic-jev-blackbox-codex-cbdhtpj2` run `codex`, then
+`/hooks` and trust the project hooks. Then rerun
+`BLACKBOX_CODEX_SANDBOX=danger-full-access BLACKBOX_ARGS="--run-dir .agentic-blackbox/20261019-003813" make blackbox-codex`.
+
+**OpenCode.**
+
+- Workflow: `development-cycle-workflow` at 1.0 (`jev_applied`), and the agent read it.
+- The approval follow-up prompt got `clarify` at 0.47 (`low_confidence`, native).
+- All 10 spawns returned `fallback/no_tier_routing` with `model_source: none`. The default install pins no agent
+  models and writes empty profile defaults, so the plugin sends `models: []` and `role_default: null`. No model
+  question is sent.
+- Observed models: `openai/gpt-6-luna` for all 7 observations. The `explore` observation has `agent: null` and
+  `native_agent_type: explore`.
+
+**Claude.**
+
+| Role / question | JEV answer | Outcome, reason | model_source | Applied | Observed |
+| --- | --- | --- | --- | --- | --- |
+| workflow | development-cycle-workflow 1.00 | jev_applied | — | — | workflow read |
+| team-lead | balanced 0.80 | role_default_applied, `low_confidence` | role_default | opus | `claude-opus-5-5` |
+| developer | balanced 0.92 | jev_applied | jev_tier | sonnet | `claude-sonnet-5-5` |
+| qa | balanced 0.53 | role_default_applied, `low_confidence` | role_default | sonnet | `claude-sonnet-5-5` |
+| 3 × permission (Bash) | deny 0.20 / 0.22 / 0.28 | native, `low_confidence` | — | — | — |
+
+- The developer ran on sonnet, not opus. No spawn inherited the session model.
+- Permission state held only command metadata and the installed role label.
+
+AC-1 runtime check: `request.questions` and the hook-injected context name neither `calculator` nor `CRUD` on
+OpenCode or Claude (state excluded, D2). Paid R&D (`JEV_RND_SUITE=questions`) did not run: there is no
+`JEV_API_KEY` for the hosted endpoint.
+
+## Rerun after Scope change 1, 2026-10-19 (iteration 2)
+
+JEV ledger `committed_usd` 2.12 → 3.18. Of the +$1.06, R&D used $0.80 for 40 calls, OpenCode $0.04 and Claude $0.22.
+The endpoint reports no cost, so the ledger books $0.02 per call.
+
+R&D questions suite through the hook client (`api.typesafe.ai`):
+- workflow_routing 12/12 and model_tier 8/8, in both option orders.
+- These tier answers agreed but scored below 0.9: pagination 0.75 (reversed), architecture 0.79/0.80,
+  small program 0.89 (reversed), sessions 0.53/0.53.
+
+| Host | Run | Status | Questions (workflow / model / permission) | Applied |
+| --- | --- | --- | --- | --- |
+| Codex 0.163.0 | `.agentic-blackbox/20261019-003813` | still blocked on `/hooks` trust; not rerun | — | — |
+| OpenCode 2.0.29, `openai/gpt-6-luna` | `.agentic-blackbox/20261019-010215` | failed `model_applied_to_subagent` and `calculator_verified` | 2 / 0 / 0 | 1 / 2 |
+| Claude Code 2.1.302, session `sonnet` | `.agentic-blackbox/20261019-010517` | failed `model_applied_to_subagent` | 2 / 8 / 1 | 3 / 11 |
+
+**OpenCode.**
+- Workflow `development-cycle-workflow` at 1.0. The follow-up prompt got 0.50 (fallback).
+- All 12 spawns returned `no_tier_routing` with `model_source: none`. This is the deferred QR-D2 (no role models).
+- Observed model: `openai/gpt-6-luna` for every observation.
+- The calculator was a DOM-only script with no public function, so the probe could not verify it.
+
+**Claude.**
+- JEV applied two spawns: Explore `fast` 1.00 → haiku (observed `claude-haiku-5-5`) and developer `balanced` 0.97 → sonnet
+  (observed `claude-sonnet-5-5`; not opus).
+- team-lead (×3, 0.51–0.73), qa (×2, 0.33/0.47) and memory-curator (0.63) fell back on `low_confidence` to the
+  role defaults opus / sonnet / haiku, and those are the models observed.
+- The instruction-reviewer ran on the lightweight `review_model` haiku.
+- Permissions: 28 Bash events with `auto_allow_eligible: false` became `fallback/not_auto_allow_eligible` with no JEV
+  call. One eligible `Write` was asked (allow 0.69, `low_confidence`). Claude decided all of them natively.
+- `model_applied_to_subagent` fails for two reasons, not because of routing:
+  - The spawn record keeps `agent: "Explore"`, while the observation has `agent: null` +
+    `native_agent_type: "Explore"` (QR-D6).
+  - The developer spawn came after the approval follow-up, which opened a new task that `verify` does not count (QR-D7).
+
+AC-1 runtime check: 0 hits in `request.questions` or injected context on both hosts.
+
+## Offline re-verification after iteration 3, 2026-10-19
+
+The recorded runs were rechecked with `BLACKBOX_ARGS="--verify-only --run-dir …"`. No model requests were sent, and
+the ledger stays at 3.18.
+
+| Host | Run | Result |
+| --- | --- | --- |
+| Claude | `.agentic-blackbox/20261019-010517` | **passed 10/10**. `model_applied_to_subagent` is now true: the Explore spawn (JEV `fast` → haiku) pairs with the `claude-haiku-5-5` observation by `native_agent_type` (QR-D6 fix). The developer sonnet spawn is still outside the counted task because it came after the follow-up (QR-D7). |
+| OpenCode | `.agentic-blackbox/20261019-010215` | unchanged: `model_applied_to_subagent` false (no role models, QR-D2 deferred) and `calculator_verified` false (no public API). |
+| Codex | `.agentic-blackbox/20261019-003813` | still blocked: trust the hooks in `codex` → `/hooks`, then rerun with `--run-dir`. |
+
+## Codex run and OpenCode model-routing check, 2026-10-19 (iteration 3)
+
+JEV ledger `committed_usd` 3.18 → 3.32 (+$0.14, 158 → 165 calls). Codex used +$0.10 (5 calls) and OpenCode +$0.04
+(2 calls). The endpoint reports no cost, so the ledger books $0.02 per call. Full evidence: `questions-rework/test_report.md`.
+
+| Host | Run | Status | Questions (workflow / model / permission) | Applied |
+| --- | --- | --- | --- | --- |
+| Codex 0.163.0, `danger-full-access`, session `gpt-6-astra` | `.agentic-blackbox/20261019-003813` | failed `model_applied_to_subagent` (no confident tier) and `telegram_fired` (harness, QR-D9); 4 other checks pass, calculator verified | 1 / 4 / 0 | 1 / 5 |
+| OpenCode 2.0.29, `openai/gpt-6-luna`, `AGENTIC_OPENCODE_PROFILE=openai` | `.agentic-blackbox/20261019-114054` | failed `model_applied_to_subagent` (no model question) and `calculator_verified` (no public API) | 2 / 0 / 0 | 1 / 2 |
+
+**Codex.**
+
+- Runtime: the trusted temp project had stale `api.py`, `hook.py` and `questions.py` from before iteration 2. The
+  `--run-dir` rerun reinstalls through `install_project`. The new `hooks.json` was byte-identical, so the trusted hook
+  hashes in `~/.codex/config.toml` still matched. After the reinstall, all five runtime files equal the current source.
+- Workflow: `development-cycle-workflow` at 0.99, `jev_applied`, and the agent read it. No follow-up was needed.
+- Candidates on every spawn were `fast gpt-6-luna`, `balanced gpt-6.1-sol` and `frontier gpt-6-astra`
+  (`cost_source: tier_order`, `relative_cost` 1/2/3, `quota: unknown`, no `default_model`). These match
+  `extensions/codex/model-tiers.json`.
+- Codex encrypts the spawn assignment. State carried `assignment_unavailable: true` and a placeholder text.
+
+| Spawn | JEV answer | Outcome, reason | Tier / model_source | Model | Observed |
+| --- | --- | --- | --- | --- | --- |
+| product-owner | clarify 0.40 | role_default_applied, `low_confidence` | balanced / role_default | gpt-6.1-sol | gpt-6.1-sol |
+| team-lead | clarify 0.47 | role_default_applied, `low_confidence` | balanced / role_default | gpt-6.1-sol | gpt-6.1-sol |
+| developer | clarify 0.52 | role_default_applied, `low_confidence` | balanced / role_default | gpt-6.1-sol | gpt-6.1-sol |
+| qa | clarify 0.60 | native, `low_confidence` | — / none | — | gpt-6-astra |
+
+- D6 is observed. The qa default `gpt-6-terra` is not a candidate, so `role_default` is `null`. qa then inherited
+  the session model `gpt-6-astra`, which is the most expensive tier.
+- Permissions: there were no `PermissionRequest` events under `danger-full-access`.
+- `model_applied_to_subagent` is false by design: role-default fallbacks keep `status: fallback`. No spawn got a
+  confident tier.
+- `telegram_fired` is false because of the harness (QR-D9). A relative `--run-dir` makes `AGENTIC_CONFIG_DIR`
+  relative, and the Stop hook resolves it from the project cwd. `.agentic/telegram-debug.log` says
+  "telegram credentials missing".
+- AC-1: 0 hits in the 5 `request.questions` and in the 4 rebuilt injected contexts.
+
+**OpenCode model routing: what is and is not verified.**
+
+- Default install (runs `20261019-003942`, `20261019-010215`): the plugin sent `models: []` and `role_default: null`,
+  with no `prices`. Every spawn was `fallback/no_tier_routing`, `model_source: none`, and no model question was sent.
+- With `AGENTIC_OPENCODE_PROFILE=openai` (installer option, no product change), the run gave the following:
+  - `opencode-profile-defaults.json` and `.opencode/opencode.json` carry the profile role models.
+  - The plugin pool held only `openai/gpt-6-luna`. Two reasons:
+    - `product-owner`, `team-lead` and `devops-engineer` use the bare `gpt-6.1-sol`, with no `openai/` prefix.
+    - `developer` uses `openai/gpt-6-terra`, which is not in the OpenCode catalog.
+  - All 17 spawns were `routed/single_eligible_model` → `openai/gpt-6-luna` (`model_source: single_eligible`).
+  - No model question was sent. All 10 observations show `openai/gpt-6-luna`.
+- Prices: the plugin sent `prices: []` for `openai/gpt-6-luna` (`ctx.model.list()` `cost`). OpenCode authenticates
+  OpenAI by `oauth` (subscription), and every trace step reports `"cost": 0`. The models.dev cache
+  (`~/.cache/opencode/models.json`) has dict prices for luna, 6.1-sol and astra, but the runtime model list does not
+  expose them to the plugin.
+- `routing.price([])` is `None`. So under AC-7, OpenAI-on-OpenCode gives **no tier routing even with two or more role
+  models**; the hook falls back to the role default.
+- Verified: tier derivation from prices, offline only (unit tests and a probe with catalog prices: luna fast,
+  6.1-sol balanced, astra frontier). Also verified: the single-eligible rule and the pass-through of the plugin payload.
+- Not verified at runtime on OpenCode: a model question, tier → model mapping, and the `role_default` fallback with
+  `model_source: role_default`.
+
+## OpenCode model routing after the QR-D2 fix, 2026-10-19 (iteration 4)
+
+The ledger went from `committed_usd` 3.32 to 3.56 (+$0.24, 165 → 177 calls). That is 12 calls: 2 workflow questions and
+10 model questions. The ceiling was $3.92, and there was no re-run. The run was `make blackbox-opencode` on a default
+install, with no `AGENTIC_OPENCODE_PROFILE` (OpenCode 2.0.29, `openai/gpt-6-luna`, OpenAI login `oauth`). Full evidence:
+`questions-rework/test_report.md`.
+
+| Host | Run | Status | Questions (workflow / model / permission) | Applied |
+| --- | --- | --- | --- | --- |
+| OpenCode 2.0.29 | `.agentic-blackbox/20261019-121927` | failed only `calculator_verified` (no public JS API, probe limitation). `model_applied_to_subagent` **true**, `telegram_fired` true | 2 / 10 / 0 | 4 / 12 |
+
+- **Install:** `opencode-profile-defaults.json` is `{}`, and all `.opencode/opencode.json` agent models are `""`. The
+  tier map is installed as `.agent/jev/opencode-model-tiers.json`.
+- **Plugin context** (every spawn): `models` holds `openai/gpt-6.1-sol`, `openai/gpt-6-luna` and `openai/gpt-6-astra`,
+  each with `prices: []`. `role_default` is `null`, with no pin.
+- **Model requests:** 10 of 10 have `state.cost_source: tier_map` and 3 candidates (fast luna, balanced 6.1-sol,
+  frontier astra; rank cost 1/2/3). `state.role_default.model` is non-null on all 10.
+
+| Spawn | JEV answer | Outcome, reason | Tier / model_source / role_default_source | Model | Observed |
+| --- | --- | --- | --- | --- | --- |
+| explore (native) | fast 0.95 | jev_applied | fast / jev_tier / role_tier | openai/gpt-6-luna | openai/gpt-6-luna |
+| analyst | balanced 0.36 | role_default_applied, `low_confidence` | fast / role_default / role_tier | openai/gpt-6-luna | openai/gpt-6-luna |
+| team-lead | balanced 0.85 | role_default_applied, `low_confidence` | balanced / role_default / role_tier | openai/gpt-6.1-sol | openai/gpt-6.1-sol |
+| developer | balanced 0.95 | jev_applied | balanced / jev_tier / role_tier | openai/gpt-6.1-sol | openai/gpt-6.1-sol |
+| qa | balanced 0.56 | role_default_applied, `low_confidence` | balanced / role_default / role_tier | openai/gpt-6.1-sol | openai/gpt-6.1-sol |
+| product-owner | balanced 0.32 | role_default_applied, `low_confidence` | balanced / role_default / role_tier | openai/gpt-6.1-sol | — (OpenCode: "Agent product-owner cannot run as a subagent") |
+| instruction-reviewer | — (no JEV call) | rule_applied, `tier_fast_price_unknown` | — / review_model / — | openai/gpt-6-luna | openai/gpt-6-luna |
+| memory-curator | fast 0.83 | role_default_applied, `low_confidence` | fast / role_default / role_tier | openai/gpt-6-luna | openai/gpt-6-luna |
+| explore (after the follow-up) | fast 0.96 | jev_applied | fast / jev_tier / role_tier | openai/gpt-6-luna | openai/gpt-6-luna |
+| developer (after the follow-up) | fast 0.45 | role_default_applied, `low_confidence` | balanced / role_default / role_tier | openai/gpt-6.1-sol | openai/gpt-6.1-sol |
+| qa (after the follow-up) | fast 0.71 | role_default_applied, `low_confidence` | balanced / role_default / role_tier | openai/gpt-6.1-sol | openai/gpt-6.1-sol |
+
+- **Spawn totals:** 3 `jev_tier`, 7 `role_default` and 1 review rule. No installed-role spawn ended with
+  `model_source: none`. JEV never chose frontier.
+- **Observations:** every one of the 10 matches its spawn's `result.model`.
+- **Workflow:** `development-cycle-workflow` at 1.0, applied. The follow-up prompt got `clarify` 0.48 (native).
+- **R1:** no 401/402/403/429 response and no `availability.json`. OAuth accepted the 6.1-sol overrides. Astra was never
+  requested.
+- **R3:** the native helper id is `explore` (`native_agent_type: explore`), and the map entry matched. `general` did not
+  occur in this run.
+- **AC-1:** 0 hits in the 12 `request.questions` and in the plugin's injected-context template.
+- **Telegram (TG-HDR R5):**
+  - 2 messages, both `✅ Задача завершена`, with the header `🤖 build · gpt-6-luna`.
+  - Each comes from a completed native turn: the first turn delivered, and the harness follow-up turn delivered again.
+  - No interim turn occurred.

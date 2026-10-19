@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "A bug spans the FastAPI backend and the Next.js frontend of a full-stack application and needs a fix with a regression test."
 related-rules:
   - backend-architecture-rule.md
   - testing-ci-guide.md

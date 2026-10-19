@@ -37,6 +37,13 @@ pub fn copy_dir_contents(
         {
             continue;
         }
+        // JEV reads tiers through `.agent/jev/` (Codex: model-defaults.json, OpenCode:
+        // opencode-model-tiers.json), never from the host config directories.
+        if matches!(src_rel, "extensions/codex" | "extensions/opencode")
+            && rel == "model-tiers.json"
+        {
+            continue;
+        }
         if is_opencode_ext {
             if rel.starts_with("profiles/") {
                 continue;

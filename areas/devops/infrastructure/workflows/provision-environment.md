@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: devops-engineer
 agent: devops-engineer
+selection:
+  general: false
+  use-when: "The request asks to create a new infrastructure environment with Terraform and Ansible, from the network to configured nodes."
 related-rules:
   - iac-standards.md
   - state-management.md

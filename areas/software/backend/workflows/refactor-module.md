@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "The request asks to restructure existing backend code without changing its behaviour."
 related-rules:
   - architecture.md
   - testing.md

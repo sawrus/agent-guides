@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "A production application service is failing and the on-call engineer needs triage, mitigation and a postmortem draft."
 related-rules:
   - reliability.md
   - security-posture.md

@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "A live database shows connection exhaustion, lock contention, replication lag or slow queries that need diagnosis and remediation."
 related-rules:
   - backup-policy.md
   - access-control.md

@@ -222,14 +222,21 @@ convention. The installed [REVIEW_PIPELINE.md](REVIEW_PIPELINE.md) is loaded onl
 [JEV](docs/jev-integration/README.md) is an optional, paid decision service (TypeSafe AI) that runs inside each
 host's native hooks. It does not add an MCP server or a workflow runner.
 
-- **Workflow selection.** On the first prompt it picks one of the installed `.agent/workflows/*.md` and tells the
-  host to execute it as the declared initiator.
-- **Model routing.** Before a subagent starts, it picks the cheapest sufficient model from the role defaults: Codex
-  model ids, OpenCode catalog models, Claude `opus`/`sonnet`/`haiku` aliases. Explicit pins are preserved.
-- **Permission decisions.** allow / deny / ask, with automatic approval limited to bounded project paths.
+- **Workflow selection.** On the first prompt it picks one of the installed `.agent/workflows/*.md` (options use each
+  workflow's `selection.use-when`), or `native` / `clarify`, and tells the host to execute the workflow as the declared
+  initiator.
+- **Model routing.** Before a subagent starts, it picks the cheapest sufficient tier (`fast` / `balanced` /
+  `frontier`). The hook maps the tier to a model: Claude `haiku`/`sonnet`/`opus`, Codex
+  `extensions/codex/model-tiers.json`, OpenCode by catalog price, or by the shipped tier map
+  `extensions/opencode/model-tiers.json` when the catalog has no usable prices. Without a confident answer the role
+  default applies; on OpenCode it falls back to the role's tier model, so a default install also routes. Explicit
+  pins are preserved.
+- **Permission decisions.** allow / deny / ask from path and command metadata (never file content), with automatic
+  approval limited to bounded project paths.
 - **Review packet.** A task-scoped `.agentic/jev/review-*.json` packet goes to `instruction-reviewer`.
-- **Safety and audit.** Errors, timeouts (8 s) and confidence below 0.9 keep the native behavior. Cleansed audit
-  records are kept 30 days in `.agentic/jev/`.
+- **Safety and audit.** Errors, timeouts (8 s) and confidence below the per-question threshold
+  (`settings.jev.thresholds`, default 0.9) keep the native behavior. Cleansed audit records with `decision`,
+  `outcome` and `model_source` are kept 30 days in `.agentic/jev/`.
 
 ```sh
 agentic install --project-dir <dir> --agent-os claude,codex,opencode --areas software \
@@ -331,6 +338,8 @@ project/.claude/                 ← with --agent-os claude
   question).
 - Agent Markdown is rendered as Telegram formatting: bold, code, links, lists, tables as monospace blocks. Long answers
   arrive as a `.md` attachment with a preview.
+- The header names the agent and the model (`🤖 product-owner · claude-opus-5-5`). Only the coordinator's final turn,
+  with no background work left, says `✅ Задача завершена`; other turns say `💬 Промежуточный ответ`.
 - Enable with `--enable-telegram` or the interactive prompt; credentials stay in `~/.config/agentic/config.json`.
   See [Telegram notifications](docs/notifications/README.md).
 

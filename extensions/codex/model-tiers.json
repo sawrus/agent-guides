@@ -1,0 +1,5 @@
+{
+  "fast": "gpt-6-luna",
+  "balanced": "gpt-6.1-sol",
+  "frontier": "gpt-6-astra"
+}

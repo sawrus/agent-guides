@@ -15,6 +15,9 @@ roles:
 execution:
   initiator: developer
 agent: developer
+selection:
+  general: false
+  use-when: "The request asks to rotate a production secret, credential or key, including an emergency rotation."
 related-rules:
   - secrets-policy.md
   - secure-coding.md

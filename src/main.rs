@@ -8,6 +8,7 @@ mod copydir;
 mod doctor;
 mod hookmerge;
 mod install;
+mod jev_defaults;
 mod jev_hooks;
 mod kb;
 mod legacy;

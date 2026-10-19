@@ -16,6 +16,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "The request asks to run a test suite on a real device farm matrix before a mobile release."
 related-rules:
   - platform-compliance.md
   - performance-budget.md

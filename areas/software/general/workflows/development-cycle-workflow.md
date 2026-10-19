@@ -20,6 +20,10 @@ roles:
 execution:
   initiator: product-owner
 agent: product-owner
+selection:
+  general: true
+  use-when: "Any ordinary request to build, change or fix software, such as a new program, feature, script or bug fix, in an empty or existing repository, when no specialized workflow is explicitly needed."
+  avoid-when: "The request asks only for an explanation, an answer or a review."
 related-rules:
   - git-workflow-guide.md
   - sdlc-methodology-guide.md

@@ -18,6 +18,9 @@ roles:
 execution:
   initiator: qa
 agent: qa
+selection:
+  general: false
+  use-when: "The request asks for load, stress or latency testing of an endpoint or flow against SLOs."
 related-rules:
   - quality-gates.md
   - test-strategy.md

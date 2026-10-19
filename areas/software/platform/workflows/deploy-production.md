@@ -17,6 +17,9 @@ roles:
 execution:
   initiator: team-lead
 agent: team-lead
+selection:
+  general: false
+  use-when: "The request asks to deploy a released version to production with progressive rollout and automatic rollback."
 related-rules:
   - reliability.md
   - security-posture.md
