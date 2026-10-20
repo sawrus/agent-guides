@@ -17,7 +17,7 @@ Use clean isolated copies of the same commit, pinned candidate version/asset has
 
 ## Budget and prompt
 
-Per environment: 1,000,000 input+output tokens including cached input once, all subagents, repeats, corrections and already-used native blackbox quota. Per run: 50,000 tokens total, six minutes, at most one corrective turn within those limits; no quality-driven model escalation. Stop launching if telemetry or remaining budget is insufficient. Show consumed and remaining budget before asking for pilot authorization.
+Per environment: 1,000,000 input+output tokens including cached input once, all subagents, repeats, corrections and already-used native blackbox quota. Per run: 50,000 tokens total, six minutes, at most one corrective turn within those limits; no quality-driven model escalation. Stop launching if telemetry or remaining budget is insufficient. Show consumed and remaining budget before asking for pilot authorization. Deviation decided by the user on 2026-10-20: the 50,000 per-run and 1,000,000 per-host caps count uncached tokens (input minus cache reads, plus cache writes and output); cache reads are recorded separately, because a single Codex or Claude session exceeds 50,000 tokens with cache. Frozen criteria: [pilot_acceptance.md](pilot_acceptance.md).
 
 Prompt suffix for every mode:
 > Finish this bounded task as quickly as possible. Budget: at most 50,000 tokens across coordinator and subagents, six minutes total, at most one correction after checks. Deliver only the minimum sufficient result and evidence. Do not add optional improvements, deployment, or unrelated repairs. Preserve the supplied task and infrastructure limits. Report incomplete work honestly when the budget ends.
