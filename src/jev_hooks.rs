@@ -315,6 +315,10 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
             ".agent/jev/adapters.py",
             include_str!("../extensions/codex/hooks/jev/adapters.py"),
         ),
+        (
+            ".agent/jev/prepared.py",
+            include_str!("../extensions/codex/hooks/jev/prepared.py"),
+        ),
         (".agent/jev/model-defaults.json", defaults_json.as_str()),
         (
             ".agent/jev/opencode-profile-defaults.json",

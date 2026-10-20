@@ -66,7 +66,7 @@ def workflow_context(workflow, delegation):
     sentence, hooks = delegation
     return ('JEV selected installed workflow ' + workflow['id'] + '. Load ' + workflow['path'] + ' and execute it for the ORIGINAL user request. '
             + sentence + ' Keep the scope of the ORIGINAL request; do not add requirements. Model routing happens automatically through '
-            + hooks + '; omit guessed model overrides. ' + review_context())
+            + hooks + '; omit guessed model overrides (Codex prepared selections are explicit exceptions). ' + review_context())
 
 
 def model_reason(result):
@@ -82,7 +82,16 @@ def shared_output(core, project, name, event, result, delegation):
         # Blocking erases the switch prompt, so `/jev off|on|status` costs no model turn.
         return {'decision': 'block', 'reason': result['message']}
     if name == 'UserPromptSubmit' and result.get('workflow'):
-        return {'hookSpecificOutput': {'hookEventName': name, 'additionalContext': workflow_context(result['workflow'], delegation)}}
+        context = workflow_context(result['workflow'], delegation)
+        if event.get('host') == 'codex':
+            task = core.read_json(core.private_dir(project) / ('context-' + core.short_hash(event['session_id']) + '.json'), {})
+            context += (' Before each Codex V2 spawn, call the local JSON interface: python3 .agent/jev/hook.py --host codex --prepare-spawn. '
+                        'Send session_id=' + str(event['session_id']) + ', task_id=' + str(task.get('task_id')) +
+                        ', a unique request_id, canonical role, goal, scope and complexity via JSON stdin. '
+                        'Use only returned spawn.task_name/model/fork_turns with the complete message; read the canonical role profile and preserve its restrictions. '
+                        'A prepared model is an authorized routing selection, not a guessed override. User pins win. '
+                        'If the interface returns no spawn, retain native role defaults. Do not invent spawn arguments or decrypt assignments.')
+        return {'hookSpecificOutput': {'hookEventName': name, 'additionalContext': context}}
     if name == 'PermissionRequest' and result.get('decision') in ('allow', 'deny'):
         return {'hookSpecificOutput': {'hookEventName': name, 'decision': {'behavior': result['decision'], 'message': 'Agentic JEV bounded permission decision'}}}
     return None
@@ -114,10 +123,12 @@ def codex_event(core, project, payload):
     name = payload.get('hook_event_name')
     data = payload.get('tool_input') or {}
     event = {'host': 'codex', 'session_id': payload.get('session_id'),
-             'event_id': payload.get('tool_use_id') or payload.get('agent_id') or payload.get('turn_id'), 'input': data, 'action': payload.get('tool_name')}
+             'event_id': payload.get('tool_use_id') or payload.get('agent_id') or payload.get('turn_id'), 'input': data, 'action': payload.get('tool_name'), 'cwd': payload.get('cwd')}
     if name == 'UserPromptSubmit':
         event.update(kind='prompt', prompt=payload.get('prompt', ''))
     elif name == 'PreToolUse' and payload.get('tool_name') in CODEX_SPAWN_TOOLS:
+        if isinstance(data.get('task_name'), str) and re.fullmatch(r'jev-[0-9a-f]{32}', data['task_name']):
+            return prepared_submission(core, project, payload, event)
         codex_spawn(project, event, data)
     elif name == 'PermissionRequest':
         event.update(kind='permission', agent=routing.canonical_role(payload.get('agent_type')) or None)
@@ -128,6 +139,10 @@ def codex_event(core, project, payload):
     else:
         return {}
     result = core.run_event(project, event)
+    if name == 'PostToolUse' and payload.get('tool_name') in CODEX_SPAWN_TOOLS:
+        prepared_post(core, project, payload)
+    if name == 'SubagentStart':
+        prepared_observation(core, project, payload)
     shared = shared_output(core, project, name, event, result, CODEX_DELEGATION)
     if shared is not None or name in OWN_OUTPUT:
         return shared or {}
@@ -135,6 +150,66 @@ def codex_event(core, project, payload):
         updated = {**data, 'model': result['model']}
         return {'hookSpecificOutput': {'hookEventName': name, 'permissionDecision': 'allow', 'updatedInput': updated, 'additionalContext': model_reason(result) + '; native role permissions and sandbox still apply.'}}
     return {}
+
+
+def prepared_context(core, project, session):
+    return core.read_json(core.private_dir(project) / ('context-' + core.short_hash(session) + '.json'), {})
+
+
+def reject_prepared(reason):
+    return {'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny',
+        'permissionDecisionReason': 'Prepared launch is invalid (' + str(reason) + '). Use the canonical native role with its defaults/pins, or prepare a new launch; do not retry the stale ticket.'}}
+
+
+def prepared_submission(core, project, payload, event):
+    """Never auto-approve. Invalid tickets cannot execute with a stale model/profile."""
+    if not core.plain_enabled(project):
+        return reject_prepared('disabled')
+    try:
+        import prepared
+        data = payload.get('tool_input') or {}
+        context = prepared_context(core, project, event.get('session_id'))
+        result = prepared.claim(core, project, {**data, 'session_id': event.get('session_id'),
+            'task_id': context.get('task_id'), 'tool_use_id': payload.get('tool_use_id')})
+        role = prepared.resolve_role(core, project, data.get('task_name'))
+        event.update(kind='spawn', agent=role, prepared_decision=result,
+                     input={key: data[key] for key in ('task_name', 'model', 'fork_turns') if key in data})
+        core.run_event(project, event)
+        if result.get('status') != 'prepared' or result.get('application_status') not in ('submitted_unconfirmed', 'observed'):
+            return reject_prepared(result.get('reason_code') or 'unconfirmed')
+    except (ImportError, OSError, ValueError, TypeError, KeyError):
+        return reject_prepared('metadata_unavailable')
+    return {}
+
+
+def prepared_post(core, project, payload):
+    if not core.plain_enabled(project):
+        return {}
+    try:
+        import prepared
+        data = payload.get('tool_input') or {}
+        response = payload.get('tool_response')
+        if not isinstance(response, dict):
+            return
+        context = prepared_context(core, project, payload.get('session_id'))
+        prepared.link_child(core, project, {**data, 'session_id': payload.get('session_id'),
+            'task_id': context.get('task_id'), 'tool_use_id': payload.get('tool_use_id'),
+            'child_session_id': response.get('task_name')})
+    except (ImportError, AttributeError, OSError, ValueError, TypeError, KeyError):
+        pass
+
+
+def prepared_observation(core, project, payload):
+    if not core.plain_enabled(project):
+        return {}
+    try:
+        import prepared
+        context = prepared_context(core, project, payload.get('session_id'))
+        prepared.observe_child(core, project, {'session_id': payload.get('session_id'),
+            'task_id': context.get('task_id'), 'child_session_id': payload.get('agent_id'),
+            'observed_model': payload.get('model')})
+    except (ImportError, AttributeError, OSError, ValueError, TypeError, KeyError):
+        pass
 
 
 def claude_spawn(project, event, data):
@@ -165,7 +240,7 @@ def claude_event(core, project, payload):
         return {}
     event = {'host': 'claude', 'session_id': payload.get('session_id'),
              'event_id': payload.get('tool_use_id') or payload.get('agent_id') or payload.get('prompt_id'),
-             'input': data, 'action': payload.get('tool_name')}
+             'input': data, 'action': payload.get('tool_name'), 'cwd': payload.get('cwd')}
     if name == 'UserPromptSubmit':
         event.update(kind='prompt', prompt=payload.get('prompt', ''))
     elif name == 'PreToolUse' and payload.get('tool_name') in CLAUDE_AGENT_TOOLS:

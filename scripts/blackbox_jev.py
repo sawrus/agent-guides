@@ -204,6 +204,32 @@ def agent_label(record):
     return record['context'].get('agent') or record['context'].get('native_agent_type')
 
 
+def codex_prepared_application(project, records, session, tasks):
+    """Only an exact submitted tool -> native child -> model chain proves application."""
+    for path in (project / '.agentic/jev').glob('prepared-*.json'):
+        if path.is_symlink() or path.stat().st_size > 65536:
+            continue
+        try:
+            decision = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        model = decision.get('recommended_model')
+        if (decision.get('session_id') != session or decision.get('task_id') not in tasks
+                or decision.get('application_status') != 'observed' or decision.get('model_source') != 'jev_tier'
+                or not model or decision.get('submitted_model') != model or decision.get('observed_model') != model
+                or not decision.get('child_task_name') or not decision.get('tool_use_id')):
+            continue
+        submitted = any(r['context'].get('event_id') == decision['tool_use_id']
+            and (r['context'].get('prepared_decision') or {}).get('decision_id') == decision.get('decision_id')
+            and r['context'].get('task_generation') == decision.get('generation') for r in records)
+        observed = any(r['context'].get('kind') == 'observation'
+            and r['context'].get('child_session_id') == decision['child_task_name']
+            and r['result'].get('observed_model') == model for r in records)
+        if submitted and observed:
+            return True
+    return False
+
+
 def verify(project, trace, exit_code, host=None):
     records = [json.loads(p.read_text()) for p in (project / '.agentic/jev').glob('event-*.json')]
     session = native_session(trace)
@@ -225,6 +251,8 @@ def verify(project, trace, exit_code, host=None):
     model_applied = any(a['result']['status'] == 'evaluated' and same_model(a['result']['model'], b['result']['observed_model'])
                         and a['context'].get('session_id') == b['context'].get('session_id')
                         and agent_label(a) == agent_label(b) for a in routes for b in observed)
+    if host == 'codex':
+        model_applied = codex_prepared_application(project, records, session, tasks)
     checks = {'native_exit_success': exit_code == 0, 'real_jev_workflow': bool(workflow_records),
               'workflow_read_by_agent': workflow_applied, 'model_applied_to_subagent': model_applied,
               'calculator_verified': False, 'follow_up_without_jev_call': not any(r.get('request') for r in follow_ups)}

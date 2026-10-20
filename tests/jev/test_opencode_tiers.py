@@ -28,14 +28,14 @@ def plan(models, tier_map=MAP, **event):
 
 
 class TierSource(unittest.TestCase):
-    def test_unpriced_partial_and_equal_prices_use_the_tier_map(self):
+    def test_unpriced_and_partial_prices_use_the_tier_map_without_invented_cost(self):
         one = {'input': 1, 'output': 1}
-        for prices in (None, {LUNA: one}, {LUNA: one, SOL: one, ASTRA: one}):
+        for prices in (None, {LUNA: one}):
             result = plan(catalog([LUNA, SOL, ASTRA], prices))
             self.assertEqual(result['fields']['cost_source'], 'tier_map')
-            self.assertEqual(result['pool'], [{'tier': 'fast', 'model': LUNA, 'relative_cost': 1},
-                                              {'tier': 'balanced', 'model': SOL, 'relative_cost': 2},
-                                              {'tier': 'frontier', 'model': ASTRA, 'relative_cost': 3}])
+            self.assertEqual(result['pool'], [{'tier': 'fast', 'model': LUNA, 'relative_cost': None},
+                                              {'tier': 'balanced', 'model': SOL, 'relative_cost': None},
+                                              {'tier': 'frontier', 'model': ASTRA, 'relative_cost': None}])
 
     def test_complete_distinct_prices_still_use_catalog_price(self):
         prices = {LUNA: {'input': 1, 'output': 1}, SOL: {'input': 2, 'output': 2}, ASTRA: {'input': 5, 'output': 5}}
@@ -52,7 +52,7 @@ class TierSource(unittest.TestCase):
         self.assertEqual((unrelated['role_default'], unrelated['fields']['role_default_source']), ('openai/custom', 'profile'))
         self.assertIsNone(unrelated['fields']['cost_source'])
 
-    def test_override_only_tiers_are_ranked(self):
+    def test_override_only_tiers_are_explicit(self):
         tiers, source = routing.spawn_tiers({'host': 'opencode'}, catalog(['x/a', 'x/b']), NO_DEFAULTS,
                                             {'fast': 'x/a', 'frontier': 'x/b', 'balanced': 'x/missing'}, MAP)
         self.assertEqual((tiers, source), ({'fast': 'x/a', 'frontier': 'x/b'}, 'tier_order'))

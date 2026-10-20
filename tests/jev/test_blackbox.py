@@ -37,7 +37,7 @@ class CalculatorAcceptance(unittest.TestCase):
             self.assertFalse(result['checks']['real_jev_workflow'])
             self.assertFalse(result['checks']['model_applied_to_subagent'])
 
-    def verify_routes(self, spawn_context, observation_context):
+    def verify_routes(self, spawn_context, observation_context, host=None):
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory)
             journal = project / '.agentic/jev'
@@ -53,7 +53,7 @@ class CalculatorAcceptance(unittest.TestCase):
             trace = project / 'trace.jsonl'
             trace.write_text('{"type":"thread.started","thread_id":"new"}\n')
             with patch.object(blackbox.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout='{"verified":true}')), patch.object(blackbox, 'key_for', return_value=''):
-                return blackbox.verify(project, trace, 0)['checks']['model_applied_to_subagent']
+                return blackbox.verify(project, trace, 0, host)['checks']['model_applied_to_subagent']
 
     def test_native_helpers_are_matched_by_native_agent_type(self):
         native = {'agent': None, 'native_agent_type': 'Explore'}
@@ -63,6 +63,9 @@ class CalculatorAcceptance(unittest.TestCase):
         self.assertTrue(self.verify_routes({'agent': 'Explore'}, native))
         self.assertFalse(self.verify_routes(native, {'agent': None, 'native_agent_type': 'general-purpose'}))
         self.assertFalse(self.verify_routes({'agent': 'developer'}, {'agent': 'qa'}))
+
+    def test_codex_role_and_model_match_is_not_application_evidence(self):
+        self.assertFalse(self.verify_routes({'agent': 'developer'}, {'agent': 'developer'}, host='codex'))
 
     def test_verify_counts_calls_and_rejects_a_paid_follow_up(self):
         with tempfile.TemporaryDirectory() as directory:

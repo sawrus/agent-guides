@@ -3,6 +3,7 @@
 
 Pure functions over parsed data; hook.py owns all file and network I/O.
 """
+import math
 import os
 import re
 
@@ -76,20 +77,16 @@ def price(cost):
     if not isinstance(band, dict):
         return None
     values = [band.get(key) for key in ('input', 'output')]
-    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0 for v in values):
+    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v >= 0 for v in values):
         return None
-    return float(sum(values))
+    total = float(sum(values))
+    return total if math.isfinite(total) else None
 
 
-def opencode_tiers(models):
-    """Two priced models give fast/frontier; three or more add balanced at the lower median price."""
-    priced = sorted((price(m.get('prices')), m['id']) for m in models if price(m.get('prices')) is not None)
-    if len(priced) < MIN_TIERS or len(priced) != len(models) or priced[0][0] == priced[-1][0]:
-        return {}
-    tiers = {'fast': priced[0][1], 'frontier': priced[-1][1]}
-    if len(priced) > MIN_TIERS:
-        tiers['balanced'] = priced[(len(priced) - 1) // 2][1]
-    return tiers
+def opencode_tiers(models, configured=None):
+    """Only explicit capabilities assign tiers; unknown models never acquire tiers from price."""
+    ids = {m['id'] for m in models}
+    return {t: m for t, m in _string_map(configured).items() if t in TIERS and m in ids}
 
 
 def candidate_overrides(overrides, ids):
@@ -100,7 +97,7 @@ def candidate_overrides(overrides, ids):
 def host_tiers(host, models, configured, overrides):
     """Tier -> model for this host; settings.jev.tiers override only with candidate models."""
     ids = {m['id'] for m in models}
-    base = opencode_tiers(models) if host == 'opencode' else {t: m for t, m in configured.items() if m in ids}
+    base = opencode_tiers(models, configured) if host == 'opencode' else {t: m for t, m in configured.items() if m in ids}
     if host == 'claude' and not base:
         base = {t: m for t, m in CLAUDE_TIERS.items() if m in ids}
     return {**base, **candidate_overrides(overrides, ids)}
@@ -138,27 +135,30 @@ def tier_map_tiers(tier_map, models, preferred):
 
 
 def spawn_tiers(event, models, defaults, overrides, tier_map):
-    """(tiers, cost_source). OpenCode: complete distinct prices, else the shipped tier map, else no tiers."""
+    """Explicit capabilities first, then candidate-only user overrides. Prices never assign a tier."""
     host = event.get('host')
     if host != 'opencode':
-        return host_tiers(host, models, defaults['tiers'], overrides), 'tier_order'
-    base, source = opencode_tiers(models), 'catalog_price'
-    if not base:
+        tiers, source = host_tiers(host, models, defaults['tiers'], overrides), 'tier_order'
+    else:
         preferred = os.environ.get('AGENTIC_JEV_MODEL_PROVIDER') or provider_of(event.get('role_default'))
-        base, source = tier_map_tiers(tier_map, models, preferred), 'tier_map'
-    tiers = {**base, **candidate_overrides(overrides, {m['id'] for m in models})}
-    # Override-only tiers have no price basis, so they are ranked like the configured hosts.
-    return tiers, (source if base else 'tier_order' if tiers else None)
+        base = opencode_tiers(models, tier_map_tiers(tier_map, models, preferred))
+        tiers = {**base, **candidate_overrides(overrides, {m['id'] for m in models})}
+        source = 'tier_map' if base else 'tier_order' if tiers else None
+    available = {m['id']: m for m in models}
+    prices = [price(available[m].get('prices')) for m in tiers.values()]
+    # Retain legacy provenance labels when price is unknown; they no longer imply cost ranks.
+    if prices and all(p is not None and p > 0 for p in prices):
+        source = 'catalog_price'
+    return tiers, source
 
 
 def candidates(models, tiers, cost_source):
     available = {m['id']: m for m in models}
     chosen = [(tier, tiers[tier]) for tier in TIERS if tiers.get(tier) in available]
-    if cost_source != 'catalog_price':
-        return [{'tier': t, 'model': m, 'relative_cost': TIERS.index(t) + 1} for t, m in chosen]
     prices = {m: price(available[m].get('prices')) for _, m in chosen}
-    lowest = min((p for p in prices.values() if p), default=None)
-    return [{'tier': t, 'model': m, 'relative_cost': round(prices[m] / lowest, COST_DIGITS) if lowest and prices[m] else None}
+    comparable = bool(prices) and all(p is not None and p > 0 for p in prices.values())
+    lowest = min(prices.values()) if comparable else None
+    return [{'tier': t, 'model': m, 'relative_cost': round(prices[m] / lowest, COST_DIGITS) if lowest else None}
             for t, m in chosen]
 
 
