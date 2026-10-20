@@ -39,14 +39,17 @@ Checks: `make test-jev-hooks` 183 OK, `make lint` OK, `make test` OK. Native nar
 
 One Codex run was unintended: a process left over from a stalled first attempt. It is counted in quota.
 
+Live proof (run 4): recommended = submitted = observed = `gpt-6-luna`, `native_child_bound`, without replay. Run 3 found one more defect (list-valued `scope`), fixed with tests. The user conditioned implementation acceptance on this live proof; it passed.
+
+Comparative pilot: all 39 cells ran with the user's budget permission. Results and deviations: [pilot results](pilot_results.md).
+
 ## Not established
 
-- A fully live `observed` record on Codex: run 2 stayed `submitted_unconfirmed` because of the string-response defect. The fix closed the chain only in a replay of the recorded output. One more native run in the already-trusted isolated project would prove it.
 - Whether a profile's `workspace-write` narrows a broader parent sandbox. Both children reported the parent's `danger-full-access`, independent of naming. JEV does not change sandbox policy.
 - Native per-agent token totals are partial; no money, savings or quality claims.
 - Automatic goal-change classification and quality-driven escalation remain out of scope.
-- The 27 primary + 12 ablation runs have not started.
-- Human acceptance, the success Post-task review, merge and release are pending.
+- Human quality review of pilot outputs, the success Post-task review, merge and release are pending.
+- Follow-ups: shrink always-loaded context and re-measure; the installer writes an empty legacy `model` for OpenCode agents.
 
 ## Mandatory budget stop
 

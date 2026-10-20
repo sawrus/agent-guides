@@ -139,6 +139,11 @@ def prepare(core, project, payload):
     if not bound:
         return failure('prepared_task_mismatch')
     required = ('request_id', 'role', 'goal', 'scope', 'complexity')
+    # Coordinators sometimes send a file list for scope; a list of strings is the same open text.
+    payload = {**payload, **{key: '; '.join(payload[key]) for key in ('goal', 'scope', 'complexity')
+                             if isinstance(payload.get(key), list) and all(isinstance(item, str) for item in payload[key])}}
+    if any(payload.get(key) is not None and not isinstance(payload[key], str) for key in required):
+        return failure('prepared_metadata_invalid')
     if any(not isinstance(payload.get(key), str) or not payload[key].strip() for key in required):
         return failure('prepared_metadata_missing')
     if not ROLE.fullmatch(payload['role']) or len(payload['request_id']) > 256:

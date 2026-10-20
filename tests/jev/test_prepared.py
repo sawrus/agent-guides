@@ -390,3 +390,18 @@ class Prepared(unittest.TestCase):
         linked = prepared.link_child(hook, self.project, dict(session_id='session', task_id='task', task_name='jev_' + result['decision_id'], tool_use_id='tool-1', child_session_id='/root/' + 'jev_' + result['decision_id']))
         self.assertIsNone(linked['observed_model'])
         self.assertEqual(linked['correlation_status'], 'observation_conflict')
+
+
+class PreparedMetadataShapes(unittest.TestCase):
+    setUp, tearDown, prepare = Prepared.setUp, Prepared.tearDown, Prepared.prepare
+
+    def test_list_scope_from_native_coordinator_is_accepted(self):
+        # Native regression (Codex 0.163.0): the coordinator sent "scope": ["hello.py"].
+        result = self.prepare(scope=['hello.py', 'tests/'], goal='Create hello.py')
+        self.assertEqual(result['status'], 'prepared')
+        self.assertIn('hello.py; tests/', self.call.call_args.args[1]['prompt'])
+
+    def test_non_text_metadata_is_reported_as_invalid(self):
+        self.assertEqual(self.prepare(scope={'files': 1})['reason_code'], 'prepared_metadata_invalid')
+        self.assertEqual(self.prepare(request_id='r2', scope=[])['reason_code'], 'prepared_metadata_missing')
+        self.call.assert_not_called()

@@ -49,6 +49,9 @@ Two assignments of the same role never borrow each other's decisions. There is n
 - Narrow run 2 (`jev_` name, developer profile with `sandbox_mode`): the host accepted `agent_type=developer`, `task_name=jev_<hex>`, `model=gpt-6-luna`. The child session recorded `agent_role=developer`, `agent_path=/root/jev_<hex>`, model `gpt-6-luna`; the role default would have been `gpt-6.1-sol`. The record stayed `submitted_unconfirmed` because the adapter accepted only dict spawn responses. After the string-response fix, replaying that recorded spawn output in the same project produced `observed` and passed the blackbox application check. The `PostToolUse` string shape is inferred from the recorded tool output; confirm it on the next native run.
 - Sandbox inheritance: the top-level run used `danger-full-access` because this host blocks bwrap. The child also reported `danger-full-access`, so this run does not prove that the profile's `workspace-write` narrows a broader parent. The run 1 fallback child with the canonical name `developer` reported the same `danger-full-access`, so the result does not depend on the naming form. JEV does not change sandbox policy either way.
 
+- Live run 3 (after the string-response fix): the coordinator sent `scope` as a list and preparation answered `prepared_metadata_missing`; the coordinator fell back once and reported it. Lists of strings are now joined, wrong types return `prepared_metadata_invalid`, and the instruction says all values are plain strings.
+- Live run 4: recommended = submitted = observed = `gpt-6-luna`, `observed` / `native_child_bound`, child `/root/jev_<hex>`; the blackbox application check passed without replay.
+
 Facts and quota: [native-smoke.json](native-smoke.json).
 
 ## Safety and rollout

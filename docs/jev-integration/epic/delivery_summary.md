@@ -1,6 +1,6 @@
 # JEV-EPIC implementation handoff
 
-Status: candidate 1.6.0, ready for human acceptance, not accepted. The Codex preselection defect from the native calculator session is fixed and checked offline and natively (with the limits below). The comparative pilot is NOT RUN. No merge or release publication is authorized.
+Status: candidate 1.6.0. Live native proof passed (the user's acceptance condition); the comparative pilot ran — see [pilot results](pilot_results.md). Merge and release still need an explicit user decision. The Codex preselection defect from the native calculator session is fixed and checked offline and natively (with the limits below). The comparative pilot is NOT RUN. No merge or release publication is authorized.
 
 ## Confirmed causes and behavior
 

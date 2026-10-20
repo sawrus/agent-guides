@@ -1,6 +1,6 @@
 {
   "date": "2026-10-20",
-  "comparative_pilot": "not_run_awaiting_acceptance_and_budget_permission",
+  "comparative_pilot": "ran_2026-10-20_see_pilot_results.md",
   "narrow_checks": {
     "method": "Isolated /tmp projects installed from the candidate build; one prompt per run that names develop-feature (free explicit workflow selection) and asks for exactly one developer subagent creating hello.py. 6-minute bound per run. Telegram disabled. No retries to obtain a pass.",
     "codex_cli": "0.163.0",
@@ -45,6 +45,20 @@
         "record_during_run": "submitted_unconfirmed (dict-only PostToolUse parsing missed the JSON string response)",
         "after_fix_replay": "observed / native_child_bound; blackbox codex_prepared_application=true (replay of the recorded spawn output, not a new native run)",
         "child_sandbox_reported": "danger-full-access (same as canonical-name child in run_1)"
+      },
+      {
+        "run": "live_3",
+        "status": "fallback_reported",
+        "reason": "coordinator sent scope as a list; prepared_metadata_missing; one role-default fallback reported. Fixed: list normalization and prepared_metadata_invalid."
+      },
+      {
+        "run": "live_4",
+        "status": "application_proven_live",
+        "recommended": "gpt-6-luna",
+        "submitted": "gpt-6-luna",
+        "observed": "gpt-6-luna",
+        "correlation_status": "native_child_bound",
+        "replay": false
       }
     ],
     "claude": {
@@ -105,7 +119,7 @@
         "output": 240
       }
     },
-    "note": "JEV usage is separate from native agent usage. OpenCode child tokens and Claude per-agent tokens were not exposed. No savings or quality claim."
+    "note": "JEV usage is separate from native agent usage. OpenCode child tokens and Claude per-agent tokens were not exposed. No savings or quality claim. OpenCode openai/* and Codex share one ChatGPT Plus 5-hour limit."
   },
   "earlier_bounded_smoke": {
     "codex": {

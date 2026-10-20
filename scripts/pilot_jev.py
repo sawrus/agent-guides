@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import signal
@@ -52,6 +53,7 @@ SUFFIX = ('Finish this bounded task as quickly as possible. Budget: at most 50,0
           'Do not add optional improvements, deployment, or unrelated repairs. Preserve the supplied task and infrastructure '
           'limits. Report incomplete work honestly when the budget ends.')
 REPORTS = {'A': 'GRAFANA_FEASIBILITY.md', 'B': 'REVIEW.md'}
+QUOTA = re.compile(r'provider\.quota|usage limit has been reached|usage_limit_reached', re.I)
 RUNTIME_DIRS = ('.agentic/', '.agentic-blackbox/', '__pycache__/', '.pytest_cache/')
 
 
@@ -367,6 +369,11 @@ def run_cell(host, task, mode, targets, out, endpoint, trusted):
     if host == 'opencode':
         opencode_children(trace, server, env, meter)
         os.killpg(server_process.pid, signal.SIGKILL)
+    if QUOTA.search(trace.read_text(errors='replace')):
+        # A provider quota stop is not an agent outcome; the cell counts as not run.
+        result = {'host': host, 'task': task, 'mode': mode, 'status': 'quota_exhausted', 'elapsed_s': round(time.time() - started, 1)}
+        (cell / 'result.json').write_text(json.dumps(result, indent=2))
+        return result
     rows = meter.rows()
     measured = [r for r in rows if r.get('uncached') is not None]
     result = {'host': host, 'task': task, 'mode': mode, 'status': 'accepted' if verdict['accepted'] else (reason or 'rejected'),
@@ -409,7 +416,8 @@ def main():
     spent = args.host_spent
     for host, task, mode in cells:
         name = f'{host}-{task}-{mode}'
-        if (args.out / name / 'result.json').exists():
+        previous = args.out / name / 'result.json'
+        if previous.exists() and json.loads(previous.read_text()).get('status') != 'quota_exhausted':
             continue  # never repeat a completed cell for a preferred result
         if args.prepare_only:
             project = prepare(host, task, mode, targets, PROJECTS, endpoint)
@@ -425,6 +433,9 @@ def main():
             (args.out / name).mkdir(parents=True, exist_ok=True)
             (args.out / name / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
         spent += (result.get('tokens') or {}).get('uncached') or 0
+        if result.get('status') == 'quota_exhausted':
+            print(json.dumps({'host': host, 'status': 'stopped_quota_exhausted', 'after': name}), flush=True)
+            break
         print(json.dumps({k: result.get(k) for k in ('host', 'task', 'mode', 'status', 'elapsed_s', 'turns')} |
                          {'uncached': (result.get('tokens') or {}).get('uncached'), 'jev_calls': (result.get('jev') or {}).get('calls')},
                          ensure_ascii=False), flush=True)

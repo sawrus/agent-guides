@@ -113,7 +113,7 @@ def shared_output(core, project, name, event, result, delegation):
             task = core.read_json(core.private_dir(project) / ('context-' + core.short_hash(event['session_id']) + '.json'), {})
             context += (' Before each Codex V2 spawn, call the local JSON interface: python3 .agent/jev/hook.py --host codex --prepare-spawn. '
                         'Send session_id=' + str(event['session_id']) + ', task_id=' + str(task.get('task_id')) +
-                        ', a unique request_id, canonical role, goal, scope and complexity via JSON stdin. '
+                        ', a unique request_id, canonical role, goal, scope and complexity via JSON stdin (all values are plain strings). '
                         'Copy every field of the returned spawn object (agent_type, task_name, model when present, fork_turns) unchanged and add only the complete message; '
                         'no other response field is a spawn argument. agent_type keeps the canonical role profile and its restrictions. '
                         'A prepared model is an authorized routing selection, not a guessed override. User pins win. '
