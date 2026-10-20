@@ -1,6 +1,6 @@
 # JEV-EPIC implementation handoff
 
-Status: draft implementation ready for human review, not human-accepted. The comparative pilot is NOT RUN. No merge or release publication is authorized.
+Status: draft implementation, not human-accepted. A subsequent native calculator session exposed an unresolved Codex preselection defect; this branch is not production-ready. See the [Claude handoff and native regression evidence](claude_handoff.md). The comparative pilot is NOT RUN. No merge or release publication is authorized.
 
 ## Confirmed causes and behavior
 
@@ -39,7 +39,7 @@ JEV separately: three gateway calls with returned usage, input 3,662, output 231
 
 ## Next gate
 
-First obtain the user's acceptance of the implementation and its native limitations. Only then ask separately whether to spend the remaining budget on the 27 primary + 12 ablation runs. The pilot protocol is [here](pilot.md). The success Post-task review runs once after acceptance; do not launch it now or recurse on these notes.
+First fix and verify the native preselection defect described in the [handoff](claude_handoff.md). Then obtain the user's acceptance of the implementation and its remaining native limitations. Only then ask separately whether to spend the remaining budget on the 27 primary + 12 ablation runs. The pilot protocol is [here](pilot.md). The success Post-task review runs once after acceptance; do not launch it now or recurse on these notes.
 
 ## Manual acceptance
 
