@@ -397,6 +397,26 @@ def claude_cost(trace):
     return cost
 
 
+def export_anonymized(runs, path):
+    """Every measured value per cell without paths, prompts, outputs or changed file names of private targets."""
+    cells = []
+    for result_path in sorted(Path(runs).glob('*/result.json')):
+        r = json.loads(result_path.read_text())
+        acceptance = r.get('acceptance') or {}
+        tokens = r.get('tokens') or {}
+        cells.append({
+            'cell': result_path.parent.name, 'host': r.get('host'), 'task': r.get('task'), 'mode': r.get('mode'),
+            'status': r.get('status'), 'cap': r.get('cap'), 'exit': r.get('exit'), 'turns': r.get('turns'), 'elapsed_s': r.get('elapsed_s'),
+            'accepted': acceptance.get('accepted'), 'checks': acceptance.get('checks'), 'changed_files': len(acceptance.get('changed') or []),
+            'probe_verified': (acceptance.get('probe') or {}).get('verified'),
+            'tokens': {'uncached': tokens.get('uncached'), 'cached': tokens.get('cached'), 'complete': tokens.get('complete'),
+                       'agents': [{k: a.get(k) for k in ('model', 'agent_path', 'uncached', 'cached', 'missing') if k in a}
+                                  for a in tokens.get('agents') or []]},
+            'cost_usd': r.get('cost_usd'), 'jev': r.get('jev'), 'note': r.get('note')})
+    Path(path).write_text(json.dumps({'protocol': 'docs/jev-integration/epic/pilot_acceptance.md', 'cells': cells},
+                                     ensure_ascii=False, indent=2) + '\n')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--targets', type=Path, required=True, help='Git-ignored JSON: {"A": {"repo", "commit"}, "B": {...}}')
@@ -406,7 +426,11 @@ def main():
     parser.add_argument('--only', help='Comma list of host-task-mode cells')
     parser.add_argument('--prepare-only', action='store_true', help='Create copies and installs; no model calls')
     parser.add_argument('--host-spent', type=int, default=0, help='Uncached tokens already spent on this host')
+    parser.add_argument('--export', type=Path, help='Write anonymized per-cell measurements from --out and exit')
     args = parser.parse_args()
+    if args.export:
+        export_anonymized(args.out, args.export)
+        return 0
     targets = json.loads(args.targets.read_text())
     trusted = targets.get('codex_trusted_hooks', {})
     endpoint = os.environ.get('JEV_API_URL') or 'https://api.typesafe.ai/v1/systemone'

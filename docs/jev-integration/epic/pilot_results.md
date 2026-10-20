@@ -1,6 +1,6 @@
 # Comparative pilot results (2026-10-20)
 
-Exploratory, single run per cell. Protocol: [pilot.md](pilot.md); frozen criteria: [pilot_acceptance.md](pilot_acceptance.md); raw anonymized cells: [pilot-results.json](pilot-results.json). Hosts: Codex 0.163.0 (`gpt-6.1-sol` coordinator), Claude Code 2.1.304 (`sonnet`), OpenCode 2.0.29 (`openai/gpt-6-luna`). Tasks: A infra feasibility, B static code review, C console calculator. Caps: 50,000 uncached tokens and six minutes per cell.
+Exploratory, single run per cell. Protocol: [pilot.md](pilot.md); frozen criteria: [pilot_acceptance.md](pilot_acceptance.md); raw anonymized cells: [pilot-results.json](pilot-results.json); every measured value: [measurements/](measurements/). Open items: [tech debt](tech_debt.md). Hosts: Codex 0.163.0 (`gpt-6.1-sol` coordinator), Claude Code 2.1.304 (`sonnet`), OpenCode 2.0.29 (`openai/gpt-6-luna`). Tasks: A infra feasibility, B static code review, C console calculator. Caps: 50,000 uncached tokens and six minutes per cell.
 
 ## Accepted cells and median uncached tokens
 
@@ -24,7 +24,7 @@ Totals: 39 cells, 15 accepted, 16 stopped by the token cap, 8 rejected. 1.72M un
 ## Deviations and measurement limits
 
 - **Accounting.** Caps count uncached tokens (user decision, recorded in [pilot.md](pilot.md)).
-- **OpenCode live cap.** The live cap saw only the parent session; child sessions were added from `session export` after the run. Three OpenCode cells finished above 50k without a live stop.
+- **OpenCode live cap.** The live cap saw only the parent session; child sessions were added from `session export` after the run. Two OpenCode cells (A-jev, C-fixed) finished above 50k without a live stop.
 - **Shared quota.** OpenCode `openai/*` and Codex draw from the same ChatGPT Plus 5-hour limit.
   - `opencode-C-models_only` first hit that limit inside a subagent. The cell was marked `quota_exhausted` and run once after the reset. The first attempt is kept as invalidated evidence.
   - The runner now stops a host on provider quota errors.

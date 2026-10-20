@@ -90,5 +90,19 @@ class Pilot(unittest.TestCase):
             self.assertEqual(meter.uncached(), 120)
 
 
+    def test_export_keeps_measurements_and_drops_private_names(self):
+        cell = self.project / 'runs/claude-A-jev'
+        cell.mkdir(parents=True)
+        (cell / 'result.json').write_text(json.dumps({'host': 'claude', 'task': 'A', 'mode': 'jev', 'status': 'rejected',
+            'acceptance': {'accepted': False, 'checks': {'report': True}, 'changed': ['configurations/private/compose.yml']},
+            'tokens': {'uncached': 10, 'cached': 90, 'complete': True, 'agents': [{'model': 'sonnet', 'uncached': 10, 'cached': 90}]},
+            'jev': {'calls': 1}}))
+        target = self.project / 'cells.json'
+        pilot_jev.export_anonymized(self.project / 'runs', target)
+        text = target.read_text()
+        self.assertNotIn('configurations/private', text)
+        exported = json.loads(text)['cells'][0]
+        self.assertEqual((exported['changed_files'], exported['tokens']['uncached'], exported['jev']['calls']), (1, 10, 1))
+
 if __name__ == '__main__':
     unittest.main()

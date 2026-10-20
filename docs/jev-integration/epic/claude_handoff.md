@@ -43,6 +43,8 @@ Live proof (run 4): recommended = submitted = observed = `gpt-6-luna`, `native_c
 
 Comparative pilot: all 39 cells ran with the user's budget permission. Results and deviations: [pilot results](pilot_results.md).
 
+Open work with owners and done-when conditions: [tech debt](tech_debt.md). All measurements: [measurements/](measurements/).
+
 ## Not established
 
 - Whether a profile's `workspace-write` narrows a broader parent sandbox. Both children reported the parent's `danger-full-access`, independent of naming. JEV does not change sandbox policy.
