@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import api
 import questions
@@ -164,22 +165,16 @@ class Tiers(unittest.TestCase):
         configured = {'fast': 'gpt-6-luna', 'balanced': 'gpt-6.1-sol', 'frontier': 'gpt-6-astra'}
         self.assertEqual(routing.host_tiers('codex', codex, configured, None), {'fast': 'gpt-6-luna', 'balanced': 'gpt-6.1-sol'})
         pool = routing.candidates(codex, configured, 'tier_order')
-        self.assertEqual(pool, [{'tier': 'fast', 'model': 'gpt-6-luna', 'relative_cost': 1}, {'tier': 'balanced', 'model': 'gpt-6.1-sol', 'relative_cost': 2}])
+        self.assertEqual(pool, [{'tier': 'fast', 'model': 'gpt-6-luna', 'relative_cost': None}, {'tier': 'balanced', 'model': 'gpt-6.1-sol', 'relative_cost': None}])
 
-    def test_opencode_tiers_from_one_to_four_priced_models(self):
-        def model(name, cost):
-            return {'id': name, 'prices': cost}
-        self.assertEqual(routing.opencode_tiers([model('a', {'input': 1, 'output': 1})]), {})
-        two = [model('b', [{'input': 5, 'output': 5}]), model('a', {'input': 1, 'output': 1})]
-        self.assertEqual(routing.opencode_tiers(two), {'fast': 'a', 'frontier': 'b'})
-        three = two + [model('c', {'input': 2, 'output': 2})]
-        self.assertEqual(routing.opencode_tiers(three), {'fast': 'a', 'balanced': 'c', 'frontier': 'b'})
-        four = three + [model('d', {'input': 3, 'output': 3})]
-        self.assertEqual(routing.opencode_tiers(four)['balanced'], 'c')
-        self.assertEqual(routing.opencode_tiers(two + [model('u', None)]), {})
-        self.assertEqual(routing.opencode_tiers([model('a', {'input': 1, 'output': 1}), model('b', {'input': 1, 'output': 1})]), {})
-        pool = routing.candidates(three, routing.opencode_tiers(three), 'catalog_price')
-        self.assertEqual([c['relative_cost'] for c in pool], [1.0, 2.0, 5.0])
+    def test_opencode_tiers_require_explicit_capabilities(self):
+        models = [{'id': 'a', 'prices': {'input': 5, 'output': 5}},
+                  {'id': 'b', 'prices': {'input': 1, 'output': 1}}]
+        self.assertEqual(routing.opencode_tiers(models), {})
+        explicit = {'fast': 'a', 'frontier': 'b', 'balanced': 'missing'}
+        tiers = routing.opencode_tiers(models, explicit)
+        self.assertEqual(tiers, {'fast': 'a', 'frontier': 'b'})
+        self.assertEqual([c['relative_cost'] for c in routing.candidates(models, tiers, 'catalog_price')], [5.0, 1.0])
         self.assertIsNone(routing.price({'input': True, 'output': 1}))
 
 
@@ -206,7 +201,8 @@ class Permission(unittest.TestCase):
         self.assertEqual(questions.command_meta(['ls', '-la'])['program'], 'ls')
 
     def test_outside_symlinks_and_secrets_are_never_inspected(self):
-        with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory(dir=Path.home()) as outside:
+        with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as outside, \
+                patch.object(questions.tempfile, 'gettempdir', return_value=str(Path(outside) / 'scratch-root')):
             project = Path(directory).resolve()
             (Path(outside) / 'private.txt').write_text('x' * 40)
             os.symlink(outside, project / 'link', target_is_directory=True)

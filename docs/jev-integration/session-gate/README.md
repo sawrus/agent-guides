@@ -1,4 +1,4 @@
-# JEV session gate (1.5.0)
+# JEV session gate (1.5.0, hardened in 1.6.0)
 
 ## Problem
 
@@ -36,8 +36,7 @@ the request «разработай калькулятор питон прост�
 
 ## Decisions
 
-- **Codex assignments stay unrouted.** Codex encrypts the subagent assignment,
-  so the spawn keeps the role default without a call (`assignment_unavailable`).
+- **Codex encrypted assignments:** without prepared metadata, keep the role default without a call (`assignment_unavailable`). Since 1.6.0 use [open-assignment preselection](../epic/preselection.md) before transport encryption; profile preservation can leave application unconfirmed.
 - **Session state lives in the existing context file**
   (`.agentic/jev/context-<hash>.json`): `jev` (`on`/`off`) and `off_reason`
   (`manual`, `native_request`, `low_confidence`, …). No new hook event is needed.
@@ -54,3 +53,7 @@ the request «разработай калькулятор питон прост�
 - Remove `AGENTIC_JEV_BUDGET_FILE` from local scripts; the runtime ignores it now.
 - To compare sessions, read `jev_calls` and `jev_input_tokens` in blackbox
   `results.json`, or count records with `result.usage` in `.agentic/jev/`.
+
+## Explicit task boundary (1.6.0)
+
+Use existing `jev on` or `/jev on`, then send the new task. The switch clears original_prompt, task_id, workflow and approved_decisions and rotates task_generation. The next prompt chooses its workflow again. Permission caches and prepared decisions from the old generation cannot be reused, even when prompt/tool IDs repeat. An explicit workflow restart also clears old approval history. Ordinary confirmations/follow-ups keep the task without a workflow call. Automatic goal-change recognition remains a separate capability.

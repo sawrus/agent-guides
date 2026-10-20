@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.6.0
+
+- Shell permission operands resolve from the actual cwd; unknown cwd retains native approval. Preserve secret, symlink and allowed-root boundaries.
+- Capability tiers come from explicit maps and candidate-validated overrides, never price rank; unknown costs remain unknown. Pins, provider filters and role-default fallback stay in force.
+- Existing `jev on` is an explicit new-task boundary. Task generations isolate cached decisions, approval history, prepared spawns and review packets; late answers cannot restore a reset task. Cached allow rechecks path boundaries.
+- Codex gains a local `--prepare-spawn` interface using open goal/scope/complexity before encryption, with idempotent expiring decisions and separate recommended/submitted/observed evidence. The response has one callable `spawn` object (`agent_type`, `jev_<hex>` task name, model unless pinned, `fork_turns=none`), so restricted profiles keep their policy and still correlate. A denied ticket falls back once to native role defaults and is logged as `recommendation_discarded`. Child observations bind through the host transcript of the exact thread. List-valued metadata is joined; wrong types return `prepared_metadata_invalid`. Live native proof: recommended, submitted and observed model matched.
+- REVIEW_PIPELINE adds per-agent/model token tables, provenance, partial totals and separate JEV usage; manual acceptance remains last. No savings are inferred.
+- Comparative pilot (39 cells, 3 hosts): plain agents were cheapest on small tasks; see docs/jev-integration/epic/pilot_results.md. New tools: `scripts/pilot_jev.py`, `scripts/render_coverage_scorecard.py`, a real-TUI `scripts/generate_how_to_use_agentic_gif.py`.
+- README rewritten for a non-specialist audience; technical details moved to docs/agentic-reference.md.
+- Candidate release: not yet published. Re-run upgrade to install the updated runtime; coordinators must start a new task after upgrade so the new spawn contract is injected. See docs/jev-integration/epic/.
+
 ## v1.5.0
 
 JEV now decides once per session and spends fewer calls; review reports end with manual acceptance commands. Requirements: `docs/jev-integration/session-gate/README.md`.

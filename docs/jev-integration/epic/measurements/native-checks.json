@@ -1,0 +1,135 @@
+{
+  "date": "2026-10-20",
+  "note": "Anonymized native measurements outside the 39 pilot cells. Raw traces stay in the Git-ignored .agentic-blackbox/.",
+  "codex_live_checks": [
+    {
+      "run": "live-observed-attempt1",
+      "application_proven_live": false,
+      "prepared": [],
+      "coordinator_usage": {
+        "input_tokens": 133053,
+        "cached_input_tokens": 88064,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 457,
+        "reasoning_output_tokens": 30
+      },
+      "outcome": "prepared_metadata_missing (scope sent as list) -> one role-default fallback"
+    },
+    {
+      "run": "live-observed",
+      "application_proven_live": true,
+      "prepared": [
+        {
+          "recommended_model": "gpt-6-luna",
+          "submitted_model": "gpt-6-luna",
+          "observed_model": "gpt-6-luna",
+          "application_status": "observed",
+          "correlation_status": "native_child_bound",
+          "child_task_name": "/root/jev_32b693e786784db981225bbdd73c2ea7"
+        }
+      ],
+      "coordinator_usage": {
+        "input_tokens": 114378,
+        "cached_input_tokens": 89856,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 522,
+        "reasoning_output_tokens": 0
+      },
+      "outcome": "recommended = submitted = observed"
+    }
+  ],
+  "invalidated_quota_cell": {
+    "cell": "opencode-C-models_only",
+    "first_attempt_status": "rejected",
+    "elapsed_s": 68.7,
+    "uncached": 17671,
+    "cached": 121984,
+    "reason": "subagent hit the shared ChatGPT Plus 5h limit"
+  },
+  "gif_host_runs": {
+    "codex": {
+      "usage": {
+        "input_tokens": 87403,
+        "cached_input_tokens": 77184,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 232,
+        "reasoning_output_tokens": 0
+      },
+      "note": "coordinator only; product-owner child usage not exposed in the exec stream"
+    },
+    "claude": {
+      "model_usage": {
+        "claude-opus-5-5": {
+          "inputTokens": 2,
+          "outputTokens": 302,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 40710,
+          "webSearchRequests": 0,
+          "costUSD": 0.331728,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 26,
+          "canonicalModel": "claude-opus-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      },
+      "total_cost_usd": 0.331728,
+      "duration_ms": 5671
+    },
+    "opencode": {
+      "parent_steps": []
+    }
+  },
+  "opencode_meter_calibration": {
+    "calls": 3,
+    "approx_tokens_each": "7.4k input, 5 output",
+    "purpose": "verify session export accounting"
+  },
+  "quota": {
+    "codex_before": {
+      "5h_left_percent": 11,
+      "weekly_left_percent": 86,
+      "source": "user /status"
+    },
+    "codex_after": null,
+    "codex_native_tokens_all_runs": {
+      "input": 603471,
+      "cached_input_subset": 476032,
+      "output": 2189,
+      "total": 605660,
+      "source": "rollout token_count totals of 3 root sessions and 2 children with turns"
+    },
+    "jev_requests": {
+      "codex": {
+        "calls": 3,
+        "input": 3306,
+        "output": 144
+      },
+      "claude": {
+        "calls": 1,
+        "input": 1132,
+        "output": 48
+      },
+      "opencode": {
+        "calls": 1,
+        "input": 1089,
+        "output": 48
+      },
+      "total": {
+        "calls": 5,
+        "input": 5527,
+        "output": 240
+      }
+    },
+    "note": "JEV usage is separate from native agent usage. OpenCode child tokens and Claude per-agent tokens were not exposed. No savings or quality claim. OpenCode openai/* and Codex share one ChatGPT Plus 5-hour limit.",
+    "shared_limit": {
+      "observed_at": "2026-10-20T15:14+04:00",
+      "primary_used_percent": 100,
+      "secondary_used_percent": 16,
+      "primary_window_minutes": 300,
+      "reset_at": "2026-10-20T15:37:12+04:00",
+      "source": "provider 429 headers via OpenCode"
+    }
+  }
+}

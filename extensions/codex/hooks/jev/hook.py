@@ -11,6 +11,7 @@ import shlex
 import sys
 import tempfile
 import time
+import uuid
 
 try:
     from api import evaluate, file_lock, read_json, save_json, scrub
@@ -51,7 +52,7 @@ SWITCH_PROMPT = re.compile(r'\s*/?jev\s+(on|off|status)\s*', re.I)
 SWITCH_MARKER = re.compile(r'Agentic JEV switch:\s*(on|off|status)\b', re.I)
 INCOMPLETE_KEYS = ('kind', 'hook_event_name', 'session_id', 'event_id', 'tool_use_id', 'tool_name', 'action')
 IDENTITY_KEYS = ('host', 'kind', 'session_id', 'event_id', 'input', 'action', 'resources', 'prompt', 'model',
-                 'observed_model', 'agent', 'child_session_id')
+                 'observed_model', 'agent', 'child_session_id', 'task_id', 'task_generation', 'metadata', 'cwd', 'preparation_only', 'prepared_decision')
 
 
 def private_dir(project):
@@ -86,13 +87,16 @@ def codex_models(project):
     return routing.codex_models(read_json(cache, {}), model_defaults(project, 'codex'), profiles)
 
 
-def bounded_path(project, raw):
+def bounded_path(project, raw, cwd=None):
     if isinstance(raw, str):
         raw = raw.strip()
     if not isinstance(raw, str) or not raw or any(c in raw for c in '*?[]\n\x00') or SECRET.search(raw):
         return False
     path = Path(raw).expanduser()
-    resolved = (path if path.is_absolute() else project / path).resolve()
+    try:
+        resolved = (path if path.is_absolute() else (cwd or project) / path).resolve()
+    except (OSError, ValueError, RuntimeError):
+        return False
     if SECRET.search(str(resolved)):
         return False
     roots = (project, Path(tempfile.gettempdir()).resolve())
@@ -114,8 +118,17 @@ def permission_boundaries(project, event):
         return False
     resources = event.get('resources', [])
     if action in ('bash', 'shell', 'exec_command', 'run_shell_command'):
-        working_directory = data.get('workdir') or data.get('cwd') or metadata.get('cwd')
-        if working_directory and not bounded_path(project, working_directory):
+        working_directory = data.get('workdir') or data.get('cwd') or metadata.get('cwd') or event.get('cwd')
+        # No project-root guess: hooks must supply the actual command working directory.
+        if not isinstance(working_directory, str) or not working_directory or not Path(working_directory).is_absolute():
+            return False
+        if not bounded_path(project, working_directory):
+            return False
+        try:
+            working_directory = Path(working_directory).resolve(strict=True)
+            if not working_directory.is_dir():
+                return False
+        except (OSError, ValueError, RuntimeError):
             return False
         command = data.get('command') or data.get('cmd') or (resources[0] if len(resources) == 1 else '')
         # Arbitrary shell still gets evaluated, but only provably bounded commands can be auto-approved.
@@ -136,7 +149,7 @@ def permission_boundaries(project, event):
             return False
         if any(t.startswith('-') and '/' in t for t in tokens[1:]):
             return False
-        return all(bounded_path(project, t) for t in tokens[1:] if not t.startswith('-'))
+        return all(bounded_path(project, t, working_directory) for t in tokens[1:] if not t.startswith('-'))
     paths = resources or [data[k] for k in ('path', 'file_path', 'filePath', 'directory') if k in data]
     if action == 'apply_patch':
         patch = data.get('command') or data.get('patchText') or data.get('patch') or ''
@@ -219,24 +232,34 @@ def open_turn(project, settings, event):
         switch = session_switch(event.get('prompt', ''))
         if switch:
             return apply_switch(context_path, context, switch)
-        # Only the first root prompt opens a task; later user messages continue it (one workflow question per session).
-        event['follow_up'] = bool(context.get('task_id'))
-        if not event['follow_up']:
-            context = {**new_task(event), 'jev': context.get('jev', 'on'), 'off_reason': context.get('off_reason')}
-            save_json(context_path, context)
+        with file_lock(context_path):
+            context = read_json(context_path, {})
+            # Only the first root prompt opens a task; later user messages continue it (one workflow question per session).
+            event['follow_up'] = bool(context.get('task_id'))
+            explicit = [w for w in questions.workflow_catalog(project) if explicit_workflow(w, event.get('prompt', ''))]
+            start_key = short_hash([event.get('event_id'), event.get('prompt')])
+            explicit_restart = (event['follow_up'] and len(explicit) == 1 and context.get('jev') != 'off'
+                                and context.get('task_start_key') != start_key)
+            if not event['follow_up'] or explicit_restart:
+                context = {**new_task(event, None if explicit_restart else context.get('task_generation')),
+                           'jev': context.get('jev', 'on'), 'off_reason': context.get('off_reason')}
+                event['follow_up'] = False
+                save_json(context_path, context)
     event['original_prompt'] = context.get('original_prompt', event.get('original_prompt', ''))
     event['workflow'] = context.get('workflow')
     event['task_id'] = context.get('task_id')
+    event['task_generation'] = context.get('task_generation')
     # Spawns and observations use one rule so blackbox verify can pair them (QR-D6).
     if event['kind'] in ('spawn', 'observation', 'permission'):
         label_agent(project, event)
     return Turn(project, settings, event, context, context_path, directory, session)
 
 
-def new_task(event):
+def new_task(event, generation=None):
     prompt = event.get('prompt', '')
-    return {'original_prompt': prompt, 'task_id': event.get('event_id') or hashlib.sha256(prompt.encode()).hexdigest(),
-            'workflow': None}
+    generation = generation or uuid.uuid4().hex
+    return {'original_prompt': prompt, 'task_id': short_hash([event.get('session_id'), generation, event.get('event_id'), prompt]),
+            'task_generation': generation, 'task_start_key': short_hash([event.get('event_id'), prompt]), 'workflow': None}
 
 
 def session_switch(prompt):
@@ -246,12 +269,14 @@ def session_switch(prompt):
 
 def apply_switch(context_path, context, state):
     """Manual per-session switch; `on` also forgets the task so the next prompt asks for a workflow again."""
-    if state == 'on':
-        context = {'jev': 'on'}
-    elif state == 'off':
-        context = {**context, 'jev': 'off', 'off_reason': 'manual'}
-    if state != 'status':
-        save_json(context_path, context)
+    with file_lock(context_path):
+        context = read_json(context_path, {})
+        if state == 'on':
+            context = {'jev': 'on', 'task_generation': uuid.uuid4().hex}
+        elif state == 'off':
+            context = {**context, 'jev': 'off', 'off_reason': 'manual'}
+        if state != 'status':
+            save_json(context_path, context)
     current = context.get('jev', 'on')
     reason = ' (' + str(context.get('off_reason')) + ')' if current == 'off' and context.get('off_reason') else ''
     return {'status': 'switched', 'jev': current, 'message': 'Agentic JEV is ' + current + ' for this session' + reason + '.'}
@@ -271,6 +296,10 @@ def record_once(turn):
     record_path = turn.directory / ('event-' + digest + '.json')
     cached = read_json(record_path)
     if cached:
+        if turn.event['kind'] in QUESTION and not task_current(turn):
+            return fallback('stale_task')
+        if turn.event['kind'] == 'permission' and cached['result'].get('decision') == 'allow' and not permission_boundaries(turn.project, turn.event):
+            return fallback('not_auto_allow_eligible')
         return cached['result']
     lock = turn.directory / ('lock-' + digest)
     try:
@@ -317,21 +346,12 @@ def handle_prompt(turn):
     if turn.event['follow_up'] and len(explicit) != 1:
         return {'result': fallback('session_follow_up')}
     if len(explicit) == 1:
-        if turn.event['follow_up']:
-            restart_task(turn)
         result = {'status': 'preserved', 'workflow': questions.workflow_summary(explicit[0]), 'reason_code': 'explicit_workflow'}
         return {'result': result, 'fields': {'outcome': 'rule_applied'}}
     if not catalog:
         return {'result': fallback('no_decision')}
     manifest = read_json(turn.project / '.agentic.json', {})
     return {'request': questions.workflow_request(prompt, catalog, turn.project, manifest), 'catalog': catalog}
-
-
-def restart_task(turn):
-    """A follow-up that names a workflow explicitly starts a new task without a JEV call."""
-    turn.context.update(new_task(turn.event))
-    turn.event.update(original_prompt=turn.context['original_prompt'], task_id=turn.context['task_id'], follow_up=False)
-    save_json(turn.context_path, turn.context)
 
 
 def spawn_models(turn):
@@ -347,8 +367,14 @@ def spawn_models(turn):
 
 def handle_spawn(turn):
     event = turn.event
+    if 'prepared_decision' in event:
+        import prepared
+        result = {**event['prepared_decision']}
+        # A denied ticket never runs: the report must show the dropped recommendation, not a silent native launch.
+        outcome = 'native' if prepared.accepted(result) else 'recommendation_discarded'
+        return {'result': result, 'fields': {'model_source': result.get('model_source', 'none'), 'outcome': outcome}}
     event['models'] = models = spawn_models(turn)
-    # A missing or malformed map loads as empty: today's price-only OpenCode behaviour.
+    # Missing capability maps never infer tiers from prices.
     tier_data = read_json(turn.project / OPENCODE_TIERS_FILE, {}) if event.get('host') == 'opencode' else None
     plan = routing.plan_spawn(event, models, model_defaults(turn.project, event.get('host')), turn.settings, routing.load_tier_map(tier_data))
     if 'result' not in plan and turn.context.get('jev') == 'off':
@@ -399,24 +425,44 @@ def map_workflow(turn, plan, selected):
     plan['fields'].update(applied=bool(chosen), outcome='jev_applied' if chosen else 'native')
 
 
+def task_current(turn, current=None):
+    current = read_json(turn.context_path, {}) if current is None else current
+    return all(current.get(key) == turn.context.get(key) for key in ('task_id', 'task_generation')) and current.get('jev', 'on') == turn.context.get('jev', 'on')
+
+
 def map_permission(turn, plan, selected):
     if selected == 'allow' and not turn.event['auto_allow_eligible']:
         plan['result']['decision'] = 'ask'
         plan['fields'].update(outcome='ask_downgrade')
         return
-    plan['result']['decision'] = selected
-    plan['fields'].update(applied=True, outcome='native' if selected == 'ask' else 'jev_applied')
-    if selected != 'ask':
-        questions.remember_decision(turn.context, turn.event, selected, turn.project)
-        save_json(turn.context_path, turn.context)
+    with file_lock(turn.context_path):
+        current = read_json(turn.context_path, {})
+        if not task_current(turn, current):
+            plan['result'] = fallback('stale_task')
+            return
+        plan['result']['decision'] = selected
+        plan['fields'].update(applied=True, outcome='native' if selected == 'ask' else 'jev_applied')
+        if selected != 'ask':
+            questions.remember_decision(current, turn.event, selected, turn.project)
+            save_json(turn.context_path, current)
+            turn.context = current
 
 
 def finish_record(turn, plan):
     kind, result = turn.event['kind'], plan['result']
+    if not task_current(turn):
+        plan['result'] = result = fallback('stale_task')
+        plan.setdefault('fields', {}).update(applied=False, outcome='native')
+        plan['keep_native'] = True
     if kind == 'spawn':
         routing.apply_role_default(plan)
+        if turn.event.get('preparation_only'):
+            plan.setdefault('fields', {}).update(applied=False, outcome='recommended_unconfirmed')
+            result.update(recommended_model=result.get('model'), submitted_model=None, observed_model=None)
     if kind == 'prompt':
         gate_session(turn, result)
+    if result.get('reason_code') == 'stale_task':
+        plan.setdefault('fields', {}).update(applied=False, outcome='native')
     fields = {'decision': None, 'threshold': questions.threshold(turn.settings, QUESTION[kind]),
               'applied': False, 'outcome': 'native', **plan.get('fields', {})}
     return {'request': plan.get('request'), 'result': result, **fields}
@@ -425,15 +471,21 @@ def finish_record(turn, plan):
 def gate_session(turn, result):
     """The first prompt decides the session: a workflow keeps JEV on; native, low confidence or an error turns it
     off until `/jev on`. `clarify` leaves the session undecided so the next prompt is asked again."""
-    if result.get('workflow'):
-        turn.context.update(workflow=result['workflow'], jev='on', off_reason=None)
-    elif turn.event.get('follow_up') or turn.context.get('jev') == 'off':
-        return
-    elif result.get('reason_code') == 'clarification_needed':
-        turn.context.pop('task_id', None)
-    else:
-        turn.context.update(jev='off', off_reason=result.get('reason_code'))
-    save_json(turn.context_path, turn.context)
+    with file_lock(turn.context_path):
+        current = read_json(turn.context_path, {})
+        if not task_current(turn, current):
+            result.clear()
+            result.update(fallback('stale_task'))
+            return
+        if result.get('workflow'):
+            current.update(workflow=result['workflow'], jev='on', off_reason=None)
+        elif turn.event.get('follow_up') or current.get('jev') == 'off':
+            return
+        elif result.get('reason_code') == 'clarification_needed':
+            current.pop('task_id', None)
+        else:
+            current.update(jev='off', off_reason=result.get('reason_code'))
+        save_json(turn.context_path, current)
 
 
 def observe_availability(turn):
@@ -448,7 +500,7 @@ def observe_availability(turn):
 
 def observe_model(turn):
     event = turn.event
-    if event.get('host') in ('codex', 'claude') and event.get('child_session_id') and turn.context:
+    if event.get('host') in ('codex', 'claude') and event.get('child_session_id') and turn.context and task_current(turn):
         save_json(turn.directory / ('context-' + short_hash(event['child_session_id']) + '.json'), turn.context)
     return {'status': 'observed', 'observed_model': event.get('observed_model'), 'agent': event.get('agent')}
 
@@ -521,6 +573,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', choices=('codex', 'opencode', 'claude'), required=True)
     parser.add_argument('--project-dir', default='.')
+    parser.add_argument('--prepare-spawn', action='store_true', help='Read open Codex assignment JSON before native spawn')
     args = parser.parse_args()
     project = Path(args.project_dir).resolve()
     sys.stdin.reconfigure(encoding='utf-8')
@@ -530,14 +583,20 @@ def main():
         if len(raw) > EVENT_LIMIT:
             raise ValueError('event too large')
         event = json.loads(raw)
-        if args.host == 'codex':
+        if args.prepare_spawn:
+            if args.host != 'codex' or questions is None:
+                result = fallback('runtime_incomplete' if questions is None else 'unsupported_host')
+            else:
+                import prepared
+                result = prepared.prepare(sys.modules[__name__], project, event)
+        elif args.host == 'codex':
             result = codex_event(project, event)
         elif args.host == 'claude':
             result = claude_event(project, event)
         else:
             result = run_event(project, {**event, 'host': 'opencode'})
-    except (OSError, ValueError, TypeError, KeyError, AttributeError):
-        result = {} if args.host in ('codex', 'claude') else fallback('invalid_event')
+    except (ImportError, OSError, ValueError, TypeError, KeyError, AttributeError):
+        result = fallback('prepared_request_failed') if args.prepare_spawn else {} if args.host in ('codex', 'claude') else fallback('invalid_event')
     print(json.dumps(result, ensure_ascii=False))
 
 

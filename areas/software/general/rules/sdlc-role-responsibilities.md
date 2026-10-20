@@ -119,3 +119,7 @@ The following are **process violations** that must be flagged immediately:
 - Issuing a go recommendation without written test evidence.
 - Accepting a deliverable with unresolved blocking defects (without explicit, documented Product Owner acceptance).
 - Committing infrastructure changes without a corresponding IaC commit.
+
+## Codex JEV model preparation
+
+For an enabled JEV runtime, coordinators prepare each concrete subagent assignment before encrypted transport: send goal, scope and complexity to the installed `hook.py --host codex --prepare-spawn` JSON interface using the current session/task IDs and a unique request ID. Copy the returned `spawn` object unchanged (`agent_type`, `task_name`, `model` when present, `fork_turns`) and add only the complete assignment; no other response field is a spawn argument. Prepared selections are exceptions to guidance that omits guessed model overrides. `agent_type` keeps user pins and canonical native profile restrictions. If no `spawn` is returned, keep native defaults and state that application is unconfirmed. If the hook denies a prepared launch, spawn once with native role defaults (no model), do not retry or prepare again for that launch, and report `recommendation_discarded` with its reason code. Do not add unsupported spawn arguments or alter permissions. Other hosts keep their existing native adapters.

@@ -31,17 +31,21 @@ class Hooks(unittest.TestCase):
         self.environment = patch.dict(os.environ, {}, clear=True)
         self.environment.start()
         (self.project / '.agentic.json').write_text(json.dumps({'settings': {'jev': {'enabled': True}}}))
+        tiers_file = self.project / hook.OPENCODE_TIERS_FILE
+        tiers_file.parent.mkdir(parents=True, exist_ok=True)
+        tiers_file.write_text(json.dumps({'version': 1, 'providers': {'local': {
+            'fast': 'local/light', 'frontier': 'local/frontier'}}}))
         workflows = self.project / '.agent/workflows'
-        workflows.mkdir(parents=True)
+        workflows.mkdir(parents=True, exist_ok=True)
         (workflows / 'develop-feature.md').write_text(workflow_file('develop-feature', 'Implement a small backend feature', True))
         (workflows / 'code-review.md').write_text(workflow_file('code-review', 'Review existing code'))
         (workflows / 'notes.md').write_text('---\nname: notes\ntype: prompt\ndescription: not a workflow\n---\n')
         roles = self.project / '.opencode/agents'
-        roles.mkdir(parents=True)
+        roles.mkdir(parents=True, exist_ok=True)
         for role in ('developer', 'qa', 'instruction-reviewer'):
             (roles / (role + '.md')).write_text(f'---\ndescription: {role}\n---\n')
         codex_roles = self.project / '.codex/agents'
-        codex_roles.mkdir(parents=True)
+        codex_roles.mkdir(parents=True, exist_ok=True)
         for role in ('developer', 'qa', 'instruction-reviewer'):
             # Installed with JEV enabled: no `model =` line, so the profile is not a pin.
             (codex_roles / (role + '.toml')).write_text(f'description = "{role}"\n')
@@ -70,7 +74,7 @@ class Hooks(unittest.TestCase):
         (home / 'models_cache.json').write_text(json.dumps({'models': [
             {'slug': name, 'visibility': 'list'} for name in ('light', 'default', 'user-pin', 'unrelated-expensive')]}))
         runtime = self.project / '.agent/jev'
-        runtime.mkdir(parents=True)
+        runtime.mkdir(parents=True, exist_ok=True)
         (runtime / 'model-defaults.json').write_text('{"developer":"default","qa":"light"}')
         profiles = self.project / '.codex/agents'
         (profiles / 'custom.toml').write_text('model = "user-pin"\n')
@@ -110,10 +114,10 @@ class Hooks(unittest.TestCase):
         self.assertTrue(any(d['questions'] for d in packet['decisions']))
         for decision in packet['decisions']:
             record = json.loads((self.project / decision['record']).read_text())
-            self.assertEqual(record['context']['task_id'], 'first')
+            self.assertEqual(record['context']['task_id'], packet['task_id'])
 
     def test_codex_encrypted_assignment_skips_jev_and_applies_role_default(self):
-        (self.project / '.agent/jev').mkdir(parents=True)
+        (self.project / '.agent/jev').mkdir(parents=True, exist_ok=True)
         (self.project / '.agent/jev/model-defaults.json').write_text(json.dumps(
             {'version': 2, 'roles': {'developer': 'gpt-6.1-sol'}, 'tiers': {'fast': 'gpt-6-luna', 'balanced': 'gpt-6.1-sol'}}))
         def spawn(call_id, message):
@@ -219,7 +223,7 @@ class Hooks(unittest.TestCase):
                 event['event_id'] = json.dumps(event)
                 result = hook.run_event(self.project, event)
             self.assertEqual(result, {'status': 'fallback', 'reason_code': 'not_auto_allow_eligible'})
-        self.assertTrue(hook.permission_boundaries(self.project, self.event('permission', action='bash', resources=['mkdir src'])))
+        self.assertTrue(hook.permission_boundaries(self.project, self.event('permission', action='bash', resources=['mkdir src'], input={'cwd': str(self.project)})))
         self.assertFalse(hook.permission_boundaries(self.project, self.event('permission', action='bash', resources=['python -c "open(\'/etc/config\',\'w\')"'])))
         self.assertFalse(hook.permission_boundaries(self.project, self.event('permission', action='bash', resources=['rm -rf src'])))
         self.assertFalse(hook.permission_boundaries(self.project, self.event('permission', action='bash', input={'command':'ls', 'workdir':'/etc'})))
@@ -288,7 +292,9 @@ class Hooks(unittest.TestCase):
         self.assertEqual(explicit['workflow']['id'], 'code-review')
         self.assertEqual(spawn['model'], 'a')
         tasks = {r['context']['event_id']: r['context']['task_id'] for r in self.records()}
-        self.assertEqual((tasks['second'], tasks['third'], tasks['s']), ('first', 'third', 'third'))
+        self.assertEqual(tasks['second'], tasks['first'])
+        self.assertEqual(tasks['third'], tasks['s'])
+        self.assertNotEqual(tasks['first'], tasks['third'])
 
     def test_native_first_prompt_turns_the_session_off_but_keeps_role_defaults(self):
         with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'native')):
@@ -439,7 +445,7 @@ class Hooks(unittest.TestCase):
             return self.answer(request, 'allow')
         events = [self.event('permission', event_id='w', action='write', agent='developer', resources=[str(self.project / 'src.py')],
                              input={'content': 'PRIVATE_BODY = 2'}),
-                  self.event('permission', event_id='b', action='bash', agent='build', input={'command': 'ls -la PRIVATE_FLAG'}),
+                  self.event('permission', event_id='b', action='bash', agent='build', input={'command': 'ls -la PRIVATE_FLAG', 'cwd': str(self.project)}),
                   self.event('permission', event_id='c', action='bash', agent='build', input={'command': 'pytest -q && echo PRIVATE_FLAG'})]
         with patch.object(hook, 'evaluate', side_effect=respond):
             decisions = [hook.run_event(self.project, e).get('decision') for e in events]

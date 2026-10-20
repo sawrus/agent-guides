@@ -55,6 +55,20 @@ def workflow_issues(text: str, expected_roles: list[str]) -> list[str]:
     return issues
 
 
+
+def token_accounting_issues(text: str) -> list[str]:
+    """Keep usage reporting and its measurement limits in the shared protocol."""
+    issues = []
+    accounting = section(text, 'Token accounting')
+    for token in ('agent instance', 'cached', 'reasoning', 'not measured',
+                  'partial', 'cutoff', 'JEV', 'cumulative', 'includes children'):
+        if token not in accounting:
+            issues.append(f'token accounting missing contract: {token}')
+    if not accounting or text.find('## Token accounting') > text.find('## Manual acceptance instructions'):
+        issues.append('token accounting must precede manual acceptance')
+    return issues
+
+
 def profile_body(path: Path) -> str:
     text = path.read_text()
     if path.suffix == '.toml':
@@ -93,6 +107,7 @@ def validate(root: Path = ROOT) -> list[str]:
         if token not in curator:
             issues.append(f'memory-curator: missing docs/memory boundary: {token}')
     protocol = (root / 'REVIEW_PIPELINE.md').read_text()
+    issues.extend(f'REVIEW_PIPELINE.md: {issue}' for issue in token_accounting_issues(protocol))
     for token in ('once per completed top-level task', 'failed/deferred delivery',
                   'Do not retry automatically', 'not measured', 'unavailable',
                   'failed', 'summary.md', 'separate', 'current task context'):

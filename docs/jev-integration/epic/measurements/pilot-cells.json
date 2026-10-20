@@ -1,0 +1,4201 @@
+{
+  "protocol": "docs/jev-integration/epic/pilot_acceptance.md",
+  "cells": [
+    {
+      "cell": "claude-A-fixed",
+      "host": "claude",
+      "task": "A",
+      "mode": "fixed",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 143,
+      "turns": 2,
+      "elapsed_s": 115.2,
+      "accepted": false,
+      "checks": {
+        "report": true,
+        "only_report_changed": false,
+        "verdict_line": true,
+        "dashboards_named": false
+      },
+      "changed_files": 4,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 53880,
+        "cached": 697716,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 27431,
+            "cached": 12165
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2837,
+            "cached": 39578
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 689,
+            "cached": 42410
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1210,
+            "cached": 43067
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 316,
+            "cached": 44259
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2298,
+            "cached": 44570
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 423,
+            "cached": 46858
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1583,
+            "cached": 47258
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2536,
+            "cached": 48831
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1129,
+            "cached": 50814
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2481,
+            "cached": 51933
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 706,
+            "cached": 54396
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 244,
+            "cached": 55097
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 5813,
+            "cached": 55336
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 4184,
+            "cached": 61144
+          }
+        ]
+      },
+      "cost_usd": 0.23906159999999999,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "claude-A-jev",
+      "host": "claude",
+      "task": "A",
+      "mode": "jev",
+      "status": "rejected",
+      "cap": null,
+      "exit": 0,
+      "turns": 2,
+      "elapsed_s": 81.8,
+      "accepted": false,
+      "checks": {
+        "report": true,
+        "only_report_changed": false,
+        "verdict_line": true,
+        "dashboards_named": false
+      },
+      "changed_files": 5,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 48728,
+        "cached": 609355,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 27425,
+            "cached": 12165
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2834,
+            "cached": 39572
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 629,
+            "cached": 42396
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2754,
+            "cached": 43007
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1195,
+            "cached": 45756
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2597,
+            "cached": 46946
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1158,
+            "cached": 48962
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2349,
+            "cached": 50115
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1971,
+            "cached": 52441
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2993,
+            "cached": 54403
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 606,
+            "cached": 57391
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 289,
+            "cached": 57979
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1928,
+            "cached": 58222
+          }
+        ]
+      },
+      "cost_usd": 0.5598997,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 2389,
+          "output_tokens": 174
+        },
+        "decisions": [
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "claude-A-models_only",
+      "host": "claude",
+      "task": "A",
+      "mode": "models_only",
+      "status": "rejected",
+      "cap": null,
+      "exit": 0,
+      "turns": 2,
+      "elapsed_s": 112.1,
+      "accepted": false,
+      "checks": {
+        "report": true,
+        "only_report_changed": false,
+        "verdict_line": true,
+        "dashboards_named": false
+      },
+      "changed_files": 4,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 51301,
+        "cached": 618773,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 27800,
+            "cached": 12165
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2261,
+            "cached": 39960
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 448,
+            "cached": 42217
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 4857,
+            "cached": 42647
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 415,
+            "cached": 47496
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 793,
+            "cached": 47893
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2682,
+            "cached": 48676
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1272,
+            "cached": 50751
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 4455,
+            "cached": 52019
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2626,
+            "cached": 56468
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 497,
+            "cached": 59087
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 297,
+            "cached": 59577
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2898,
+            "cached": 59817
+          }
+        ]
+      },
+      "cost_usd": 0.6106907000000001,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_follow_up",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "not_auto_allow_eligible",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "not_auto_allow_eligible",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "not_auto_allow_eligible",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "rule_applied",
+            "status": "preserved",
+            "reason": "explicit_workflow",
+            "model": null,
+            "source": null,
+            "workflow": "provision-environment"
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "not_auto_allow_eligible",
+            "model": null,
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "claude-A-plain",
+      "host": "claude",
+      "task": "A",
+      "mode": "plain",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 54.3,
+      "accepted": true,
+      "checks": {
+        "report": true,
+        "only_report_changed": true,
+        "verdict_line": true,
+        "dashboards_named": true
+      },
+      "changed_files": 1,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 19803,
+        "cached": 182668,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 9868,
+            "cached": 11228
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1991,
+            "cached": 21078
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 169,
+            "cached": 23051
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 759,
+            "cached": 23202
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 416,
+            "cached": 23956
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2898,
+            "cached": 24354
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1310,
+            "cached": 27247
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2392,
+            "cached": 28552
+          }
+        ]
+      },
+      "cost_usd": 0.1303188,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "claude-A-workflow_only",
+      "host": "claude",
+      "task": "A",
+      "mode": "workflow_only",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 51.3,
+      "accepted": true,
+      "checks": {
+        "report": true,
+        "only_report_changed": true,
+        "verdict_line": true,
+        "dashboards_named": true
+      },
+      "changed_files": 1,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 43281,
+        "cached": 428315,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 27491,
+            "cached": 12165
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2838,
+            "cached": 39638
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 628,
+            "cached": 42471
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 619,
+            "cached": 43081
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1974,
+            "cached": 43682
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 535,
+            "cached": 45651
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 4644,
+            "cached": 46126
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1271,
+            "cached": 50706
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 875,
+            "cached": 51969
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2406,
+            "cached": 52826
+          }
+        ]
+      },
+      "cost_usd": 0.2659435,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 2389,
+          "output_tokens": 174
+        },
+        "decisions": [
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "claude-B-fixed",
+      "host": "claude",
+      "task": "B",
+      "mode": "fixed",
+      "status": "rejected",
+      "cap": null,
+      "exit": 0,
+      "turns": 2,
+      "elapsed_s": 74.5,
+      "accepted": false,
+      "checks": {
+        "report": true,
+        "only_report_changed": true,
+        "valid_findings": false
+      },
+      "changed_files": 1,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 43992,
+        "cached": 648609,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 29043,
+            "cached": 12165
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 528,
+            "cached": 41190
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1177,
+            "cached": 41700
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1700,
+            "cached": 42859
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2507,
+            "cached": 44549
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2093,
+            "cached": 47051
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1235,
+            "cached": 49122
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 489,
+            "cached": 50335
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1346,
+            "cached": 50806
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1826,
+            "cached": 52133
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 770,
+            "cached": 53380
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 355,
+            "cached": 54146
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 281,
+            "cached": 54455
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 642,
+            "cached": 54718
+          }
+        ]
+      },
+      "cost_usd": 0.5379518999999999,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "claude-B-jev",
+      "host": "claude",
+      "task": "B",
+      "mode": "jev",
+      "status": "rejected",
+      "cap": null,
+      "exit": 0,
+      "turns": 2,
+      "elapsed_s": 70.3,
+      "accepted": false,
+      "checks": {
+        "report": true,
+        "only_report_changed": true,
+        "valid_findings": false
+      },
+      "changed_files": 1,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 40652,
+        "cached": 524264,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 27342,
+            "cached": 12165
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2304,
+            "cached": 39489
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1327,
+            "cached": 41784
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2964,
+            "cached": 43093
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 386,
+            "cached": 46052
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 981,
+            "cached": 46420
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 645,
+            "cached": 47351
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1410,
+            "cached": 47974
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 205,
+            "cached": 49379
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 274,
+            "cached": 49565
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1821,
+            "cached": 49800
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 993,
+            "cached": 51192
+          }
+        ]
+      },
+      "cost_usd": 0.5070796,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 2294,
+          "output_tokens": 178
+        },
+        "decisions": [
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": null,
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "claude-B-plain",
+      "host": "claude",
+      "task": "B",
+      "mode": "plain",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 33.5,
+      "accepted": true,
+      "checks": {
+        "report": true,
+        "only_report_changed": true,
+        "valid_findings": true
+      },
+      "changed_files": 1,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 19408,
+        "cached": 137022,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 9794,
+            "cached": 11228
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2096,
+            "cached": 21004
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2904,
+            "cached": 23082
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1210,
+            "cached": 25947
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1488,
+            "cached": 27139
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1916,
+            "cached": 28622
+          }
+        ]
+      },
+      "cost_usd": 0.1261582,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "claude-C-fixed",
+      "host": "claude",
+      "task": "C",
+      "mode": "fixed",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 143,
+      "turns": 1,
+      "elapsed_s": 25.6,
+      "accepted": false,
+      "checks": null,
+      "changed_files": 0,
+      "probe_verified": false,
+      "tokens": {
+        "uncached": 54491,
+        "cached": 136306,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 27285,
+            "cached": 12165
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2217,
+            "cached": 39440
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1444,
+            "cached": 41648
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 322,
+            "cached": 43053
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 23223,
+            "cached": 0
+          }
+        ]
+      },
+      "cost_usd": 0.21260510000000005,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "claude-C-jev",
+      "host": "claude",
+      "task": "C",
+      "mode": "jev",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 43.3,
+      "accepted": true,
+      "checks": null,
+      "changed_files": 4,
+      "probe_verified": true,
+      "tokens": {
+        "uncached": 35224,
+        "cached": 229128,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 27633,
+            "cached": 12165
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2076,
+            "cached": 39791
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1791,
+            "cached": 41857
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 2063,
+            "cached": 43643
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 314,
+            "cached": 45688
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1347,
+            "cached": 45984
+          }
+        ]
+      },
+      "cost_usd": 0.2084148,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 2209,
+          "output_tokens": 178
+        },
+        "decisions": [
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "not_auto_allow_eligible",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": null,
+            "source": null,
+            "workflow": "development-cycle-workflow"
+          },
+          {
+            "kind": "permission",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "not_auto_allow_eligible",
+            "model": null,
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "claude-C-models_only",
+      "host": "claude",
+      "task": "C",
+      "mode": "models_only",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 143,
+      "turns": 1,
+      "elapsed_s": 20.5,
+      "accepted": false,
+      "checks": null,
+      "changed_files": 1,
+      "probe_verified": false,
+      "tokens": {
+        "uncached": 54192,
+        "cached": 103465,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 29357,
+            "cached": 12165
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 4172,
+            "cached": 41515
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1691,
+            "cached": 45680
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 18972,
+            "cached": 4105
+          }
+        ]
+      },
+      "cost_usd": 0.16466,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 1364,
+          "output_tokens": 48
+        },
+        "decisions": [
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "rule_applied",
+            "status": "preserved",
+            "reason": "explicit_workflow",
+            "model": null,
+            "source": null,
+            "workflow": "develop-feature"
+          },
+          {
+            "kind": "observation",
+            "agent": "developer",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "developer",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "sonnet",
+            "source": "jev_tier",
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "claude-C-plain",
+      "host": "claude",
+      "task": "C",
+      "mode": "plain",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 18.3,
+      "accepted": true,
+      "checks": null,
+      "changed_files": 2,
+      "probe_verified": true,
+      "tokens": {
+        "uncached": 13577,
+        "cached": 57702,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 11339,
+            "cached": 11228
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1394,
+            "cached": 22549
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 844,
+            "cached": 23925
+          }
+        ]
+      },
+      "cost_usd": 0.0759302,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "claude-C-workflow_only",
+      "host": "claude",
+      "task": "C",
+      "mode": "workflow_only",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 143,
+      "turns": 1,
+      "elapsed_s": 30.5,
+      "accepted": false,
+      "checks": null,
+      "changed_files": 1,
+      "probe_verified": false,
+      "tokens": {
+        "uncached": 54181,
+        "cached": 147875,
+        "complete": true,
+        "agents": [
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 27699,
+            "cached": 12165
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 5266,
+            "cached": 39857
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 1565,
+            "cached": 45113
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 19325,
+            "cached": 4105
+          },
+          {
+            "model": "claude-sonnet-5-5",
+            "uncached": 326,
+            "cached": 46635
+          }
+        ]
+      },
+      "cost_usd": 0.219329,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 2209,
+          "output_tokens": 178
+        },
+        "decisions": [
+          {
+            "kind": "observation",
+            "agent": "developer",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "developer",
+            "outcome": "rule_applied",
+            "status": "preserved",
+            "reason": "explicit_model_or_continuation",
+            "model": null,
+            "source": "pinned",
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": null,
+            "source": null,
+            "workflow": "development-cycle-workflow"
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-A-fixed",
+      "host": "codex",
+      "task": "A",
+      "mode": "fixed",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 35.1,
+      "accepted": false,
+      "checks": {
+        "report": false,
+        "only_report_changed": false,
+        "verdict_line": false,
+        "dashboards_named": false
+      },
+      "changed_files": 0,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 51310,
+        "cached": 145920,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 30311,
+            "cached": 112768
+          },
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root/grafana_exploration",
+            "uncached": 20999,
+            "cached": 33152
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-A-jev",
+      "host": "codex",
+      "task": "A",
+      "mode": "jev",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 55.1,
+      "accepted": false,
+      "checks": {
+        "report": false,
+        "only_report_changed": false,
+        "verdict_line": false,
+        "dashboards_named": false
+      },
+      "changed_files": 0,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 54103,
+        "cached": 104064,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 54103,
+            "cached": 104064
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 2389,
+          "output_tokens": 174
+        },
+        "decisions": [
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": null,
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-A-models_only",
+      "host": "codex",
+      "task": "A",
+      "mode": "models_only",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 35.1,
+      "accepted": false,
+      "checks": {
+        "report": false,
+        "only_report_changed": false,
+        "verdict_line": false,
+        "dashboards_named": false
+      },
+      "changed_files": 0,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 57166,
+        "cached": 110976,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 34239,
+            "cached": 75648
+          },
+          {
+            "model": "gpt-6-luna",
+            "agent_path": "/root/jev_8c53e6db41c94816aa0a0eda74d4b736",
+            "uncached": 22927,
+            "cached": 35328
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 1265,
+          "output_tokens": 48
+        },
+        "decisions": [
+          {
+            "kind": "spawn",
+            "agent": "devops-engineer",
+            "outcome": "native",
+            "status": "prepared",
+            "reason": null,
+            "model": null,
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "devops-engineer",
+            "outcome": "recommended_unconfirmed",
+            "status": "evaluated",
+            "reason": null,
+            "model": "gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "devops-engineer",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "rule_applied",
+            "status": "preserved",
+            "reason": "explicit_workflow",
+            "model": null,
+            "source": null,
+            "workflow": "provision-environment"
+          }
+        ],
+        "prepared": [
+          {
+            "role": "team-lead",
+            "recommended_model": null,
+            "submitted_model": null,
+            "observed_model": null,
+            "application_status": "unconfirmed"
+          },
+          {
+            "role": "devops-engineer",
+            "recommended_model": "gpt-6-luna",
+            "submitted_model": "gpt-6-luna",
+            "observed_model": "gpt-6-luna",
+            "application_status": "observed"
+          }
+        ]
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-A-plain",
+      "host": "codex",
+      "task": "A",
+      "mode": "plain",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 77.8,
+      "accepted": true,
+      "checks": {
+        "report": true,
+        "only_report_changed": true,
+        "verdict_line": true,
+        "dashboards_named": true
+      },
+      "changed_files": 1,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 29003,
+        "cached": 151296,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 29003,
+            "cached": 151296
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-A-workflow_only",
+      "host": "codex",
+      "task": "A",
+      "mode": "workflow_only",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 50.1,
+      "accepted": false,
+      "checks": {
+        "report": false,
+        "only_report_changed": false,
+        "verdict_line": false,
+        "dashboards_named": false
+      },
+      "changed_files": 0,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 50799,
+        "cached": 112128,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 50799,
+            "cached": 112128
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 2389,
+          "output_tokens": 174
+        },
+        "decisions": [
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": null,
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-B-fixed",
+      "host": "codex",
+      "task": "B",
+      "mode": "fixed",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 30.1,
+      "accepted": false,
+      "checks": {
+        "report": false,
+        "only_report_changed": false,
+        "valid_findings": false
+      },
+      "changed_files": 0,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 61152,
+        "cached": 179072,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root/explore",
+            "uncached": 20573,
+            "cached": 33024
+          },
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 40579,
+            "cached": 146048
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-B-jev",
+      "host": "codex",
+      "task": "B",
+      "mode": "jev",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 51.1,
+      "accepted": true,
+      "checks": {
+        "report": true,
+        "only_report_changed": true,
+        "valid_findings": true
+      },
+      "changed_files": 1,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 49717,
+        "cached": 172416,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 49717,
+            "cached": 172416
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 2294,
+          "output_tokens": 178
+        },
+        "decisions": [
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": null,
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-B-plain",
+      "host": "codex",
+      "task": "B",
+      "mode": "plain",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 45.3,
+      "accepted": true,
+      "checks": {
+        "report": true,
+        "only_report_changed": true,
+        "valid_findings": true
+      },
+      "changed_files": 1,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 29579,
+        "cached": 138112,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 29579,
+            "cached": 138112
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-C-fixed",
+      "host": "codex",
+      "task": "C",
+      "mode": "fixed",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 35.2,
+      "accepted": false,
+      "checks": null,
+      "changed_files": 0,
+      "probe_verified": false,
+      "tokens": {
+        "uncached": 75430,
+        "cached": 240384,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6-luna",
+            "agent_path": "/root/pm",
+            "uncached": 24091,
+            "cached": 36736
+          },
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root/product_owner",
+            "uncached": 21338,
+            "cached": 59520
+          },
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 30001,
+            "cached": 144128
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-C-jev",
+      "host": "codex",
+      "task": "C",
+      "mode": "jev",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 30.1,
+      "accepted": false,
+      "checks": null,
+      "changed_files": 0,
+      "probe_verified": false,
+      "tokens": {
+        "uncached": 55102,
+        "cached": 180224,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6-luna",
+            "agent_path": "/root/jev_ecaf72eb9dfa4594b0f88b52b5ed30c5",
+            "uncached": 22305,
+            "cached": 35200
+          },
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 32797,
+            "cached": 145024
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 3,
+        "usage": {
+          "input_tokens": 4372,
+          "output_tokens": 274
+        },
+        "decisions": [
+          {
+            "kind": "spawn",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "prepared",
+            "reason": null,
+            "model": null,
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "product-owner",
+            "outcome": "recommended_unconfirmed",
+            "status": "evaluated",
+            "reason": null,
+            "model": "gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": null,
+            "source": null,
+            "workflow": "development-cycle-workflow"
+          },
+          {
+            "kind": "observation",
+            "agent": "product-owner",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "team-lead",
+            "outcome": "recommended_unconfirmed",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "gpt-6.1-sol",
+            "source": "role_default",
+            "workflow": null
+          }
+        ],
+        "prepared": [
+          {
+            "role": "product-owner",
+            "recommended_model": "gpt-6-luna",
+            "submitted_model": "gpt-6-luna",
+            "observed_model": "gpt-6-luna",
+            "application_status": "observed"
+          },
+          {
+            "role": "team-lead",
+            "recommended_model": "gpt-6.1-sol",
+            "submitted_model": null,
+            "observed_model": null,
+            "application_status": "unconfirmed"
+          }
+        ]
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-C-models_only",
+      "host": "codex",
+      "task": "C",
+      "mode": "models_only",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 40.2,
+      "accepted": false,
+      "checks": null,
+      "changed_files": 0,
+      "probe_verified": false,
+      "tokens": {
+        "uncached": 63072,
+        "cached": 137344,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root/jev_59f9c7f9f40648deaa39a79edb6c4760",
+            "uncached": 25985,
+            "cached": 24832
+          },
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 37087,
+            "cached": 112512
+          },
+          {
+            "model": "gpt-6-luna",
+            "agent_path": "/root/jev_9ddfd3f28ac84ad8beba2a37b19418aa",
+            "uncached": 0,
+            "cached": 0
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 6,
+        "usage": {
+          "input_tokens": 6559,
+          "output_tokens": 288
+        },
+        "decisions": [
+          {
+            "kind": "spawn",
+            "agent": "analyst",
+            "outcome": "recommended_unconfirmed",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "gpt-6-luna",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "pm",
+            "outcome": "native",
+            "status": "prepared",
+            "reason": "low_confidence",
+            "model": null,
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "team-lead",
+            "outcome": "recommended_unconfirmed",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "gpt-6.1-sol",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "pm",
+            "outcome": "recommended_unconfirmed",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "gpt-6-luna",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "prepared",
+            "reason": "low_confidence",
+            "model": null,
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "developer",
+            "outcome": "recommended_unconfirmed",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "gpt-6.1-sol",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "qa",
+            "outcome": "recommended_unconfirmed",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "gpt-6-luna",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "rule_applied",
+            "status": "preserved",
+            "reason": "explicit_workflow",
+            "model": null,
+            "source": null,
+            "workflow": "develop-feature"
+          },
+          {
+            "kind": "observation",
+            "agent": "product-owner",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "gpt-6.1-sol",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "pm",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "product-owner",
+            "outcome": "recommended_unconfirmed",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "gpt-6.1-sol",
+            "source": "role_default",
+            "workflow": null
+          }
+        ],
+        "prepared": [
+          {
+            "role": "analyst",
+            "recommended_model": "gpt-6-luna",
+            "submitted_model": null,
+            "observed_model": null,
+            "application_status": "unconfirmed"
+          },
+          {
+            "role": "product-owner",
+            "recommended_model": "gpt-6.1-sol",
+            "submitted_model": "gpt-6.1-sol",
+            "observed_model": "gpt-6.1-sol",
+            "application_status": "observed"
+          },
+          {
+            "role": "developer",
+            "recommended_model": "gpt-6.1-sol",
+            "submitted_model": null,
+            "observed_model": null,
+            "application_status": "unconfirmed"
+          },
+          {
+            "role": "team-lead",
+            "recommended_model": "gpt-6.1-sol",
+            "submitted_model": null,
+            "observed_model": null,
+            "application_status": "unconfirmed"
+          },
+          {
+            "role": "qa",
+            "recommended_model": "gpt-6-luna",
+            "submitted_model": null,
+            "observed_model": null,
+            "application_status": "unconfirmed"
+          },
+          {
+            "role": "pm",
+            "recommended_model": "gpt-6-luna",
+            "submitted_model": "gpt-6-luna",
+            "observed_model": "gpt-6-luna",
+            "application_status": "observed"
+          }
+        ]
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-C-plain",
+      "host": "codex",
+      "task": "C",
+      "mode": "plain",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 25.3,
+      "accepted": true,
+      "checks": null,
+      "changed_files": 2,
+      "probe_verified": true,
+      "tokens": {
+        "uncached": 5977,
+        "cached": 56960,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 5977,
+            "cached": 56960
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "codex-C-workflow_only",
+      "host": "codex",
+      "task": "C",
+      "mode": "workflow_only",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 25.1,
+      "accepted": false,
+      "checks": null,
+      "changed_files": 0,
+      "probe_verified": false,
+      "tokens": {
+        "uncached": 50607,
+        "cached": 61056,
+        "complete": true,
+        "agents": [
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root",
+            "uncached": 50607,
+            "cached": 61056
+          },
+          {
+            "model": "gpt-6.1-sol",
+            "agent_path": "/root/jev_51e93957c298455b9fef87f8afee4bd4",
+            "uncached": 0,
+            "cached": 0
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 2209,
+          "output_tokens": 178
+        },
+        "decisions": [
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": null,
+            "source": null,
+            "workflow": "development-cycle-workflow"
+          },
+          {
+            "kind": "observation",
+            "agent": "product-owner",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "gpt-6.1-sol",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "product-owner",
+            "outcome": "native",
+            "status": "prepared",
+            "reason": null,
+            "model": null,
+            "source": "user_pin",
+            "workflow": null
+          }
+        ],
+        "prepared": [
+          {
+            "role": "product-owner",
+            "recommended_model": "gpt-6.1-sol",
+            "submitted_model": null,
+            "observed_model": "gpt-6.1-sol",
+            "application_status": "observed"
+          }
+        ]
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-A-fixed",
+      "host": "opencode",
+      "task": "A",
+      "mode": "fixed",
+      "status": "rejected",
+      "cap": null,
+      "exit": 0,
+      "turns": 2,
+      "elapsed_s": 63.5,
+      "accepted": false,
+      "checks": {
+        "report": true,
+        "only_report_changed": true,
+        "verdict_line": true,
+        "dashboards_named": false
+      },
+      "changed_files": 1,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 42807,
+        "cached": 170368,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 11481,
+            "cached": 0
+          },
+          {
+            "uncached": 252,
+            "cached": 11264
+          },
+          {
+            "uncached": 544,
+            "cached": 11392
+          },
+          {
+            "uncached": 12034,
+            "cached": 0
+          },
+          {
+            "uncached": 1042,
+            "cached": 11776
+          },
+          {
+            "uncached": 10934,
+            "cached": 11776
+          },
+          {
+            "uncached": 2104,
+            "cached": 22400
+          },
+          {
+            "uncached": 1422,
+            "cached": 24320
+          },
+          {
+            "uncached": 356,
+            "cached": 25600
+          },
+          {
+            "uncached": 1583,
+            "cached": 25600
+          },
+          {
+            "uncached": 1055,
+            "cached": 26240
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-A-jev",
+      "host": "opencode",
+      "task": "A",
+      "mode": "jev",
+      "status": "rejected",
+      "cap": null,
+      "exit": 0,
+      "turns": 2,
+      "elapsed_s": 82.3,
+      "accepted": false,
+      "checks": {
+        "report": true,
+        "only_report_changed": false,
+        "verdict_line": true,
+        "dashboards_named": false
+      },
+      "changed_files": 3,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 50432,
+        "cached": 502400,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 11444,
+            "cached": 0
+          },
+          {
+            "uncached": 234,
+            "cached": 11264
+          },
+          {
+            "uncached": 649,
+            "cached": 11264
+          },
+          {
+            "uncached": 574,
+            "cached": 11776
+          },
+          {
+            "uncached": 516,
+            "cached": 12160
+          },
+          {
+            "uncached": 231,
+            "cached": 12544
+          },
+          {
+            "uncached": 4672,
+            "cached": 12544
+          },
+          {
+            "uncached": 5393,
+            "cached": 17024
+          },
+          {
+            "uncached": 1684,
+            "cached": 22272
+          },
+          {
+            "uncached": 8421,
+            "cached": 23808
+          },
+          {
+            "uncached": 287,
+            "cached": 32000
+          },
+          {
+            "uncached": 2218,
+            "cached": 32128
+          },
+          {
+            "uncached": 2212,
+            "cached": 34176
+          },
+          {
+            "uncached": 978,
+            "cached": 36224
+          },
+          {
+            "uncached": 782,
+            "cached": 36480
+          },
+          {
+            "uncached": 727,
+            "cached": 37632
+          },
+          {
+            "uncached": 1335,
+            "cached": 37760
+          },
+          {
+            "uncached": 3695,
+            "cached": 38656
+          },
+          {
+            "uncached": 2430,
+            "cached": 40448
+          },
+          {
+            "uncached": 1950,
+            "cached": 42240
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 2389,
+          "output_tokens": 174
+        },
+        "decisions": [
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "role_default_applied",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": "openai/gpt-6-luna",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": null,
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": null,
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-A-models_only",
+      "host": "opencode",
+      "task": "A",
+      "mode": "models_only",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 97.3,
+      "accepted": true,
+      "checks": {
+        "report": true,
+        "only_report_changed": true,
+        "verdict_line": true,
+        "dashboards_named": true
+      },
+      "changed_files": 1,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 38697,
+        "cached": 105856,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 11653,
+            "cached": 0
+          },
+          {
+            "uncached": 299,
+            "cached": 11392
+          },
+          {
+            "uncached": 2089,
+            "cached": 11520
+          },
+          {
+            "uncached": 12108,
+            "cached": 2176
+          },
+          {
+            "uncached": 6907,
+            "cached": 13952
+          },
+          {
+            "uncached": 3071,
+            "cached": 20480
+          },
+          {
+            "uncached": 929,
+            "cached": 22784
+          },
+          {
+            "uncached": 1641,
+            "cached": 23552
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 5,
+        "usage": {
+          "input_tokens": 7004,
+          "output_tokens": 240
+        },
+        "decisions": [
+          {
+            "kind": "observation",
+            "agent": "instruction-reviewer",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "rule_applied",
+            "status": "preserved",
+            "reason": "explicit_workflow",
+            "model": null,
+            "source": null,
+            "workflow": "provision-environment"
+          },
+          {
+            "kind": "spawn",
+            "agent": "instruction-reviewer",
+            "outcome": "rule_applied",
+            "status": "routed",
+            "reason": "tier_fast_price_unknown",
+            "model": "openai/gpt-6-luna",
+            "source": "review_model",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "devops-engineer",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "devops-engineer",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "devops-engineer",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "memory-curator",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "devops-engineer",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "memory-curator",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-A-plain",
+      "host": "opencode",
+      "task": "A",
+      "mode": "plain",
+      "status": "rejected",
+      "cap": null,
+      "exit": 0,
+      "turns": 2,
+      "elapsed_s": 40.0,
+      "accepted": false,
+      "checks": {
+        "report": true,
+        "only_report_changed": false,
+        "verdict_line": true,
+        "dashboards_named": false
+      },
+      "changed_files": 3,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 41343,
+        "cached": 135552,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 5721,
+            "cached": 2048
+          },
+          {
+            "uncached": 3361,
+            "cached": 7424
+          },
+          {
+            "uncached": 5962,
+            "cached": 10496
+          },
+          {
+            "uncached": 2378,
+            "cached": 16128
+          },
+          {
+            "uncached": 17005,
+            "cached": 2048
+          },
+          {
+            "uncached": 927,
+            "cached": 18176
+          },
+          {
+            "uncached": 737,
+            "cached": 18944
+          },
+          {
+            "uncached": 2330,
+            "cached": 19072
+          },
+          {
+            "uncached": 1694,
+            "cached": 19968
+          },
+          {
+            "uncached": 1228,
+            "cached": 21248
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-A-workflow_only",
+      "host": "opencode",
+      "task": "A",
+      "mode": "workflow_only",
+      "status": "rejected",
+      "cap": null,
+      "exit": 0,
+      "turns": 2,
+      "elapsed_s": 74.3,
+      "accepted": false,
+      "checks": {
+        "report": true,
+        "only_report_changed": false,
+        "verdict_line": true,
+        "dashboards_named": false
+      },
+      "changed_files": 3,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 32093,
+        "cached": 158464,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 11496,
+            "cached": 0
+          },
+          {
+            "uncached": 373,
+            "cached": 11264
+          },
+          {
+            "uncached": 280,
+            "cached": 11392
+          },
+          {
+            "uncached": 190,
+            "cached": 11520
+          },
+          {
+            "uncached": 743,
+            "cached": 11520
+          },
+          {
+            "uncached": 1140,
+            "cached": 11904
+          },
+          {
+            "uncached": 8092,
+            "cached": 12672
+          },
+          {
+            "uncached": 912,
+            "cached": 20608
+          },
+          {
+            "uncached": 948,
+            "cached": 20736
+          },
+          {
+            "uncached": 5817,
+            "cached": 21376
+          },
+          {
+            "uncached": 2102,
+            "cached": 25472
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 2389,
+          "output_tokens": 174
+        },
+        "decisions": [
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": null,
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": null,
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "role_default_applied",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": "openai/gpt-6-luna",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": null,
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-B-fixed",
+      "host": "opencode",
+      "task": "B",
+      "mode": "fixed",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 130,
+      "turns": 1,
+      "elapsed_s": 65.0,
+      "accepted": false,
+      "checks": {
+        "report": false,
+        "only_report_changed": false,
+        "valid_findings": false
+      },
+      "changed_files": 0,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 59588,
+        "cached": 62208,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 11386,
+            "cached": 0
+          },
+          {
+            "uncached": 13495,
+            "cached": 0
+          },
+          {
+            "uncached": 15354,
+            "cached": 0
+          },
+          {
+            "uncached": 869,
+            "cached": 14976
+          },
+          {
+            "uncached": 2900,
+            "cached": 15616
+          },
+          {
+            "uncached": 10112,
+            "cached": 13312
+          },
+          {
+            "uncached": 5472,
+            "cached": 18304
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-B-jev",
+      "host": "opencode",
+      "task": "B",
+      "mode": "jev",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 35.0,
+      "accepted": true,
+      "checks": {
+        "report": true,
+        "only_report_changed": true,
+        "valid_findings": true
+      },
+      "changed_files": 1,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 22065,
+        "cached": 74752,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 11464,
+            "cached": 0
+          },
+          {
+            "uncached": 344,
+            "cached": 11264
+          },
+          {
+            "uncached": 1258,
+            "cached": 11392
+          },
+          {
+            "uncached": 7811,
+            "cached": 12288
+          },
+          {
+            "uncached": 607,
+            "cached": 19840
+          },
+          {
+            "uncached": 581,
+            "cached": 19968
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 1,
+        "usage": {
+          "input_tokens": 2294,
+          "output_tokens": 178
+        },
+        "decisions": [
+          {
+            "kind": "observation",
+            "agent": null,
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "role_default_applied",
+            "status": "fallback",
+            "reason": "session_off",
+            "model": "openai/gpt-6-luna",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "native",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": null,
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-B-plain",
+      "host": "opencode",
+      "task": "B",
+      "mode": "plain",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 23.8,
+      "accepted": true,
+      "checks": {
+        "report": true,
+        "only_report_changed": true,
+        "valid_findings": true
+      },
+      "changed_files": 1,
+      "probe_verified": null,
+      "tokens": {
+        "uncached": 45203,
+        "cached": 82816,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 7728,
+            "cached": 0
+          },
+          {
+            "uncached": 1204,
+            "cached": 7424
+          },
+          {
+            "uncached": 10001,
+            "cached": 2048
+          },
+          {
+            "uncached": 14080,
+            "cached": 11776
+          },
+          {
+            "uncached": 11221,
+            "cached": 25600
+          },
+          {
+            "uncached": 969,
+            "cached": 35968
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-C-fixed",
+      "host": "opencode",
+      "task": "C",
+      "mode": "fixed",
+      "status": "accepted",
+      "cap": "token_cap",
+      "exit": 130,
+      "turns": 1,
+      "elapsed_s": 125.1,
+      "accepted": true,
+      "checks": null,
+      "changed_files": 3,
+      "probe_verified": true,
+      "tokens": {
+        "uncached": 50200,
+        "cached": 518400,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 11434,
+            "cached": 0
+          },
+          {
+            "uncached": 333,
+            "cached": 11136
+          },
+          {
+            "uncached": 11563,
+            "cached": 0
+          },
+          {
+            "uncached": 248,
+            "cached": 11392
+          },
+          {
+            "uncached": 2514,
+            "cached": 11264
+          },
+          {
+            "uncached": 8981,
+            "cached": 11520
+          },
+          {
+            "uncached": 2831,
+            "cached": 20352
+          },
+          {
+            "uncached": 750,
+            "cached": 22912
+          },
+          {
+            "uncached": 1677,
+            "cached": 23296
+          },
+          {
+            "uncached": 583,
+            "cached": 24576
+          },
+          {
+            "uncached": 610,
+            "cached": 24832
+          },
+          {
+            "uncached": 626,
+            "cached": 25216
+          },
+          {
+            "uncached": 441,
+            "cached": 25600
+          },
+          {
+            "uncached": 490,
+            "cached": 25856
+          },
+          {
+            "uncached": 742,
+            "cached": 26112
+          },
+          {
+            "uncached": 1753,
+            "cached": 26496
+          },
+          {
+            "uncached": 1357,
+            "cached": 27008
+          },
+          {
+            "uncached": 325,
+            "cached": 28160
+          },
+          {
+            "uncached": 539,
+            "cached": 28288
+          },
+          {
+            "uncached": 344,
+            "cached": 28544
+          },
+          {
+            "uncached": 472,
+            "cached": 28672
+          },
+          {
+            "uncached": 545,
+            "cached": 28800
+          },
+          {
+            "uncached": 625,
+            "cached": 29056
+          },
+          {
+            "uncached": 417,
+            "cached": 29312
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-C-jev",
+      "host": "opencode",
+      "task": "C",
+      "mode": "jev",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 130,
+      "turns": 1,
+      "elapsed_s": 195.2,
+      "accepted": false,
+      "checks": null,
+      "changed_files": 5,
+      "probe_verified": false,
+      "tokens": {
+        "uncached": 51905,
+        "cached": 207360,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 11527,
+            "cached": 0
+          },
+          {
+            "uncached": 318,
+            "cached": 11264
+          },
+          {
+            "uncached": 819,
+            "cached": 11392
+          },
+          {
+            "uncached": 2549,
+            "cached": 12032
+          },
+          {
+            "uncached": 14735,
+            "cached": 0
+          },
+          {
+            "uncached": 578,
+            "cached": 14464
+          },
+          {
+            "uncached": 2010,
+            "cached": 14848
+          },
+          {
+            "uncached": 632,
+            "cached": 16640
+          },
+          {
+            "uncached": 739,
+            "cached": 17024
+          },
+          {
+            "uncached": 4215,
+            "cached": 14208
+          },
+          {
+            "uncached": 628,
+            "cached": 18048
+          },
+          {
+            "uncached": 657,
+            "cached": 18432
+          },
+          {
+            "uncached": 4213,
+            "cached": 18816
+          },
+          {
+            "uncached": 293,
+            "cached": 22784
+          },
+          {
+            "uncached": 7992,
+            "cached": 17408
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 11,
+        "usage": {
+          "input_tokens": 13837,
+          "output_tokens": 658
+        },
+        "decisions": [
+          {
+            "kind": "observation",
+            "agent": "developer",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "team-lead",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "qa",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "team-lead",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": null,
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "developer",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": null,
+            "source": null,
+            "workflow": "development-cycle-workflow"
+          },
+          {
+            "kind": "observation",
+            "agent": "pm",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "pm",
+            "outcome": "role_default_applied",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "openai/gpt-6-luna",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "qa",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "role_default_applied",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "openai/gpt-6.1-sol",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": null,
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-C-models_only",
+      "host": "opencode",
+      "task": "C",
+      "mode": "models_only",
+      "status": "token_cap",
+      "cap": "token_cap",
+      "exit": 130,
+      "turns": 1,
+      "elapsed_s": 225.2,
+      "accepted": false,
+      "checks": null,
+      "changed_files": 6,
+      "probe_verified": false,
+      "tokens": {
+        "uncached": 70311,
+        "cached": 516992,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 11572,
+            "cached": 0
+          },
+          {
+            "uncached": 486,
+            "cached": 11264
+          },
+          {
+            "uncached": 354,
+            "cached": 11520
+          },
+          {
+            "uncached": 410,
+            "cached": 11648
+          },
+          {
+            "uncached": 6101,
+            "cached": 11776
+          },
+          {
+            "uncached": 1318,
+            "cached": 17408
+          },
+          {
+            "uncached": 1056,
+            "cached": 18176
+          },
+          {
+            "uncached": 1001,
+            "cached": 18944
+          },
+          {
+            "uncached": 12538,
+            "cached": 19584
+          },
+          {
+            "uncached": 1357,
+            "cached": 31872
+          },
+          {
+            "uncached": 1209,
+            "cached": 32512
+          },
+          {
+            "uncached": 2786,
+            "cached": 33280
+          },
+          {
+            "uncached": 734,
+            "cached": 35712
+          },
+          {
+            "uncached": 694,
+            "cached": 36096
+          },
+          {
+            "uncached": 621,
+            "cached": 36480
+          },
+          {
+            "uncached": 1073,
+            "cached": 36736
+          },
+          {
+            "uncached": 905,
+            "cached": 37120
+          },
+          {
+            "uncached": 995,
+            "cached": 37760
+          },
+          {
+            "uncached": 3191,
+            "cached": 38272
+          },
+          {
+            "uncached": 21910,
+            "cached": 40832
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 8,
+        "usage": {
+          "input_tokens": 9459,
+          "output_tokens": 384
+        },
+        "decisions": [
+          {
+            "kind": "spawn",
+            "agent": "team-lead",
+            "outcome": "rule_applied",
+            "status": "preserved",
+            "reason": "explicit_model_or_continuation",
+            "model": null,
+            "source": "pinned",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "qa",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": null,
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "qa",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "analyst",
+            "outcome": "role_default_applied",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "openai/gpt-6-luna",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "analyst",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "developer",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "team-lead",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "team-lead",
+            "outcome": "role_default_applied",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "openai/gpt-6.1-sol",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "team-lead",
+            "outcome": "role_default_applied",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "openai/gpt-6.1-sol",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "pm",
+            "outcome": "role_default_applied",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "openai/gpt-6-luna",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "pm",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "developer",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "team-lead",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "rule_applied",
+            "status": "preserved",
+            "reason": "explicit_workflow",
+            "model": null,
+            "source": null,
+            "workflow": "develop-feature"
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-C-plain",
+      "host": "opencode",
+      "task": "C",
+      "mode": "plain",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 15.6,
+      "accepted": true,
+      "checks": null,
+      "changed_files": 2,
+      "probe_verified": true,
+      "tokens": {
+        "uncached": 13572,
+        "cached": 27392,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 5480,
+            "cached": 2048
+          },
+          {
+            "uncached": 153,
+            "cached": 7424
+          },
+          {
+            "uncached": 1107,
+            "cached": 7424
+          },
+          {
+            "uncached": 6564,
+            "cached": 2048
+          },
+          {
+            "uncached": 268,
+            "cached": 8448
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 0,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "decisions": [],
+        "prepared": []
+      },
+      "note": null
+    },
+    {
+      "cell": "opencode-C-workflow_only",
+      "host": "opencode",
+      "task": "C",
+      "mode": "workflow_only",
+      "status": "accepted",
+      "cap": null,
+      "exit": 0,
+      "turns": 1,
+      "elapsed_s": 232.7,
+      "accepted": true,
+      "checks": null,
+      "changed_files": 6,
+      "probe_verified": true,
+      "tokens": {
+        "uncached": 32430,
+        "cached": 362880,
+        "complete": true,
+        "agents": [
+          {
+            "uncached": 9393,
+            "cached": 2176
+          },
+          {
+            "uncached": 420,
+            "cached": 11264
+          },
+          {
+            "uncached": 1771,
+            "cached": 11392
+          },
+          {
+            "uncached": 7800,
+            "cached": 12800
+          },
+          {
+            "uncached": 659,
+            "cached": 20224
+          },
+          {
+            "uncached": 1055,
+            "cached": 20608
+          },
+          {
+            "uncached": 602,
+            "cached": 21376
+          },
+          {
+            "uncached": 938,
+            "cached": 21504
+          },
+          {
+            "uncached": 585,
+            "cached": 22144
+          },
+          {
+            "uncached": 1059,
+            "cached": 22528
+          },
+          {
+            "uncached": 821,
+            "cached": 23168
+          },
+          {
+            "uncached": 698,
+            "cached": 23680
+          },
+          {
+            "uncached": 562,
+            "cached": 24064
+          },
+          {
+            "uncached": 598,
+            "cached": 24320
+          },
+          {
+            "uncached": 558,
+            "cached": 24576
+          },
+          {
+            "uncached": 1109,
+            "cached": 24960
+          },
+          {
+            "uncached": 2508,
+            "cached": 25344
+          },
+          {
+            "uncached": 1294,
+            "cached": 26752
+          }
+        ]
+      },
+      "cost_usd": null,
+      "jev": {
+        "calls": 12,
+        "usage": {
+          "input_tokens": 15012,
+          "output_tokens": 706
+        },
+        "decisions": [
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "team-lead",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "pm",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "developer",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "qa",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "instruction-reviewer",
+            "outcome": "rule_applied",
+            "status": "routed",
+            "reason": "tier_fast_price_unknown",
+            "model": "openai/gpt-6-luna",
+            "source": "review_model",
+            "workflow": null
+          },
+          {
+            "kind": "prompt",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": null,
+            "source": null,
+            "workflow": "development-cycle-workflow"
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "role_default_applied",
+            "status": "fallback",
+            "reason": "low_confidence",
+            "model": "openai/gpt-6.1-sol",
+            "source": "role_default",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "developer",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "memory-curator",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "product-owner",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "instruction-reviewer",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": null,
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "team-lead",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "memory-curator",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": null,
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "pm",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "devops-engineer",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "spawn",
+            "agent": "qa",
+            "outcome": "jev_applied",
+            "status": "evaluated",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": "jev_tier",
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": "devops-engineer",
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6-luna",
+            "source": null,
+            "workflow": null
+          },
+          {
+            "kind": "observation",
+            "agent": null,
+            "outcome": null,
+            "status": "observed",
+            "reason": null,
+            "model": "openai/gpt-6.1-sol",
+            "source": null,
+            "workflow": null
+          }
+        ],
+        "prepared": []
+      },
+      "note": null
+    }
+  ]
+}

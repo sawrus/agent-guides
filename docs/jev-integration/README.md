@@ -17,7 +17,7 @@ or JEV MCP server is installed.
 Adapter sources belong to `extensions/codex/hooks/jev/` and
 `extensions/opencode/hooks/agentic-jev.ts`. The common Python runtime is deployed
 to `.agent/jev/`; the OpenCode adapter is deployed to its native plugin directory.
-The runtime has five stdlib modules:
+The runtime has six stdlib modules (prepared.py is loaded for Codex preselection):
 
 | File | Purpose |
 | --- | --- |
@@ -26,6 +26,7 @@ The runtime has five stdlib modules:
 | `routing.py` | Model pools, tiers, prices, role defaults, deterministic spawn rules |
 | `adapters.py` | Codex and Claude Code payload translation and hook output |
 | `api.py` | JEV client: validation, credentials, redaction, evaluation |
+| `prepared.py` | Explicit Codex preselection, expiring single-use records and native correlation |
 
 `hook.py` asks JEV only when `api.py`, `questions.py`, `routing.py` and
 `adapters.py` are present with runtime version 2. Otherwise every event returns
@@ -79,7 +80,8 @@ file content and no full command text. Requests that cannot be auto-allowed are 
 to JEV; the host decides natively. Explicit native denials remain
 final. Automatic approval is bounded to project/system temporary paths with
 sandbox preserved. Secrets, deletion, outside paths, network/escalation and
-symlink escapes require native approval. Arbitrary shell commands are assessed,
+symlink escapes require native approval. Shell operands resolve from the actual command cwd;
+missing, relative or unresolvable cwd retains native approval. Arbitrary shell commands are assessed,
 but only simple provably bounded commands may be auto-approved; interpreters,
 substitutions, pipes and redirects remain native approval requests. Codex Bash
 PermissionRequest represents escalation/network approval and is never auto-allowed.
@@ -143,9 +145,8 @@ Sent before a subagent spawn, after these rules (no JEV call):
    `tier_fast_price_unknown`. All three use `model_source: review_model`.
 4. Fewer than two resolved tiers give `fallback/no_tier_routing`.
 5. A Codex spawn (only Codex) with an encrypted assignment (`assignment_unavailable: true`)
-   gives `fallback/assignment_unavailable`, and the role default applies. JEV
-   always answered `clarify` for these spawns, so the call could not change the
-   outcome (QR-D12).
+   without prepared metadata gives `fallback/assignment_unavailable`, and the role default applies.
+   Use the [explicit preselection interface](#codex-preselection) before encryption when the exact assignment is available.
 
 - **Options:** the available tiers `fast`, `balanced`, `frontier`, plus `clarify`.
   The rubric: `fast` for bounded work with an established pattern; `balanced` for
@@ -159,35 +160,25 @@ Sent before a subagent spawn, after these rules (no JEV call):
   sent.
 - **Tier mapping per host:**
 
-  | Host | Tier source | `relative_cost` / `cost_source` |
+  | Host | Capability source | Cost evidence |
   | --- | --- | --- |
-  | Claude | profile `tiers`: haiku / sonnet / opus | 1 / 2 / 3, `tier_order` |
-  | Codex | `extensions/codex/model-tiers.json`: `gpt-6-luna` / `gpt-6.1-sol` / `gpt-6-astra` | 1 / 2 / 3, `tier_order` |
-  | OpenCode | catalog prices (`m.cost`, input + output) | price ÷ cheapest, `catalog_price` |
-  | OpenCode, no usable prices | shipped tier map `.agent/jev/opencode-model-tiers.json` (source `extensions/opencode/model-tiers.json`) | 1 / 2 / 3, `tier_map` |
+  | Claude | profile tiers or explicit alias map | unknown without catalog prices |
+  | Codex | installed model-defaults tiers and candidate overrides | unknown without catalog prices |
+  | OpenCode | installed opencode-model-tiers.json and candidate overrides | selected catalog prices only |
 
-  OpenCode with two priced candidates gets `fast` and `frontier`; three or more
-  add `balanced` at the lower median price. Prices are used only when every
-  candidate is priced and the prices differ. Otherwise the hook uses the shipped
-  tier map (OpenAI oauth reports `cost: []`, QR-D10):
-  - The map lists `provider/id` models per provider. The current map has only
-    `openai`: `openai/gpt-6-luna` / `openai/gpt-6.1-sol` / `openai/gpt-6-astra`.
-  - Only map models in the host catalog count. A provider needs at least two of
-    them. Tiers come from one provider only. The preferred provider is
-    `AGENTIC_JEV_MODEL_PROVIDER`, else the provider of the role default. A
-    preferred provider must qualify itself; otherwise there are no map tiers
-    (for example, a `github-copilot/…` role default is never routed to OpenAI
-    models). Only without a preference does the first qualifying provider in
-    file order apply.
-  - The plugin adds every map model to the spawn pool. The pool keeps the
-    catalog, tool-capability and `AGENTIC_JEV_MODEL_PROVIDER` filters.
-  - A missing, unreadable or malformed map (or a `version` other than 1) means
-    no map: the price-only behavior applies, and hooks never fail on it.
+  Price never creates a capability tier. OpenCode uses the explicit map even when
+  stronger models are cheaper, prices are equal, or providers differ. A provider
+  needs at least two available mapped models. Preference remains
+  AGENTIC_JEV_MODEL_PROVIDER, then the role default's provider, otherwise the
+  first qualifying provider in map order. Settings overrides win only for available candidates.
+  Missing/malformed maps and unknown priced models do not invent capabilities:
+  fewer than two resolved tiers gives fallback/no_tier_routing and the role default.
+  The plugin still filters model availability, tool support and provider restrictions.
 
-  With no tiers, `cost_source` is `null` and the result is
-  `fallback/no_tier_routing`. `settings.jev.tiers` in `.agentic.json` overrides
-  a tier only with a candidate model. If only overrides give tiers, they are
-  ranked 1 / 2 / 3 with `cost_source: tier_order`.
+  relative_cost is a ratio only when every selected price is finite and positive;
+  otherwise it is null, never 1/2/3 inferred from capability order. cost_source
+  retains catalog_price, tier_map and tier_order compatibility labels; the last
+  two describe map/configuration provenance and do not prove price ordering.
 - **Fallback:** `clarify`, low confidence, an API error or `no_tier_routing`
   apply the role default when it is a candidate, on every host:
   `status: fallback`, `model_source: role_default`. Codex and Claude read it from
@@ -381,8 +372,10 @@ Since 1.5.0 JEV decides once per session, at the first root prompt
   Claude Code and OpenCode get a `jev.md` command; in Codex type `jev off`
   (without the slash) if the TUI rejects the unknown command. Claude Code and
   Codex hooks block the prompt, so the switch costs no model turn; OpenCode
-  replaces it with a one-line confirmation. `/jev on` also forgets the task, so
-  the next prompt asks for a workflow again.
+  replaces it with a one-line confirmation. `/jev on` is the explicit new-task boundary.
+  It forgets the task and approval history; the next prompt asks for a workflow again.
+  Task generations isolate cached permissions, prepared spawns and review packets.
+  Automatic goal-change detection is a separate, unimplemented capability. Task generations isolate cached permissions and prepared spawns; old approval history is cleared.
 
 The switch is per session. The project switch (`settings.jev.enabled`) and
 `AGENTIC_ENABLE_JEV=0` still turn JEV off for every session.
@@ -551,3 +544,9 @@ define prompt, tool and permission evaluation hooks. SDK 2.0.28 source confirms
 the native `subagent.model` override is applied before child creation and retains
 role permission checks. Ordinary tests validate both endpoint contracts with mocks;
 official paid quota has not been used.
+
+## Codex preselection
+
+Since 1.6.0, coordinators can submit open goal/scope/complexity before encrypted spawn through the [local prepare-spawn interface](epic/preselection.md). It reuses the shared runtime and preserves profile restrictions. Restricted profiles retain the canonical role name with unconfirmed application; simple profiles support unique one-use correlation.
+
+See the [epic contract](epic/epic_plan.md) and [gated comparative pilot](epic/pilot.md). No pilot measurements have been made.

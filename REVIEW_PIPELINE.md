@@ -88,6 +88,42 @@ inventing findings. Summary lists each status (`completed`, `unavailable`, `fail
 evidence limits, and prioritized follow-up actions without repeating the reports.
 The final user response links all three artifacts and notes material limitations.
 
+## Token accounting
+
+Before `Manual acceptance`, `summary.md` and the final response include a token
+usage table. Use one row per agent instance and model, including the coordinator,
+SDLC agents, repeated launches, `instruction-reviewer`, and `memory-curator`.
+Split model changes into separate rows; a role alone does not identify a launch.
+Columns: agent/run ID, role, model, input tokens, cached input tokens, output
+tokens, total tokens, and source. State the measurement cutoff with provenance.
+The still-unfinished final response is outside that cutoff.
+
+Use only existing available native usage. Do not read hidden host data or gather
+full transcripts to fill this table. Write `not measured` for unknown values,
+never zero. Label the measured total `partial` if any launch is unmeasured.
+Token counts alone do not establish monetary cost or savings.
+
+In the normalized table, input includes cached input; output includes reasoning tokens.
+Convert native counters only with documented semantics; otherwise write `not measured`.
+Show cached input as a subset and never add it again. Do not add reasoning again.
+Deduplicate event IDs. For cumulative counters use the latest documented snapshot
+per instance/model rather than summing snapshots. Do not mix cumulative and delta
+counters without a proven conversion. If a parent counter includes children,
+exclude that inclusive counter from totals unless a documented native breakdown
+provides disjoint self usage. Mark excluded values `not measured` and explain why.
+
+Show JEV separately: request count, available input/output tokens, source, and
+cutoff. Deduplicate by request ID. Attribute a JEV request to an agent only when
+an explicit identifier proves the relationship. Missing telemetry does not block
+accepted delivery or trigger extra reviews or model calls.
+
+The offline helper [scripts/review_usage.py](scripts/review_usage.py) normalizes
+explicit bounded records supplied by the coordinator; it does not collect usage.
+It is optional repository tooling, not installed into target projects. Prepare the
+table directly from verified usage when that helper is unavailable.
+Its input contract and limitations are documented in
+[docs/review-pipeline.md](docs/review-pipeline.md#token-accounting).
+
 ## Manual acceptance instructions
 
 `summary.md` and the final user response both end with a `Manual acceptance`
