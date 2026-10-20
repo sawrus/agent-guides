@@ -387,3 +387,7 @@ Quick checklist before opening a PR:
 ## License
 
 See [LICENSE](LICENSE) if present, or contact the maintainers.
+
+### JEV evaluation status
+
+The [JEV-EPIC protocol](docs/jev-integration/epic/pilot.md) compares a single agent, Agentic workflow without JEV, and Agentic workflow with JEV on anonymized DevOps configuration, static Python review and CLI implementation tasks. The 27 primary and 12 ablation runs have **not run**: they require implementation acceptance and separate budget permission. There is no measured savings or quality claim yet. [Preselection limits](docs/jev-integration/epic/preselection.md) distinguish a recommendation from confirmed native application.

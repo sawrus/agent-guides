@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.6.0
+
+- Shell permission operands resolve from the actual cwd; unknown cwd retains native approval. Preserve secret, symlink and allowed-root boundaries.
+- Capability tiers come from explicit maps and candidate-validated overrides, never price rank; unknown costs remain unknown. Pins, provider filters and role-default fallback stay in force.
+- Existing `jev on` is an explicit new-task boundary. Task generations isolate cached decisions, approval history, prepared spawns and review packets; late answers cannot restore a reset task. Cached allow rechecks path boundaries.
+- Codex gains a local `--prepare-spawn` interface using open goal/scope/complexity before encryption, with idempotent expiring decisions and separate recommended/submitted/observed evidence. Restricted custom profiles keep native role names and unconfirmed correlation to preserve policy.
+- REVIEW_PIPELINE adds per-agent/model token tables, provenance, partial totals and separate JEV usage; manual acceptance remains last. No savings are inferred.
+- Re-run upgrade to install the updated runtime. Comparative pilot remains gated on human implementation acceptance and separate budget permission. See docs/jev-integration/epic/.
+
 ## v1.5.0
 
 JEV now decides once per session and spends fewer calls; review reports end with manual acceptance commands. Requirements: `docs/jev-integration/session-gate/README.md`.
