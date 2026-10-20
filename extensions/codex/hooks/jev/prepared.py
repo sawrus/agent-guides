@@ -14,7 +14,8 @@ except ImportError:  # Python 3.10: accept only an unambiguous scalar subset.
 VERSION = 2
 TTL_SECONDS = 600
 INPUT_LIMIT = 16384
-NAME = re.compile(r'^jev-([0-9a-f]{32})$')
+# Codex agent names accept only lowercase letters, digits and underscores.
+NAME = re.compile(r'^jev_([0-9a-f]{32})$')
 ROLE = re.compile(r'^[a-z][a-z0-9_-]{0,95}$')
 
 
@@ -109,12 +110,24 @@ def models(core, project):
             if unavailable.get('codex:' + model['id'], 0) <= time.time()}
 
 
+def spawn_model(record):
+    """A native profile pin cannot be changed by spawn arguments; the host applies it without a model override."""
+    return None if record.get('model_source') == 'user_pin' else record.get('recommended_model')
+
+
+def accepted(result):
+    return result.get('status') == 'prepared' and result.get('application_status') in ('submitted_unconfirmed', 'observed')
+
+
 def public(record):
-    fields = ('status', 'reason_code', 'decision_id', 'task_name', 'role', 'recommended_model',
+    """`spawn` is the only callable location: `agent_type` selects the canonical profile, `task_name` the registry record."""
+    fields = ('status', 'reason_code', 'decision_id', 'role', 'recommended_model',
               'submitted_model', 'observed_model', 'model_source', 'expires_at', 'application_status', 'correlation_status')
     result = {key: record.get(key) for key in fields}
     if record.get('status') == 'prepared' and record.get('recommended_model') and not record.get('tool_use_id'):
-        result['spawn'] = {'task_name': record['role'] if record.get('preserve_profile') else record['task_name'], 'model': record['recommended_model'], 'fork_turns': 'none'}
+        spawn = {'agent_type': record['role'], 'task_name': record['task_name'], 'model': spawn_model(record), 'fork_turns': 'none'}
+        result['spawn'] = {key: value for key, value in spawn.items() if value is not None}
+        result['on_reject'] = 'native_default_report'
     return result
 
 
@@ -155,7 +168,7 @@ def prepare(core, project, payload):
         decision_id = uuid.uuid4().hex
         path = core.private_dir(project) / ('prepared-' + decision_id + '.json')
         record = {**bound, 'role': role, 'fingerprint': fingerprint, 'decision_id': decision_id,
-                  'task_name': 'jev-' + decision_id, 'expires_at': time.time() + TTL_SECONDS,
+                  'task_name': 'jev_' + decision_id, 'expires_at': time.time() + TTL_SECONDS,
                   'status': 'fallback', 'reason_code': 'prepared_incomplete', 'model_source': 'none',
                   'recommended_model': None, 'submitted_model': None, 'observed_model': None,
                   'application_status': 'unconfirmed'}
@@ -165,7 +178,7 @@ def prepare(core, project, payload):
             pin = profile_pin(core, project, role)
             record['profile_pin'] = pin
             record['preserve_profile'] = preserve_profile(project, role)
-            record['correlation_status'] = 'unavailable_profile_preservation' if record['preserve_profile'] else 'awaiting_native_binding'
+            record['correlation_status'] = 'awaiting_native_binding'
             if pin:
                 result = {'status': 'preserved', 'model': pin, 'model_source': 'user_pin'}
             else:
@@ -227,8 +240,8 @@ def claim(core, project, payload):
             return rejected
         if record.get('tool_use_id') and record['tool_use_id'] != payload['tool_use_id']:
             return failure('prepared_already_claimed')
-        if record.get('preserve_profile'):
-            return failure('prepared_correlation_unavailable')
+        if payload.get('agent_type') != record.get('role'):
+            return failure('prepared_agent_type_mismatch')
         if record.get('status') != 'prepared':
             return public(record)
         if record.get('tool_use_id') and record.get('submitted_model') != payload.get('model'):
@@ -236,13 +249,13 @@ def claim(core, project, payload):
         record.update(tool_use_id=payload['tool_use_id'], submitted_model=payload.get('model'))
         try:
             pin = profile_pin(core, project, record['role'])
-            if preserve_profile(project, record['role']):
+            if preserve_profile(project, record['role']) != record.get('preserve_profile'):
                 record.update(status='fallback', reason_code='profile_policy_changed')
             elif pin != record.get('profile_pin'):
                 record.update(status='fallback', reason_code='profile_pin_changed')
             elif payload.get('fork_turns') != 'none':
                 record.update(status='fallback', reason_code='prepared_fork_incompatible')
-            elif payload.get('model') != record['recommended_model']:
+            elif payload.get('model') != spawn_model(record):
                 record.update(status='fallback', reason_code='submitted_model_override', model_source='user_pin')
             elif record['recommended_model'] not in models(core, project):
                 record.update(status='fallback', reason_code='prepared_model_unavailable')
@@ -327,7 +340,7 @@ def observe_child(core, project, payload):
         rejected = checked(core, project, payload, record)
         if rejected:
             return rejected
-        if not record.get('tool_use_id') or record.get('preserve_profile'):
+        if not record.get('tool_use_id'):
             return failure('prepared_child_unbound')
         if record.get('observation_conflict'):
             return failure('prepared_observation_conflict')

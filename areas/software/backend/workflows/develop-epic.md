@@ -128,7 +128,7 @@ Steps 3–5 repeat for each increment (bounded by the increment count from the e
 
 ## Codex assignment preparation
 
-When JEV is enabled and the installed runtime offers `--prepare-spawn`, the coordinator sends the exact goal, scope and complexity plus current session/task IDs and a unique request ID to that local interface before native spawning. Use the returned model and supported spawn fields with the complete assignment; this is an explicit prepared selection, not a guessed override. User pins and native role profiles win. Keep canonical role names when profile policy requires them, and report missing correlation as unconfirmed. Never invent spawn arguments, decrypt transport data, or change sandbox/approval policy. Without actionable metadata, keep native role defaults. Claude Code and OpenCode retain their native hooks.
+When JEV is enabled and the installed runtime offers `--prepare-spawn`, the coordinator sends the exact goal, scope and complexity plus current session/task IDs and a unique request ID to that local interface before native spawning. Copy the returned `spawn` object unchanged with the complete assignment; this is an explicit prepared selection, not a guessed override. Its `agent_type` selects the canonical role profile, so user pins and native profile policy win. If the hook denies the launch, use native role defaults once, do not retry, and report `recommendation_discarded` with its reason code; report missing correlation as unconfirmed. Never invent spawn arguments, decrypt transport data, or change sandbox/approval policy. Without actionable metadata, keep native role defaults. Claude Code and OpenCode retain their native hooks.
 
 ## Post-task review
 

@@ -13,6 +13,7 @@ import routing
 VERSION = 2
 TRANSCRIPT_LIMIT = 20_000_000
 TRANSCRIPT_TAIL = 262144
+SESSION_META_LIMIT = 1048576
 CODEX_SPAWN_TOOLS = ('spawn_agent', 'Agent', 'functions.spawn_agent', 'collaboration.spawn_agent', 'collaborationspawn_agent')
 CODEX_ENCRYPTED_PREFIX = 'gAAAA'
 CLAUDE_AGENT_TOOLS = ('Agent', 'Task')
@@ -27,6 +28,31 @@ CODEX_DELEGATION = ('Act as its declared initiator and coordinate delivery. Dele
 CLAUDE_DELEGATION = ('Act as its declared initiator in this main session and coordinate delivery. Delegate repository exploration '
                      'and implementation to its declared role agents through the Agent tool (subagent_type = role name).', 'Agent hooks')
 OWN_OUTPUT = ('SubagentStart', 'UserPromptSubmit', 'PermissionRequest')
+
+
+def prepared_name(task_name):
+    return bool(re.fullmatch(r'jev_[0-9a-f]{32}', task_name))
+
+
+def codex_child_path(payload):
+    """Canonical child path for SubagentStart, whose agent_id is a thread id. The host-supplied transcript must
+    name that same thread; otherwise the observation stays unbound."""
+    agent_id, raw = payload.get('agent_id'), payload.get('transcript_path')
+    if isinstance(agent_id, str) and agent_id.startswith('/'):
+        return agent_id
+    if not isinstance(agent_id, str) or not agent_id or not isinstance(raw, str) or not raw:
+        return None
+    path = Path(raw).expanduser()
+    try:
+        if path.is_symlink() or not path.is_file():
+            return None
+        with path.open('rb') as handle:
+            meta = json.loads(handle.readline(SESSION_META_LIMIT)).get('payload') or {}
+        if meta.get('id') == agent_id and isinstance(meta.get('agent_path'), str):
+            return meta['agent_path']
+    except (OSError, ValueError, AttributeError):
+        pass
+    return None
 
 
 def observed_transcript_model(raw):
@@ -88,9 +114,12 @@ def shared_output(core, project, name, event, result, delegation):
             context += (' Before each Codex V2 spawn, call the local JSON interface: python3 .agent/jev/hook.py --host codex --prepare-spawn. '
                         'Send session_id=' + str(event['session_id']) + ', task_id=' + str(task.get('task_id')) +
                         ', a unique request_id, canonical role, goal, scope and complexity via JSON stdin. '
-                        'Use only returned spawn.task_name/model/fork_turns with the complete message; read the canonical role profile and preserve its restrictions. '
+                        'Copy every field of the returned spawn object (agent_type, task_name, model when present, fork_turns) unchanged and add only the complete message; '
+                        'no other response field is a spawn argument. agent_type keeps the canonical role profile and its restrictions. '
                         'A prepared model is an authorized routing selection, not a guessed override. User pins win. '
-                        'If the interface returns no spawn, retain native role defaults. Do not invent spawn arguments or decrypt assignments.')
+                        'If the interface returns no spawn, retain native role defaults. If the hook denies a prepared launch, spawn once with native role defaults '
+                        '(agent_type only, no model), do not retry the ticket or prepare again for that launch, and report recommendation_discarded with the reason code. '
+                        'Do not invent spawn arguments or decrypt assignments.')
         return {'hookSpecificOutput': {'hookEventName': name, 'additionalContext': context}}
     if name == 'PermissionRequest' and result.get('decision') in ('allow', 'deny'):
         return {'hookSpecificOutput': {'hookEventName': name, 'decision': {'behavior': result['decision'], 'message': 'Agentic JEV bounded permission decision'}}}
@@ -127,13 +156,14 @@ def codex_event(core, project, payload):
     if name == 'UserPromptSubmit':
         event.update(kind='prompt', prompt=payload.get('prompt', ''))
     elif name == 'PreToolUse' and payload.get('tool_name') in CODEX_SPAWN_TOOLS:
-        if isinstance(data.get('task_name'), str) and re.fullmatch(r'jev-[0-9a-f]{32}', data['task_name']):
+        if isinstance(data.get('task_name'), str) and prepared_name(data['task_name']):
             return prepared_submission(core, project, payload, event)
         codex_spawn(project, event, data)
     elif name == 'PermissionRequest':
         event.update(kind='permission', agent=routing.canonical_role(payload.get('agent_type')) or None)
     elif name == 'SubagentStart':
-        event.update(kind='observation', agent=routing.canonical_role(payload.get('agent_type')), child_session_id=payload.get('agent_id'), observed_model=payload.get('model'))
+        event.update(kind='observation', agent=routing.canonical_role(payload.get('agent_type')),
+                     child_session_id=codex_child_path(payload) or payload.get('agent_id'), observed_model=payload.get('model'))
     elif name == 'PostToolUse':
         event.update(kind='tool', resources=re.findall(WORKFLOW_RESOURCES, json.dumps(data)))
     else:
@@ -142,7 +172,7 @@ def codex_event(core, project, payload):
     if name == 'PostToolUse' and payload.get('tool_name') in CODEX_SPAWN_TOOLS:
         prepared_post(core, project, payload)
     if name == 'SubagentStart':
-        prepared_observation(core, project, payload)
+        prepared_observation(core, project, payload, event['child_session_id'])
     shared = shared_output(core, project, name, event, result, CODEX_DELEGATION)
     if shared is not None or name in OWN_OUTPUT:
         return shared or {}
@@ -158,7 +188,8 @@ def prepared_context(core, project, session):
 
 def reject_prepared(reason):
     return {'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny',
-        'permissionDecisionReason': 'Prepared launch is invalid (' + str(reason) + '). Use the canonical native role with its defaults/pins, or prepare a new launch; do not retry the stale ticket.'}}
+        'permissionDecisionReason': 'Prepared launch is invalid (' + str(reason) + '); recommendation_discarded. Spawn once with the canonical native role '
+        'defaults/pins (agent_type only, no model), do not retry the ticket or prepare again for this launch, and report this reason code.'}}
 
 
 def prepared_submission(core, project, payload, event):
@@ -173,9 +204,9 @@ def prepared_submission(core, project, payload, event):
             'task_id': context.get('task_id'), 'tool_use_id': payload.get('tool_use_id')})
         role = prepared.resolve_role(core, project, data.get('task_name'))
         event.update(kind='spawn', agent=role, prepared_decision=result,
-                     input={key: data[key] for key in ('task_name', 'model', 'fork_turns') if key in data})
+                     input={key: data[key] for key in ('agent_type', 'task_name', 'model', 'fork_turns') if key in data})
         core.run_event(project, event)
-        if result.get('status') != 'prepared' or result.get('application_status') not in ('submitted_unconfirmed', 'observed'):
+        if not prepared.accepted(result):
             return reject_prepared(result.get('reason_code') or 'unconfirmed')
     except (ImportError, OSError, ValueError, TypeError, KeyError):
         return reject_prepared('metadata_unavailable')
@@ -189,6 +220,9 @@ def prepared_post(core, project, payload):
         import prepared
         data = payload.get('tool_input') or {}
         response = payload.get('tool_response')
+        # Codex 0.163.0 returns the spawn result as a JSON string: '{"task_name":"/root/<name>"}'.
+        if isinstance(response, str) and len(response) <= SESSION_META_LIMIT:
+            response = json.loads(response)
         if not isinstance(response, dict):
             return
         context = prepared_context(core, project, payload.get('session_id'))
@@ -199,14 +233,14 @@ def prepared_post(core, project, payload):
         pass
 
 
-def prepared_observation(core, project, payload):
+def prepared_observation(core, project, payload, child):
     if not core.plain_enabled(project):
         return {}
     try:
         import prepared
         context = prepared_context(core, project, payload.get('session_id'))
         prepared.observe_child(core, project, {'session_id': payload.get('session_id'),
-            'task_id': context.get('task_id'), 'child_session_id': payload.get('agent_id'),
+            'task_id': context.get('task_id'), 'child_session_id': child,
             'observed_model': payload.get('model')})
     except (ImportError, AttributeError, OSError, ValueError, TypeError, KeyError):
         pass

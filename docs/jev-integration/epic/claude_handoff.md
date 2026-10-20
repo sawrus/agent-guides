@@ -1,77 +1,53 @@
-# JEV-EPIC: continuation handoff for Claude
+# JEV-EPIC: continuation handoff
 
-Updated: 2026-10-20. Workflow: `develop-epic`; coordinator: `product-owner`.
+Updated: 2026-10-20 by Claude (continuing the Codex handoff). Workflow: `develop-epic`; coordinator: `product-owner`.
 Branch: `codex/JEV-EPIC-integration`. Draft PR: https://github.com/sawrus/agent-guides/pull/76.
-Implementation checkpoint before this documentation commit: `c60f3a0e1763afec3b7fb0b378d34d32a07fbe79`.
 Do not merge or publish a release. The user has not accepted the implementation.
 
 ## Read first
 
-Read root `AGENTS.md`, discover current `.agent/` guidance, and follow the requested workflow. Start with [delivery contract](epic_plan.md), [architecture](architecture_notes.md), [preselection contract](preselection.md), [delivery evidence](delivery_summary.md), and [pilot gate](pilot.md). Keep requirements and behavior docs current with each fix.
+Root `AGENTS.md`, then [delivery contract](epic_plan.md), [architecture](architecture_notes.md), [preselection contract](preselection.md), [delivery evidence](delivery_summary.md), [native facts](native-smoke.json) and [pilot gate](pilot.md).
 
-## Implemented and verified offline
+## Implemented earlier (Codex) and still valid
 
-- Shell arguments resolve from confirmed command cwd. Unknown cwd falls back to native permissions. Symlink, root and secret checks remain active.
-- Explicit model capability maps replace price-derived tiers. Overrides, availability and pins remain authoritative.
-- Existing `jev on` / `/jev on` starts a new task generation and clears old task/workflow/approval context. Follow-ups retain the current task without another workflow decision.
-- Shared-runtime `prepare-spawn` accepts open goal/scope/complexity before encrypted transport. It implements bounded/redacted input, request deduplication, atomic registry records, ten-minute TTL, task binding and one-use claims.
-- Model reporting separates recommended, submitted and observed values. Profile restrictions and native pins take priority. Missing correlation is reported as unconfirmed.
-- REVIEW_PIPELINE requires per-agent/model usage tables, source/cutoff and partial totals; JEV usage is separate. Synthetic usage fixtures cover cached tokens, cumulative counters, repeated roles and reviewers.
-- Installer, coordinator guidance, documentation, changelog and version sources are updated to candidate version `1.6.0`.
+- Shell arguments resolve from confirmed command cwd; unknown cwd falls back to native permissions.
+- Explicit model capability maps replace price-derived tiers.
+- `jev on` / `/jev on` starts a new task generation.
+- Shared-runtime `prepare-spawn` with bounded/redacted input, request deduplication, atomic records, ten-minute TTL, task binding and one-use claims.
+- Model reporting separates recommended, submitted and observed values.
+- REVIEW_PIPELINE per-agent/model usage tables; JEV usage separate.
+- Version sources and changelog target candidate `1.6.0`.
 
-Last implementation checks: `make test-jev-hooks` passed 172 tests; `make lint` passed; `make test` passed 452 tests. See delivery evidence for the breakdown and bounded smoke limitations. These results precede the native defect below and do not prove production readiness.
+## Fixed in this continuation: recommendation lost before spawn
 
-## Confirmed native defect: recommendation lost before spawn
+The calculator session had a policy-profile Product Owner. Its recommended `gpt-6-luna` was replaced by the role default `gpt-6.1-sol`. Causes and fixes:
 
-A read-only audit of a user's calculator session reproduced the defect against the current candidate runtime. Installed `hook.py`, `adapters.py`, `routing.py` and `prepared.py` match repository source except generated provenance comments. This is not a stale installation.
+| Cause | Fix |
+| --- | --- |
+| Response had a top-level `task_name=jev-<id>` and a different `spawn.task_name=<role>`; the coordinator copied the wrong one. | `spawn` is the only callable object; top-level `task_name` removed; `on_reject=native_default_report` added. |
+| Policy profiles (`sandbox_mode`, `developer_instructions`) could not use a unique name, so correlation was "unavailable". | `spawn.agent_type=<role>` selects the canonical profile. Local logs show coordinators already pass `agent_type` separately from `task_name`. `task_name` only correlates. |
+| After the deny, the coordinator retried without `model`; the substitution was silent. | Deny reason and coordinator guidance: fall back once to role defaults, no retry, report `recommendation_discarded` with the reason code. The event outcome is `recommendation_discarded`. |
+| Found natively: Codex rejects `-` in agent names. | Name is `jev_<hex>`. |
+| Found natively: `PostToolUse` spawn result is a JSON string; `SubagentStart.agent_id` is a thread UUID. | Adapter parses the string. It maps the UUID to `agent_path` only through the host-supplied transcript whose first-line `session_meta.id` equals that UUID. |
 
-The first prepared Product Owner decision recommended `gpt-6-luna`. Its public response exposed two different names:
+Pinned roles get no `model` in `spawn` because Codex says pinned role models "cannot be changed". Claude Code and OpenCode code paths are unchanged.
 
-```json
-{
-  "task_name": "jev-<unique decision UUID>",
-  "role": "product-owner",
-  "recommended_model": "gpt-6-luna",
-  "correlation_status": "unavailable_profile_preservation",
-  "spawn": {
-    "task_name": "product-owner",
-    "model": "gpt-6-luna",
-    "fork_turns": "none"
-  }
-}
-```
+Checks: `make test-jev-hooks` 183 OK, `make lint` OK, `make test` OK. Native narrow checks: one prompt per run, details in [native facts](native-smoke.json).
+- Codex run 1 reproduced the name rejection. The coordinator correctly fell back once and reported the discard.
+- Codex run 2 applied `gpt-6-luna` to the `sandbox_mode` developer through `agent_type` + `jev_<hex>`.
+- Claude Code and OpenCode passed.
 
-The coordinator copied the outer name into native spawn. The hook rejected it with `prepared_correlation_unavailable`: the canonical custom profile contains policy settings, so a unique alias cannot safely replace it. The coordinator then retried with an unrelated task name and omitted `model`. The encrypted assignment took the ordinary `assignment_unavailable` path; the role default and native observed model were `gpt-6.1-sol`.
+One Codex run was unintended: a process left over from a stalled first attempt. It is counted in quota.
 
-All seven prepared records in this session retain `submitted_model=null`, `observed_model=null`, and `application_status=unconfirmed`. Subsequent ordinary spawns did not establish a link to those records. PM and QA happened to use `gpt-6-luna`, but matching model names do not prove application of their recommendations. Team Lead and Developer had low-confidence prepared decisions and correctly fell back to their role defaults; that threshold behavior is not itself a defect.
+## Not established
 
-Workflow selection worked: `development-cycle-workflow`, confidence 0.96, applied. Ordinary follow-ups did not request another workflow decision. The runtime recorded seven JEV requests with 7,284 input and 423 output tokens. This is a separate user session, not the earlier bounded smoke's three calls. Do not combine either count with native agent usage, which was not measured. No new paid calls were made during this audit.
-
-Raw session identifiers, internal paths and full task transcripts are deliberately not published here. The local project retains `.agentic/jev/event-*.json`, `prepared-*.json`, and `.reviews/<task-id>/summary.md` plus `instruction-review.md`. Inspect only permitted native/app evidence and these explicit runtime logs; do not decrypt assignments or inspect hidden host internals.
-
-## What Claude must complete
-
-1. Add a failing synthetic regression for the actual profile-preservation response and coordinator-to-native parameter contract. The current offline tests missed that conflicting public names caused the recommendation to be discarded.
-2. Make the public response and coordinator instructions unambiguous: native spawn parameters must have one authoritative location. Separate registry identity from callable native parameters. A recommendation must not be silently replaced after a failed attempt. Preserve native pins and profile restrictions.
-3. Recheck the actual host schema before choosing a correlation mechanism. Observed hook inputs can contain `agent_type` separately from `task_name`, but that does not prove the caller may supply `agent_type`. App events expose native thread IDs and canonical paths; native SubagentStart IDs can be UUIDs. The current path-based binding assumptions require explicit native verification. Do not invent API fields or join by role, time proximity or latest decision.
-4. Keep unavailable correlation honestly unconfirmed. Never bypass a canonical profile's sandbox/policy just to obtain a unique name. Check profile model precedence before claiming an explicit model was applied.
-5. Cover encrypted assignments, parallel same-role launches, retry deduplication, expiration/reuse, task restart, pin/profile changes, low confidence, timeout, unavailable models and absent correlation. Preserve Claude Code and OpenCode behavior.
-6. Run `make test-jev-hooks`, applicable lint, and `make test`. Use mocks and synthetic files first. Narrow native blackbox checks are authorized, but record their quota usage and limitations. Do not retry repeatedly to manufacture a passing outcome.
-7. Update this handoff, preselection contract, delivery evidence, changelog and draft PR with the final mechanism, remaining limits and actual checks. Keep version sources synchronized; the branch already targets 1.6.0.
-
-Calculator delivery also lacked runtime verification and its QA report said no-go for release. This is separate from proving JEV model application. Do not count that task as an accepted benchmark or infer quality/cost savings from the files merely existing. Post-task reviewers already ran inside that calculator session; they are not evidence that this epic received human acceptance.
-
-## Not implemented or not established
-
-- The newly confirmed native defect has been investigated and documented, not fixed.
-- Fully correlated model application across the installed Codex policy profiles is not proven. Mocks are not native evidence.
-- Native per-agent token totals, monetary costs, savings and quality improvements are not measured.
-- Automatic goal-change classification and quality-driven model escalation remain out of scope.
-- The 27 primary + 12 ablation comparative runs have not started. No efficiency results are published.
-- Human acceptance, the epic's successful-delivery post-task review, merge and release remain pending.
+- A fully live `observed` record on Codex: run 2 stayed `submitted_unconfirmed` because of the string-response defect. The fix closed the chain only in a replay of the recorded output. One more native run in the already-trusted isolated project would prove it.
+- Whether a profile's `workspace-write` narrows a broader parent sandbox. Both children reported the parent's `danger-full-access`, independent of naming. JEV does not change sandbox policy.
+- Native per-agent token totals are partial; no money, savings or quality claims.
+- Automatic goal-change classification and quality-driven escalation remain out of scope.
+- The 27 primary + 12 ablation runs have not started.
+- Human acceptance, the success Post-task review, merge and release are pending.
 
 ## Mandatory budget stop
 
-Complete the implementation and present reviewable evidence first. Obtain explicit implementation acceptance, then separately ask permission to spend budget on the comparative matrix. Acceptance alone is not budget authorization. Before that request, show measured spend and remaining quota where available; unknown values must remain unknown.
-
-The approved pilot has three hosts and three modes (no agentic, fixed workflow without JEV, workflow with JEV), plus separate workflow/model ablations. Each run is bounded by 50,000 tokens and six minutes, with at most one repair inside the budget. Each host has an aggregate one-million-token cap covering blackbox, agents, retries and repairs. JEV requests are counted separately. Follow the full [pilot protocol](pilot.md), including isolated copies, controlled `agentic upgrade`, independent acceptance criteria and anonymized publication. Do not start it during this handoff.
+Obtain explicit implementation acceptance first, then separately ask permission to spend budget on the comparative matrix. Acceptance alone is not budget authorization. Before that request, show measured spend and remaining quota. Codex before the checks was 5h 11% / weekly 86% left; the after-value is still to be recorded. The pilot protocol is unchanged: three hosts × three modes plus ablations, 50,000 tokens and six minutes per run, one-million-token cap per host, isolated copies, frozen acceptance criteria, anonymized publication.

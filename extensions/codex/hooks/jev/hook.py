@@ -368,8 +368,11 @@ def spawn_models(turn):
 def handle_spawn(turn):
     event = turn.event
     if 'prepared_decision' in event:
+        import prepared
         result = {**event['prepared_decision']}
-        return {'result': result, 'fields': {'model_source': result.get('model_source', 'none'), 'outcome': 'native'}}
+        # A denied ticket never runs: the report must show the dropped recommendation, not a silent native launch.
+        outcome = 'native' if prepared.accepted(result) else 'recommendation_discarded'
+        return {'result': result, 'fields': {'model_source': result.get('model_source', 'none'), 'outcome': outcome}}
     event['models'] = models = spawn_models(turn)
     # Missing capability maps never infer tiers from prices.
     tier_data = read_json(turn.project / OPENCODE_TIERS_FILE, {}) if event.get('host') == 'opencode' else None

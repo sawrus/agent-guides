@@ -221,6 +221,7 @@ def codex_prepared_application(project, records, session, tasks):
             continue
         submitted = any(r['context'].get('event_id') == decision['tool_use_id']
             and (r['context'].get('prepared_decision') or {}).get('decision_id') == decision.get('decision_id')
+            and (r['context'].get('input') or {}).get('agent_type') == decision.get('role')
             and r['context'].get('task_generation') == decision.get('generation') for r in records)
         observed = any(r['context'].get('kind') == 'observation'
             and r['context'].get('child_session_id') == decision['child_task_name']

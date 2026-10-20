@@ -39,7 +39,7 @@ class Prepared(unittest.TestCase):
 
     def claim(self, decision, **values):
         return prepared.claim(hook, self.project, dict(session_id='session', task_id='task',
-            task_name=decision['task_name'], tool_use_id='tool-1', model='strong', fork_turns='none', **values))
+            task_name='jev_' + decision['decision_id'], agent_type='developer', tool_use_id='tool-1', model='strong', fork_turns='none', **values))
 
     def test_open_assignment_is_used_and_retry_is_free(self):
         result = self.prepare()
@@ -55,7 +55,7 @@ class Prepared(unittest.TestCase):
 
     def test_parallel_same_role_is_not_crossed(self):
         a, b = self.prepare(), self.prepare(request_id='second', goal='Different goal')
-        self.assertNotEqual(a['task_name'], b['task_name'])
+        self.assertNotEqual('jev_' + a['decision_id'], 'jev_' + b['decision_id'])
         self.assertEqual(self.claim(a)['decision_id'], a['decision_id'])
         self.assertEqual(self.claim(b)['decision_id'], b['decision_id'])
 
@@ -63,7 +63,7 @@ class Prepared(unittest.TestCase):
         result = self.prepare()
         self.assertEqual(self.claim(result)['submitted_model'], 'strong')
         self.assertEqual(self.claim(result)['decision_id'], result['decision_id'])
-        other = dict(session_id='session', task_id='task', task_name=result['task_name'], tool_use_id='other', model='strong', fork_turns='none')
+        other = dict(session_id='session', task_id='task', task_name='jev_' + result['decision_id'], tool_use_id='other', model='strong', fork_turns='none')
         self.assertEqual(prepared.claim(hook, self.project, other)['reason_code'], 'prepared_already_claimed')
 
     def test_expiry_and_new_task_are_rejected(self):
@@ -124,7 +124,7 @@ class Prepared(unittest.TestCase):
     def test_observation_requires_exact_binding(self):
         result = self.prepare()
         self.claim(result)
-        base = dict(session_id='session', task_id='task', task_name=result['task_name'], tool_use_id='tool-1')
+        base = dict(session_id='session', task_id='task', task_name='jev_' + result['decision_id'], tool_use_id='tool-1')
         self.assertEqual(prepared.observe(hook, self.project, {**base, 'observed_model': 'strong'})['observed_model'], 'strong')
         self.assertEqual(prepared.observe(hook, self.project, {**base, 'tool_use_id': 'wrong', 'observed_model': 'fast'})['status'], 'fallback')
 
@@ -192,15 +192,15 @@ class Prepared(unittest.TestCase):
     def test_native_child_link_is_exact_and_observation_order_matters(self):
         result = self.prepare()
         self.claim(result)
-        child = '/root/' + result['task_name']
+        child = '/root/' + 'jev_' + result['decision_id']
         event = dict(session_id='session', task_id='task', child_session_id=child, observed_model='strong')
         self.assertEqual(prepared.observe_child(hook, self.project, event)['reason_code'], 'prepared_child_unbound')
-        link = dict(session_id='session', task_id='task', task_name=result['task_name'], tool_use_id='tool-1', child_session_id=child)
+        link = dict(session_id='session', task_id='task', task_name='jev_' + result['decision_id'], tool_use_id='tool-1', child_session_id=child)
         self.assertEqual(prepared.link_child(hook, self.project, link)['observed_model'], 'strong')
         observed = prepared.observe_child(hook, self.project, event)
         self.assertEqual(observed['observed_model'], 'strong')
         self.assertEqual(observed['application_status'], 'observed')
-        self.assertEqual(prepared.observe_child(hook, self.project, {**event, 'child_session_id': '/other/' + result['task_name']})['reason_code'], 'prepared_child_unbound')
+        self.assertEqual(prepared.observe_child(hook, self.project, {**event, 'child_session_id': '/other/' + 'jev_' + result['decision_id']})['reason_code'], 'prepared_child_unbound')
         self.assertEqual(prepared.link_child(hook, self.project, {**link, 'child_session_id': '/root/other'})['reason_code'], 'prepared_child_unbound')
 
     def test_real_runtime_prepares_before_encrypted_native_spawn(self):
@@ -226,7 +226,7 @@ class Prepared(unittest.TestCase):
             prepared_log = next(log for log in logs if log['context'].get('preparation_only'))
             self.assertFalse(prepared_log['applied'])
             self.assertEqual(prepared_log['outcome'], 'recommended_unconfirmed')
-            child = '/root/' + result['task_name']
+            child = '/root/' + 'jev_' + result['decision_id']
             hook.adapters.codex_event(hook, self.project, {'hook_event_name': 'SubagentStart', 'session_id': 'session', 'agent_id': child, 'model': 'strong'})
             early = hook.read_json(self.directory / ('prepared-' + result['decision_id'] + '.json'))
             self.assertIsNone(early['observed_model'])
@@ -235,15 +235,16 @@ class Prepared(unittest.TestCase):
             self.assertEqual(observed['observed_model'], 'strong')
             self.assertEqual(network.call_count, 1)
 
-    def test_native_profile_policy_is_preserved_without_role_join(self):
+    def test_native_profile_policy_is_preserved_through_agent_type(self):
         profile = self.project / '.codex/agents/developer.toml'
         profile.write_text('description = "Developer"\nsandbox_mode = "read-only"\n')
         result = self.prepare()
-        self.assertEqual(result['spawn']['task_name'], 'developer')
+        self.assertEqual(result['spawn']['agent_type'], 'developer')
+        self.assertEqual(result['spawn']['task_name'], 'jev_' + result['decision_id'])
         self.assertEqual(result['spawn']['model'], 'strong')
-        self.assertEqual(result['correlation_status'], 'unavailable_profile_preservation')
+        self.assertEqual(result['correlation_status'], 'awaiting_native_binding')
         self.assertEqual(result['application_status'], 'unconfirmed')
-        self.assertEqual(self.claim(result)['reason_code'], 'prepared_correlation_unavailable')
+        self.assertEqual(self.claim(result)['correlation_status'], 'submission_bound')
         self.assertIsNone(result['observed_model'])
         self.assertEqual(profile.read_text(), 'description = "Developer"\nsandbox_mode = "read-only"\n')
 
@@ -289,8 +290,8 @@ class Prepared(unittest.TestCase):
         for setting in ('developer_instructions = "Only read files"', 'model_reasoning_effort = "high"'):
             profile.write_text(setting + '\n')
             result = self.prepare(request_id=setting)
-            self.assertEqual(result['spawn']['task_name'], 'developer')
-            self.assertEqual(result['correlation_status'], 'unavailable_profile_preservation')
+            self.assertEqual(result['spawn']['agent_type'], 'developer')
+            self.assertEqual(result['correlation_status'], 'awaiting_native_binding')
             self.assertIsNone(result['observed_model'])
 
     def test_instruction_example_is_not_a_model_pin(self):
@@ -302,7 +303,7 @@ class Prepared(unittest.TestCase):
         self.assertEqual(result['model_source'], 'jev_tier')
         self.assertEqual(result['recommended_model'], 'strong')
         self.assertEqual(self.call.call_count, 1)
-        self.assertEqual(result['spawn']['task_name'], 'developer')
+        self.assertEqual(result['spawn']['agent_type'], 'developer')
 
     def test_python310_rejects_ambiguous_profiles_and_keeps_simple_pin(self):
         profile = self.project / '.codex/agents/developer.toml'
@@ -345,7 +346,7 @@ class Prepared(unittest.TestCase):
     def test_pending_observation_promotes_only_after_exact_native_response(self):
         result = self.prepare()
         self.claim(result)
-        child = '/root/' + result['task_name']
+        child = '/root/' + 'jev_' + result['decision_id']
         event = dict(session_id='session', task_id='task', child_session_id=child, observed_model='strong')
         early = prepared.observe_child(hook, self.project, event)
         self.assertIsNone(early['observed_model'])
@@ -353,7 +354,7 @@ class Prepared(unittest.TestCase):
         pending = hook.read_json(path)
         self.assertIsNone(pending['observed_model'])
         self.assertEqual(pending['pending_observation']['observed_model'], 'strong')
-        link = dict(session_id='session', task_id='task', task_name=result['task_name'], tool_use_id='tool-1', child_session_id=child)
+        link = dict(session_id='session', task_id='task', task_name='jev_' + result['decision_id'], tool_use_id='tool-1', child_session_id=child)
         promoted = prepared.link_child(hook, self.project, link)
         self.assertEqual(promoted['observed_model'], 'strong')
         self.assertEqual(promoted['application_status'], 'observed')
@@ -363,19 +364,19 @@ class Prepared(unittest.TestCase):
         for other in ('different-child', 'different-model'):
             result = self.prepare(request_id=other)
             self.claim(result)
-            child = '/root/' + result['task_name']
+            child = '/root/' + 'jev_' + result['decision_id']
             event = dict(session_id='session', task_id='task', child_session_id=child, observed_model='strong')
             prepared.observe_child(hook, self.project, event)
-            conflict = {**event, 'observed_model': 'fast'} if other == 'different-model' else {**event, 'child_session_id': '/other/' + result['task_name']}
+            conflict = {**event, 'observed_model': 'fast'} if other == 'different-model' else {**event, 'child_session_id': '/other/' + 'jev_' + result['decision_id']}
             self.assertEqual(prepared.observe_child(hook, self.project, conflict)['reason_code'], 'prepared_observation_conflict')
-            linked = prepared.link_child(hook, self.project, dict(session_id='session', task_id='task', task_name=result['task_name'], tool_use_id='tool-1', child_session_id=child))
+            linked = prepared.link_child(hook, self.project, dict(session_id='session', task_id='task', task_name='jev_' + result['decision_id'], tool_use_id='tool-1', child_session_id=child))
             self.assertIsNone(linked['observed_model'])
             self.assertEqual(linked['application_status'], 'unconfirmed')
 
     def test_pending_observation_rejects_expiry_and_new_task(self):
         result = self.prepare()
         self.claim(result)
-        event = dict(session_id='session', task_id='task', child_session_id='/root/' + result['task_name'], observed_model='strong')
+        event = dict(session_id='session', task_id='task', child_session_id='/root/' + 'jev_' + result['decision_id'], observed_model='strong')
         with patch.object(prepared.time, 'time', return_value=result['expires_at'] + 1):
             self.assertEqual(prepared.observe_child(hook, self.project, event)['reason_code'], 'prepared_expired')
         hook.save_json(self.context_path, {'task_id': 'new', 'generation': 'next', 'jev': 'on'})
@@ -384,8 +385,8 @@ class Prepared(unittest.TestCase):
     def test_single_wrong_pending_child_is_not_promoted_by_response(self):
         result = self.prepare()
         self.claim(result)
-        wrong = '/wrong-parent/' + result['task_name']
+        wrong = '/wrong-parent/' + 'jev_' + result['decision_id']
         prepared.observe_child(hook, self.project, dict(session_id='session', task_id='task', child_session_id=wrong, observed_model='strong'))
-        linked = prepared.link_child(hook, self.project, dict(session_id='session', task_id='task', task_name=result['task_name'], tool_use_id='tool-1', child_session_id='/root/' + result['task_name']))
+        linked = prepared.link_child(hook, self.project, dict(session_id='session', task_id='task', task_name='jev_' + result['decision_id'], tool_use_id='tool-1', child_session_id='/root/' + 'jev_' + result['decision_id']))
         self.assertIsNone(linked['observed_model'])
         self.assertEqual(linked['correlation_status'], 'observation_conflict')

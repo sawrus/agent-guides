@@ -71,7 +71,7 @@ class PreparedAdapter(unittest.TestCase):
             selected = self.prepare()
         payload = self.payload(selected)
         hook.codex_event(self.project, payload)
-        child = '/root/' + selected['task_name']
+        child = '/root/' + 'jev_' + selected['decision_id']
         hook.codex_event(self.project, {**payload, 'hook_event_name': 'PostToolUse', 'tool_response': {'task_name': child}})
         hook.codex_event(self.project, {'hook_event_name': 'SubagentStart', 'session_id': 'root',
             'agent_id': child, 'agent_type': 'developer', 'model': 'fast'})
@@ -102,3 +102,150 @@ class PreparedAdapter(unittest.TestCase):
         with patch.object(prepared.time, 'time', return_value=selected['expires_at'] + 1):
             expired = hook.codex_event(self.project, first)
         self.assertEqual(expired['hookSpecificOutput']['permissionDecision'], 'deny')
+
+    def policy_profile(self):
+        (self.project / '.codex/agents/developer.toml').write_text(
+            'description = "Developer"\nsandbox_mode = "workspace-write"\ndeveloper_instructions = "Stay in scope."\n')
+
+    def test_response_has_one_authoritative_spawn_location(self):
+        # Regression: the calculator session copied a top-level `task_name` that disagreed with `spawn`.
+        self.policy_profile()
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.fixture.answer(r, 'fast')):
+            selected = self.prepare()
+        self.assertNotIn('task_name', selected)
+        self.assertEqual(selected['spawn'], {'agent_type': 'developer', 'task_name': 'jev_' + selected['decision_id'],
+                                             'model': 'fast', 'fork_turns': 'none'})
+        self.assertEqual(selected['on_reject'], 'native_default_report')
+
+    def test_policy_profile_keeps_recommendation_through_native_spawn(self):
+        self.policy_profile()
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.fixture.answer(r, 'fast')):
+            selected = self.prepare()
+        payload = self.payload(selected)
+        self.assertEqual(hook.codex_event(self.project, payload), {})
+        child = '/root/' + selected['spawn']['task_name']
+        hook.codex_event(self.project, {**payload, 'hook_event_name': 'PostToolUse', 'tool_response': {'task_name': child}})
+        hook.codex_event(self.project, {'hook_event_name': 'SubagentStart', 'session_id': 'root',
+            'agent_id': child, 'agent_type': 'developer', 'model': 'fast'})
+        record = json.loads((self.project / '.agentic/jev' / ('prepared-' + selected['decision_id'] + '.json')).read_text())
+        self.assertEqual((record['submitted_model'], record['observed_model']), ('fast', 'fast'))
+        self.assertEqual(record['correlation_status'], 'native_child_bound')
+        self.assertTrue(test_blackbox.blackbox.codex_prepared_application(self.project, self.fixture.records(), 'root', {self.task}))
+
+    def test_wrong_or_missing_agent_type_is_rejected(self):
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.fixture.answer(r, 'fast')):
+            selected = self.prepare()
+        for agent_type in ('qa', None):
+            payload = self.payload(selected, 'tool-' + str(agent_type))
+            payload['tool_input'] = {key: value for key, value in {**payload['tool_input'], 'agent_type': agent_type}.items() if value}
+            result = hook.codex_event(self.project, payload)
+            self.assertEqual(result['hookSpecificOutput']['permissionDecision'], 'deny')
+            self.assertIn('prepared_agent_type_mismatch', result['hookSpecificOutput']['permissionDecisionReason'])
+
+    def test_rejected_launch_reports_discarded_recommendation(self):
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.fixture.answer(r, 'fast')):
+            selected = self.prepare()
+        hook.codex_event(self.project, self.payload(selected))
+        denied = hook.codex_event(self.project, self.payload(selected, 'different-tool'))
+        reason = denied['hookSpecificOutput']['permissionDecisionReason']
+        self.assertIn('prepared_already_claimed', reason)
+        self.assertIn('recommendation_discarded', reason)
+        self.assertIn('do not retry', reason)
+        discarded = [r for r in self.fixture.records('spawn') if r['outcome'] == 'recommendation_discarded']
+        self.assertEqual([r['result']['reason_code'] for r in discarded], ['prepared_already_claimed'])
+
+    def test_native_pin_is_not_resubmitted_as_override(self):
+        (self.project / '.codex/agents/developer.toml').write_text('description = "Developer"\nmodel = "balanced"\n')
+        selected = self.prepare()
+        self.assertEqual(selected['model_source'], 'user_pin')
+        self.assertNotIn('model', selected['spawn'])
+        self.assertEqual(hook.codex_event(self.project, self.payload(selected)), {})
+        record = json.loads((self.project / '.agentic/jev' / ('prepared-' + selected['decision_id'] + '.json')).read_text())
+        self.assertEqual((record['submitted_model'], record['application_status']), (None, 'submitted_unconfirmed'))
+
+    def test_parallel_policy_profile_launches_bind_only_their_own_child(self):
+        self.policy_profile()
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.fixture.answer(r, 'fast')):
+            first, second = self.prepare('one'), self.prepare('two')
+        launches = ((first, 'first'), (second, 'second'))
+        for selected, tool in launches:
+            hook.codex_event(self.project, self.payload(selected, tool))
+        # Native observations arrive before and out of order with spawn responses.
+        for selected, _ in reversed(launches):
+            hook.codex_event(self.project, {'hook_event_name': 'SubagentStart', 'session_id': 'root',
+                'agent_id': '/root/' + selected['spawn']['task_name'], 'agent_type': 'developer', 'model': 'fast'})
+        for selected, tool in launches:
+            hook.codex_event(self.project, {**self.payload(selected, tool), 'hook_event_name': 'PostToolUse',
+                'tool_response': {'task_name': '/root/' + selected['spawn']['task_name']}})
+        for selected, tool in launches:
+            record = json.loads((self.project / '.agentic/jev' / ('prepared-' + selected['decision_id'] + '.json')).read_text())
+            self.assertEqual((record['tool_use_id'], record['child_task_name']), (tool, '/root/' + selected['spawn']['task_name']))
+            self.assertEqual(record['application_status'], 'observed')
+
+    def native_child(self, selected, thread='01a158b3-fef3-7960-9753-486d78dedbbe', meta_id=None):
+        """Native shape (Codex 0.163.0): SubagentStart.agent_id is a thread id; its transcript names the canonical path."""
+        transcript = self.project / ('child-' + thread + '.jsonl')
+        meta = {'type': 'session_meta', 'payload': {'id': meta_id or thread, 'agent_role': 'developer',
+                'agent_path': '/root/' + selected['spawn']['task_name']}}
+        transcript.write_text(json.dumps(meta) + '\n' + json.dumps({'type': 'turn_context'}) + '\n')
+        return {'hook_event_name': 'SubagentStart', 'session_id': 'root', 'agent_id': thread,
+                'agent_type': 'developer', 'model': 'fast', 'transcript_path': str(transcript)}
+
+    def record(self, selected):
+        return json.loads((self.project / '.agentic/jev' / ('prepared-' + selected['decision_id'] + '.json')).read_text())
+
+    def test_spawn_name_matches_native_agent_name_rule(self):
+        # Native rejection: "agent_name must use only lowercase letters, digits, and underscores".
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.fixture.answer(r, 'fast')):
+            selected = self.prepare()
+        self.assertRegex(selected['spawn']['task_name'], r'^[a-z0-9_]+$')
+
+    def test_thread_id_observation_binds_through_its_own_transcript(self):
+        self.policy_profile()
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.fixture.answer(r, 'fast')):
+            selected = self.prepare()
+        payload = self.payload(selected)
+        hook.codex_event(self.project, payload)
+        hook.codex_event(self.project, self.native_child(selected))
+        hook.codex_event(self.project, {**payload, 'hook_event_name': 'PostToolUse',
+            'tool_response': {'task_name': '/root/' + selected['spawn']['task_name']}})
+        self.assertEqual((self.record(selected)['observed_model'], self.record(selected)['application_status']), ('fast', 'observed'))
+        self.assertTrue(test_blackbox.blackbox.codex_prepared_application(self.project, self.fixture.records(), 'root', {self.task}))
+
+    def test_foreign_or_missing_transcript_keeps_observation_unbound(self):
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.fixture.answer(r, 'fast')):
+            selected = self.prepare()
+        payload = self.payload(selected)
+        hook.codex_event(self.project, payload)
+        hook.codex_event(self.project, {**payload, 'hook_event_name': 'PostToolUse',
+            'tool_response': {'task_name': '/root/' + selected['spawn']['task_name']}})
+        parent = self.native_child(selected, meta_id='parent-thread')
+        missing = {**self.native_child(selected, thread='other-thread'), 'transcript_path': str(self.project / 'absent.jsonl')}
+        for start in (parent, missing, {key: value for key, value in parent.items() if key != 'transcript_path'}):
+            hook.codex_event(self.project, start)
+        self.assertEqual((self.record(selected)['observed_model'], self.record(selected)['application_status']), (None, 'submitted_unconfirmed'))
+
+    def test_host_rejected_spawn_never_becomes_observed(self):
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.fixture.answer(r, 'fast')):
+            selected = self.prepare()
+        payload = self.payload(selected)
+        hook.codex_event(self.project, payload)
+        hook.codex_event(self.project, {**payload, 'hook_event_name': 'PostToolUse',
+            'tool_response': 'agent_name must use only lowercase letters, digits, and underscores'})
+        record = self.record(selected)
+        self.assertEqual((record['application_status'], record.get('child_task_name')), ('submitted_unconfirmed', None))
+        self.assertFalse(test_blackbox.blackbox.codex_prepared_application(self.project, self.fixture.records(), 'root', {self.task}))
+
+    def test_native_string_spawn_response_promotes_pending_observation(self):
+        self.policy_profile()
+        with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.fixture.answer(r, 'fast')):
+            selected = self.prepare()
+        payload = self.payload(selected)
+        hook.codex_event(self.project, payload)
+        hook.codex_event(self.project, self.native_child(selected))
+        response = json.dumps({'task_name': '/root/' + selected['spawn']['task_name']})
+        hook.codex_event(self.project, {**payload, 'hook_event_name': 'PostToolUse', 'tool_response': response})
+        record = self.record(selected)
+        self.assertEqual((record['observed_model'], record['correlation_status']), ('fast', 'native_child_bound'))
+        self.assertNotIn('pending_observation', record)
+        self.assertTrue(test_blackbox.blackbox.codex_prepared_application(self.project, self.fixture.records(), 'root', {self.task}))

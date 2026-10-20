@@ -1,33 +1,147 @@
 {
   "date": "2026-10-20",
   "comparative_pilot": "not_run_awaiting_acceptance_and_budget_permission",
-  "codex": {
-    "timeout_seconds": 90,
-    "status": "blocked",
-    "reason": "No JEV hook event observed; native hook trust review required. Catalog refresh also timed out.",
-    "jev_recorded_calls": 0,
-    "native_tokens": null,
-    "application_confirmed": false
+  "narrow_checks": {
+    "method": "Isolated /tmp projects installed from the candidate build; one prompt per run that names develop-feature (free explicit workflow selection) and asks for exactly one developer subagent creating hello.py. 6-minute bound per run. Telegram disabled. No retries to obtain a pass.",
+    "codex_cli": "0.163.0",
+    "codex_sandbox": "danger-full-access for the top-level run: this host blocks bwrap for workspace-write (see ../verification.md).",
+    "codex_trust": "User completed /hooks trust review in the isolated project before the runs.",
+    "codex": [
+      {
+        "run": "attempt_0",
+        "status": "harness_error_no_model_call",
+        "reason": "Runner left stdin open; codex exec waited for stdin until the 6-minute timeout. Its surviving process later executed the same prompt (see unintended_run)."
+      },
+      {
+        "run": "run_1",
+        "runtime": "agent_type + jev-<hex> name",
+        "status": "defect_reproduced",
+        "host_result": "spawn rejected: agent_name must use only lowercase letters, digits, and underscores",
+        "coordinator": "one role-default fallback, reported recommendation_discarded",
+        "fallback_child_model": "gpt-6.1-sol",
+        "recommended_model": "gpt-6-luna",
+        "application_confirmed": false
+      },
+      {
+        "run": "unintended_run",
+        "status": "not_evaluated",
+        "reason": "Orphaned process from attempt_0 ran the prompt between run_1 and run_2; its child recorded no turn. Counted in quota only."
+      },
+      {
+        "run": "run_2",
+        "runtime": "agent_type + jev_<hex> name",
+        "status": "host_applied_recommendation",
+        "submitted": {
+          "agent_type": "developer",
+          "model": "gpt-6-luna",
+          "fork_turns": "none"
+        },
+        "child_session_meta": {
+          "agent_role": "developer",
+          "agent_path": "/root/jev_<hex>",
+          "model": "gpt-6-luna"
+        },
+        "subagent_start_binding": "agent_id thread UUID resolved through transcript session_meta to /root/jev_<hex>",
+        "record_during_run": "submitted_unconfirmed (dict-only PostToolUse parsing missed the JSON string response)",
+        "after_fix_replay": "observed / native_child_bound; blackbox codex_prepared_application=true (replay of the recorded spawn output, not a new native run)",
+        "child_sandbox_reported": "danger-full-access (same as canonical-name child in run_1)"
+      }
+    ],
+    "claude": {
+      "cli": "2.1.304",
+      "status": "passed",
+      "jev_model": "haiku",
+      "observed_model": "claude-haiku-5-5",
+      "prepared_flow": "not used",
+      "session_cost_usd": 0.17
+    },
+    "opencode": {
+      "cli": "2.0.29",
+      "status": "passed",
+      "jev_model": "openai/gpt-6-luna",
+      "observed_model": "openai/gpt-6-luna",
+      "prepared_flow": "not used",
+      "parent_step_tokens": {
+        "input": 13661,
+        "output": 124,
+        "reasoning": 122
+      },
+      "child_tokens": null
+    }
   },
-  "opencode_official_endpoint": {
-    "timeout_seconds": 90,
-    "status": "fallback_verified_without_jev",
-    "reason": "missing_key for official endpoint; gateway key is not used as a credential fallback",
-    "independent_calculator_verified": true,
-    "jev_recorded_calls": 0,
-    "complete_native_tokens": null
+  "quota": {
+    "codex_before": {
+      "5h_left_percent": 11,
+      "weekly_left_percent": 86,
+      "source": "user /status"
+    },
+    "codex_after": null,
+    "codex_native_tokens_all_runs": {
+      "input": 603471,
+      "cached_input_subset": 476032,
+      "output": 2189,
+      "total": 605660,
+      "source": "rollout token_count totals of 3 root sessions and 2 children with turns"
+    },
+    "jev_requests": {
+      "codex": {
+        "calls": 3,
+        "input": 3306,
+        "output": 144
+      },
+      "claude": {
+        "calls": 1,
+        "input": 1132,
+        "output": 48
+      },
+      "opencode": {
+        "calls": 1,
+        "input": 1089,
+        "output": 48
+      },
+      "total": {
+        "calls": 5,
+        "input": 5527,
+        "output": 240
+      }
+    },
+    "note": "JEV usage is separate from native agent usage. OpenCode child tokens and Claude per-agent tokens were not exposed. No savings or quality claim."
   },
-  "opencode_explicit_gateway": {
-    "timeout_seconds": 90,
-    "status": "timeout_incomplete_delivery",
-    "jev_calls_with_usage": 3,
-    "jev_input_tokens": 3662,
-    "jev_output_tokens": 231,
-    "workflow_decision": "evaluated",
-    "model_decisions": {"evaluated": 1, "low_confidence_fallback": 1},
-    "complete_native_tokens": null,
-    "cost_usd": null
-  },
-  "claude": {"status": "cli_unavailable", "coverage": "offline adapter tests only"},
-  "native_usage_note": "Complete per-agent native usage was not exposed. No total cost, remaining quota, savings, or quality improvement is claimed. Recorded public step counters alone omit unreported children and have provider-specific semantics."
+  "earlier_bounded_smoke": {
+    "codex": {
+      "timeout_seconds": 90,
+      "status": "blocked",
+      "reason": "No JEV hook event observed; native hook trust review required. Catalog refresh also timed out.",
+      "jev_recorded_calls": 0,
+      "native_tokens": null,
+      "application_confirmed": false
+    },
+    "opencode_official_endpoint": {
+      "timeout_seconds": 90,
+      "status": "fallback_verified_without_jev",
+      "reason": "missing_key for official endpoint; gateway key is not used as a credential fallback",
+      "independent_calculator_verified": true,
+      "jev_recorded_calls": 0,
+      "complete_native_tokens": null
+    },
+    "opencode_explicit_gateway": {
+      "timeout_seconds": 90,
+      "status": "timeout_incomplete_delivery",
+      "jev_calls_with_usage": 3,
+      "jev_input_tokens": 3662,
+      "jev_output_tokens": 231,
+      "workflow_decision": "evaluated",
+      "model_decisions": {
+        "evaluated": 1,
+        "low_confidence_fallback": 1
+      },
+      "complete_native_tokens": null,
+      "cost_usd": null
+    },
+    "claude": {
+      "status": "cli_unavailable",
+      "coverage": "offline adapter tests only"
+    },
+    "native_usage_note": "Complete per-agent native usage was not exposed. No total cost, remaining quota, savings, or quality improvement is claimed. Recorded public step counters alone omit unreported children and have provider-specific semantics."
+  }
 }

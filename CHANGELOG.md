@@ -5,9 +5,9 @@
 - Shell permission operands resolve from the actual cwd; unknown cwd retains native approval. Preserve secret, symlink and allowed-root boundaries.
 - Capability tiers come from explicit maps and candidate-validated overrides, never price rank; unknown costs remain unknown. Pins, provider filters and role-default fallback stay in force.
 - Existing `jev on` is an explicit new-task boundary. Task generations isolate cached decisions, approval history, prepared spawns and review packets; late answers cannot restore a reset task. Cached allow rechecks path boundaries.
-- Codex gains a local `--prepare-spawn` interface using open goal/scope/complexity before encryption, with idempotent expiring decisions and separate recommended/submitted/observed evidence. Restricted custom profiles keep native role names and unconfirmed correlation to preserve policy.
+- Codex gains a local `--prepare-spawn` interface using open goal/scope/complexity before encryption, with idempotent expiring decisions and separate recommended/submitted/observed evidence. The response has one callable `spawn` object (`agent_type`, `jev_<hex>` task name, model unless pinned, `fork_turns=none`), so restricted profiles keep their policy and still correlate. A denied ticket falls back once to native role defaults and is logged as `recommendation_discarded`. Child observations bind through the host transcript of the exact thread.
 - REVIEW_PIPELINE adds per-agent/model token tables, provenance, partial totals and separate JEV usage; manual acceptance remains last. No savings are inferred.
-- Re-run upgrade to install the updated runtime. Comparative pilot remains gated on human implementation acceptance and separate budget permission. See docs/jev-integration/epic/.
+- Candidate release: not yet accepted or published. Re-run upgrade to install the updated runtime; coordinators must start a new task after upgrade so the new spawn contract is injected. Comparative pilot remains gated on human implementation acceptance and separate budget permission. See docs/jev-integration/epic/.
 
 ## v1.5.0
 
