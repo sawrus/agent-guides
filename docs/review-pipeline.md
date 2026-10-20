@@ -99,6 +99,51 @@ Acceptance scenarios:
 - Duplicate docs/memory generate a canonical-source recommendation, not automatic
   consolidation, deletion, or another memory copy.
 
+## Token accounting
+
+Since 1.6.0, the summary and final response show usage per agent instance and
+model before `Manual acceptance`. Include the coordinator, SDLC agents, repeated
+launches and both reviewers. Unknown values are `not measured`; measured totals
+are labeled partial when coverage is incomplete. Name the source and cutoff;
+the unfinished final response is not yet measured. JEV requests and usage appear
+separately. This report applies outside the JEV comparison pilot too.
+
+Use existing native usage only. Cached input is part of input; reasoning is part
+of output. Neither is added twice. Deduplicate events, take the latest cumulative
+snapshot per instance/model, and exclude child-inclusive parent counters when no
+reliable self-only breakdown exists. Do not infer money or savings from tokens.
+Lack of usage does not block acceptance or require fresh telemetry collection.
+
+The optional repository helper `scripts/review_usage.py` accepts a JSON array on
+stdin and returns JSON on stdout. It reads no files or host internals. It is an
+offline normalizer, not a required installed runtime component. Each input record
+has this explicit contract:
+
+- `agent_id`, `role`, `model`: launch identity and actual model; do not substitute
+  a JEV recommendation for an unknown observed model.
+- `event_id`, `source`, `cutoff`: native event identity, provenance and measurement
+  boundary. Duplicate equal events count once; conflicting duplicates are unknown.
+- `kind`: `delta` for disjoint increments or `cumulative` for snapshots. Cumulative
+  records require an increasing integer `sequence`. Mixing kinds is unknown.
+- `input_tokens`, `cached_input_tokens`, `output_tokens`, `reasoning_tokens`:
+  nonnegative integers or JSON `null` for unknown. Subset counters are not added.
+- `scope`: `self` (default) or `includes_children`. Adapters must explicitly mark
+  inclusive counts. The helper cannot infer native host counter semantics.
+- For JEV only, `channel: "jev"` and `request_id`: separate request accounting.
+  Provide records even when request usage is unknown so calls are counted.
+
+The helper emits one row per agent/model, separate JEV rows and request count,
+measured totals, and partial flags. Unknown source/cutoff, ambiguous counters and
+invalid subset values yield unknown usage. A total needs both input and output;
+known input alone does not become a complete total. The helper cannot reconstruct
+missing launches: the coordinator must include an unknown record for each known
+launch lacking usage. Counter adapters must establish disjoint windows and scope
+before calling it. The helper does not estimate missing measurements.
+
+Acceptance includes synthetic cases for full/partial usage, cache subsets,
+cumulative snapshots, duplicate events, multiple launches of one role, model
+changes, both reviewers, separate JEV requests and inclusive parent counters.
+
 ## Installation and rollout
 
 New installations receive the protocol and updated profiles/hooks. Embedded and
