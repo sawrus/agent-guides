@@ -402,6 +402,7 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
             "mcp_integrations": app.selected_mcps,
             "context7": {"api_key_mode": app.context7_api_key_mode.clone().unwrap_or_else(|| if app.context7_api_key.is_empty() { "without_api_key".to_string() } else { "api_key".to_string() })},
             "jev": crate::jev_defaults::manifest_settings(app, &old_settings),
+            "profile": crate::profile::effective(app),
             "opencode_profile": app.selected_opencode_profile,
             "opencode_plugins": Value::Object(opencode_plugins),
             "notifications": notifications,
@@ -462,6 +463,9 @@ pub fn load_install_settings_from_manifest(
     let loaded_areas = load_list("areas");
     let loaded_specs = load_list("specializations");
     let loaded_mcps = load_list("mcp_integrations");
+    if app.install_profile.is_empty() {
+        app.install_profile = settings["profile"].as_str().unwrap_or_default().to_string();
+    }
     if app.jev_enabled.is_none() {
         app.jev_enabled = settings["jev"]["enabled"].as_bool();
     }

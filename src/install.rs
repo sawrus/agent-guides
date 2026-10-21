@@ -702,6 +702,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     copy_extensions(app, &project_dir)?;
     configure_opencode_profile_if_needed(app)?;
     crate::mapper::configure_opencode_agent_model_mapper_if_needed(app)?;
+    crate::profile::apply_opencode(app, &project_dir)?;
     copy_specialization_assets(app, &project_dir)?;
     crate::claude::generate_commands(app, &project_dir)?;
     agentsmd::generate_agents_md(app, &project_dir)?;

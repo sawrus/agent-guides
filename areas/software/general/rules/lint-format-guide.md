@@ -1,5 +1,14 @@
 ---
-trigger: always_on
+trigger: glob
+paths:
+  - ".pre-commit-config.yaml"
+  - "pyproject.toml"
+  - "setup.cfg"
+  - ".editorconfig"
+  - ".eslintrc*"
+  - "eslint.config.*"
+  - ".prettierrc*"
+  - ".golangci.yml"
 glob: lint-format-guide
 description: enforce consistent linting and auto-formatting across all code
 ---

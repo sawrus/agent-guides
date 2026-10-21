@@ -18,6 +18,7 @@ mod markers;
 mod mcp;
 mod mempalace;
 mod notify;
+mod profile;
 mod project_inventory;
 mod project_transaction;
 mod project_update;
@@ -73,6 +74,7 @@ Options:
   --areas               Comma-separated area list (example: software)
   --specializations     Comma-separated specializations in area.spec format (example: software.backend,software.frontend)
   --theme               Interface theme: auto|dark|light (default: config value or auto)
+  --profile             Install profile: lean (two helper subagents, default) | team (v1 SDLC role team)
   --no-doctor           Skip real agent smoke checks after install
   --enable-jev          Enable the optional JEV native hooks
   --disable-jev         Disable JEV decisions (overrides saved enablement)
@@ -270,6 +272,14 @@ fn cmd_install(app: &mut App, rest: &[String]) -> Result<()> {
             "--no-doctor" => {
                 app.doctor_enabled_env = false;
                 i += 1;
+            }
+            "--profile" => {
+                let value = rest
+                    .get(i + 1)
+                    .filter(|v| crate::profile::CHOICES.contains(&v.as_str()))
+                    .ok_or("--profile requires lean or team")?;
+                app.install_profile = value.clone();
+                i += 2;
             }
             "--enable-jev" => {
                 app.jev_enabled = Some(true);

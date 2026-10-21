@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+trigger: manual
 glob: code-style-guide
 description: language-agnostic code style principles for readable and maintainable code
 ---

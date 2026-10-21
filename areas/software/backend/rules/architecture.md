@@ -1,3 +1,7 @@
+---
+trigger: manual
+description: layering, module boundaries, and dependency direction for backend services
+---
 # Rule: Backend Architecture (Microservices & Zero Trust)
 
 **Priority**: P0 — Architectural violations block deployment.

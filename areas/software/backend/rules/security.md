@@ -1,3 +1,7 @@
+---
+trigger: manual
+description: authentication, authorization, input validation, and secret handling for services
+---
 # Rule: Backend Security & OWASP Standards
 
 **Priority**: P0 — Security vulnerabilities affecting confidentiality, integrity, or availability are release blockers.

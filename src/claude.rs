@@ -281,7 +281,7 @@ pub fn write_settings(app: &mut App, project: &Path) -> crate::Result<()> {
         }
         owned.as_object_mut().unwrap().remove("agent");
     }
-    if selected && !obj.contains_key("agent") {
+    if selected && crate::profile::is_team(app) && !obj.contains_key("agent") {
         obj.insert("agent".into(), json!(MAIN_AGENT));
         owned["agent"] = json!(MAIN_AGENT);
     }
@@ -405,6 +405,14 @@ mod tests {
             r#"{"env":{"X":"1"},"enabledMcpjsonServers":["mine"]}"#,
         )
         .unwrap();
+        write_settings(&mut a, p).unwrap();
+        let lean: Value =
+            serde_json::from_str(&std::fs::read_to_string(p.join(SETTINGS_REL)).unwrap()).unwrap();
+        assert!(
+            lean.get("agent").is_none(),
+            "lean keeps the native main session"
+        );
+        a.install_profile = crate::profile::TEAM.into();
         write_settings(&mut a, p).unwrap();
         let data: Value =
             serde_json::from_str(&std::fs::read_to_string(p.join(SETTINGS_REL)).unwrap()).unwrap();

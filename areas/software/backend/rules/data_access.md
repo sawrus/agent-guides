@@ -1,3 +1,7 @@
+---
+trigger: manual
+description: ORM usage, query patterns, transactions, and N+1 prevention
+---
 # Rule: Data Access & State Management
 
 **Priority**: P0 — Data integrity violations are critical.

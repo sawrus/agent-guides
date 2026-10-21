@@ -464,6 +464,8 @@ fn review_profiles_install_for_each_environment() {
                 "software",
                 "--specializations",
                 "software.backend",
+                "--profile",
+                "team",
             ])
             .assert()
             .success();
@@ -1151,9 +1153,23 @@ fn claude_install_writes_native_layout() {
     let p = project.path();
     claude_install(home.path(), p, &[]);
     assert!(p.join(".claude/skills/api-design/SKILL.md").is_file());
-    assert!(p
+    // Claude auto-loads `.claude/rules`; on-demand rules stay in `.agent/rules` only.
+    assert!(p.join(".claude/rules/makefile-guide.md").is_file());
+    assert!(!p
         .join(".claude/rules/sdlc-role-responsibilities.md")
+        .exists());
+    assert!(p
+        .join(".agent/rules/sdlc-role-responsibilities.md")
         .is_file());
+    // Lean profile: two helper subagents and the native main session.
+    assert!(p.join(".claude/agents/explorer.md").is_file());
+    assert!(p.join(".claude/agents/reviewer.md").is_file());
+    assert!(!p.join(".claude/agents/product-owner.md").exists());
+    let lean: Value =
+        serde_json::from_str(&std::fs::read_to_string(p.join(".claude/settings.json")).unwrap())
+            .unwrap();
+    assert!(lean.get("agent").is_none());
+    claude_install(home.path(), p, &["--profile", "team"]);
     assert!(p.join(".agent/workflows/develop-feature.md").is_file());
     assert!(!p.join(".claude/workflows").exists());
     let command = frontmatter(&p.join(".claude/commands/develop-feature.md"));
@@ -1195,7 +1211,11 @@ fn claude_install_writes_native_layout() {
         serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap()).unwrap();
     assert_eq!(manifest["settings"]["claude_profile"], "anthropic");
 
-    claude_install(home.path(), p, &["--claude-profile", "none"]);
+    claude_install(
+        home.path(),
+        p,
+        &["--profile", "team", "--claude-profile", "none"],
+    );
     assert!(!frontmatter(&p.join(".claude/agents/developer.md")).contains("model:"));
 }
 
@@ -1298,7 +1318,7 @@ fn upgrade_migrates_renamed_role_agents() {
     let home = tempfile::tempdir().unwrap();
     let project = tempfile::tempdir().unwrap();
     let p = project.path();
-    claude_install(home.path(), p, &[]);
+    claude_install(home.path(), p, &["--profile", "team"]);
     // Simulate a pre-1.4 install: legacy role files tracked by the manifest.
     let manifest_path = p.join(".agentic.json");
     let mut manifest: Value =

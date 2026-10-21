@@ -1,5 +1,10 @@
 ---
-trigger: always_on
+trigger: glob
+paths:
+  - "**/docker-compose*.yml"
+  - "**/docker-compose*.yaml"
+  - "**/compose*.yml"
+  - "**/compose*.yaml"
 glob: docker-compose-guide
 description: Docker Compose best practices for local multi-service development
 ---

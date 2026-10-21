@@ -1,44 +1,23 @@
-# Backend — guidance index
+# Backend
 
-## What this area covers
+Server-side services: APIs, domain logic, data access, async processing.
 
-Server-side service development: REST / GraphQL API design, domain modeling, database access patterns, async processing, observability, and security. Load after `software/general/` baseline.
+## Backend constraints
 
-## Inherited from general
+- Every endpoint has an authorization check, input validation, and a structured error response.
+- A schema change ships with a migration file. Never rely on ORM auto-sync in production.
+- A new module has structured logs and a latency metric.
 
-- SDLC methodology and role responsibilities
-- Git / CI / lint / format and code style baselines
-- General development and code review workflows
+## Rules (read on demand)
 
-## Backend-specific overrides
+| Rule | Read when you change |
+|:---|:---|
+| `architecture.md` | module boundaries, layers, or dependencies |
+| `data_access.md` | queries, ORM models, or transactions |
+| `security.md` | authentication, authorization, input handling, or secrets |
+| `testing.md` | test strategy or test infrastructure |
 
-- All endpoints must include authZ check, input validation, and structured error response.
-- Database changes require a migration file — no schema drift via ORM sync in production.
-- Every new module requires observability: at minimum, structured logs and a latency metric.
+## Workflows
 
-## Spec map
-
-```text
-.agent/
-├── rules/
-│   ├── architecture.md       ← layering, module boundaries, dependency direction
-│   ├── data_access.md        ← ORM usage, query patterns, N+1 prevention
-│   ├── security.md           ← authN/authZ, input validation, secret handling
-│   └── testing.md            ← test pyramid targets, mock boundaries, contract tests
-├── skills/
-│   ├── api-design/SKILL.md           ← REST / GraphQL conventions, versioning, contracts
-│   ├── async-processing/SKILL.md     ← queues, workers, retry/DLQ patterns
-│   ├── database-modeling/SKILL.md    ← schema design, indexes, migration safety
-│   ├── observability/SKILL.md        ← structured logging, metrics, distributed tracing
-│   └── troubleshooting/SKILL.md      ← systematic debugging, profiling, root-cause analysis
-├── workflows/
-│   ├── add-migration.md       ← /add-migration
-│   ├── create-endpoint.md     ← /create-endpoint
-│   ├── debug-issue.md         ← /debug-issue
-│   ├── develop-epic.md        ← /develop-epic
-│   ├── develop-feature.md     ← /develop-feature
-│   ├── refactor-module.md     ← /refactor-module
-│   └── test-feature.md        ← /test-feature
-└── prompts/
-    └── *.md
-```
+`/develop-feature`, `/develop-epic`, `/create-endpoint`, `/add-migration`, `/refactor-module`, `/debug-issue`,
+`/test-feature`.

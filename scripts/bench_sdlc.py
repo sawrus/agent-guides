@@ -240,6 +240,22 @@ def run_cell(host, task, mode, args):
     return result
 
 
+def regrade(out):
+    """Grade saved cells again with the current tasks.json; hidden tests copied by the first grading are removed."""
+    for path in sorted(Path(out).glob('*/result.json')):
+        result = json.loads(path.read_text())
+        project = PROJECTS / path.parent.name
+        if 'acceptance' not in result or not project.is_dir():
+            continue
+        for copied in (project / 'tests').glob('test_hidden_*.py'):
+            copied.unlink()
+        _, final_text = trace_events(result['host'], path.parent / 'trace.jsonl')
+        result['acceptance'] = grade(result['task'], project, final_text)
+        result['status'] = 'accepted' if result['acceptance']['accepted'] else (result.get('cap') or 'rejected')
+        path.write_text(json.dumps(result, ensure_ascii=False, indent=2))
+        print(json.dumps({'cell': path.parent.name, 'status': result['status']}), flush=True)
+
+
 def selftest():
     """Offline grader check: the untouched fixture fails every task; the reference solutions pass."""
     failures = []
@@ -313,9 +329,13 @@ def main():
     parser.add_argument('--prepare-only', action='store_true', help='Create copies and installs; no model calls')
     parser.add_argument('--selftest', action='store_true', help='Check graders against tests/bench/reference; no model calls')
     parser.add_argument('--report', type=Path, help='Write the Markdown report from --out and exit')
+    parser.add_argument('--regrade', action='store_true', help='Grade saved cells again with the current tasks.json')
     args = parser.parse_args()
     if args.selftest:
         return selftest()
+    if args.regrade:
+        regrade(args.out)
+        return 0
     if args.report:
         report(args.out, args.report)
         return 0

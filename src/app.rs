@@ -43,6 +43,8 @@ pub struct App {
     pub enable_context7_env: Option<String>,
     pub enable_mempalace_env: Option<String>,
     pub jev_enabled: Option<bool>,
+    /// `lean` or `team` (crate::profile); empty until the CLI, environment, or manifest sets it.
+    pub install_profile: String,
     pub jev_api_url: Option<String>,
     pub doctor_enabled_env: bool,
 
@@ -118,6 +120,7 @@ impl App {
             jev_enabled: std::env::var("AGENTIC_ENABLE_JEV")
                 .ok()
                 .map(|v| matches!(v.as_str(), "1" | "y" | "yes" | "true")),
+            install_profile: std::env::var("AGENTIC_PROFILE").unwrap_or_default(),
             jev_api_url: std::env::var("JEV_API_URL")
                 .ok()
                 .filter(|v| !v.trim().is_empty()),

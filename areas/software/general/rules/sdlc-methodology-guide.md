@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+trigger: manual
 glob: sdlc-methodology-guide
 description: software development lifecycle phases and process discipline
 ---

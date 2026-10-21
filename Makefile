@@ -7,7 +7,7 @@ COVERAGE_MIN ?= 80
 .PHONY: help install dev build release-build test test-unit test-integration \
 	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
 	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode blackbox-claude test-jev-hooks test-notify test-jev-sdk \
-	context-budget bench-v1 bench-prepare bench bench-selftest bench-report
+	context-budget bench-v1 bench-prepare bench bench-selftest bench-report bench-regrade
 
 help:
 	@echo "Agentic Makefile targets:"
@@ -37,6 +37,7 @@ help:
 	@echo "  bench-v1         - build the v1 baseline binary from BENCH_V1_REF"
 	@echo "  bench-prepare    - create benchmark projects and installs, no model calls"
 	@echo "  bench            - real plain/v1/lean SDLC benchmark (paid, BENCH_ARGS)"
+	@echo "  bench-regrade    - offline: grade saved benchmark cells with the current tasks.json"
 	@echo "  bench-report     - offline Markdown report from saved benchmark results"
 
 build:
@@ -80,6 +81,9 @@ bench-prepare: build
 
 bench: build
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/bench_sdlc.py --out $(BENCH_OUT) $(BENCH_ARGS)
+
+bench-regrade:
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/bench_sdlc.py --out $(BENCH_OUT) --regrade
 
 bench-report:
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/bench_sdlc.py --out $(BENCH_OUT) --report $(BENCH_OUT)/report.md
