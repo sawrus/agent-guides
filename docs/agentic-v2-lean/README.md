@@ -1,6 +1,6 @@
 # agentic v2 "lean"
 
-Status: v2.0.0. Scope: root layer (`AGENTS.md`, `MEMORY.md`, `REVIEW_PIPELINE.md`), `software/general`,
+Status: v2.0.0 candidate, not shippable yet (see results.md). Scope: root layer (`AGENTS.md`, `MEMORY.md`, `REVIEW_PIPELINE.md`), `software/general`,
 `software/backend`, installer profiles, and the quality gate. JEV is frozen: unchanged, and off in every
 measurement.
 
