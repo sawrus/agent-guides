@@ -148,12 +148,12 @@ flowchart TD
 ## Iteration Loop
 Steps 3–6 repeat per increment for large features (bounded by the increment list from step 2). `@pm` tracks scope changes and timeline impact.
 
-## Mandatory Role Delegation
-- For `/develop-feature`, the executor must spawn exactly 6 SDLC subagents, one per role: `@product-owner`, `@pm`, `@team-lead`, `@developer`, `@qa`, `@analyst`; add `@devops-engineer` as a seventh only when step 7 is not skipped.
-- The two Post-task review specialists are additional read-only agents outside this six-agent SDLC matrix.
-- Role consolidation is forbidden: one subagent cannot own multiple roles.
-- Implementation work may start only after requirements outputs from `@product-owner` and `@pm`, and design outputs from `@team-lead` and `@analyst`, are complete.
-- Final delivery requires QA recommendation and team-lead sign-off.
+## Role Delegation
+- `lean` profile (default): the main session performs the role steps itself, in order, with the same outputs and gates. Use the `explorer` subagent before step 3 only when the code is unfamiliar, and the `reviewer` subagent once on the final diff.
+- `team` profile: spawn one subagent per role: `@product-owner`, `@pm`, `@team-lead`, `@developer`, `@qa`, `@analyst`; add `@devops-engineer` only when step 7 is not skipped. One subagent never owns several roles.
+- The two Post-task review specialists are additional read-only agents outside this SDLC matrix.
+- Implementation starts only after the requirements outputs (steps 1) and design outputs (step 2) exist.
+- Final delivery requires the verification evidence of step 5: the check commands and their output.
 
 ## Post-task review
 
@@ -162,6 +162,7 @@ Steps 3–6 repeat per increment for large features (bounded by the increment li
 - **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction-reviewer` and `memory-curator` as read-only specialists outside SDLC `roles`.
 - **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
 - **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
+- **Lean profile:** skip this section when `instruction-reviewer` and `memory-curator` are not installed.
 - **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.
 
 ## Exit

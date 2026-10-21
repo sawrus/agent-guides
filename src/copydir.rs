@@ -38,6 +38,9 @@ pub fn copy_dir_contents(
         if crate::profile::skips_extension_file(app, src_rel, &rel) {
             continue;
         }
+        if src_rel.ends_with("/workflows") {
+            content = strip_agent_diagram(&content);
+        }
         if matches!(src_rel, "extensions/codex" | "extensions/opencode")
             && rel.starts_with("hooks/")
         {
@@ -105,6 +108,18 @@ pub fn copy_dir_contents(
     Ok(())
 }
 
+/// The generated mermaid diagram restates the steps for human readers (docs site); agents read the steps.
+fn strip_agent_diagram(content: &str) -> String {
+    let (Some(start), Some(end)) = (
+        content.find("<!-- agent-diagram:start -->"),
+        content.find("<!-- agent-diagram:end -->"),
+    ) else {
+        return content.to_string();
+    };
+    let tail = &content[end + "<!-- agent-diagram:end -->".len()..];
+    format!("{}{}", &content[..start], tail.trim_start_matches('\n'))
+}
+
 /// Claude Code loads every file in `.claude/rules/` into context, so on-demand rules stay in `.agent/rules/`.
 fn autoloads_every_rule(dest_root: &Path) -> bool {
     dest_root.ends_with(".claude/rules")
@@ -138,6 +153,9 @@ mod tests {
         assert!(dest.join("makefile-guide.md").is_file());
         assert!(!dest.join("sdlc-role-responsibilities.md").exists());
         assert!(is_manual_rule("---\ntrigger: manual\n---\nbody"));
+        let workflow =
+            "a\n<!-- agent-diagram:start -->\n```mermaid\n```\n<!-- agent-diagram:end -->\n\nb";
+        assert_eq!(strip_agent_diagram(workflow), "a\nb");
         assert!(!is_manual_rule(
             "---\ntrigger: glob\npaths:\n  - \"Makefile\"\n---\n"
         ));

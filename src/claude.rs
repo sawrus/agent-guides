@@ -175,7 +175,7 @@ fn workflow_meta(text: &str) -> WorkflowMeta {
     meta
 }
 
-fn command_text(id: &str, meta: &WorkflowMeta) -> String {
+fn command_text(id: &str, meta: &WorkflowMeta, team: bool) -> String {
     let hint = meta
         .inputs
         .iter()
@@ -192,8 +192,13 @@ fn command_text(id: &str, meta: &WorkflowMeta) -> String {
     } else {
         format!("`{}`", meta.initiator)
     };
+    let delegation = if team {
+        "Delegate each step to the role it names through the Agent tool (`subagent_type` = role name, for example `developer`). Follow the step order, handoff outputs, and quality gates in the workflow. When the workflow has a Post-task review section, follow `REVIEW_PIPELINE.md` after successful delivery."
+    } else {
+        "Perform the role steps yourself, in order, with their outputs and quality gates. Use the `explorer` subagent only for unfamiliar code and the `reviewer` subagent once on the final diff. Skip the Post-task review section unless its specialists are installed."
+    };
     format!(
-        "---\ndescription: {}\nargument-hint: {}\n---\n\nRun the `{id}` workflow from @.agent/workflows/{id}.md for this request:\n\n$ARGUMENTS\n\nAct as its initiator ({initiator}) in this main session. Delegate each step to the role it names through the Agent tool (`subagent_type` = role name, for example `developer`). Follow the step order, handoff outputs, and quality gates in the workflow. When the workflow has a Post-task review section, follow `REVIEW_PIPELINE.md` after successful delivery.\n",
+        "---\ndescription: {}\nargument-hint: {}\n---\n\nRun the `{id}` workflow from @.agent/workflows/{id}.md for this request:\n\n$ARGUMENTS\n\nAct as its initiator ({initiator}) in this main session. {delegation}\n",
         serde_json::to_string(&description).unwrap_or_default(),
         serde_json::to_string(&hint).unwrap_or_default(),
     )
@@ -204,6 +209,7 @@ pub fn generate_commands(app: &mut App, project: &Path) -> crate::Result<()> {
     if !app.selected_agent_os_contains("claude") {
         return Ok(());
     }
+    let team = crate::profile::is_team(app);
     for spec_key in app.selected_specs.clone() {
         let (area, spec) = spec_key.split_once('.').unwrap_or((spec_key.as_str(), ""));
         let src = format!("areas/{area}/{spec}/workflows");
@@ -211,7 +217,7 @@ pub fn generate_commands(app: &mut App, project: &Path) -> crate::Result<()> {
             let Some(id) = rel.strip_suffix(".md").filter(|r| !r.contains('/')) else {
                 continue;
             };
-            let content = command_text(id, &workflow_meta(&text));
+            let content = command_text(id, &workflow_meta(&text), team);
             let dest = project.join(format!(".claude/commands/{id}.md"));
             write_file_with_agentic_marker(app, &content, &dest, "generated:claude-command")?;
         }
@@ -372,17 +378,20 @@ mod tests {
     #[test]
     fn command_wrapper_has_claude_frontmatter() {
         let meta = workflow_meta("---\nname: x\ntrigger: /x\ndescription: Do X.\ninputs:\n  - feature_request\n  - acceptance_criteria\nroles:\n  - qa\nexecution:\n  initiator: product-owner\n---\nbody");
-        let text = command_text("x", &meta);
+        let text = command_text("x", &meta, true);
         assert!(text.starts_with("---\ndescription: \"Do X.\"\nargument-hint: \"[feature_request] [acceptance_criteria]\"\n---\n"));
         assert!(text.contains("@.agent/workflows/x.md"));
         assert!(text.contains("`product-owner`"));
+        assert!(text.contains("through the Agent tool"));
         assert!(!text.contains("trigger:"));
+        let lean = command_text("x", &meta, false);
+        assert!(lean.contains("Perform the role steps yourself"));
     }
 
     #[test]
     fn command_wrapper_reads_crlf_workflow() {
         let meta = workflow_meta("---\r\ndescription: Do X.\r\ninputs:\r\n  - feature_request\r\nexecution:\r\n  initiator: qa\r\n---\r\nbody");
-        let text = command_text("x", &meta);
+        let text = command_text("x", &meta, false);
         assert!(text.contains("argument-hint: \"[feature_request]\"\n"));
         assert!(text.contains("`qa`"));
     }
