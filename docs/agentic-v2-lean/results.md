@@ -49,6 +49,8 @@ the gate is only insurance. The benchmark does not show its value on tasks where
 
 ## Next iteration (proposed, not done)
 
+Tracked as items 1–6 in [tech_debt.md](tech_debt.md).
+
 - Remove the rule tables from spec `AGENTS.md`. Claude already has `paths:`. For Codex and OpenCode, link the
   rules from the skills and workflows that need them.
 - Core: "Do not start an explorer for a repository you can list in one command", and "Read a rule or skill
