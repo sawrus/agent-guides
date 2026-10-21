@@ -34,7 +34,7 @@ PROJECTS = Path('/tmp/agentic-bench')
 RUN_SECONDS = 480
 RUN_UNCACHED_TOKENS = 80_000
 EDIT_TOOLS = {'edit', 'write', 'multiedit', 'notebookedit', 'patch', 'apply_patch'}
-SPAWN_TOOLS = {'agent', 'task'}
+SPAWN_TOOLS = {'agent', 'task', 'subagent'}
 CHECK_COMMAND = re.compile(r'make (test|lint)|unittest|pytest|tools/lint\.py')
 IGNORED = ('.agentic/', '.agentic-blackbox/', '.reviews/', '.review/')
 AUTHOR = ['-c', 'user.name=Agentic Bench', '-c', 'user.email=bench@localhost']
@@ -164,7 +164,7 @@ def classify(name, cmd):
         return ('edit', '')
     if name in SPAWN_TOOLS:
         return ('spawn', '')
-    if name == 'bash':
+    if name in ('bash', 'shell'):
         return ('command', cmd)
     return None
 
@@ -249,8 +249,10 @@ def regrade(out):
             continue
         for copied in (project / 'tests').glob('test_hidden_*.py'):
             copied.unlink()
-        _, final_text = trace_events(result['host'], path.parent / 'trace.jsonl')
+        events, final_text = trace_events(result['host'], path.parent / 'trace.jsonl')
         result['acceptance'] = grade(result['task'], project, final_text)
+        result['verified_after_edit'] = verified_after_edit(events)
+        result['subagents'] = max(result.get('subagents') or 0, sum(1 for kind, _ in events if kind == 'spawn'))
         result['status'] = 'accepted' if result['acceptance']['accepted'] else (result.get('cap') or 'rejected')
         path.write_text(json.dumps(result, ensure_ascii=False, indent=2))
         print(json.dumps({'cell': path.parent.name, 'status': result['status']}), flush=True)
