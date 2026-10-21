@@ -6,7 +6,8 @@ COVERAGE_MIN ?= 80
 
 .PHONY: help install dev build release-build test test-unit test-integration \
 	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
-	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode blackbox-claude test-jev-hooks test-notify test-jev-sdk
+	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode blackbox-claude test-jev-hooks test-notify test-jev-sdk \
+	context-budget bench-v1 bench-prepare bench bench-selftest bench-report
 
 help:
 	@echo "Agentic Makefile targets:"
@@ -31,6 +32,12 @@ help:
 	@echo "  blackbox-codex   - real Codex + JEV calculator check"
 	@echo "  blackbox-opencode - real OpenCode V2 + JEV calculator check"
 	@echo "  blackbox-claude  - real Claude Code + JEV + Telegram hook calculator check"
+	@echo "  context-budget   - offline always-on context tokens per host (K1)"
+	@echo "  bench-selftest   - offline check of the SDLC benchmark graders"
+	@echo "  bench-v1         - build the v1 baseline binary from BENCH_V1_REF"
+	@echo "  bench-prepare    - create benchmark projects and installs, no model calls"
+	@echo "  bench            - real plain/v1/lean SDLC benchmark (paid, BENCH_ARGS)"
+	@echo "  bench-report     - offline Markdown report from saved benchmark results"
 
 build:
 	$(CARGO) build
@@ -52,6 +59,31 @@ blackbox-opencode: build
 blackbox-claude: build
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/blackbox_jev.py --host claude $(BLACKBOX_ARGS)
 
+# Offline: always-on context estimate; set CONTEXT_BUDGET_MAX to fail above a token budget.
+CONTEXT_BUDGET_MAX ?=
+context-budget: build
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/context_budget.py $(if $(CONTEXT_BUDGET_MAX),--max-tokens $(CONTEXT_BUDGET_MAX))
+
+# SDLC benchmark (docs/agentic-v2-lean/README.md). Only `bench` calls models and spends quota.
+BENCH_V1_REF ?= b92d7ef
+BENCH_OUT ?= .agentic-blackbox/bench
+BENCH_ARGS ?=
+bench-selftest:
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/bench_sdlc.py --selftest
+
+bench-v1:
+	@test -d target/bench-v1 || git worktree add --detach target/bench-v1 $(BENCH_V1_REF)
+	cd target/bench-v1 && $(CARGO) build -q
+
+bench-prepare: build
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/bench_sdlc.py --prepare-only --out $(BENCH_OUT) $(BENCH_ARGS)
+
+bench: build
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/bench_sdlc.py --out $(BENCH_OUT) $(BENCH_ARGS)
+
+bench-report:
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/bench_sdlc.py --out $(BENCH_OUT) --report $(BENCH_OUT)/report.md
+
 test-jev-hooks:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=extensions/codex/hooks/jev:tests/notify python3 -m unittest discover -s tests/jev
 
@@ -67,7 +99,7 @@ install: release-build
 dev:
 	@echo "Run: cargo run -- tui"
 
-test: test-unit test-integration e2e test-content test-jev-hooks test-notify
+test: test-unit test-integration e2e test-content test-jev-hooks test-notify bench-selftest
 
 test-content:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m unittest discover -s tests/content
