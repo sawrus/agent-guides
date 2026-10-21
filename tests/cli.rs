@@ -1206,7 +1206,11 @@ fn claude_install_writes_native_layout() {
         serde_json::from_str(&std::fs::read_to_string(p.join(".claude/settings.json")).unwrap())
             .unwrap();
     assert_eq!(settings["agent"], "product-owner");
-    assert!(settings.get("hooks").is_none());
+    // The quality gate is on by default: one Stop and one PreToolUse group.
+    let hooks = settings["hooks"].to_string();
+    assert!(hooks.contains(".agent/gate/gate.py"));
+    assert_eq!(settings["hooks"]["Stop"].as_array().unwrap().len(), 1);
+    assert!(p.join(".agent/gate/gate.py").is_file());
     let manifest: Value =
         serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap()).unwrap();
     assert_eq!(manifest["settings"]["claude_profile"], "anthropic");
@@ -1233,7 +1237,11 @@ fn claude_jev_and_telegram_hooks_are_owned_and_removable() {
         serde_json::json!({"env":{"KEEP":"1"},"hooks":{"Stop":[user_hook.clone()]}}).to_string(),
     )
     .unwrap();
-    claude_install(home.path(), p, &["--enable-jev", "--enable-telegram"]);
+    claude_install(
+        home.path(),
+        p,
+        &["--enable-jev", "--enable-telegram", "--disable-gate"],
+    );
     let settings: Value =
         serde_json::from_str(&std::fs::read_to_string(&settings_path).unwrap()).unwrap();
     assert_eq!(settings["env"]["KEEP"], "1");
@@ -1267,6 +1275,7 @@ fn claude_jev_and_telegram_hooks_are_owned_and_removable() {
         .unwrap()
         .contains("telegram.py"));
     claude_install(home.path(), p, &["--disable-jev", "--disable-telegram"]);
+    assert!(!p.join(".agent/gate/gate.py").exists());
     let settings: Value =
         serde_json::from_str(&std::fs::read_to_string(&settings_path).unwrap()).unwrap();
     assert_eq!(settings["hooks"], serde_json::json!({"Stop":[user_hook]}));

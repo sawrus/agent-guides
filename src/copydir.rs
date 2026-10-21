@@ -38,6 +38,12 @@ pub fn copy_dir_contents(
         if crate::profile::skips_extension_file(app, src_rel, &rel) {
             continue;
         }
+        if src_rel == "extensions/opencode"
+            && rel == crate::gate::OPENCODE_PLUGIN_REL
+            && !crate::gate::enabled(app)
+        {
+            continue;
+        }
         if src_rel.ends_with("/workflows") {
             content = strip_agent_diagram(&content);
         }

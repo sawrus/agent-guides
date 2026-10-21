@@ -6,7 +6,7 @@ COVERAGE_MIN ?= 80
 
 .PHONY: help install dev build release-build test test-unit test-integration \
 	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
-	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode blackbox-claude test-jev-hooks test-notify test-jev-sdk \
+	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode blackbox-claude test-jev-hooks test-notify test-jev-sdk test-gate \
 	context-budget bench-v1 bench-prepare bench bench-selftest bench-report bench-regrade
 
 help:
@@ -28,6 +28,7 @@ help:
 	@echo "  assess-areas     - area quality scorecards (content tooling)"
 	@echo "  jev-rnd-verify   - inspect saved research results offline"
 	@echo "  test-notify      - offline Telegram notifier tests (fake Bot API)"
+	@echo "  test-gate        - offline quality gate tests (Stop checks, PreToolUse guard)"
 	@echo "  blackbox         - real local Codex/OpenCode/Claude + JEV calculator checks (paid)"
 	@echo "  blackbox-codex   - real Codex + JEV calculator check"
 	@echo "  blackbox-opencode - real OpenCode V2 + JEV calculator check"
@@ -91,6 +92,9 @@ bench-report:
 test-jev-hooks:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=extensions/codex/hooks/jev:tests/notify python3 -m unittest discover -s tests/jev
 
+test-gate:
+	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=extensions/codex/hooks/gate python3 -m unittest discover -s tests/gate
+
 test-notify:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=extensions/codex/hooks/notify:tests/notify python3 -m unittest discover -s tests/notify
 
@@ -103,7 +107,7 @@ install: release-build
 dev:
 	@echo "Run: cargo run -- tui"
 
-test: test-unit test-integration e2e test-content test-jev-hooks test-notify bench-selftest
+test: test-unit test-integration e2e test-content test-jev-hooks test-notify test-gate bench-selftest
 
 test-content:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m unittest discover -s tests/content
@@ -136,7 +140,7 @@ clean:
 # --- Content tooling (areas/docs payload, unchanged from the bash era) ---
 
 lint-content:
-	PYTHONPYCACHEPREFIX=/tmp/agentic-pycache-check python3 -m py_compile scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/lint_review_pipeline.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py
+	PYTHONPYCACHEPREFIX=/tmp/agentic-pycache-check python3 -m py_compile extensions/codex/hooks/gate/gate.py scripts/context_budget.py scripts/bench_sdlc.py scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/lint_review_pipeline.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_prompts.py --strict
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_review_pipeline.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/sync_workflow_diagrams.py --check

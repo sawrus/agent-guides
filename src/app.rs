@@ -45,6 +45,8 @@ pub struct App {
     pub jev_enabled: Option<bool>,
     /// `lean` or `team` (crate::profile); empty until the CLI, environment, or manifest sets it.
     pub install_profile: String,
+    /// Quality gate hooks (crate::gate); `None` means the default, on.
+    pub gate_enabled: Option<bool>,
     pub jev_api_url: Option<String>,
     pub doctor_enabled_env: bool,
 
@@ -121,6 +123,7 @@ impl App {
                 .ok()
                 .map(|v| matches!(v.as_str(), "1" | "y" | "yes" | "true")),
             install_profile: std::env::var("AGENTIC_PROFILE").unwrap_or_default(),
+            gate_enabled: None,
             jev_api_url: std::env::var("JEV_API_URL")
                 .ok()
                 .filter(|v| !v.trim().is_empty()),

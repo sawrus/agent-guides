@@ -6,6 +6,7 @@ mod claude;
 mod config;
 mod copydir;
 mod doctor;
+mod gate;
 mod hookmerge;
 mod install;
 mod jev_defaults;
@@ -76,6 +77,8 @@ Options:
   --theme               Interface theme: auto|dark|light (default: config value or auto)
   --profile             Install profile: lean (two helper subagents, default) | team (v1 SDLC role team)
   --no-doctor           Skip real agent smoke checks after install
+  --disable-gate        Do not install the quality gate hooks (Stop checks, PreToolUse guard)
+  --enable-gate         Install the quality gate hooks again (default: on)
   --enable-jev          Enable the optional JEV native hooks
   --disable-jev         Disable JEV decisions (overrides saved enablement)
   --jev-api-url         Override JEV API URL (default: official TypeSafe API)
@@ -280,6 +283,14 @@ fn cmd_install(app: &mut App, rest: &[String]) -> Result<()> {
                     .ok_or("--profile requires lean or team")?;
                 app.install_profile = value.clone();
                 i += 2;
+            }
+            "--disable-gate" => {
+                app.gate_enabled = Some(false);
+                i += 1;
+            }
+            "--enable-gate" => {
+                app.gate_enabled = Some(true);
+                i += 1;
             }
             "--enable-jev" => {
                 app.jev_enabled = Some(true);

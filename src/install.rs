@@ -713,6 +713,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     }
     crate::jev_hooks::install(app, &project_dir)?;
     crate::notify::install(app, &project_dir)?;
+    crate::gate::install(app, &project_dir)?;
     mcp::sync_selected_mcps_from_env(app);
     mcp::sync_legacy_mcp_env_from_selected(app);
     mcp::configure_context7_if_needed(app)?;
