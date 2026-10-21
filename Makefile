@@ -129,6 +129,7 @@ lint:
 	$(CARGO) clippy --all-targets -- -D warnings
 	$(MAKE) check-version-sync
 	$(MAKE) lint-content
+	$(MAKE) context-budget CONTEXT_BUDGET_MAX=4000
 
 fmt:
 	$(CARGO) fmt
