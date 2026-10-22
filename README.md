@@ -10,6 +10,8 @@
 ![Cursor · configs](https://img.shields.io/badge/Cursor-configs%20only-lightgrey)
 ![Kilocode · configs](https://img.shields.io/badge/Kilocode-configs%20only-lightgrey)
 
+[![Lean profile · default](https://img.shields.io/badge/Lean%20profile-default-blue)](docs/agentic-v2-lean/README.md) [![Quality gate · test + lint](https://img.shields.io/badge/Quality%20gate-test%20%2B%20lint-blue)](docs/agentic-v2-lean/README.md) [![JEV · workflow + model routing](https://img.shields.io/badge/JEV-workflow%20%2B%20model%20routing-blue)](docs/jev-integration/README.md) [![Plain answers · ASD-STE100-based](https://img.shields.io/badge/Plain%20answers-ASD--STE100%20based-blue)](AGENTS.md#response-language) [![MCP · Context7, MemPalace, Playwright](https://img.shields.io/badge/MCP-Context7%20%7C%20MemPalace%20%7C%20Playwright-blue)](docs/mcp/README.md) [![Telegram · notifications](https://img.shields.io/badge/Telegram-notifications-blue)](docs/notifications/README.md) [![Smart upgrade](https://img.shields.io/badge/Smart%20upgrade-keeps%20your%20edits-blue)](docs/agentic-upgrade/README.md)
+
 [Website](https://sawrus.github.io/agent-guides/) ·
 [Releases](https://github.com/sawrus/agent-guides/releases) ·
 [npm](https://www.npmjs.com/package/@jetrabbits/agentic) ·
@@ -29,7 +31,8 @@ another does not.
 **agentic gives every agent the same playbook:**
 
 - 🧭 **One process.** A product owner, team lead, developer and QA agent hand work to each other with clear
-  acceptance criteria — in Codex, Claude Code and OpenCode alike.
+  acceptance criteria — in Codex, Claude Code and OpenCode alike. The default `lean` profile keeps a short core
+  and a quality gate; `--profile team` installs the full role team.
 - 🛡️ **Shared guardrails.** 85 rules and 73 workflows for backend, frontend, DevOps, data, ML, security and more,
   loaded only when the task needs them.
 - 🔁 **Install once, keep in sync.** `agentic install` writes the native files each agent expects; `agentic upgrade`
@@ -90,6 +93,8 @@ Other install options (curl script, release binary, build from source): [usage g
 
 ## Your AI team
 
+Installed with `--profile team`; the default `lean` profile adds only `explorer` and `reviewer`.
+
 | Role | What it does |
 |:--|:--|
 | 🎯 `product-owner` | Turns a request into scope and acceptance criteria; accepts the result |
@@ -108,17 +113,23 @@ Pick the specializations your project needs — 10 software (backend, frontend, 
 
 ## Honest numbers
 
-We measure instead of promising. In a [39-run pilot](docs/jev-integration/epic/pilot_results.md) on small,
-bounded tasks (an infra feasibility check, a code review, a CLI calculator) with a 50k-token cap per run:
+We measure instead of promising. Small bounded tasks, one run each: an infra check, a code review, a CLI
+calculator, a bugfix, a feature, a question, a scope trap, and a bugfix in a file that already fails `make lint`.
+Cells show accepted tasks out of tasks run.
 
-- a **plain agent was the cheapest and fastest** (8 of 9 accepted, ~20k tokens) — the agentic team loads its playbook
-  and starts role agents first, about 2.7× the tokens, and often hit the 50k cap on these tiny tasks;
-- the agentic team pays off when you need the **same process, checks and review trail across agents and people**,
-  not when you need the shortest answer to a tiny task;
-- the optional [JEV](docs/jev-integration/README.md) decision service picked a fitting workflow for the coding task
-  and lowered cost in some runs, but not consistently yet.
+| Agent | Plain agent | Role team | Role team + JEV | Lean (default) |
+|:--|:-:|:-:|:-:|:-:|
+| Claude Code | 7/8 | 4/7 | 1/3 | **5/5** |
+| Codex | **8/8** | 1/7 | 1/3 | **5/5** |
+| OpenCode | 6/8 | 5/7 | 1/3 | **5/5** |
+| Tokens vs plain | 1× | 1.2–9× | 1.2–2.1× | 1.35–2.8× |
 
-Raw, anonymized results: [pilot-results.json](docs/jev-integration/epic/pilot-results.json).
+- The plain agent is the cheapest everywhere. It failed the lint task on Claude Code and OpenCode: it left
+  `make lint` failing. Lean passed it on every agent.
+- The role team often hit the token cap on these small tasks. JEV helps it, but not up to plain.
+- Not measured yet: lean + JEV, and large multi-step tasks.
+
+All numbers, per task: [comparison](docs/agentic-v2-lean/comparison.md).
 
 ---
 
