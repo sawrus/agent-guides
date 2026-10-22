@@ -1,19 +1,22 @@
 # agentic v2 lean: technical debt (open after 2026-10-21)
 
 Each item has a source, an owner role and a done-when condition. Evidence: [results](results.md) and
-the protocol in [README](README.md). The ship rule requires K3 and K4. Both fail, so items 1–5 block the
+the protocol in [README](README.md). The ship rule requires K3 and K4. Both fail, so items 1–6 block the
 v2.0.0 release.
+
+Status 2026-10-22: items 1–4 are fixed in text and wait for the item 6 re-run. Item 5 is re-diagnosed. Item 14
+has a task (T5). The external review of the results (GPT `sol-6.1`) agrees with items 1–3 and adds items 17–19.
 
 ## Release blockers (next iteration)
 
 | # | Item | Source | Owner | Done when |
 | --- | --- | --- | --- | --- |
-| 1 | **Rule tables invite eager reads.** Codex T2 read `general-dev-tools/SKILL.md`, `security.md`, `readme-sync-guide.md` and `git-workflow-guide.md` for a small pure-function change. | results, root cause 1 | team-lead | Spec `AGENTS.md` files (`software/general`, `software/backend`) have no rule tables. Claude uses `paths:`. On Codex and OpenCode, only the skills and workflows that need a rule link it. The re-run cells show no reads of unrelated rules. |
-| 2 | **Native explorer spawn on a tiny repository.** In Codex T2, the native `explore` subagent used 47.8k uncached tokens on a 200-line fixture, and the cell hit the 80k cap. | results, root cause 2 | team-lead | The core says not to start an explorer for a repository you can list with one command. The re-run Codex T2 has 0 subagents and is accepted. |
-| 3 | **Rules read without need.** The core does not limit reads of on-demand guidance to the task subject. | results, root cause 1 | product-owner | The core says: "Read a rule or skill only when the task touches its subject." K4 holds: T3 costs ≤ 1.2 × plain on every host. |
-| 4 | **Version bump on bugfixes.** Lean agents sometimes bump the version on T1/T4. The core requires a version bump only for a completed feature. | results, root cause 3 | product-owner | The core says a bugfix updates `CHANGELOG.md` only. The T1/T4 re-runs change no version file. |
-| 5 | **Fixed startup overhead above the always-on estimate.** On T3, lean costs +3k (Claude), +4.7k (Codex) and +2.8k (OpenCode) over plain. The estimate is 1.5–1.9k. Hook and tool descriptions are not measured. | results, root cause 4 | developer | `context_budget.py` also counts the hook and agent definitions. Root `AGENTS.md` and `CLAUDE.md` are shortened until T3 ≤ 1.2 × plain. |
-| 6 | **Targeted re-run.** | results, next iteration | qa | Codex T2, T3 on all three hosts, and OpenCode T4 are re-run: 6 paid cells. If K3 and K4 pass, the full A2 row (12 cells) runs again and `results.md` is updated. |
+| 1 | **Fixed, re-run pending.** **Rule tables invite eager reads.** Codex T2 read `general-dev-tools/SKILL.md`, `security.md`, `readme-sync-guide.md` and `git-workflow-guide.md` for a small pure-function change. | results, root cause 1 | team-lead | Spec `AGENTS.md` files (`software/general`, `software/backend`) have no rule tables. Claude uses `paths:`. On Codex and OpenCode, only the skills and workflows that need a rule link it. The re-run cells show no reads of unrelated rules. |
+| 2 | **Fixed, re-run pending.** **Native explorer spawn on a tiny repository.** In Codex T2, the native `explore` subagent used 47.8k uncached tokens on a 200-line fixture, and the cell hit the 80k cap. | results, root cause 2 | team-lead | The core says not to start an explorer for a repository you can list with one command. The re-run Codex T2 has 0 subagents and is accepted. |
+| 3 | **Fixed, re-run pending.** **Rules read without need.** The core does not limit reads of on-demand guidance to the task subject. | results, root cause 1 | product-owner | The core says: "Read a rule or skill only when the task touches its subject." K4 holds: T3 costs ≤ 1.2 × plain on every host. |
+| 4 | **Fixed, re-run pending.** **Version bump on bugfixes.** Lean agents sometimes bump the version on T1/T4. The core requires a version bump only for a completed feature. | results, root cause 3 | product-owner | The core says a bugfix updates `CHANGELOG.md` only. The T1/T4 re-runs change no version file. |
+| 5 | **Re-diagnosed.** **Fixed startup overhead above the always-on estimate.** On T3, lean cost +3k (Claude), +4.7k (Codex) and +2.8k (OpenCode) uncached over plain. Hooks add no context: Stop and PreToolUse print only when they block. Codex and OpenCode differences are prompt-cache noise: full input on T3 is 56.0k vs 56.9k (Codex) and 9.2k vs 15.9k (OpenCode). Claude is real: +2.9k per request, partly because an account MCP connector attached to the lean cell only. The benchmark now reports full input and runs Claude with `--strict-mcp-config`. | results, root cause 4 | developer | The item 6 re-run shows Claude T3 input ≤ 1.2 × plain, or the remaining gap is traced to named context parts. |
+| 6 | **Targeted re-run.** | results, next iteration | qa | Codex T2, T3 on all three hosts (A0 and A2, because the metric and isolation changed), OpenCode T4, and T5 on A0/A2 × 3 hosts are re-run. If K3 and K4 pass, the full A2 row runs again and `results.md` is updated. |
 
 ## Product and runtime
 
@@ -31,6 +34,14 @@ v2.0.0 release.
 | # | Item | Source | Owner | Done when |
 | --- | --- | --- | --- | --- |
 | 13 | **Single run per cell.** Pass-rate differences under one task are noise (arXiv 2602.07150). | protocol | team-lead | At least three runs per cell for any release claim on tokens or acceptance. |
-| 14 | **Tasks are too easy to show gate value.** Plain agents pass all 12 tasks, and the gate never blocked. | results | qa | A task with a hidden failing check that agents tend to skip (for example, a lint error in a touched file) is added. The A0/A2 difference in `delivered_green` is reported. |
+| 14 | **Task added (T5), run pending.** **Tasks are too easy to show gate value.** Plain agents pass all 12 tasks, and the gate never blocked. | results | qa | A task with a hidden failing check that agents tend to skip (for example, a lint error in a touched file) is added. The A0/A2 difference in `delivered_green` is reported. |
 | 15 | **Trace signals are partial.** `verified_after_edit` sees only the top-level session. Codex child commands live in rollout files. | README limitations | developer | The benchmark reads child sessions on Codex and OpenCode, or the signal is removed from the report. |
 | 16 | **Codex hook trust is manual.** Each benchmark path needs `/hooks` trust before a lean run. | protocol | devops-engineer | The protocol documents a one-time trust step per stable path (done in README). A check refuses to start a Codex lean cell when its hooks are untrusted, as `pilot_jev.trust_ok` does. |
+| 17 | **Hard tasks where plain agents fail.** T1–T5 are small. The review asks for multi-module bugs, an architecture change, and tasks with a quality check that plain agents sometimes miss. | external review, point 3 | qa | At least two such tasks exist with self-tested graders, and A0 fails at least one of them in a pilot run. |
+| 18 | **OpenCode lean overhead is real.** By full input, lean is 1.93 × plain on OpenCode (Claude 1.55 ×, Codex 1.12 ×), and lean costs more than v1 there. The sources are not split yet: skill and command listings from three skill folders, the gate plugin, and the native `explore`/`general` agents. | external review, point 2; results | developer | A per-source breakdown of the first OpenCode request exists, and the largest source is removed or justified. |
+| 19 | **JEV always forces `team`.** `profile::is_team` returns true when JEV is on, so every JEV task gets nine SDLC roles. The review asks for an adaptive choice: `lean` for questions and bugfixes, `team` for features and epics. | external review, point 4; `src/profile.rs` | product-owner | A JEV benchmark compares forced `team` with adaptive selection on a bugfix and a feature, and the decision is recorded here. |
+
+## Done in this iteration
+
+- Windows CI (`test (windows-latest)`, PR #77): `is_manual_rule` and `strip_agent_diagram` did not parse CRLF
+  checkouts, so manual rules landed in `.claude/rules/`. Both now normalize line endings.

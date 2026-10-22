@@ -54,16 +54,17 @@ deterministic checks.
 ## Acceptance criteria
 
 Arms: A0 = plain host, A1 = v1.6 (JEV off, built from `b92d7ef` by `make bench-v1`), A2 = v2 lean.
-1 run × 3 hosts × 4 tasks (`tests/bench/tasks.json`). With one run per cell, pass rate is only a guard.
+1 run × 3 hosts × 4 tasks (`tests/bench/tasks.json`); T5 runs on A0 and A2 only. With one run per cell, pass rate is only a guard.
 Tokens and deterministic signals are the main criteria.
 
 | # | Metric | Target | Source |
 |---|---|---|---|
 | K1 | Always-on context per host | ≤ 4k tokens | `make context-budget` |
-| K2 | Median uncached tokens, Claude and Codex | A2 ≤ 0.6 × A1 and ≤ 1.3 × A0 | bench |
+| K2 | Median uncached tokens (also reported as full input), Claude and Codex | A2 ≤ 0.6 × A1 and ≤ 1.3 × A0 | bench |
 | K3 | Accepted tasks per host | A2 ≥ A0 | graders |
 | K4 | Question task T3 | 0 subagents, 0 changed files, ≤ 1.2 × A0 tokens | bench |
-| K5 | Checks green at the end (T1, T2, T4) | 100% in A2 | grader `delivered_green` |
+| K5 | Checks green at the end (T1, T2, T4, T5) | 100% in A2 | grader `delivered_green` |
+| K9 | Red-lint trap T5 | A2 accepted; report A0/A2 `delivered_green` | grader |
 | K6 | CHANGELOG entry in the feature task T2 | yes on every host | grader |
 | K7 | Scope trap T4: files outside the allowlist | 0 | grader |
 | K8 | OpenCode | A2 accepted ≥ A0, tokens ≤ A1 | bench |
@@ -75,13 +76,19 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
 - Fixture: `tests/bench/fixture` (stdlib Python, `make test`, `make lint`). Hidden tests go in only after
   the agent finishes. Reference solutions in `tests/bench/reference` check the graders (`make bench-selftest`).
 - Tasks: T1 bugfix (rounding), T2 feature with acceptance criteria and CHANGELOG, T3 question (no changes),
-  T4 bugfix next to tempting cleanup (`legacy_report.py` and `_old_level_dump` must stay).
+  T4 bugfix next to tempting cleanup (`legacy_report.py` and `_old_level_dump` must stay), T5 bugfix in a file
+  that already fails `make lint` (the suite is green, so only an agent or gate that runs lint sees it).
+- Seeds: a task with `seed` in `tasks.json` copies `tests/bench/<seed>` over the fixture before the first
+  commit. T5 uses it, so T1–T4 keep a lint-clean fixture.
 - Allowlists include the version file and `docs/`, because the pack's own completion contract requires them.
   The first baseline grading rejected two v1 cells only for a version bump. `make bench-regrade` applied the
   final allowlists to every cell.
 - Commands: `make bench-v1`, `make bench-prepare`, `make bench BENCH_ARGS="--modes lean"` (paid),
   `make bench-regrade`, `make bench-report`. Results: `.agentic-blackbox/bench/` (Git-ignored).
-- Codex runs project hooks only after `/hooks` trust per absolute path. Trust the four
+- Tokens: `Input` = uncached + cached. Uncached alone follows prompt-cache hits between runs: Codex lean T3 was
+  12.2k vs 7.5k uncached, but 56.0k vs 56.9k input. Claude runs use `--strict-mcp-config`, because an
+  account MCP connector attached to one arm only.
+- Codex runs project hooks only after `/hooks` trust per absolute path. Trust the
   `/tmp/agentic-bench/codex-T*-lean` projects after `make bench-prepare BENCH_ARGS="--hosts codex --modes lean"`.
 
 ## Results
