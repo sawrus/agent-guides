@@ -13,6 +13,7 @@ Breaking: the default install is now the `lean` profile. See UPGRADE.md, "Migrat
 - New measurement tools: `make context-budget` (offline always-on estimate) and an SDLC benchmark (`make bench*`: plain vs v1 vs lean, five graded tasks including the red-lint trap T5, self-tested graders; the report shows full input tokens next to uncached). Results: docs/agentic-v2-lean/.
 - Install on Windows: rule front matter and workflow diagrams parse from CRLF checkouts, so manual rules no longer land in `.claude/rules/`.
 - Operational: Codex requires `/hooks` trust for the new gate hooks in each project.
+- Benchmark, pilot, and blackbox scripts no longer pass `--no-daemon` to Codex; Codex CLI 0.153 rejects the flag.
 
 ## v1.6.0
 

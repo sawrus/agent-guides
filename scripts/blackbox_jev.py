@@ -181,7 +181,7 @@ def followup_turn(host, executable, command, trace):
     if host == 'opencode':
         return command + ['--session', session], FOLLOWUP
     # `codex exec resume` has no --sandbox/-C flags; cwd is already the project.
-    return [executable, '--no-daemon', 'exec', 'resume', '--json', '--skip-git-repo-check',
+    return [executable, 'exec', 'resume', '--json', '--skip-git-repo-check',
             '-c', f'sandbox_mode="{codex_sandbox()}"', session, FOLLOWUP], None
 
 
@@ -294,7 +294,7 @@ def run(host, project, root, timeout):
         env['AGENTIC_CONFIG_DIR'] = str(root / host / 'agentic-config')
     if host == 'codex':
         # Hosts that block unprivileged user namespaces (bwrap) need an explicit override, e.g. danger-full-access.
-        command = [executable, '--no-daemon', 'exec', '--json', '--skip-git-repo-check', '--sandbox', codex_sandbox(), '-C', str(project), PROMPT]
+        command = [executable, 'exec', '--json', '--skip-git-repo-check', '--sandbox', codex_sandbox(), '-C', str(project), PROMPT]
     elif host == 'claude':
         for name in CLAUDE_SESSION_ENV:
             env.pop(name, None)

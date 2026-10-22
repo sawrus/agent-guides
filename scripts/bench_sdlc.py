@@ -223,7 +223,7 @@ def run_cell(host, task, mode, args):
         followup = blackbox_jev.followup_turn(host, shutil.which(host), argv, trace)
         if followup:
             if host == 'codex':
-                followup = ([followup[0][0], '--no-daemon', 'exec', 'resume', '--json', '--skip-git-repo-check',
+                followup = ([followup[0][0], 'exec', 'resume', '--json', '--skip-git-repo-check',
                              '-c', 'sandbox_mode="danger-full-access"', *followup[0][-2:]], None)
             turns += 1
             code, reason = turn(*followup, project, env, trace, meter, deadline)
