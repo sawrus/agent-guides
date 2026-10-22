@@ -129,6 +129,29 @@ pub fn enable_codex_memories(text: &str) -> String {
     }
 }
 
+/// Remove `key` from `[table]`; drop the table when only blank lines remain.
+pub fn remove_table_key(source: &str, table: &str, key: &str) -> String {
+    let header = format!("[{table}]");
+    let Some((start, body_start, end)) = find_table_section(source, &header) else {
+        return source.to_string();
+    };
+    let body: String = split_keepends(&source[body_start..end])
+        .into_iter()
+        .filter(|line| !is_key_line(line, key))
+        .collect();
+    let section = if body.trim().is_empty() {
+        String::new()
+    } else {
+        format!("{header}\n{body}")
+    };
+    let rest = format!("{}{section}{}", &source[..start], &source[end..]);
+    if rest.trim().is_empty() {
+        String::new()
+    } else {
+        format!("{}\n", rest.trim_end())
+    }
+}
+
 fn split_keepends(s: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut current = String::new();
@@ -195,6 +218,34 @@ mod tests {
         let out = enable_codex_memories("[features]\nfoo = 1\n\n[z]\na = 2\n");
         assert!(out.contains("foo = 1\nmemories = true\n"));
         assert!(out.contains("[z]\na = 2\n"));
+    }
+
+    #[test]
+    fn remove_table_key_variants() {
+        assert_eq!(
+            remove_table_key("[features]\nmemories = true\n", "features", "memories"),
+            ""
+        );
+        assert_eq!(
+            remove_table_key(
+                "model = \"m\"\n\n[features]\nmemories = true\n",
+                "features",
+                "memories"
+            ),
+            "model = \"m\"\n"
+        );
+        assert_eq!(
+            remove_table_key(
+                "[features]\nmemories = true\nfoo = 1\n\n[z]\na = 2\n",
+                "features",
+                "memories"
+            ),
+            "[features]\nfoo = 1\n\n[z]\na = 2\n"
+        );
+        assert_eq!(
+            remove_table_key("[z]\na = 2\n", "features", "memories"),
+            "[z]\na = 2\n"
+        );
     }
 
     #[test]

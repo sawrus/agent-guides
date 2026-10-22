@@ -14,6 +14,7 @@ Breaking: the default install is now the `lean` profile. See UPGRADE.md, "Migrat
 - Install on Windows: rule front matter and workflow diagrams parse from CRLF checkouts, so manual rules no longer land in `.claude/rules/`.
 - Operational: Codex requires `/hooks` trust for the new gate hooks in each project.
 - Benchmark, pilot, and blackbox scripts no longer pass `--no-daemon` to Codex; Codex CLI 0.153 rejects the flag.
+- Codex in `lean`: Codex memories stay off (they added about 1.8k tokens of cross-project memory to every request; `team` keeps them), and the `explorer` and `reviewer` agents inherit the session model instead of pinning models the account may not serve.
 
 ## v1.6.0
 

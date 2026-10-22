@@ -29,6 +29,8 @@ pub struct App {
     pub upgrade_force: bool,
     pub upgrade_actions: Vec<String>,
     pub config_owned_keys: std::collections::BTreeMap<String, Vec<String>>,
+    /// Owned config keys removed in this run; the manifest stops claiming them.
+    pub config_released_keys: std::collections::BTreeMap<String, Vec<String>>,
     pub self_install_force: bool,
     pub self_install_bin_dir: String,
 
@@ -104,6 +106,7 @@ impl App {
             upgrade_force: false,
             upgrade_actions: Vec::new(),
             config_owned_keys: std::collections::BTreeMap::new(),
+            config_released_keys: std::collections::BTreeMap::new(),
             self_install_force: false,
             self_install_bin_dir: home.join(".local/bin").to_string_lossy().to_string(),
             created_paths: Vec::new(),

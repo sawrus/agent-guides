@@ -370,9 +370,15 @@ fn opencode_codex_install_layout() {
     assert!(project.path().join(".opencode/MEMORY.md").is_file());
     assert!(project.path().join(".codex").is_dir());
     assert!(project.path().join("MEMORY.md").is_file());
-    // codex memories feature enabled
-    let toml = std::fs::read_to_string(project.path().join(".codex/config.toml")).unwrap();
-    assert!(toml.contains("[features]\nmemories = true"));
+    // lean leaves Codex memories off; its agents inherit the session model
+    assert!(!project.path().join(".codex/config.toml").exists());
+    for agent in ["explorer", "reviewer"] {
+        let toml =
+            std::fs::read_to_string(project.path().join(format!(".codex/agents/{agent}.toml")))
+                .unwrap();
+        assert!(!toml.contains("\nmodel = "), "{agent} pins a model");
+        assert!(toml.contains("model_reasoning_effort"));
+    }
     // opencode prompts are skipped, workflows land in commands
     assert!(!project.path().join(".opencode/prompts").exists());
 }
@@ -807,7 +813,7 @@ fn force_replays_and_removes_only_agentic_artifacts() {
     assert!(config.contains("model = \"mine\""));
     assert!(config.contains("other = true"));
     assert!(config.contains("[mcp_servers.custom]"));
-    assert!(config.contains("memories = true"));
+    assert!(config.contains("memories = false"));
     let manifest: serde_json::Value =
         serde_json::from_slice(&std::fs::read(project.path().join(".agentic.json")).unwrap())
             .unwrap();

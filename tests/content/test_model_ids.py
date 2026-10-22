@@ -34,8 +34,17 @@ def load(relative):
 
 
 def codex_role_models():
+    # Lean helpers (explorer, reviewer) pin no model and inherit the session model.
     profiles = sorted((EXTENSIONS / 'codex/agents').glob('*.toml'))
-    return {p.stem: TOML_MODEL.search(p.read_text(encoding='utf-8'))[1] for p in profiles}
+    found = {p.stem: TOML_MODEL.search(p.read_text(encoding='utf-8')) for p in profiles}
+    return {role: match[1] for role, match in found.items() if match}
+
+
+class LeanHelpers(unittest.TestCase):
+    def test_lean_codex_helpers_inherit_the_session_model(self):
+        for role in ('explorer', 'reviewer'):
+            text = (EXTENSIONS / f'codex/agents/{role}.toml').read_text(encoding='utf-8')
+            self.assertIsNone(TOML_MODEL.search(text), role)
 
 
 class OpenCodeIds(unittest.TestCase):
