@@ -93,7 +93,7 @@ quality-gates:
 
 ### 8. Acceptance & Final Report — `@product-owner` + `@pm`
 - **Input:** verified increment + risk summary
-- **Actions:** `@product-owner` validates acceptance criteria; `@pm` produces delivery summary with decisions and follow-ups; update feature docs under `docs/**`, add a `CHANGELOG.md` entry, and bump the project version
+- **Actions:** `@product-owner` validates acceptance criteria; `@pm` produces delivery summary with decisions and follow-ups; update feature docs under `docs/**` (and `README.md` per `.agent/rules/readme-sync-guide.md` when setup or usage changed), add a `CHANGELOG.md` entry, and bump the project version
 - **Output:** `docs/<feature>/delivery_summary.md` — accepted / deferred with rationale
 - **Done when:** feature accepted or explicitly deferred; docs, `CHANGELOG.md`, and version bump committed
 

@@ -29,6 +29,8 @@ TASKS = json.loads((BENCH / 'tasks.json').read_text())
 MODES = ('plain', 'v1', 'lean')
 HOSTS = ('claude', 'codex', 'opencode')
 SELECTION = ('software', 'software.backend,software.general')
+# Per-mode medians compare the same task set; seeded tasks (T5) run on plain/lean only and get their own table.
+SUMMARY_TASKS = tuple(t for t in TASKS if not TASKS[t].get('seed'))
 # Outside any repository, so no parent AGENTS.md/CLAUDE.md leaks into a run; Codex trusts hooks per path.
 PROJECTS = Path('/tmp/agentic-bench')
 RUN_SECONDS = 480
@@ -320,7 +322,8 @@ def report(out, path):
               '|---|---|---|---|---|---|---|']
     for host in HOSTS:
         for mode in MODES:
-            group = [c for c in cells if c['host'] == host and c['mode'] == mode and c['status'] != 'quota_exhausted']
+            group = [c for c in cells if c['host'] == host and c['mode'] == mode and c['status'] != 'quota_exhausted'
+                     and c['task'] in SUMMARY_TASKS]
             if group:
                 accepted = sum(c['status'] == 'accepted' for c in group)
                 green = sum(bool((c.get('acceptance') or {}).get('delivered_green')) for c in group)
@@ -329,6 +332,12 @@ def report(out, path):
                 cost = median([c.get('cost_usd') for c in group])
                 lines.append(f"| {host} | {mode} | {accepted}/{len(group)} | {green}/{len(group)} | {full} | {tokens} | "
                              f"{'' if cost is None else round(cost, 3)} |")
+    seeded = [c for c in cells if c['task'] not in SUMMARY_TASKS and c['status'] != 'quota_exhausted']
+    if seeded:
+        lines += ['', '| Seeded task | Host | Mode | Status | Green | Input |', '|---|---|---|---|---|---|']
+        for c in sorted(seeded, key=lambda c: (c['task'], c['host'], MODES.index(c['mode']))):
+            lines.append(f"| {c['task']} | {c['host']} | {c['mode']} | {c['status']} | "
+                         f"{(c.get('acceptance') or {}).get('delivered_green', '')} | {input_tokens(c.get('tokens') or {})} |")
     Path(path).write_text('\n'.join(lines) + '\n')
     print('\n'.join(lines))
 

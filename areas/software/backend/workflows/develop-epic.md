@@ -78,7 +78,7 @@ quality-gates:
 
 ### 7. Final Acceptance — `@product-owner`
 - **Input:** all increments delivered + complete risk summary
-- **Actions:** validate all epic acceptance criteria are met; review risk register for residual items; make go/defer decision on any remaining scope; update epic docs under `docs/**`, add a `CHANGELOG.md` entry, and bump the project version
+- **Actions:** validate all epic acceptance criteria are met; review risk register for residual items; make go/defer decision on any remaining scope; update epic docs under `docs/**` (and `README.md` per `.agent/rules/readme-sync-guide.md` when setup or usage changed), add a `CHANGELOG.md` entry, and bump the project version
 - **Output:** `docs/<epic>/delivery_summary.md` — accepted items, deferred items, follow-up backlog
 - **Done when:** epic accepted; follow-up items logged; docs, `CHANGELOG.md`, and version bump committed
 

@@ -28,6 +28,7 @@ related-rules:
   - git-workflow-guide.md
   - sdlc-methodology-guide.md
   - code-style-guide.md
+  - sdlc-role-responsibilities.md
   - lint-format-guide.md
 uses-skills:
   - general-dev-tools

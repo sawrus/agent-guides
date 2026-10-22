@@ -54,7 +54,8 @@ deterministic checks.
 ## Acceptance criteria
 
 Arms: A0 = plain host, A1 = v1.6 (JEV off, built from `b92d7ef` by `make bench-v1`), A2 = v2 lean.
-1 run × 3 hosts × 4 tasks (`tests/bench/tasks.json`); T5 runs on A0 and A2 only. With one run per cell, pass rate is only a guard.
+1 run × 3 hosts × 4 tasks T1–T4 (`tests/bench/tasks.json`). The seeded task T5 runs on A0 and A2 only
+(`--tasks T5 --modes plain,lean`); the report keeps it out of the per-mode medians and shows it in its own table. With one run per cell, pass rate is only a guard.
 Tokens and deterministic signals are the main criteria.
 
 | # | Metric | Target | Source |
@@ -83,6 +84,8 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
 - Allowlists include the version file and `docs/`, because the pack's own completion contract requires them.
   The first baseline grading rejected two v1 cells only for a version bump. `make bench-regrade` applied the
   final allowlists to every cell.
+- Re-runs: `make bench` skips any cell that already has a `result.json`. For a new round, set a new output
+  folder, for example `BENCH_OUT=.agentic-blackbox/bench-r2`, or delete the cells to repeat.
 - Commands: `make bench-v1`, `make bench-prepare`, `make bench BENCH_ARGS="--modes lean"` (paid),
   `make bench-regrade`, `make bench-report`. Results: `.agentic-blackbox/bench/` (Git-ignored).
 - Tokens: `Input` = uncached + cached. Uncached alone follows prompt-cache hits between runs: Codex lean T3 was
