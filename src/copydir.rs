@@ -116,6 +116,7 @@ pub fn copy_dir_contents(
 
 /// The generated mermaid diagram restates the steps for human readers (docs site); agents read the steps.
 fn strip_agent_diagram(content: &str) -> String {
+    let content = &content.replace("\r\n", "\n");
     let (Some(start), Some(end)) = (
         content.find("<!-- agent-diagram:start -->"),
         content.find("<!-- agent-diagram:end -->"),
@@ -132,6 +133,7 @@ fn autoloads_every_rule(dest_root: &Path) -> bool {
 }
 
 fn is_manual_rule(content: &str) -> bool {
+    let content = content.replace("\r\n", "\n");
     let front = content
         .strip_prefix("---\n")
         .and_then(|rest| rest.split_once("\n---"))
@@ -165,6 +167,13 @@ mod tests {
         assert!(!is_manual_rule(
             "---\ntrigger: glob\npaths:\n  - \"Makefile\"\n---\n"
         ));
+    }
+
+    #[test]
+    fn parses_crlf_checkouts() {
+        assert!(is_manual_rule("---\r\ntrigger: manual\r\n---\r\nbody"));
+        let workflow = "a\r\n<!-- agent-diagram:start -->\r\n```mermaid\r\n```\r\n<!-- agent-diagram:end -->\r\n\r\nb";
+        assert_eq!(strip_agent_diagram(workflow), "a\nb");
     }
 
     #[test]
