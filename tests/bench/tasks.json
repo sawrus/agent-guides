@@ -74,5 +74,24 @@
       "allowlist",
       "untouched"
     ]
+  },
+  "T5": {
+    "kind": "bugfix-red-lint",
+    "prompt": "Баг: shipping_cost(2.5) возвращает 6.10, а должен возвращать 7.30. Каждый начатый килограмм сверх первого стоит 1.20. Исправь.",
+    "seed": "seed/T5",
+    "hidden": "hidden/T5",
+    "allowlist": [
+      "inventory/shipping.py",
+      "tests/",
+      "CHANGELOG.md",
+      "inventory/__init__.py",
+      "docs/"
+    ],
+    "checks": [
+      "hidden_tests",
+      "suite",
+      "lint",
+      "allowlist"
+    ]
   }
 }

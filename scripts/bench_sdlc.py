@@ -44,14 +44,22 @@ def binary(mode, args):
     return args.v1_binary if mode == 'v1' else ROOT / 'target/debug/agentic'
 
 
-def prepare(host, task, mode, args):
-    project = PROJECTS / f'{host}-{task}-{mode}'
+def copy_fixture(task, project):
+    """Fresh Git project from the shared fixture plus the task's optional seed overlay."""
     if project.exists():
         shutil.rmtree(project)
     shutil.copytree(BENCH / 'fixture', project, ignore=shutil.ignore_patterns('__pycache__'))
+    if TASKS[task].get('seed'):
+        shutil.copytree(BENCH / TASKS[task]['seed'], project, dirs_exist_ok=True,
+                        ignore=shutil.ignore_patterns('__pycache__'))
     git(project, 'init', '-q')
     git(project, 'add', '-A')
     git(project, *AUTHOR, 'commit', '-q', '-m', 'bench: fixture')
+
+
+def prepare(host, task, mode, args):
+    project = PROJECTS / f'{host}-{task}-{mode}'
+    copy_fixture(task, project)
     if mode != 'plain':
         result = subprocess.run([str(binary(mode, args)), 'install', '--project-dir', str(project), '--agent-os', host,
                                  '--areas', SELECTION[0], '--specializations', SELECTION[1], '--no-doctor'],
@@ -200,6 +208,9 @@ def run_cell(host, task, mode, args):
     started = time.time()
     meter, deadline = Meter(host, project, started), time.monotonic() + args.seconds
     argv = command(host, project, server)
+    if host == 'claude':
+        # Account connectors (claude.ai MCP) attach unevenly between runs; keep every arm on the same tools.
+        argv = [*argv, '--strict-mcp-config']
     text = TASKS[task]['prompt']
     code, reason = turn(argv + ([text] if host == 'codex' else []), None if host == 'codex' else text, project, env, trace, meter, deadline)
     turns = 1
@@ -264,12 +275,7 @@ def selftest():
     for task in TASKS:
         for solved in (False, True):
             project = PROJECTS / f'selftest-{task}-{int(solved)}'
-            if project.exists():
-                shutil.rmtree(project)
-            shutil.copytree(BENCH / 'fixture', project, ignore=shutil.ignore_patterns('__pycache__'))
-            git(project, 'init', '-q')
-            git(project, 'add', '-A')
-            git(project, *AUTHOR, 'commit', '-q', '-m', 'bench: fixture')
+            copy_fixture(task, project)
             answer = ''
             if solved:
                 reference = BENCH / 'reference' / task
@@ -287,6 +293,10 @@ def selftest():
     return 1 if failures else 0
 
 
+def input_tokens(tokens):
+    return (tokens.get('uncached') or 0) + (tokens.get('cached') or 0) if tokens.get('uncached') is not None else ''
+
+
 def median(values):
     values = [v for v in values if v is not None]
     return statistics.median(values) if values else None
@@ -295,25 +305,30 @@ def median(values):
 def report(out, path):
     """Markdown table per host/task/mode plus the K-criteria summary of docs/agentic-v2-lean/README.md."""
     cells = [json.loads(p.read_text()) for p in sorted(Path(out).glob('*/result.json'))]
-    lines = ['| Host | Task | Mode | Status | Uncached | Cached | Cost $ | Turns | Subagents | Green | Verified | Failed checks |',
-             '|---|---|---|---|---|---|---|---|---|---|---|---|']
+    # Uncached alone depends on prompt-cache hits between runs; Input (uncached + cached) is the context size.
+    lines = ['| Host | Task | Mode | Status | Input | Uncached | Cached | Cost $ | Turns | Subagents | Green | Verified | Failed checks |',
+             '|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for c in sorted(cells, key=lambda c: (c['host'], c['task'], MODES.index(c['mode']))):
         acceptance = c.get('acceptance') or {}
         failed = [k for k, v in (acceptance.get('checks') or {}).items() if not v]
         tokens = c.get('tokens') or {}
         cost = c.get('cost_usd')
-        lines.append(f"| {c['host']} | {c['task']} | {c['mode']} | {c['status']} | {tokens.get('uncached', '')} | {tokens.get('cached', '')} | "
+        lines.append(f"| {c['host']} | {c['task']} | {c['mode']} | {c['status']} | {input_tokens(tokens)} | {tokens.get('uncached', '')} | {tokens.get('cached', '')} | "
                      f"{'' if cost is None else round(cost, 3)} | {c.get('turns', '')} | {c.get('subagents', '')} | "
                      f"{acceptance.get('delivered_green', '')} | {c.get('verified_after_edit', '')} | {', '.join(failed)} |")
-    lines += ['', '| Host | Mode | Accepted | Median uncached | Median cost $ |', '|---|---|---|---|---|']
+    lines += ['', '| Host | Mode | Accepted | Green | Median input | Median uncached | Median cost $ |',
+              '|---|---|---|---|---|---|---|']
     for host in HOSTS:
         for mode in MODES:
             group = [c for c in cells if c['host'] == host and c['mode'] == mode and c['status'] != 'quota_exhausted']
             if group:
                 accepted = sum(c['status'] == 'accepted' for c in group)
+                green = sum(bool((c.get('acceptance') or {}).get('delivered_green')) for c in group)
+                full = median([input_tokens(c.get('tokens') or {}) or None for c in group])
                 tokens = median([(c.get('tokens') or {}).get('uncached') for c in group])
                 cost = median([c.get('cost_usd') for c in group])
-                lines.append(f"| {host} | {mode} | {accepted}/{len(group)} | {tokens} | {'' if cost is None else round(cost, 3)} |")
+                lines.append(f"| {host} | {mode} | {accepted}/{len(group)} | {green}/{len(group)} | {full} | {tokens} | "
+                             f"{'' if cost is None else round(cost, 3)} |")
     Path(path).write_text('\n'.join(lines) + '\n')
     print('\n'.join(lines))
 
