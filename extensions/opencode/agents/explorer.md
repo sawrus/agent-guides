@@ -1,5 +1,5 @@
 ---
-description: Read-only codebase scout. Use before a feature or multi-module change in unfamiliar code to locate files, data flow, and covering tests; returns a short report.
+description: Read-only codebase scout. Use before a feature or multi-module change in unfamiliar code that is too large to list with one command, to locate files, data flow, and covering tests; returns a short report.
 mode: subagent
 permission:
   edit: deny

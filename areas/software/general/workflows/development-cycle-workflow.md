@@ -80,9 +80,9 @@ quality-gates:
 
 ### 6. Review & Merge — `@team-lead` (coordinated by `@pm`)
 - **Input:** open PR
-- **Actions:** `@team-lead` reviews code quality, architecture, and tests; `@developer` addresses all blocking comments; squash or rebase per project convention; merge; delete feature branch; update docs under `docs/**`, add a `CHANGELOG.md` entry, and bump the project version (root completion contract)
+- **Actions:** `@team-lead` reviews code quality, architecture, and tests; `@developer` addresses all blocking comments; squash or rebase per project convention; merge; delete feature branch; update docs under `docs/**` (and `README.md` per `.agent/rules/readme-sync-guide.md` when setup or usage changed), add a `CHANGELOG.md` entry, and bump the project version only for a completed feature; a bugfix updates `CHANGELOG.md` only (root completion contract)
 - **Output:** merged PR; feature branch deleted
-- **Done when:** PR is merged and change is verified in staging/preview; docs, `CHANGELOG.md`, and version bump committed
+- **Done when:** PR is merged and change is verified in staging/preview; docs, `CHANGELOG.md`, and (for a feature) version bump committed
 
 ### 7. Deployment (optional) — `@devops-engineer`
 - **Input:** QA go recommendation and the infrastructure, pipeline, configuration, or rollout changes the increment needs

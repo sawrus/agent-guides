@@ -78,7 +78,8 @@ quality-gates:
 ### 5. CI Pipeline — `@developer` + `@team-lead`
 - **Input:** quality tooling configured
 - **Actions:**
-  - create CI config (`.github/workflows/ci.yml` or `.gitlab-ci.yml`)
+  - create CI config (`.github/workflows/ci.yml` or `.gitlab-ci.yml`); follow `.agent/rules/github-workflow-guide.md`
+    or `.agent/rules/gitlab-ci-guide.md` for the chosen platform
   - pipeline runs: lint → test → build on every PR
   - set branch protection to require passing CI before merge
   - add CI status badge to README

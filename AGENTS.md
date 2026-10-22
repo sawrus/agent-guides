@@ -5,11 +5,9 @@ workflows.
 
 ## Load on demand
 
-- Rules: `.agent/rules/`. Read a rule only when its `paths` match the files you change, or when a loaded skill or
-  workflow links it. Claude Code loads `.claude/rules/` itself.
-- Skills: load the skill whose description matches the task.
-- Workflows: `.agent/workflows/<name>.md`, only for the triggered command.
-- Prompts: `.agent/prompts/`, only when requested or linked.
+- Read a rule, skill, workflow, or prompt only when the task touches its subject. Rules live in `.agent/rules/`;
+  read one when a loaded skill or workflow links it. Claude Code loads `.claude/rules/` itself.
+- Run a workflow from `.agent/workflows/<name>.md` only for its command.
 - Before changing project logic, read the matching design or behavior page under `docs/**`, if one exists.
 
 ## Scale the process to the task
@@ -17,8 +15,9 @@ workflows.
 - Trivial (a question, a one-line fix): act directly. No plan, no subagents, no extra documents.
 - Small (one module, clear cause): no subagents. Make the change, run the checks, report.
 - Feature or multi-module change: first state acceptance criteria and what is out of scope. Use one read-only
-  explorer subagent only when the code is unfamiliar. After the diff, use one reviewer subagent that reports
-  only correctness bugs and unmet requirements.
+  explorer subagent (ours or the host's native one) only when the code is unfamiliar and too large to list with
+  one command. After the diff, use one reviewer subagent that reports only correctness bugs and unmet
+  requirements.
 - Do not start a subagent for work that one tool call can do.
 - Workflow roles (`product-owner`, `developer`, `qa`, and others) name responsibilities. Delegate a step to a role
   subagent only when that subagent is installed (`team` profile); otherwise do the step yourself.
@@ -28,8 +27,8 @@ workflows.
 - After the last edit, run the project checks (Makefile targets such as `make test` and `make lint`, or their
   documented equivalents). Show the command and its result. Do not claim success without that output.
 - Change only what the task needs. List unrelated problems in the report; do not fix them.
-- A user-visible behavior change updates `CHANGELOG.md` (Unreleased) and the matching `docs/` page in the same
-  change set. A completed feature also updates the project version.
+- A user-visible change updates `CHANGELOG.md` (Unreleased) and the matching `docs/` page, if one exists. Only a
+  completed feature updates the project version; a bugfix does not.
 - Add a new file at the repository root only after the user approves its name and purpose.
 
 ## Git
