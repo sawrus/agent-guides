@@ -16,8 +16,8 @@ workflows.
 - Small (one module, clear cause): no subagents. Make the change, run the checks, report.
 - Feature or multi-module change: first state acceptance criteria and what is out of scope. Use one read-only
   explorer subagent (ours or the host's native one) only when the code is unfamiliar and too large to list with
-  one command. After the diff, use one reviewer subagent that reports only correctness bugs and unmet
-  requirements.
+  one command. After a diff that spans several modules, use one reviewer subagent that reports only correctness
+  bugs and unmet requirements. A feature in one module needs no reviewer.
 - Do not start a subagent for work that one tool call can do.
 - Workflow roles (`product-owner`, `developer`, `qa`, and others) name responsibilities. Delegate a step to a role
   subagent only when that subagent is installed (`team` profile); otherwise do the step yourself.

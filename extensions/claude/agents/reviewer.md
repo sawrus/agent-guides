@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Fresh-context reviewer for a finished non-trivial diff. Reports only correctness bugs, unmet acceptance criteria, and missing tests.
+description: Fresh-context reviewer for a finished diff that spans several modules. Reports only correctness bugs, unmet acceptance criteria, and missing tests.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

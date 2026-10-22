@@ -1,5 +1,5 @@
 ---
-description: Fresh-context reviewer for a finished non-trivial diff. Reports only correctness bugs, unmet acceptance criteria, and missing tests.
+description: Fresh-context reviewer for a finished diff that spans several modules. Reports only correctness bugs, unmet acceptance criteria, and missing tests.
 mode: subagent
 permission:
   edit: deny
