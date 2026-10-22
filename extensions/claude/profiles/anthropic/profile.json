@@ -9,7 +9,9 @@
     "analyst": "sonnet",
     "pm": "haiku",
     "instruction-reviewer": "haiku",
-    "memory-curator": "haiku"
+    "memory-curator": "haiku",
+    "explorer": "haiku",
+    "reviewer": "sonnet"
   },
   "tiers": {
     "fast": "haiku",

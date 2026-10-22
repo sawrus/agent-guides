@@ -1,5 +1,8 @@
 ---
-trigger: always_on
+trigger: glob
+paths:
+  - "README.md"
+  - "**/README.md"
 glob: readme-sync-guide
 description: keep README.md synchronized with the actual codebase after approved changes
 ---

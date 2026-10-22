@@ -419,8 +419,8 @@ removed only with matching recorded ownership/hash; edits remain local.
 
 Codex requires **native trust review** of project hooks through `/hooks` before
 calls run. Agentic never trusts definitions automatically or adds trust bypass
-flags. Changed definitions require review again. For CLI tests use `--no-daemon`
-to avoid inheriting a shared server's project configuration. OpenCode discovers
+flags. Changed definitions require review again. Codex CLI 0.153 removed
+`--no-daemon`; pass the project with `-C` instead. OpenCode discovers
 its local plugin automatically; legacy V1 plugins/auth integrations may need their
 own V2 migration independently of JEV.
 
@@ -483,7 +483,7 @@ For Codex trust preparation, first run:
 ```sh
 JEV_API_URL=https://jevtypesafeai.com/api/v1/decide \
   make blackbox-codex BLACKBOX_ARGS=--prepare-only
-codex --no-daemon -C /tmp/agentic-jev-blackbox-codex-<id>
+codex -C /tmp/agentic-jev-blackbox-codex-<id>
 # Review the exact five Agentic definitions in /hooks, then exit.
 make blackbox-codex BLACKBOX_ARGS='--run-dir /absolute/path/.agentic-blackbox/<run>'
 ```

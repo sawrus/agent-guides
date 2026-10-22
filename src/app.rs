@@ -29,6 +29,8 @@ pub struct App {
     pub upgrade_force: bool,
     pub upgrade_actions: Vec<String>,
     pub config_owned_keys: std::collections::BTreeMap<String, Vec<String>>,
+    /// Owned config keys removed in this run; the manifest stops claiming them.
+    pub config_released_keys: std::collections::BTreeMap<String, Vec<String>>,
     pub self_install_force: bool,
     pub self_install_bin_dir: String,
 
@@ -43,6 +45,10 @@ pub struct App {
     pub enable_context7_env: Option<String>,
     pub enable_mempalace_env: Option<String>,
     pub jev_enabled: Option<bool>,
+    /// `lean` or `team` (crate::profile); empty until the CLI, environment, or manifest sets it.
+    pub install_profile: String,
+    /// Quality gate hooks (crate::gate); `None` means the default, on.
+    pub gate_enabled: Option<bool>,
     pub jev_api_url: Option<String>,
     pub doctor_enabled_env: bool,
 
@@ -100,6 +106,7 @@ impl App {
             upgrade_force: false,
             upgrade_actions: Vec::new(),
             config_owned_keys: std::collections::BTreeMap::new(),
+            config_released_keys: std::collections::BTreeMap::new(),
             self_install_force: false,
             self_install_bin_dir: home.join(".local/bin").to_string_lossy().to_string(),
             created_paths: Vec::new(),
@@ -118,6 +125,8 @@ impl App {
             jev_enabled: std::env::var("AGENTIC_ENABLE_JEV")
                 .ok()
                 .map(|v| matches!(v.as_str(), "1" | "y" | "yes" | "true")),
+            install_profile: std::env::var("AGENTIC_PROFILE").unwrap_or_default(),
+            gate_enabled: None,
             jev_api_url: std::env::var("JEV_API_URL")
                 .ok()
                 .filter(|v| !v.trim().is_empty()),

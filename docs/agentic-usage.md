@@ -119,7 +119,7 @@ agentic install \
 
 After install, `agentic` writes `.agentic.json` in the target project. It records copied/generated files and their hashes. A later install rerun updates only manifest-managed files and skips files changed by the user. Generated guidance is always written to root `AGENTS.md`; when OpenCode is selected, `agentic` also writes `.opencode/AGENTS.md`.
 
-When Codex is selected, `agentic` creates or updates the project-local `.codex/config.toml` with Codex memories enabled:
+When Codex is selected with the `team` profile (or JEV), `agentic` creates or updates the project-local `.codex/config.toml` with Codex memories enabled. The `lean` profile leaves memories off, because Codex then adds the user's cross-project memory to every request; on upgrade from `team` it removes the line that `agentic` wrote and keeps a value the user set:
 
 ```toml
 [features]

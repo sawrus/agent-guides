@@ -11,7 +11,9 @@
     "instruction-reviewer": "fast",
     "memory-curator": "fast",
     "explore": "fast",
-    "general": "balanced"
+    "general": "balanced",
+    "explorer": "fast",
+    "reviewer": "balanced"
   },
   "providers": {
     "openai": {

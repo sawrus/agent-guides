@@ -1,3 +1,7 @@
+---
+trigger: manual
+description: backend test pyramid, mock boundaries, and contract tests
+---
 # Rule: Backend Testing Pyramid
 
 **Priority**: P1 — Missing critical-path coverage fails review.

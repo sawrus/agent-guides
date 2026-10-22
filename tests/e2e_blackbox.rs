@@ -452,5 +452,5 @@ fn upgraded_standalone_process_replaces_old_payload_with_embedded_instructions()
         )));
     let upgraded = std::fs::read_to_string(project.path().join("AGENTS.md")).unwrap();
     assert!(!upgraded.contains("Old payload sentinel"));
-    assert!(upgraded.contains("Dynamic guidance loading"));
+    assert!(upgraded.contains("Load on demand"));
 }

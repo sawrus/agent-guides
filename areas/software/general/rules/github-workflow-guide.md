@@ -1,5 +1,7 @@
 ---
-trigger: always_on
+trigger: glob
+paths:
+  - ".github/**"
 glob: github-workflow-guide
 description: GitHub-specific workflow practices for Actions, PRs, and releases
 ---

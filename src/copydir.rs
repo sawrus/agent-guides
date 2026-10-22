@@ -32,6 +32,21 @@ pub fn copy_dir_contents(
         src_rel.ends_with("extensions/opencode") || src_rel == "extensions/opencode";
 
     for (rel, mut content) in app.kb.walk_files(src_rel) {
+        if autoloads_every_rule(dest_root) && is_manual_rule(&content) {
+            continue;
+        }
+        if crate::profile::skips_extension_file(app, src_rel, &rel) {
+            continue;
+        }
+        if src_rel == "extensions/opencode"
+            && rel == crate::gate::OPENCODE_PLUGIN_REL
+            && !crate::gate::enabled(app)
+        {
+            continue;
+        }
+        if src_rel.ends_with("/workflows") {
+            content = strip_agent_diagram(&content);
+        }
         if matches!(src_rel, "extensions/codex" | "extensions/opencode")
             && rel.starts_with("hooks/")
         {
@@ -99,6 +114,34 @@ pub fn copy_dir_contents(
     Ok(())
 }
 
+/// The generated mermaid diagram restates the steps for human readers (docs site); agents read the steps.
+fn strip_agent_diagram(content: &str) -> String {
+    let content = &content.replace("\r\n", "\n");
+    let (Some(start), Some(end)) = (
+        content.find("<!-- agent-diagram:start -->"),
+        content.find("<!-- agent-diagram:end -->"),
+    ) else {
+        return content.to_string();
+    };
+    let tail = &content[end + "<!-- agent-diagram:end -->".len()..];
+    format!("{}{}", &content[..start], tail.trim_start_matches('\n'))
+}
+
+/// Claude Code loads every file in `.claude/rules/` into context, so on-demand rules stay in `.agent/rules/`.
+fn autoloads_every_rule(dest_root: &Path) -> bool {
+    dest_root.ends_with(".claude/rules")
+}
+
+fn is_manual_rule(content: &str) -> bool {
+    let content = content.replace("\r\n", "\n");
+    let front = content
+        .strip_prefix("---\n")
+        .and_then(|rest| rest.split_once("\n---"))
+        .map(|(meta, _)| meta)
+        .unwrap_or("");
+    front.lines().any(|line| line.trim() == "trigger: manual")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,6 +150,30 @@ mod tests {
         let mut app = App::new().unwrap();
         app.project_dir = project.to_string_lossy().to_string();
         app
+    }
+
+    #[test]
+    fn claude_rules_skip_manual_rules() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut app = test_app(tmp.path());
+        let dest = tmp.path().join(".claude/rules");
+        copy_dir_contents(&mut app, "areas/software/general/rules", &dest, false).unwrap();
+        assert!(dest.join("makefile-guide.md").is_file());
+        assert!(!dest.join("sdlc-role-responsibilities.md").exists());
+        assert!(is_manual_rule("---\ntrigger: manual\n---\nbody"));
+        let workflow =
+            "a\n<!-- agent-diagram:start -->\n```mermaid\n```\n<!-- agent-diagram:end -->\n\nb";
+        assert_eq!(strip_agent_diagram(workflow), "a\nb");
+        assert!(!is_manual_rule(
+            "---\ntrigger: glob\npaths:\n  - \"Makefile\"\n---\n"
+        ));
+    }
+
+    #[test]
+    fn parses_crlf_checkouts() {
+        assert!(is_manual_rule("---\r\ntrigger: manual\r\n---\r\nbody"));
+        let workflow = "a\r\n<!-- agent-diagram:start -->\r\n```mermaid\r\n```\r\n<!-- agent-diagram:end -->\r\n\r\nb";
+        assert_eq!(strip_agent_diagram(workflow), "a\nb");
     }
 
     #[test]

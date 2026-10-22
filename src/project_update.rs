@@ -30,7 +30,8 @@ pub fn can_write(app: &mut App, dest: &Path, config: bool) -> bool {
         );
         return false;
     };
-    let rel = relative.to_string_lossy().to_string();
+    // Manifest paths use forward slashes; Windows joins add backslashes.
+    let rel = relative.to_string_lossy().replace('\\', "/");
     if let Err(error) = safe_path(root, &rel) {
         ui::warn(app, &error.to_string());
         app.record_skipped(&rel);
@@ -354,6 +355,22 @@ mod tests {
             .upgrade_actions
             .iter()
             .any(|s| s.contains("Replaced conflict")));
+    }
+
+    #[test]
+    fn manifest_owned_nested_file_stays_writable() {
+        // Workflows carry their marker below the 20-line header, so ownership comes from the manifest.
+        let root = tempfile::tempdir().unwrap();
+        let mut app = app_at(root.path());
+        let dest = root.path().join(".agent/workflows").join("w.md");
+        std::fs::create_dir_all(dest.parent().unwrap()).unwrap();
+        std::fs::write(&dest, "---\nname: w\n---\nbody\n").unwrap();
+        std::fs::write(
+            app.project_manifest_path(),
+            r#"{"managed_files":[{"path":".agent/workflows/w.md"}]}"#,
+        )
+        .unwrap();
+        assert!(can_write(&mut app, &dest, false));
     }
 
     #[test]

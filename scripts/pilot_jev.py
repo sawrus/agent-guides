@@ -234,7 +234,7 @@ def host_env(host, project):
 
 def command(host, project, server=None):
     if host == 'codex':
-        return [shutil.which('codex'), '--no-daemon', 'exec', '--json', '--skip-git-repo-check', '--sandbox', 'danger-full-access',
+        return [shutil.which('codex'), 'exec', '--json', '--skip-git-repo-check', '--sandbox', 'danger-full-access',
                 '-m', COORDINATOR['codex'], '-C', str(project)]
     if host == 'claude':
         return [shutil.which('claude'), '-p', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits',
@@ -361,7 +361,7 @@ def run_cell(host, task, mode, targets, out, endpoint, trusted):
         followup = blackbox_jev.followup_turn(host, shutil.which(host), argv, trace)
         if followup:
             if host == 'codex':
-                followup = ([followup[0][0], '--no-daemon', 'exec', 'resume', '--json', '--skip-git-repo-check',
+                followup = ([followup[0][0], 'exec', 'resume', '--json', '--skip-git-repo-check',
                              '-c', 'sandbox_mode="danger-full-access"', *followup[0][-2:]], None)
             turns += 1
             code, reason = turn(*followup, project, env, trace, meter, deadline)

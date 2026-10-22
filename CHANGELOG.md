@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.0.0
+
+Breaking: the default install is now the `lean` profile. See UPGRADE.md, "Migrating to v2.0.0".
+
+- Always-on context drops by about 84% per host (backend + general: Claude 12.2k → 1.9k, Codex 9.4k → 1.5k, OpenCode 10.8k → 1.8k estimated tokens). The root `AGENTS.md` becomes a short core: load on demand, scale the process to the task, an evidence-based definition of done, and git basics. The core reads a rule or skill only when the task touches its subject, forbids an explorer subagent (ours or the host's native one) for code you can list with one command, and bumps the version only for a completed feature; a bugfix updates `CHANGELOG.md` only.
+- General and backend rules are path-scoped (`paths:`) or `trigger: manual`. `.claude/rules/` gets only always-on and scoped rules. Spec `AGENTS.md` files no longer list rules; the workflows and skills that need a rule link it.
+- New `--profile lean|team`. `lean` (default) installs only the `explorer` and `reviewer` subagents and keeps the native main session. `team` keeps the v1 role team; JEV always uses `team`.
+- New quality gate, on by default (`--disable-gate` to remove): a Stop hook runs `make test`/`make lint` when files changed and asks once for a CHANGELOG entry; a PreToolUse guard denies secret files, force pushes, and recursive deletes outside the project. One runtime (`.agent/gate/gate.py`) serves Claude Code, Codex, and OpenCode (plugin).
+- Codex skills install to `.agents/skills`, where Codex discovers them. The Codex "always use a subagent" override installs only in `team`.
+- Installed workflows drop the generated mermaid diagram. `develop-feature` and Claude command wrappers delegate per role only in `team`.
+- New measurement tools: `make context-budget` (offline always-on estimate) and an SDLC benchmark (`make bench*`: plain vs v1 vs lean, five graded tasks including the red-lint trap T5, self-tested graders; the report shows full input tokens next to uncached). Results: docs/agentic-v2-lean/.
+- Install on Windows: rule front matter and workflow diagrams parse from CRLF checkouts, so manual rules no longer land in `.claude/rules/`.
+- Upgrade on Windows: manifest-owned files in nested folders (for example `.agent/workflows/*.md`) are no longer treated as user files, so a sync no longer removes and recreates them.
+- Operational: Codex requires `/hooks` trust for the new gate hooks in each project.
+- Benchmark, pilot, and blackbox scripts no longer pass `--no-daemon` to Codex; Codex CLI 0.153 rejects the flag.
+- Codex in `lean`: Codex memories stay off (they added about 1.8k tokens of cross-project memory to every request; `team` keeps them), and the `explorer` and `reviewer` agents inherit the session model instead of pinning models the account may not serve.
+- The core asks for a reviewer subagent only after a diff that spans several modules; a feature in one module needs none.
+
 ## v1.6.0
 
 - Shell permission operands resolve from the actual cwd; unknown cwd retains native approval. Preserve secret, symlink and allowed-root boundaries.

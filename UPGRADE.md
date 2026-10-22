@@ -68,3 +68,21 @@ If an update cannot pass that bar, keep it out of `areas/**` until it becomes ac
 4. Existing projects with `.agentic.json` keep working: run `agentic install --project-dir <dir>` or `agentic upgrade` inside the project to re-sync.
 5. `npx @jetrabbits/agentic@latest` keeps working from v0.7.0: the npm package is now a thin launcher that downloads the release binary on first run.
 6. `fzf` is no longer needed — the TUI is built in.
+
+## Migrating to v2.0.0
+
+v2.0.0 changes the default install. Run `agentic upgrade` in each project, then check these points:
+
+1. **Profile.** Projects without a saved profile move to `lean`: the nine role agents and the
+   `product-owner` main-session setting are no longer installed. To keep the v1 team, run
+   `agentic install --project-dir <dir> --profile team` once; the choice is saved in `.agentic.json`.
+   Projects with JEV enabled stay on `team`.
+2. **Obsolete files.** The upgrade removes unmodified role agents and manual rules that the new profile no
+   longer installs (for example `.claude/agents/product-owner.md`, `.claude/rules/architecture.md`). Files you
+   edited stay; remove them by hand if you no longer need them. Manual rules remain in `.agent/rules/`.
+3. **Quality gate.** The Stop and PreToolUse hooks are on by default. Codex shows them in `/hooks`; trust
+   them there. Configure the check commands in `.agent/gate.json` when the project has no `make test` or
+   `make lint`. Use `--disable-gate` to opt out.
+4. **Codex skills.** Skills now also install to `.agents/skills/`.
+5. **Verify.** `make context-budget` in this repository shows the always-on estimate per host. In the
+   project, `.agentic/gate/last.json` shows the last gate run.

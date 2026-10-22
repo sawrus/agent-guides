@@ -370,9 +370,15 @@ fn opencode_codex_install_layout() {
     assert!(project.path().join(".opencode/MEMORY.md").is_file());
     assert!(project.path().join(".codex").is_dir());
     assert!(project.path().join("MEMORY.md").is_file());
-    // codex memories feature enabled
-    let toml = std::fs::read_to_string(project.path().join(".codex/config.toml")).unwrap();
-    assert!(toml.contains("[features]\nmemories = true"));
+    // lean leaves Codex memories off; its agents inherit the session model
+    assert!(!project.path().join(".codex/config.toml").exists());
+    for agent in ["explorer", "reviewer"] {
+        let toml =
+            std::fs::read_to_string(project.path().join(format!(".codex/agents/{agent}.toml")))
+                .unwrap();
+        assert!(!toml.contains("\nmodel = "), "{agent} pins a model");
+        assert!(toml.contains("model_reasoning_effort"));
+    }
     // opencode prompts are skipped, workflows land in commands
     assert!(!project.path().join(".opencode/prompts").exists());
 }
@@ -464,6 +470,8 @@ fn review_profiles_install_for_each_environment() {
                 "software",
                 "--specializations",
                 "software.backend",
+                "--profile",
+                "team",
             ])
             .assert()
             .success();
@@ -805,7 +813,7 @@ fn force_replays_and_removes_only_agentic_artifacts() {
     assert!(config.contains("model = \"mine\""));
     assert!(config.contains("other = true"));
     assert!(config.contains("[mcp_servers.custom]"));
-    assert!(config.contains("memories = true"));
+    assert!(config.contains("memories = false"));
     let manifest: serde_json::Value =
         serde_json::from_slice(&std::fs::read(project.path().join(".agentic.json")).unwrap())
             .unwrap();
@@ -1151,9 +1159,23 @@ fn claude_install_writes_native_layout() {
     let p = project.path();
     claude_install(home.path(), p, &[]);
     assert!(p.join(".claude/skills/api-design/SKILL.md").is_file());
-    assert!(p
+    // Claude auto-loads `.claude/rules`; on-demand rules stay in `.agent/rules` only.
+    assert!(p.join(".claude/rules/makefile-guide.md").is_file());
+    assert!(!p
         .join(".claude/rules/sdlc-role-responsibilities.md")
+        .exists());
+    assert!(p
+        .join(".agent/rules/sdlc-role-responsibilities.md")
         .is_file());
+    // Lean profile: two helper subagents and the native main session.
+    assert!(p.join(".claude/agents/explorer.md").is_file());
+    assert!(p.join(".claude/agents/reviewer.md").is_file());
+    assert!(!p.join(".claude/agents/product-owner.md").exists());
+    let lean: Value =
+        serde_json::from_str(&std::fs::read_to_string(p.join(".claude/settings.json")).unwrap())
+            .unwrap();
+    assert!(lean.get("agent").is_none());
+    claude_install(home.path(), p, &["--profile", "team"]);
     assert!(p.join(".agent/workflows/develop-feature.md").is_file());
     assert!(!p.join(".claude/workflows").exists());
     let command = frontmatter(&p.join(".claude/commands/develop-feature.md"));
@@ -1190,12 +1212,20 @@ fn claude_install_writes_native_layout() {
         serde_json::from_str(&std::fs::read_to_string(p.join(".claude/settings.json")).unwrap())
             .unwrap();
     assert_eq!(settings["agent"], "product-owner");
-    assert!(settings.get("hooks").is_none());
+    // The quality gate is on by default: one Stop and one PreToolUse group.
+    let hooks = settings["hooks"].to_string();
+    assert!(hooks.contains(".agent/gate/gate.py"));
+    assert_eq!(settings["hooks"]["Stop"].as_array().unwrap().len(), 1);
+    assert!(p.join(".agent/gate/gate.py").is_file());
     let manifest: Value =
         serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap()).unwrap();
     assert_eq!(manifest["settings"]["claude_profile"], "anthropic");
 
-    claude_install(home.path(), p, &["--claude-profile", "none"]);
+    claude_install(
+        home.path(),
+        p,
+        &["--profile", "team", "--claude-profile", "none"],
+    );
     assert!(!frontmatter(&p.join(".claude/agents/developer.md")).contains("model:"));
 }
 
@@ -1213,7 +1243,11 @@ fn claude_jev_and_telegram_hooks_are_owned_and_removable() {
         serde_json::json!({"env":{"KEEP":"1"},"hooks":{"Stop":[user_hook.clone()]}}).to_string(),
     )
     .unwrap();
-    claude_install(home.path(), p, &["--enable-jev", "--enable-telegram"]);
+    claude_install(
+        home.path(),
+        p,
+        &["--enable-jev", "--enable-telegram", "--disable-gate"],
+    );
     let settings: Value =
         serde_json::from_str(&std::fs::read_to_string(&settings_path).unwrap()).unwrap();
     assert_eq!(settings["env"]["KEEP"], "1");
@@ -1247,6 +1281,7 @@ fn claude_jev_and_telegram_hooks_are_owned_and_removable() {
         .unwrap()
         .contains("telegram.py"));
     claude_install(home.path(), p, &["--disable-jev", "--disable-telegram"]);
+    assert!(!p.join(".agent/gate/gate.py").exists());
     let settings: Value =
         serde_json::from_str(&std::fs::read_to_string(&settings_path).unwrap()).unwrap();
     assert_eq!(settings["hooks"], serde_json::json!({"Stop":[user_hook]}));
@@ -1298,7 +1333,7 @@ fn upgrade_migrates_renamed_role_agents() {
     let home = tempfile::tempdir().unwrap();
     let project = tempfile::tempdir().unwrap();
     let p = project.path();
-    claude_install(home.path(), p, &[]);
+    claude_install(home.path(), p, &["--profile", "team"]);
     // Simulate a pre-1.4 install: legacy role files tracked by the manifest.
     let manifest_path = p.join(".agentic.json");
     let mut manifest: Value =

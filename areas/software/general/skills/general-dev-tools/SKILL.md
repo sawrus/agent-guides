@@ -13,12 +13,22 @@ related-rules:
   - makefile-guide.md
   - docker-compose-guide.md
   - lint-format-guide.md
+  - github-workflow-guide.md
+  - gitlab-ci-guide.md
+  - readme-sync-guide.md
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
 # General Dev Tools Skill
 
 > **Expertise:** Git, Docker Compose, Makefile, GitHub Actions, GitLab CI, shell scripting, linting, formatting, pre-commit hooks.
+
+## Rules for the files you change
+
+Read the matching rule in `.agent/rules/` before you edit: `makefile-guide.md` (`Makefile`, `*.mk`),
+`docker-compose-guide.md` (compose files), `lint-format-guide.md` (linter, formatter, pre-commit config),
+`github-workflow-guide.md` (`.github/**`), `gitlab-ci-guide.md` (GitLab CI), `readme-sync-guide.md` (setup or
+usage that `README.md` documents), `git-workflow-guide.md` (branches, commits, pull requests).
 
 ## Mindset
 

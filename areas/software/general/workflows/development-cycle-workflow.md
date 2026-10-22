@@ -28,6 +28,7 @@ related-rules:
   - git-workflow-guide.md
   - sdlc-methodology-guide.md
   - code-style-guide.md
+  - sdlc-role-responsibilities.md
   - lint-format-guide.md
 uses-skills:
   - general-dev-tools
@@ -80,9 +81,9 @@ quality-gates:
 
 ### 6. Review & Merge — `@team-lead` (coordinated by `@pm`)
 - **Input:** open PR
-- **Actions:** `@team-lead` reviews code quality, architecture, and tests; `@developer` addresses all blocking comments; squash or rebase per project convention; merge; delete feature branch; update docs under `docs/**`, add a `CHANGELOG.md` entry, and bump the project version (root completion contract)
+- **Actions:** `@team-lead` reviews code quality, architecture, and tests; `@developer` addresses all blocking comments; squash or rebase per project convention; merge; delete feature branch; update docs under `docs/**` (and `README.md` per `.agent/rules/readme-sync-guide.md` when setup or usage changed), add a `CHANGELOG.md` entry, and bump the project version only for a completed feature; a bugfix updates `CHANGELOG.md` only (root completion contract)
 - **Output:** merged PR; feature branch deleted
-- **Done when:** PR is merged and change is verified in staging/preview; docs, `CHANGELOG.md`, and version bump committed
+- **Done when:** PR is merged and change is verified in staging/preview; docs, `CHANGELOG.md`, and (for a feature) version bump committed
 
 ### 7. Deployment (optional) — `@devops-engineer`
 - **Input:** QA go recommendation and the infrastructure, pipeline, configuration, or rollout changes the increment needs
@@ -142,6 +143,7 @@ If verification (Step 4) or review (Step 6) reveals gaps → return to Step 3. M
 - **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction-reviewer` and `memory-curator` as read-only specialists outside SDLC `roles`.
 - **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
 - **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
+- **Lean profile:** skip this section when `instruction-reviewer` and `memory-curator` are not installed.
 - **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.
 
 ## Exit

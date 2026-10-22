@@ -1,5 +1,9 @@
 ---
-trigger: always_on
+trigger: glob
+paths:
+  - ".gitlab-ci.yml"
+  - "**/.gitlab-ci.yml"
+  - ".gitlab/**"
 glob: gitlab-ci-guide
 description: GitLab CI/CD pipeline structure and best practices
 ---

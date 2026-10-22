@@ -1,5 +1,9 @@
 ---
-trigger: always_on
+trigger: glob
+paths:
+  - "Makefile"
+  - "**/Makefile"
+  - "**/*.mk"
 glob: makefile-guide
 description: Makefile conventions for consistent developer experience across projects
 ---

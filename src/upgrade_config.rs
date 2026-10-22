@@ -46,9 +46,12 @@ pub fn record_text_keys(app: &mut App, dest: &Path, source: &str, content: &str)
         return;
     }
     let rel = app.project_rel_path(dest);
+    let team = crate::profile::is_team(app);
     let keys = app.config_owned_keys.entry(rel).or_default();
     if source == "generated:codex-features-config" {
-        util::unique_append(keys, "features.memories");
+        if team {
+            util::unique_append(keys, "features.memories");
+        }
     } else {
         let servers: Vec<_> = if source.contains("context7") {
             vec!["context7".to_string()]
@@ -72,6 +75,15 @@ pub fn record_text_keys(app: &mut App, dest: &Path, source: &str, content: &str)
     }
 }
 
+/// True when the existing project manifest records `key` in `rel` as written by agentic.
+pub fn owns_key(app: &App, rel: &str, key: &str) -> bool {
+    std::fs::read(app.project_manifest_path())
+        .ok()
+        .and_then(|v| serde_json::from_slice::<Value>(&v).ok())
+        .and_then(|v| v["config_owned_keys"][rel].as_array().cloned())
+        .is_some_and(|keys| keys.iter().any(|k| k == key))
+}
+
 pub fn manifest_keys(app: &App, old: Option<&Value>) -> Value {
     let mut keys = old
         .and_then(|v| v["config_owned_keys"].as_object())
@@ -90,6 +102,9 @@ pub fn manifest_keys(app: &App, old: Option<&Value>) -> Value {
             .unwrap_or_default();
         for key in owned {
             util::unique_append(&mut merged, key);
+        }
+        if let Some(released) = app.config_released_keys.get(path) {
+            merged.retain(|key| !released.contains(key));
         }
         merged.sort();
         keys.insert(path.clone(), json!(merged));

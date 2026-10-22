@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+trigger: manual
 glob: git-workflow-guide
 description: enforce clean git branching, commit, and pull request practices
 ---
@@ -8,8 +8,8 @@ description: enforce clean git branching, commit, and pull request practices
 
 **Rules:**
 
-- Use dedicated feature branches per task; branch name format: `feature/<task-id>-short-description`.
-- Branch types: `feature/`, `bugfix/`, `hotfix/`, `chore/`, `release/`.
+- Use one branch per task; branch name format: `<type>/<task-id>-<slug>` (matches the root AGENTS.md core).
+- Branch types: `feat/`, `fix/`, `hotfix/`, `chore/`, `docs/`, `refactor/`, `release/`.
 - Direct commits to `main`/`master` are forbidden; all changes merged via Pull/Merge Request.
 - Commit messages follow Conventional Commits format: `<type>(<scope>): <subject>`.
   - Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`.

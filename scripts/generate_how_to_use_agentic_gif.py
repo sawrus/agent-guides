@@ -168,7 +168,7 @@ def host_run(host: str, project: Path, out: Path) -> None:
                  "CLAUDE_CODE_SESSION_ACCESS_TOKEN", "CODEX_THREAD_ID", "CODEX_SESSION_ID"):
         env.pop(name, None)
     if host == "codex":
-        command = ["codex", "--no-daemon", "exec", "--json", "--skip-git-repo-check", "--sandbox", "read-only", "-C", str(project),
+        command = ["codex", "exec", "--json", "--skip-git-repo-check", "--sandbox", "read-only", "-C", str(project),
                    "Spawn the product-owner agent (agent_type product-owner) with this task and return its answer verbatim: " + PROMPT]
     elif host == "claude":
         command = ["claude", "-p", "--agent", "product-owner", "--output-format", "json", PROMPT]

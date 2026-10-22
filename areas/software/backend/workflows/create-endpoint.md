@@ -85,7 +85,7 @@ quality-gates:
 
 ### 7. Acceptance — `@product-owner` + `@pm`
 - **Input:** verified endpoint + test evidence
-- **Actions:** `@product-owner` confirms endpoint meets business need; `@pm` records delivery notes; update endpoint docs under `docs/**`, add a `CHANGELOG.md` entry, and bump the project version
+- **Actions:** `@product-owner` confirms endpoint meets business need; `@pm` records delivery notes; update endpoint docs under `docs/**` (and `README.md` per `.agent/rules/readme-sync-guide.md` when setup or usage changed), add a `CHANGELOG.md` entry, and bump the project version
 - **Output:** endpoint accepted; delivery note in `docs/<feature>/delivery_summary.md`
 - **Done when:** `@product-owner` signs off; docs, `CHANGELOG.md`, and version bump committed
 

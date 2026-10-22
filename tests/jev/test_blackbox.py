@@ -224,7 +224,7 @@ class FollowupTurn(unittest.TestCase):
             self.assertEqual((command[-2:], text), (['--session', 'ses_1'], blackbox.FOLLOWUP))
             trace.write_text('{"type":"thread.started","thread_id":"th_1"}\n')
             command, text = blackbox.followup_turn('codex', 'codex', [], trace)
-            self.assertEqual((command[2:4], command[-2:], text), (['exec', 'resume'], ['th_1', blackbox.FOLLOWUP], None))
+            self.assertEqual((command[1:3], command[-2:], text), (['exec', 'resume'], ['th_1', blackbox.FOLLOWUP], None))
             trace.write_text('')
             self.assertIsNone(blackbox.followup_turn('codex', 'codex', [], trace))
 

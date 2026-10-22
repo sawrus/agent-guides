@@ -78,7 +78,7 @@ quality-gates:
 
 ### 7. Final Acceptance — `@product-owner`
 - **Input:** all increments delivered + complete risk summary
-- **Actions:** validate all epic acceptance criteria are met; review risk register for residual items; make go/defer decision on any remaining scope; update epic docs under `docs/**`, add a `CHANGELOG.md` entry, and bump the project version
+- **Actions:** validate all epic acceptance criteria are met; review risk register for residual items; make go/defer decision on any remaining scope; update epic docs under `docs/**` (and `README.md` per `.agent/rules/readme-sync-guide.md` when setup or usage changed), add a `CHANGELOG.md` entry, and bump the project version
 - **Output:** `docs/<epic>/delivery_summary.md` — accepted items, deferred items, follow-up backlog
 - **Done when:** epic accepted; follow-up items logged; docs, `CHANGELOG.md`, and version bump committed
 
@@ -137,6 +137,7 @@ When JEV is enabled and the installed runtime offers `--prepare-spawn`, the coor
 - **Actions:** load `REVIEW_PIPELINE.md` from the project root; hand the same bounded evidence packet to `instruction-reviewer` and `memory-curator` as read-only specialists outside SDLC `roles`.
 - **Once only:** review the top-level task once; nested workflows/increments hand observations to the parent. Do not launch inside fix/retest loops or after failed/deferred delivery.
 - **Output:** `.reviews/<task-id>/instruction-review.md`, `memory-curation.md`, and `summary.md` (timestamp fallback per protocol); link them in the final response.
+- **Lean profile:** skip this section when `instruction-reviewer` and `memory-curator` are not installed.
 - **Failure:** record unavailable/failed specialists and evidence limitations; do not block successful delivery or retry automatically. Recommendations only; apply changes in a separate requested task.
 
 ## Exit

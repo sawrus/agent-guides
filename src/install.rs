@@ -492,8 +492,25 @@ pub fn copy_specialization_assets(app: &mut App, project_dir: &Path) -> crate::R
 
 pub fn write_codex_features_config(app: &mut App) -> crate::Result<()> {
     let dest = PathBuf::from(&app.project_dir).join(".codex/config.toml");
-    let text = std::fs::read_to_string(&dest).unwrap_or_default();
-    let mut body = tomledit::enable_codex_memories(&text);
+    let existing = std::fs::read_to_string(&dest).ok();
+    let text = existing.clone().unwrap_or_default();
+    // Codex memories add the user's cross-project memory to every request; only `team` uses them.
+    let mut body = if crate::profile::is_team(app) {
+        tomledit::enable_codex_memories(&text)
+    } else if crate::upgrade_config::owns_key(app, ".codex/config.toml", "features.memories") {
+        crate::util::unique_append(
+            app.config_released_keys
+                .entry(".codex/config.toml".into())
+                .or_default(),
+            "features.memories",
+        );
+        tomledit::remove_table_key(&text, "features", "memories")
+    } else {
+        text.clone()
+    };
+    if existing.is_none() && body.is_empty() {
+        return Ok(());
+    }
     let add_capacity = app.jev_enabled == Some(true)
         && !tomledit::has_table_key(&text, "agents", "max_threads")
         && !tomledit::has_table_key(&text, "agents", "max_concurrent_threads_per_session");
@@ -702,6 +719,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     copy_extensions(app, &project_dir)?;
     configure_opencode_profile_if_needed(app)?;
     crate::mapper::configure_opencode_agent_model_mapper_if_needed(app)?;
+    crate::profile::apply_opencode(app, &project_dir)?;
     copy_specialization_assets(app, &project_dir)?;
     crate::claude::generate_commands(app, &project_dir)?;
     agentsmd::generate_agents_md(app, &project_dir)?;
@@ -712,6 +730,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     }
     crate::jev_hooks::install(app, &project_dir)?;
     crate::notify::install(app, &project_dir)?;
+    crate::gate::install(app, &project_dir)?;
     mcp::sync_selected_mcps_from_env(app);
     mcp::sync_legacy_mcp_env_from_selected(app);
     mcp::configure_context7_if_needed(app)?;
@@ -838,10 +857,51 @@ mod tests {
     #[test]
     fn codex_features_written() {
         let tmp = tempfile::tempdir().unwrap();
+        let config = tmp.path().join(".codex/config.toml");
         let mut app = test_app(tmp.path());
+        app.install_profile = crate::profile::TEAM.into();
         write_codex_features_config(&mut app).unwrap();
-        let text = std::fs::read_to_string(tmp.path().join(".codex/config.toml")).unwrap();
-        assert_eq!(text, "[features]\nmemories = true\n");
+        assert_eq!(
+            std::fs::read_to_string(&config).unwrap(),
+            "[features]\nmemories = true\n"
+        );
+
+        // team -> lean upgrade drops the key that agentic owns.
+        crate::manifest::write_agentic_manifest(&mut app, tmp.path()).unwrap();
+        app.install_profile = crate::profile::LEAN.into();
+        write_codex_features_config(&mut app).unwrap();
+        assert_eq!(std::fs::read_to_string(&config).unwrap(), "");
+        // The manifest stops claiming the key, so a later user value survives upgrades.
+        crate::manifest::write_agentic_manifest(&mut app, tmp.path()).unwrap();
+        assert!(!crate::upgrade_config::owns_key(
+            &app,
+            ".codex/config.toml",
+            "features.memories"
+        ));
+    }
+
+    #[test]
+    fn lean_codex_features_keep_user_memories() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config = tmp.path().join(".codex/config.toml");
+        let mut app = test_app(tmp.path());
+        app.install_profile = crate::profile::LEAN.into();
+        write_codex_features_config(&mut app).unwrap();
+        assert!(!config.exists());
+        std::fs::create_dir_all(config.parent().unwrap()).unwrap();
+        std::fs::write(&config, "[features]\nmemories = true\n").unwrap();
+        write_codex_features_config(&mut app).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&config).unwrap(),
+            "[features]\nmemories = true\n"
+        );
+        // A user value is never recorded as agentic-owned.
+        crate::manifest::write_agentic_manifest(&mut app, tmp.path()).unwrap();
+        assert!(!crate::upgrade_config::owns_key(
+            &app,
+            ".codex/config.toml",
+            "features.memories"
+        ));
     }
 
     #[test]

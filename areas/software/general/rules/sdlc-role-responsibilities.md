@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+trigger: manual
 glob: sdlc-role-responsibilities
 description: Role matrix for SDLC responsibilities, handoffs, and decision rights across subagents
 ---
