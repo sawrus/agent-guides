@@ -40,6 +40,23 @@ What the traces show:
 - The Codex gate hooks ran without `--no-daemon`: each lean project has a fresh `.agentic/gate/last.json` with
   green `make test` and `make lint`.
 
+## Round 3: Codex lean after the fixes (2026-10-22)
+
+2 paid cells in `.agentic-blackbox/bench-r3`, Codex lean on `gpt-6-astra`, after commits `55e1a22` (memories off,
+agent models unpinned) and `350b2b8` (reviewer only for multi-module diffs). A0 is the round 2 plain cell.
+
+| Task | Uncached r2 → r3 | Input r2 → r3 | A0 input | Input ÷ A0 | Subagents r2 → r3 |
+|---|---|---|---|---|---|
+| T2 | 76.7k → 47.2k | 336.3k → 244.4k | 102.9k | 2.38 | 2 → 1 (reviewer, 20.4k) |
+| T3 | 12.3k → 26.4k | 55.1k → 49.7k | 44.8k | 1.11 | 0 → 0 |
+
+- The rollout has no `## Memory` block. Lean context per request fell from 22.7k to 15.4k characters; plain is
+  10.2k.
+- T3 uncached rose because the changed prompt prefix was not yet in the prompt cache (cached 23.3k vs 42.9k).
+  Full input is the stable measure here, and it is within K4's 1.2 × A0.
+- T2 still started the reviewer: the diff touched `pricing.py` and `cli.py`, so it spans several modules under the
+  new rule. The reviewer no longer fails on a retired model.
+
 ## Round 1 (2026-10-21)
 
 ## Summary per host
