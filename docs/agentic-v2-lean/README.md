@@ -115,7 +115,7 @@ skill, agent, and command descriptions.
 | Codex | 4/4 · 9.4k | 1/4 · 87.1k (3 token caps, 2–3 subagents) |
 | OpenCode | 4/4 · 8.0k | 4/4 · 14.6k |
 
-The lean results and the K1–K8 verdict are in [results.md](results.md).
+The lean results and the K1–K8 verdict are in [results.md](results.md). A cross-mode summary (plain, SDLC with and without JEV, lean) is in [comparison.md](comparison.md).
 
 ## Limitations
 
