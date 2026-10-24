@@ -71,16 +71,19 @@ pub fn copy_dir_contents(
         }
         // Custom-agent model settings override even explicit spawn settings in
         // Codex. Leave bundled defaults open for JEV; managed-file protection
-        // below still preserves user-edited role profiles.
+        // below still preserves user-edited role profiles. The lean helpers keep
+        // their reasoning effort: JEV routes the model, not the depth.
         if app.jev_enabled == Some(true)
             && src_rel == "extensions/codex"
             && rel.starts_with("agents/")
             && rel.ends_with(".toml")
         {
+            let team = crate::profile::is_team(app);
             content = content
                 .lines()
                 .filter(|line| {
-                    !line.starts_with("model =") && !line.starts_with("model_reasoning_effort =")
+                    let effort = team && line.starts_with("model_reasoning_effort =");
+                    !(line.starts_with("model =") || effort)
                 })
                 .map(|line| format!("{line}\n"))
                 .collect();
@@ -256,6 +259,7 @@ mod jev_model_tests {
             let mut app = App::new().unwrap();
             app.project_dir = project.path().to_string_lossy().into();
             app.jev_enabled = Some(true);
+            app.install_profile = crate::profile::TEAM.into();
             app.kb = kb;
             assert!(app
                 .kb
@@ -275,5 +279,20 @@ mod jev_model_tests {
             assert!(!text.contains("\nmodel_reasoning_effort ="));
             assert!(text.contains("sandbox_mode = \"workspace-write\""));
         }
+    }
+
+    #[test]
+    fn lean_jev_opens_helper_models_and_keeps_effort() {
+        let project = tempfile::tempdir().unwrap();
+        let mut app = App::new().unwrap();
+        app.project_dir = project.path().to_string_lossy().into();
+        app.jev_enabled = Some(true);
+        app.install_profile = crate::profile::LEAN.into();
+        let dest = project.path().join(".codex");
+        copy_dir_contents(&mut app, "extensions/codex", &dest, false).unwrap();
+        let text = std::fs::read_to_string(dest.join("agents/reviewer.toml")).unwrap();
+        assert!(!text.contains("\nmodel ="));
+        assert!(text.contains("\nmodel_reasoning_effort ="));
+        assert!(!dest.join("agents/developer.toml").exists());
     }
 }

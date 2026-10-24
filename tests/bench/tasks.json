@@ -93,5 +93,47 @@
       "lint",
       "allowlist"
     ]
+  },
+  "T6": {
+    "kind": "bugfix-multi-module",
+    "prompt": "Баг: для заказа 3 × SKU a по 19.99 со скидкой 15% и налогом 20% Order.invoice возвращает total 63.96, а по правилам магазина из README.md должно быть 61.16. Найди и исправь причину.",
+    "seed": "seed/T6",
+    "hidden": "hidden/T6",
+    "allowlist": [
+      "inventory/pricing.py",
+      "inventory/orders.py",
+      "inventory/tax.py",
+      "tests/",
+      "CHANGELOG.md",
+      "inventory/__init__.py",
+      "docs/"
+    ],
+    "checks": [
+      "hidden_tests",
+      "suite",
+      "lint",
+      "allowlist"
+    ]
+  },
+  "T7": {
+    "kind": "feature-multi-module",
+    "prompt": "Добавь пакетное резервирование.\nКритерии приёмки:\n1. Stock.reserve_many(items) принимает список пар (sku, quantity) и возвращает словарь {sku: доступный остаток после резерва}.\n2. Всё или ничего: если товара не хватает хотя бы для одной позиции, выбрасывается OutOfStock, и резерв не меняется. Позиции с одинаковым SKU суммируются.\n3. quantity <= 0 вызывает ValueError, резерв не меняется.\n4. Команда `python3 -m inventory.cli reserve --stock A:5,B:2 A:3 B:1` печатает по строке `SKU остаток` в порядке SKU: `A 2`, `B 1`. При нехватке товара команда возвращает код 2 и пишет причину в stderr.\n5. Изменение описано в CHANGELOG.md в разделе Unreleased.",
+    "hidden": "hidden/T7",
+    "allowlist": [
+      "inventory/stock.py",
+      "inventory/cli.py",
+      "tests/",
+      "CHANGELOG.md",
+      "README.md",
+      "inventory/__init__.py",
+      "docs/"
+    ],
+    "checks": [
+      "hidden_tests",
+      "suite",
+      "lint",
+      "changelog",
+      "allowlist"
+    ]
   }
 }

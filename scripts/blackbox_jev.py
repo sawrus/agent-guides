@@ -72,7 +72,7 @@ def install_project(host, project, root, endpoint):
     extra = ['--enable-telegram'] if host in TELEGRAM_HOSTS else []
     result = subprocess.run([str(ROOT / 'target/debug/agentic'), 'install', '--project-dir', str(project),
                              '--agent-os', host, '--areas', 'software', '--specializations',
-                             'software.backend,software.general', '--enable-jev', '--jev-api-url', endpoint,
+                             'software.backend,software.general', '--profile', 'team', '--enable-jev', '--jev-api-url', endpoint,
                              '--no-doctor', *extra], capture_output=True, text=True)
     (root / host / 'install.log').write_text(clean(result.stdout + result.stderr))
     if result.returncode:

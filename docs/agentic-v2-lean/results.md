@@ -1,8 +1,74 @@
-# agentic v2 lean: benchmark results (2026-10-21)
+# agentic v2 lean: benchmark results (2026-10-21 to 2026-10-24)
 
 Protocol: [README.md](README.md). Total: 36 paid cells, 1 run each (A0 plain, A1 v1.6 with JEV off, A2 v2 lean,
 × 3 hosts × 4 tasks). Models: Claude `sonnet`, Codex `gpt-6.1-sol`, OpenCode `openai/gpt-6-luna`. Every cell
 was graded again with the final `tasks.json` (`make bench-regrade`). Codex lean ran with the gate hooks trusted.
+
+## Round 4: Lean + JEV, 3 repetitions (2026-10-23 and 2026-10-24)
+
+252 paid cells: 4 arms × 3 hosts × T1–T7 × 3 repetitions, seeded random order, every cell valid (0
+`harness_error`). Claude cells are in `.agentic-blackbox/bench-r4`; Codex and OpenCode cells, and the joined
+report, are in `.agentic-blackbox/bench-r5` (Git-ignored). Models: Claude `sonnet`; Codex `gpt-5.6-terra` (the
+ChatGPT account rejects `gpt-6.1-sol` and `gpt-6-sol`); OpenCode `dats_ai/coding-agent-default`, which is
+Qwen3.8-Flash-Next on a private LiteLLM. Codex and OpenCode numbers do not compare with rounds 1–3, which used
+other models.
+
+Per host and arm, n = 21. Full tokens = uncached + cached input, median. Cost per success = total cost / accepted
+cells. Claude cost is `total_cost_usd`; Codex and OpenCode cost is an API-equivalent estimate from
+`tests/bench/prices.json`.
+
+| Host | Arm | Accepted (95% CI) | Full tokens | Subagents (mean) | Cost per success | Lean + JEV ÷ lean |
+|---|---|---|---|---|---|---|
+| Claude | plain | 18/21, 86% (65–95%) | 93.7k | 0 | $0.092 | |
+| Claude | lean | 21/21, 100% (85–100%) | 156.2k | 0 | $0.095 | |
+| Claude | lean + JEV | 21/21, 100% (85–100%) | 130.5k | 0 | $0.097 | 1.02 |
+| Claude | team + JEV | 21/21, 100% (85–100%) | 132.1k | 0 | $0.073 | |
+| Codex | plain | 18/21, 86% (65–95%) | 81.3k | 0 | $0.059 | |
+| Codex | lean | 21/21, 100% (85–100%) | 126.7k | 0.14 | $0.072 | |
+| Codex | lean + JEV | 21/21, 100% (85–100%) | 119.9k | 0.14 | $0.103 | 1.43 |
+| Codex | team + JEV | 18/21, 86% (65–95%) | 165.1k | 0.62 | $0.301 | |
+| OpenCode | plain | 19/21, 90% (71–97%) | 123.3k | 0 | $0.026 | |
+| OpenCode | lean | 19/21, 90% (71–97%) | 159.8k | 0.19 | $0.041 | |
+| OpenCode | lean + JEV | 17/21, 81% (60–92%) | 147.1k | 0 | $0.046 | 1.12 |
+| OpenCode | team + JEV | 18/21, 86% (65–95%) | 162.8k | 0.95 | $0.047 | |
+
+Accepted per task, all hosts (n = 9):
+
+| Task | plain | lean | lean + JEV | team + JEV |
+|---|---|---|---|---|
+| T1–T4 | 36/36 | 36/36 | 36/36 | 36/36 |
+| T5 (red lint) | 1/9 | 7/9 | 6/9 | 6/9 |
+| T6 (multi-module bugfix) | 9/9 | 9/9 | 9/9 | 7/9 |
+| T7 (multi-module feature) | 9/9 | 9/9 | 8/9 | 8/9 |
+
+What the cells show:
+- Every plain failure is T5 with `make lint` red: 3/3 on Claude, 3/3 on Codex, 2/3 on OpenCode. Lean passes T5 on
+  Claude and Codex every time. On OpenCode every arm fails T5 most of the time; its gate cannot continue a
+  one-shot `opencode run` (tech debt item 7).
+- T6 and T7 did not separate the arms: plain passed both 9 of 9. Item 17 stays open.
+- JEV made one prompt decision per session: a workflow in 3 of 21 sessions per arm and host, `native` in the rest
+  (15 `low_confidence`, 3 `native_request`). JEV cost $0.0015 per 21 cells.
+- Codex lean + JEV costs more than lean at the same success rate because JEV routed 4 helper spawns to
+  `gpt-6-astra` (frontier, 5 × the terra price). Codex team + JEV routed 18 spawns to astra and hit the token cap
+  twice on T6 (tech debt item 21).
+- Claude team + JEV has the lowest cost per success, but its uncached median is 5.3k against 11.3k for plain. Its
+  long, identical role-team prefix was already in the 1-hour prompt cache from earlier team + JEV cells (first
+  request: 0 cache writes, 23.9k cache reads; plain: 8.5k cache writes). This is a cache-order effect, not a JEV
+  saving.
+- OpenCode reports no cached tokens for this provider, so its full and uncached tokens are equal. Do not compare
+  its dollars with the other hosts.
+- 7 OpenCode JEV cells first ran with routed subagents on `openai/*` models, because the harness forced the JEV
+  provider to `openai`. They were run again on the Qwen provider only; the first copies are in
+  `.agentic-blackbox/bench-r5-mixed` and are not counted.
+
+**Decision under the rule fixed before the round.** Lean + JEV meets the rule on Claude (same success, 1.02 ×
+lean). It misses it on Codex (1.43 × lean) and OpenCode (1.12 × lean, 2 fewer accepted cells; the intervals
+overlap). It is cost-neutral at best and gives no measured quality gain, so it stays opt-in. Lean stays the
+default. No savings are claimed.
+
+Limitations: small fixture; n = 3 per task; API-equivalent prices from secondary sources; Claude cache-write cost
+is in `total_cost_usd`, while Codex and OpenCode estimates have no cache-write price; Codex and OpenCode models
+differ from Claude's tier, so compare arms only inside one host.
 
 ## Round 2: targeted re-run (2026-10-22)
 
