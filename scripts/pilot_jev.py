@@ -32,6 +32,8 @@ MODES = ('plain', 'fixed', 'jev')
 ABLATIONS = ('workflow_only', 'models_only')
 ABLATION_TASKS = ('A', 'C')
 COORDINATOR = {'codex': 'gpt-6.1-sol', 'claude': 'sonnet', 'opencode': 'openai/gpt-6-luna'}
+# Optional Codex reasoning effort of the coordinator session (helper agents keep their own TOML effort).
+EFFORT = {}
 # Codex trusts hooks per absolute path; runs reuse the paths the user reviewed in /hooks.
 # Outside any repository, so no parent AGENTS.md/CLAUDE.md leaks into a run.
 PROJECTS = Path('/tmp/agentic-pilot')
@@ -53,7 +55,7 @@ SUFFIX = ('Finish this bounded task as quickly as possible. Budget: at most 50,0
           'Do not add optional improvements, deployment, or unrelated repairs. Preserve the supplied task and infrastructure '
           'limits. Report incomplete work honestly when the budget ends.')
 REPORTS = {'A': 'GRAFANA_FEASIBILITY.md', 'B': 'REVIEW.md'}
-QUOTA = re.compile(r'provider\.quota|usage limit has been reached|usage_limit_reached', re.I)
+QUOTA = re.compile(r'provider\.quota|usage limit has been reached|usage_limit_reached|hit your usage limit', re.I)
 RUNTIME_DIRS = ('.agentic/', '.agentic-blackbox/', '__pycache__/', '.pytest_cache/')
 
 
@@ -90,7 +92,8 @@ def install(host, project, jev, endpoint):
     agentic = ROOT / 'target/debug/agentic'
     command = ['upgrade', '--project-dir', str(project), '--force'] if (project / '.agentic.json').exists() else [
         'install', '--project-dir', str(project), '--agent-os', host, '--areas', AREAS[0], '--specializations', AREAS[1],
-        '--no-doctor', '--enable-telegram', *(['--enable-jev', '--jev-api-url', endpoint] if jev else [])]
+        # The pilot measures the role team; JEV no longer selects it, so pass it explicitly.
+        '--no-doctor', '--enable-telegram', '--profile', 'team', *(['--enable-jev', '--jev-api-url', endpoint] if jev else [])]
     result = subprocess.run([str(agentic), *command], capture_output=True, text=True)
     if result.returncode:
         raise RuntimeError('agentic install failed: ' + result.stderr[-400:])
@@ -145,18 +148,21 @@ class Meter:
             if message.get('id'):
                 self.claude_messages[message['id']] = {
                     'model': message.get('model'), 'uncached': usage.get('input_tokens', 0) + usage.get('cache_creation_input_tokens', 0)
-                    + usage.get('output_tokens', 0), 'cached': usage.get('cache_read_input_tokens', 0)}
+                    + usage.get('output_tokens', 0), 'cached': usage.get('cache_read_input_tokens', 0),
+                    'output': usage.get('output_tokens', 0)}
         if self.host == 'opencode' and (event.get('part') or {}).get('type') == 'step-finish':
             tokens = event['part'].get('tokens') or {}
             cache = tokens.get('cache') or {}
             self.opencode_steps[event['part'].get('id')] = {
                 'uncached': tokens.get('input', 0) + tokens.get('output', 0) + tokens.get('reasoning', 0) + cache.get('write', 0),
-                'cached': cache.get('read', 0)}
+                'cached': cache.get('read', 0), 'output': tokens.get('output', 0) + tokens.get('reasoning', 0)}
 
     def codex_sessions(self):
-        day = Path.home() / '.codex/sessions' / time.strftime('%Y/%m/%d', time.localtime(self.started))
+        # A run that crosses midnight writes its subagent rollouts into the next day's folder.
+        days = {Path.home() / '.codex/sessions' / time.strftime('%Y/%m/%d', time.localtime(self.started + offset))
+                for offset in (0, 86400)}
         found = {}
-        for path in day.glob('rollout-*.jsonl') if day.is_dir() else ():
+        for path in (p for day in sorted(days) if day.is_dir() for p in day.glob('rollout-*.jsonl')):
             if path.stat().st_mtime < self.started:
                 continue
             try:
@@ -178,7 +184,7 @@ class Meter:
             usage = usage or {}
             found[meta.get('id')] = {'model': model, 'agent_path': meta.get('agent_path') or '/root',
                                      'uncached': usage.get('input_tokens', 0) - usage.get('cached_input_tokens', 0) + usage.get('output_tokens', 0),
-                                     'cached': usage.get('cached_input_tokens', 0)}
+                                     'cached': usage.get('cached_input_tokens', 0), 'output': usage.get('output_tokens', 0)}
         self.sessions = found
 
     def rows(self):
@@ -214,6 +220,7 @@ def opencode_children(trace, server, env, meter):
         tokens = info.get('tokens') or {}
         cache = tokens.get('cache') or {}
         meter.sessions[child] = {'model': (info.get('model') or {}).get('id'), 'cached': cache.get('read', 0),
+                                 'output': tokens.get('output', 0) + tokens.get('reasoning', 0),
                                  'uncached': tokens.get('input', 0) + tokens.get('output', 0) + tokens.get('reasoning', 0) + cache.get('write', 0)}
 
 
@@ -227,15 +234,20 @@ def host_env(host, project):
         if value:
             env[key] = value
     if host == 'opencode':
-        env['AGENTIC_JEV_MODEL_PROVIDER'] = 'openai'
+        # Routed subagents stay on the coordinator's provider, so a cell never mixes providers or quotas.
+        env.setdefault('AGENTIC_JEV_MODEL_PROVIDER', COORDINATOR['opencode'].partition('/')[0])
         env['OPENCODE_PASSWORD'] = hashlib.sha256(os.urandom(16)).hexdigest()
     return env
+
+
+def codex_effort():
+    return ['-c', f'model_reasoning_effort="{EFFORT["codex"]}"'] if EFFORT.get('codex') else []
 
 
 def command(host, project, server=None):
     if host == 'codex':
         return [shutil.which('codex'), 'exec', '--json', '--skip-git-repo-check', '--sandbox', 'danger-full-access',
-                '-m', COORDINATOR['codex'], '-C', str(project)]
+                '-m', COORDINATOR['codex'], *codex_effort(), '-C', str(project)]
     if host == 'claude':
         return [shutil.which('claude'), '-p', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits',
                 '--model', COORDINATOR['claude'], '--allowedTools', blackbox_jev.CLAUDE_ALLOWED_TOOLS]
@@ -361,7 +373,8 @@ def run_cell(host, task, mode, targets, out, endpoint, trusted):
         followup = blackbox_jev.followup_turn(host, shutil.which(host), argv, trace)
         if followup:
             if host == 'codex':
-                followup = ([followup[0][0], 'exec', 'resume', '--json', '--skip-git-repo-check',
+                # Without -m, resume falls back to the config model, which the account may not serve.
+                followup = ([followup[0][0], 'exec', 'resume', '--json', '--skip-git-repo-check', '-m', COORDINATOR['codex'], *codex_effort(),
                              '-c', 'sandbox_mode="danger-full-access"', *followup[0][-2:]], None)
             turns += 1
             code, reason = turn(*followup, project, env, trace, meter, deadline)

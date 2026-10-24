@@ -35,6 +35,11 @@ export default Plugin.define({
         return manifest.settings?.jev?.enabled === true;
       } catch { return false; }
     }
+    // Manifests without a profile predate `lean`, when JEV always installed the role team.
+    async function leanProfile() {
+      try { return JSON.parse(await readFile(join(project, ".agentic.json"), "utf8")).settings?.profile === "lean"; }
+      catch { return false; }
+    }
     async function decide(event: Record<string, unknown>): Promise<any> {
       if (!(await enabled())) return { status: "fallback", reason_code: "disabled" };
       try { if (event.session_id && !event.root_session_id) event.root_session_id = await rootSession(event.session_id as any); }
@@ -89,6 +94,11 @@ export default Plugin.define({
         return;
       }
       if (!result.workflow) return;
+      if (await leanProfile()) {
+        // lean has no role agents: the native session keeps planning and delegation; spawn hooks still route models.
+        event.prompt.text += `\n\n[Agentic JEV hook context]\nJEV suggests installed workflow ${result.workflow.id}. Use ${result.workflow.path} as a checklist for the ORIGINAL user request above and perform its steps yourself in this session; there are no role agents. Start a subagent only where the project core rules call for one; hooks route its model, so omit guessed model overrides. Preserve original scope and native permissions.`;
+        return;
+      }
       // Let the workflow's installed coordinator own delivery rather than the default build role.
       if (session.agent === "build" && result.workflow.initiator) {
         const initiator = (await ctx.agent.list()).data.find((agent) => agent.id === result.workflow.initiator);

@@ -1,14 +1,16 @@
-# plain vs SDLC vs JEV vs lean: all measurements (2026-10-22)
+# plain vs SDLC vs JEV vs lean: all measurements (2026-10-20 to 2026-10-24)
 
-This page joins two measurement sets. Their tasks and caps differ, so compare numbers only inside one table.
-Every cell is one run.
+This page joins three measurement sets. Their tasks, caps, and models differ, so compare numbers only inside one
+table. Sets 1 and 2 are one run per cell and ran before the benchmark fixes of the Unreleased change; set 3 is
+three runs per cell with the fixed harness.
 
 Modes:
 - **plain**: the host agent without agentic.
 - **SDLC without JEV**: the v1 role team (`team`), JEV off. The pilot calls it "fixed workflow"; the benchmark
   calls it A1/`v1`.
 - **SDLC + JEV**: the role team, with JEV choosing the workflow and the models.
-- **lean**: v2 without JEV. JEV always selects `team` (`profile::is_team`), so lean + JEV was never measured.
+- **lean**: v2 without JEV. Until the Unreleased change, JEV always selected `team` (`profile::is_team`), so
+  lean + JEV is not in sets 1 and 2. Set 3 measures it.
 
 ## Set 1: JEV pilot (2026-10-20)
 
@@ -50,6 +52,21 @@ T5, a bugfix in a file where `make lint` is already red (accepted · uncached):
 On Claude the Stop gate blocked the finish with red lint, and the agent fixed it. On OpenCode the agent fixed
 lint by the core instruction; the gate did not fire.
 
+## Set 3: Lean + JEV, 3 repetitions (2026-10-23 and 2026-10-24)
+
+Source: round 4 in [results.md](results.md). Tasks T1–T7, 21 cells per host and arm. Models: Claude `sonnet`,
+Codex `gpt-5.6-terra`, OpenCode Qwen3.8-Flash-Next. Format: accepted · cost per accepted task (Codex and OpenCode:
+API-equivalent estimate).
+
+| Mode | Claude | Codex | OpenCode |
+|---|---|---|---|
+| plain | 18/21 · $0.092 | 18/21 · $0.059 | 19/21 · $0.026 |
+| lean | **21/21** · $0.095 | **21/21** · $0.072 | 19/21 · $0.041 |
+| lean + JEV | **21/21** · $0.097 | **21/21** · $0.103 | 17/21 · $0.046 |
+| SDLC + JEV (team) | **21/21** · $0.073 (prompt-cache effect) | 18/21 · $0.301 · cap 2 | 18/21 · $0.047 |
+
+Every plain failure is T5 (red lint). Lean + JEV matches lean on success and is not cheaper on any host.
+
 ## Per host
 
 | Host | Best mode | Evidence |
@@ -68,5 +85,8 @@ lint by the core instruction; the gate did not fire.
    plain. Most of the cost is the role-team context, not JEV itself.
 4. **lean nearly matches plain on accepted tasks and beats it on T5.** It costs 1.35–2.8 × plain, and 1.7–4 × less
    than v1.
-5. **Not measured:** lean + JEV, and large multi-step tasks where the process should pay off. Both task sets are
+5. **Set 3 (3 runs per cell):** lean accepts 61 of 63 cells against 55 of 63 for plain; the difference is T5.
+   Lean + JEV matches lean on success but costs 1.02–1.43 × lean, so it brings no measured gain. With the
+   fixed harness, team + JEV accepts most tasks too, but costs up to 4 × lean on Codex.
+6. **Not measured:** large multi-step tasks where the process should pay off; T6 and T7 did not make plain fail. Both task sets are
    small. One run per cell cannot separate a one-task difference from noise (tech debt items 13 and 17).

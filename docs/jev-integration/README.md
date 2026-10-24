@@ -303,6 +303,31 @@ meaning for `scripts/blackbox_jev.py`. Observations of subagent types that are
 not installed roles have `agent: null`. Claude `SubagentStart` has no model; the
 observed model comes from the transcript at `SubagentStop`.
 
+## Lean + JEV
+
+JEV works with both install profiles. The hooks read `settings.profile` from `.agentic.json`. A manifest
+without a profile counts as `team`, because JEV installed the role team before profiles existed.
+
+| | `lean` + JEV | `team` + JEV |
+|---|---|---|
+| Agents | `explorer`, `reviewer`, native main session | nine SDLC roles, `product-owner` main session |
+| First prompt | one workflow call per session | one workflow call per session |
+| `native`, `clarify`, low confidence | no context; the session turns JEV off | no context; the session turns JEV off |
+| Workflow chosen | one sentence: use the workflow file as a checklist and perform its steps yourself; start a subagent only where the core rules ask | load the workflow, act as its initiator, delegate to its role agents; Codex prepared spawns; post-task review packet |
+| OpenCode | no switch to the workflow initiator | switch to the initiator when it is installed |
+| Spawn routing | models of `explorer`, `reviewer`, and native agents | models of the role agents |
+| Codex | thread default; helpers keep `model_reasoning_effort` | `agents.max_threads = 8`; role profiles lose `model` and `model_reasoning_effort` |
+| Quality gate | unchanged | unchanged |
+
+Install: `agentic install --enable-jev` (lean is the default) or `agentic install --profile team --enable-jev`.
+A project that saved `team` stays on `team` after `agentic upgrade`. Benchmark arms `lean-jev` and `team-jev`
+compare both (docs/agentic-v2-lean/README.md, "Benchmark").
+
+Measured in round 4 (docs/agentic-v2-lean/results.md, 21 cells per host and arm): lean + JEV accepted as many
+tasks as lean on Claude and Codex (21/21) and 2 fewer on OpenCode (17/21). Cost per accepted task was 1.02 ×
+lean on Claude, 1.12 × on OpenCode, and 1.43 × on Codex, where routing sent helper spawns to a frontier model.
+JEV picked a workflow in 3 of 21 sessions and answered `native` in the rest. Lean + JEV stays opt-in.
+
 ## Claude Code adapter
 
 `agentic install --agent-os claude --enable-jev` merges six owned hook groups into

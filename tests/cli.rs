@@ -47,6 +47,90 @@ fn help_output() {
         .stdout(predicate::str::contains("self-install"));
 }
 
+/// Lean + JEV: JEV hooks and the quality gate sit on the lean layout; no role team, no forced delegation.
+#[test]
+fn lean_jev_keeps_native_layout_on_each_host() {
+    let team = ["product-owner", "developer", "qa", "team-lead"];
+    for (host, agents, suffix) in [
+        ("codex", ".codex/agents", "toml"),
+        ("claude", ".claude/agents", "md"),
+        ("opencode", ".opencode/agents", "md"),
+    ] {
+        let home = tempfile::tempdir().unwrap();
+        let project = tempfile::tempdir().unwrap();
+        let p = project.path();
+        agentic(home.path())
+            .env_remove("AGENTIC_ENABLE_JEV")
+            .env_remove("AGENTIC_PROFILE")
+            .args(["install", "--project-dir"])
+            .arg(p)
+            .args([
+                "--agent-os",
+                host,
+                "--areas",
+                "software",
+                "--specializations",
+                "software.backend,software.general",
+                "--no-doctor",
+                "--enable-jev",
+            ])
+            .assert()
+            .success();
+        let manifest: Value =
+            serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap())
+                .unwrap();
+        assert_eq!(manifest["settings"]["profile"], "lean", "{host}");
+        assert_eq!(manifest["settings"]["jev"]["enabled"], true, "{host}");
+        assert!(p.join(".agent/jev/hook.py").is_file(), "{host}");
+        assert!(p.join(".agent/gate/gate.py").is_file(), "{host}");
+        for helper in ["explorer", "reviewer"] {
+            assert!(
+                p.join(agents).join(format!("{helper}.{suffix}")).is_file(),
+                "{host} {helper}"
+            );
+        }
+        for role in team {
+            assert!(
+                !p.join(agents).join(format!("{role}.{suffix}")).exists(),
+                "{host} {role}"
+            );
+        }
+        match host {
+            "codex" => {
+                let hooks = std::fs::read_to_string(p.join(".codex/hooks.json")).unwrap();
+                assert!(hooks.contains("UserPromptSubmit") && hooks.contains("gate.py"));
+                assert!(!p.join(".codex/AGENTS.override.md").exists());
+                assert!(!p.join("AGENTS.override.md").exists());
+                // Lean keeps the Codex thread default and the helpers' reasoning effort; JEV routes the model.
+                let config =
+                    std::fs::read_to_string(p.join(".codex/config.toml")).unwrap_or_default();
+                assert!(!config.contains("max_threads"));
+                let explorer =
+                    std::fs::read_to_string(p.join(".codex/agents/explorer.toml")).unwrap();
+                assert!(explorer.contains("\nmodel_reasoning_effort = \"low\""));
+                assert!(!explorer.contains("\nmodel ="));
+            }
+            "claude" => {
+                let settings: Value = serde_json::from_str(
+                    &std::fs::read_to_string(p.join(".claude/settings.json")).unwrap(),
+                )
+                .unwrap();
+                assert!(
+                    settings.get("agent").is_none(),
+                    "lean keeps the native main session"
+                );
+                let text = settings.to_string();
+                assert!(text.contains("--host claude") && text.contains("gate.py"));
+                assert!(!frontmatter(&p.join(".claude/agents/explorer.md")).contains("model:"));
+            }
+            _ => {
+                assert!(p.join(".opencode/plugins/agentic-jev/index.ts").is_file());
+                assert!(p.join(".opencode/plugins/agentic-gate.ts").is_file());
+            }
+        }
+    }
+}
+
 #[test]
 fn jev_hooks_enable_provider_replay_and_explicit_disable() {
     let home = tempfile::tempdir().unwrap();
@@ -71,6 +155,8 @@ fn jev_hooks_enable_provider_replay_and_explicit_disable() {
             .success();
     };
     install(&[
+        "--profile",
+        "team",
         "--enable-jev",
         "--jev-api-url",
         "https://api.typesafe.ai/v1/systemone",
@@ -1246,7 +1332,13 @@ fn claude_jev_and_telegram_hooks_are_owned_and_removable() {
     claude_install(
         home.path(),
         p,
-        &["--enable-jev", "--enable-telegram", "--disable-gate"],
+        &[
+            "--profile",
+            "team",
+            "--enable-jev",
+            "--enable-telegram",
+            "--disable-gate",
+        ],
     );
     let settings: Value =
         serde_json::from_str(&std::fs::read_to_string(&settings_path).unwrap()).unwrap();

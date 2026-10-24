@@ -511,13 +511,26 @@ pub fn write_codex_features_config(app: &mut App) -> crate::Result<()> {
     if existing.is_none() && body.is_empty() {
         return Ok(());
     }
-    let add_capacity = app.jev_enabled == Some(true)
+    // Only the JEV role team needs extra threads; lean keeps the Codex default.
+    let wants_capacity = crate::profile::is_team(app) && app.jev_enabled == Some(true);
+    let add_capacity = wants_capacity
         && !tomledit::has_table_key(&text, "agents", "max_threads")
         && !tomledit::has_table_key(&text, "agents", "max_concurrent_threads_per_session");
     if add_capacity {
         // Six SDLC roles plus two post-task specialists must fit without
         // consolidating roles or replacing live agents to change models.
         body = tomledit::set_table_key(&body, "agents", "max_threads", "8");
+    } else if !crate::profile::is_team(app)
+        && crate::upgrade_config::owns_key(app, ".codex/config.toml", "agents.max_threads")
+    {
+        // A team -> lean switch drops the capacity agentic added; team keeps it as before.
+        crate::util::unique_append(
+            app.config_released_keys
+                .entry(".codex/config.toml".into())
+                .or_default(),
+            "agents.max_threads",
+        );
+        body = tomledit::remove_table_key(&body, "agents", "max_threads");
     }
     manifest::write_text_config_file(app, &dest, "generated:codex-features-config", &body)?;
     if add_capacity {
@@ -878,6 +891,29 @@ mod tests {
             ".codex/config.toml",
             "features.memories"
         ));
+    }
+
+    #[test]
+    fn jev_thread_capacity_is_team_only() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config = tmp.path().join(".codex/config.toml");
+        let mut app = test_app(tmp.path());
+        app.jev_enabled = Some(true);
+        app.install_profile = crate::profile::LEAN.into();
+        write_codex_features_config(&mut app).unwrap();
+        assert!(!config.exists());
+        app.install_profile = crate::profile::TEAM.into();
+        write_codex_features_config(&mut app).unwrap();
+        assert!(std::fs::read_to_string(&config)
+            .unwrap()
+            .contains("max_threads = 8"));
+        // team + JEV -> lean + JEV drops the capacity agentic added.
+        crate::manifest::write_agentic_manifest(&mut app, tmp.path()).unwrap();
+        app.install_profile = crate::profile::LEAN.into();
+        write_codex_features_config(&mut app).unwrap();
+        assert!(!std::fs::read_to_string(&config)
+            .unwrap()
+            .contains("max_threads"));
     }
 
     #[test]
