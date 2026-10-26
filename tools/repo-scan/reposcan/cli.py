@@ -288,7 +288,7 @@ def main(argv=None):
     s.add_argument('roots', nargs='+')
     s.add_argument('--out', required=True)
     s.add_argument('--root-url', action='append', metavar='DIR=URL',
-                   help='GitLab URL of a root (repeatable), e.g. ~/work/x/afteam=https://glb.tp.p001af.com/afteam; '
+                   help='GitLab URL of a root (repeatable), e.g. ~/work/gitlab.example.com/group=https://gitlab.example.com/group; '
                         'default: inferred from the path')
     s.add_argument('--trusted-min', type=float, default=0.8, help='confidence for trusted edges (default 0.8)')
     s.add_argument('--rules', default=str(TOOL_DIR / 'applicability.json'))

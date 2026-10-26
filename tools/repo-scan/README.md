@@ -30,7 +30,7 @@ which agent-guides workflows and rules fit each repository and how the repositor
 # Stage 1: static scan
 python3 tools/repo-scan/repo_scan.py scan ~/work/<host>/<group> [more roots] --out OUT
 # Optional GitLab URL per root (repeatable); without it the URL is inferred from the path
-python3 tools/repo-scan/repo_scan.py scan ~/work/glb/afteam --root-url ~/work/glb/afteam=https://glb.tp.p001af.com/afteam --out OUT
+python3 tools/repo-scan/repo_scan.py scan ~/work/gitlab.example.com/group --root-url ~/work/gitlab.example.com/group=https://gitlab.example.com/group --out OUT
 # Edges with confidence >= 0.8 are trusted; change the threshold
 python3 tools/repo-scan/repo_scan.py scan ROOT --out OUT --trusted-min 0.9
 make repo-scan REPO_SCAN_ROOTS="~/work/<host>/<group>" REPO_SCAN_OUT=/tmp/scan
@@ -41,7 +41,7 @@ python3 tools/repo-scan/repo_scan.py scan ROOT --out OUT --write-repo-artifacts
 
 # Quality gate candidates (.agent/gate.json for extensions/codex/hooks/gate/gate.py); nothing runs
 python3 tools/repo-scan/repo_scan.py gate-propose --in OUT            # all active+stale repos -> OUT/gate-proposals.json
-python3 tools/repo-scan/repo_scan.py gate-propose https://glb.tp.p001af.com/afteam/antifraud-rules/rule-engine --in OUT
+python3 tools/repo-scan/repo_scan.py gate-propose https://gitlab.example.com/group/team/service --in OUT
 python3 tools/repo-scan/repo_scan.py gate-propose PATH... --out DIR    # local checkouts, no scan needed
 
 # RUNS the candidate commands in the named repositories only, keeps passing ones,
@@ -50,7 +50,7 @@ python3 tools/repo-scan/repo_scan.py gate-verify URL|PATH... [--in OUT] [--timeo
 
 # Stage 2: LLM assessment over stage-1 output
 python3 tools/repo-scan/repo_scan.py llm --in OUT --provider claude --model haiku \
-  --repo https://glb.tp.p001af.com/afteam/antifraud-rules/rule-engine --repo pypi/apiutil
+  --repo https://gitlab.example.com/group/team/service --repo libs/common-lib
 python3 tools/repo-scan/repo_scan.py llm --in OUT --provider claude --model sonnet --classes active --limit 5
 AGENTIC_LLM_API_KEY=... python3 tools/repo-scan/repo_scan.py llm --in OUT --provider litellm --repo rule-engine
 ```
@@ -165,8 +165,8 @@ Providers:
 
 - `claude`: `claude -p --model haiku|sonnet|opus|fable --tools "" --no-session-persistence`, prompt on stdin,
   run in an empty temporary directory. `AGENTIC_LLM_CLAUDE_BIN` overrides the binary (tests use a fake).
-- `litellm`: OpenAI-compatible `POST <base>/v1/chat/completions`. `AGENTIC_LLM_BASE_URL` (default
-  `https://llm.dats.services/`), `AGENTIC_LLM_API_KEY` (required, read only from the environment, never written),
+- `litellm`: OpenAI-compatible `POST <base>/v1/chat/completions`. `AGENTIC_LLM_BASE_URL` (required,
+  no default), `AGENTIC_LLM_API_KEY` (required, read only from the environment, never written),
   `AGENTIC_LLM_MODEL` or `--model` (default `coding-agent-default`; a `dats_ai/` OpenCode prefix is removed).
 
 ## Tests

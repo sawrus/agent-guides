@@ -16,7 +16,6 @@ import urllib.request
 from .common import read_text, redact, write_json
 
 PROMPT_VERSION = 1
-DEFAULT_BASE_URL = 'https://llm.dats.services/'
 # The proxy expects the bare model id. `dats_ai/coding-agent-default` is the OpenCode provider/model form;
 # the provider prefix is not part of the id (HTTP 403 "team not allowed to access model").
 DEFAULT_LITELLM_MODEL = 'coding-agent-default'
@@ -112,7 +111,9 @@ def call_litellm(prompt, model, timeout):
     key = os.environ.get('AGENTIC_LLM_API_KEY')
     if not key:
         raise RuntimeError('AGENTIC_LLM_API_KEY is not set')
-    base = os.environ.get('AGENTIC_LLM_BASE_URL', DEFAULT_BASE_URL).rstrip('/')
+    base = os.environ.get('AGENTIC_LLM_BASE_URL', '').rstrip('/')
+    if not base:
+        raise RuntimeError('AGENTIC_LLM_BASE_URL is not set')
     url = base + ('/chat/completions' if base.endswith('/v1') else '/v1/chat/completions')
     body = json.dumps({'model': model, 'temperature': 0,
                        'messages': [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt}]})
