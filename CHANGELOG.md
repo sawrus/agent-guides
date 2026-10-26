@@ -1,7 +1,5 @@
 # Changelog
 
-## Unreleased
-
 ## v2.1.1
 
 - OpenCode model profiles saved by older releases no longer bring back `telegram-notification` and
