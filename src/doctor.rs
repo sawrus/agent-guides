@@ -80,6 +80,34 @@ struct OpencodeRuntime {
     models_cached: bool,
 }
 
+/// The `model` key of the first OpenCode config file that sets it.
+fn opencode_config_model(files: &[PathBuf]) -> Option<String> {
+    files.iter().find_map(|file| {
+        let text = std::fs::read_to_string(file).ok()?;
+        let config: serde_json::Value = serde_json::from_str(&text).ok()?;
+        let model = config.get("model")?.as_str()?.trim();
+        (!model.is_empty()).then(|| model.to_string())
+    })
+}
+
+/// Smoke-check model: `AGENTIC_DOCTOR_OPENCODE_MODEL`, then `model` from the project or global OpenCode config,
+/// then the model the user picked last.
+fn opencode_doctor_model(work_dir: &Path, config_dir: &Path, state_dir: &Path) -> Option<String> {
+    if let Some(model) = std::env::var("AGENTIC_DOCTOR_OPENCODE_MODEL")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+    {
+        return Some(model.trim().to_string());
+    }
+    let mut files = Vec::new();
+    for dir in [work_dir, config_dir] {
+        for name in ["opencode.jsonc", "opencode.json", "config.json"] {
+            files.push(dir.join(name));
+        }
+    }
+    opencode_config_model(&files).or_else(|| opencode_recent_model(&state_dir.join("model.json")))
+}
+
 /// The model the user picked last (`recent[0]` in `state/opencode/model.json`) as `provider/model`.
 fn opencode_recent_model(model_state: &Path) -> Option<String> {
     let text = std::fs::read_to_string(model_state).ok()?;
@@ -131,7 +159,11 @@ fn copy_opencode_credentials(src: &Path, dest: &Path) -> rusqlite::Result<()> {
     copy.execute_batch("VACUUM")
 }
 
-fn prepare_opencode_doctor_runtime(app: &App, doctor_root: &Path) -> OpencodeRuntime {
+fn prepare_opencode_doctor_runtime(
+    app: &App,
+    doctor_root: &Path,
+    work_dir: &Path,
+) -> OpencodeRuntime {
     let isolated_home = doctor_root.join("opencode-home");
     let config_home = isolated_home.join(".config");
     let data_home = isolated_home.join(".local/share");
@@ -168,9 +200,13 @@ fn prepare_opencode_doctor_runtime(app: &App, doctor_root: &Path) -> OpencodeRun
         &cache_home.join("opencode/models.json"),
     );
     let models_cached = cache_home.join("opencode/models.json").is_file();
-    // Without -m, `opencode run` takes the first model of whichever provider loaded first, so the smoke check
-    // hit a different provider (and its quota or latency) from run to run.
-    let model = opencode_recent_model(&source_state.join("opencode/model.json"));
+    // Without -m and a configured model, `opencode run` takes the first model of whichever provider loaded
+    // first, so the smoke check hit a different provider (and its quota or latency) from run to run.
+    let model = opencode_doctor_model(
+        work_dir,
+        &source_config.join("opencode"),
+        &source_state.join("opencode"),
+    );
     let source_db = source_data.join("opencode/opencode.db");
     if source_db.is_file() {
         if let Err(err) =
@@ -221,7 +257,7 @@ fn build_doctor_command(
             Some(cmd)
         }
         "opencode" => {
-            let runtime = prepare_opencode_doctor_runtime(app, doctor_root);
+            let runtime = prepare_opencode_doctor_runtime(app, doctor_root, work_dir);
             let mut cmd = Command::new("opencode");
             // OpenCode V2 has no --pure/--dir; a private server keeps the isolated HOME.
             cmd.args([
@@ -247,6 +283,15 @@ fn build_doctor_command(
             // The copied models.json is enough; a models.dev refresh can stall startup for its 10s timeout.
             if runtime.models_cached {
                 cmd.env("OPENCODE_DISABLE_MODELS_FETCH", "1");
+            }
+            // Lightweight run: the isolated HOME would give npm an empty cache, so `npx` MCP servers were downloaded
+            // again on every run and startup waited for them past the timeout. File watching is not needed either.
+            cmd.env("OPENCODE_DISABLE_FILEWATCHER", "1");
+            let npm_cache_set = ["npm_config_cache", "NPM_CONFIG_CACHE"]
+                .iter()
+                .any(|var| std::env::var_os(var).is_some());
+            if !npm_cache_set && !cfg!(windows) {
+                cmd.env("npm_config_cache", app.home.join(".npm"));
             }
             Some(cmd)
         }
@@ -460,6 +505,45 @@ mod tests {
         );
         std::fs::write(&state, r#"{"recent":[]}"#).unwrap();
         assert_eq!(opencode_recent_model(&state), None);
+    }
+
+    #[test]
+    fn opencode_doctor_model_prefers_env_then_config_then_recent() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (work, config, state) = (
+            tmp.path().join("work"),
+            tmp.path().join("config"),
+            tmp.path().join("state"),
+        );
+        for dir in [&work, &config, &state] {
+            std::fs::create_dir_all(dir).unwrap();
+        }
+        std::env::remove_var("AGENTIC_DOCTOR_OPENCODE_MODEL");
+        std::fs::write(
+            state.join("model.json"),
+            r#"{"recent":[{"providerID":"r","modelID":"recent"}]}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            opencode_doctor_model(&work, &config, &state).as_deref(),
+            Some("r/recent")
+        );
+        std::fs::write(config.join("opencode.jsonc"), r#"{"model":"g/global"}"#).unwrap();
+        assert_eq!(
+            opencode_doctor_model(&work, &config, &state).as_deref(),
+            Some("g/global")
+        );
+        std::fs::write(work.join("opencode.json"), r#"{"model":"p/project"}"#).unwrap();
+        assert_eq!(
+            opencode_doctor_model(&work, &config, &state).as_deref(),
+            Some("p/project")
+        );
+        std::env::set_var("AGENTIC_DOCTOR_OPENCODE_MODEL", "e/env");
+        assert_eq!(
+            opencode_doctor_model(&work, &config, &state).as_deref(),
+            Some("e/env")
+        );
+        std::env::remove_var("AGENTIC_DOCTOR_OPENCODE_MODEL");
     }
 
     #[test]

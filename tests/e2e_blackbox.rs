@@ -29,6 +29,9 @@ fn agentic(home: &Path, fake_bin: &Path) -> Command {
         .env("TMPDIR", &tmp)
         .env("PATH", path)
         .env_remove("CODEX_HOME")
+        .env_remove("AGENTIC_DOCTOR_OPENCODE_MODEL")
+        .env_remove("npm_config_cache")
+        .env_remove("NPM_CONFIG_CACHE")
         .env_remove("CLAUDE_CONFIG_DIR")
         .env_remove("AGENTIC_ENABLE_MCPS")
         .env_remove("AGENTIC_ENABLE_CONTEXT7")
@@ -191,7 +194,7 @@ fn opencode_doctor_uses_the_recent_model() {
         fake_bin.path(),
         "opencode",
         &format!(
-            "echo \"$* fetch=$OPENCODE_DISABLE_MODELS_FETCH\" > {}\necho AGENTIC_DOCTOR_OK",
+            "echo \"$* fetch=$OPENCODE_DISABLE_MODELS_FETCH watch=$OPENCODE_DISABLE_FILEWATCHER npm=$npm_config_cache\" > {}\necho AGENTIC_DOCTOR_OK",
             args_file.display()
         ),
     );
@@ -221,7 +224,11 @@ fn opencode_doctor_uses_the_recent_model() {
         args.contains("--model openai/gpt-x Reply with exactly"),
         "{args}"
     );
-    assert!(args.contains("fetch=1"), "{args}");
+    assert!(args.contains("fetch=1 watch=1"), "{args}");
+    assert!(
+        args.contains(&format!("npm={}", home.path().join(".npm").display())),
+        "{args}"
+    );
 }
 
 #[test]
