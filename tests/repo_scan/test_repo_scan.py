@@ -30,6 +30,7 @@ LAYOUT = {
     'rule-engine': 'team/antifraud-rules/rule-engine',
     'rule-catalog': 'team/antifraud-rules/rule-catalog',
     'bash-scripts': 'team/maintenance/bash-scripts',
+    'handbook': 'team/docs/handbook',
 }
 NOW = '2026-10-01T00:00:00+00:00'
 COMMIT_DATE = '2026-06-01T12:00:00+00:00'
@@ -62,8 +63,9 @@ def run_cli(*argv):
     return code, out.getvalue(), err.getvalue()
 
 
-def rid(name):
-    return f'{HOST}/{LAYOUT[name]}'
+def rid(name, base=f'https://{HOST}'):
+    """Repository identity: the GitLab URL."""
+    return f'{base}/{LAYOUT[name]}' if base == f'https://{HOST}' else f'{base}/{LAYOUT[name].split("/", 1)[1]}'
 
 
 class ScanTest(unittest.TestCase):
@@ -93,20 +95,47 @@ class ScanTest(unittest.TestCase):
         graph = (self.out / 'graph.mmd').read_text()
         self.assertIn('flowchart LR', graph)
         self.assertIn('-->|library', graph)
+        self.assertIn(f'["{HOST}/team/antifraud-rules/rule-engine"]', graph)
 
-    def test_discovery_and_url_mapping(self):
+    def test_discovery_and_url_identity(self):
         self.assertEqual(set(self.repos), {rid(n) for n in LAYOUT})
         engine = self.repos[rid('rule-engine')]
-        self.assertEqual(engine['url_expected'], f'https://{HOST}/{LAYOUT["rule-engine"]}')
+        self.assertEqual(engine['id'], f'https://{HOST}/team/antifraud-rules/rule-engine')
+        self.assertEqual(engine['url_source'], 'path')
         self.assertTrue(engine['url_verified'])
-        self.assertEqual(engine['git']['remote_key'], rid('rule-engine'))
+        self.assertEqual(engine['git']['remote_key'], f'{HOST}/{LAYOUT["rule-engine"]}')
         self.assertEqual(engine['git']['commits_window'], 1)
+        self.assertEqual(Path(engine['local_path']), (self.root / 'antifraud-rules/rule-engine').resolve())
+
+    def test_local_paths_only_in_repositories_json(self):
+        for name in ('relationships.json', 'guide-applicability.json', 'graph.mmd'):
+            self.assertNotIn(str(self.tmp), (self.out / name).read_text(), name)
+        for e in self.rel['edges'] + self.rel['unresolved']:
+            self.assertTrue(e['from'].startswith('https://'), e)
+        for e in self.rel['edges']:
+            self.assertTrue(e['to'].startswith('https://'), e)
+        self.assertTrue(all(k.startswith('https://') for k in self.guides['repositories']))
 
     def test_activity_classes(self):
         classes = {r['name']: r['activity']['class'] for r in self.repos.values()}
         self.assertEqual(classes, {'apiutil': 'active', 'rule-engine': 'active', 'rule-catalog': 'active',
-                                   'bash-scripts': 'junk'})
+                                   'bash-scripts': 'junk', 'handbook': 'docs'})
         self.assertIn('path segment: maintenance', self.repos[rid('bash-scripts')]['activity']['reasons'])
+
+    def test_docs_repo_gets_only_docs_guidance(self):
+        docs = self.guides['repositories'][rid('handbook')]
+        self.assertEqual(docs['class'], 'docs')
+        self.assertEqual({r['id'] for r in docs['rules']},
+                         {'software/general/readme-sync-guide', 'software/general/git-workflow-guide'})
+        self.assertEqual([w['id'] for w in docs['workflows']], ['software/general/code-review-workflow'])
+        self.assertEqual({b for r in docs['rules'] for b in r['because']}, {'documentation'})
+
+    def test_trusted_edges(self):
+        stats = self.rel['stats']
+        self.assertEqual(stats['trusted_min'], 0.8)
+        self.assertEqual(stats['trusted_by_kind'], {'http': 1, 'kafka': 1, 'library': 1})
+        self.assertTrue(self.edge('rule-engine', 'apiutil', 'library')['trusted'])
+        self.assertTrue(all(e['trusted'] == (e['confidence'] >= 0.8) for e in self.rel['edges']))
 
     def test_metrics_and_manifests(self):
         engine = self.repos[rid('rule-engine')]
@@ -189,6 +218,30 @@ class ScanTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             applicability.load_config(path, ROOT)
 
+    def test_root_url_overrides_inference(self):
+        out = Path(self.tmp) / 'out-root-url'
+        base = 'https://git.corp.example/af'
+        code, _, _ = run_cli('scan', str(self.root), '--out', str(out), '--now', NOW, '--no-scc',
+                             '--root-url', f'{self.root}={base}/', '--trusted-min', '0.95')
+        self.assertEqual(code, 0)
+        repos = {r['id']: r for r in json.loads((out / 'repositories.json').read_text())['repositories']}
+        self.assertEqual(set(repos), {rid(n, base) for n in LAYOUT})
+        engine = repos[rid('rule-engine', base)]
+        self.assertEqual(engine['url_source'], 'root-url')
+        self.assertFalse(engine['url_verified'])  # origin points to gitlab.example.com
+        rel = json.loads((out / 'relationships.json').read_text())
+        pairs = {(e['from'], e['to'], e['kind'], e['trusted']) for e in rel['edges']}
+        self.assertIn((rid('rule-engine', base), rid('apiutil', base), 'library', True), pairs)
+        self.assertIn((rid('rule-engine', base), rid('rule-catalog', base), 'http', False), pairs)
+        self.assertEqual(rel['stats']['trusted_by_kind'], {'library': 1})
+        meta_roots = json.loads((out / 'guide-applicability.json').read_text())['roots']
+        self.assertEqual(meta_roots, [{'url': base, 'source': 'root-url'}])
+        self.assertIn('-.->|http 0.9|', (out / 'graph.mmd').read_text())
+
+    def test_root_url_rejects_bad_value(self):
+        code, _, _ = run_cli('scan', str(self.root), '--out', str(Path(self.tmp) / 'bad'), '--root-url', 'nourl')
+        self.assertEqual(code, 2)
+
     def test_write_repo_artifacts_keeps_repos_clean(self):
         tmp = tempfile.mkdtemp(prefix='repo-scan-artifacts-')
         self.addCleanup(shutil.rmtree, tmp, True)
@@ -220,16 +273,33 @@ class GateTest(unittest.TestCase):
                              '--out', str(out))
         self.assertEqual(code, 0)
         proposals = json.loads((out / 'gate-proposals.json').read_text())['proposals']
-        self.assertEqual(proposals[str(engine)]['gate'], {'commands': ['make test', 'make lint'], 'changelog': False,
-                                                          'max_blocks': 3})
-        self.assertEqual(proposals[str(catalog)]['gate']['commands'], ['ruff check .', 'pytest -q'])
-        self.assertTrue(proposals[str((self.root / 'pypi/apiutil').resolve())]['gate']['changelog'])
+        self.assertEqual(set(proposals), {rid('rule-engine'), rid('rule-catalog'), rid('apiutil')})
+        self.assertEqual(proposals[rid('rule-engine')]['gate'], {'commands': ['make test', 'make lint'],
+                                                                 'changelog': False, 'max_blocks': 3})
+        self.assertEqual(proposals[rid('rule-catalog')]['gate']['commands'], ['ruff check .', 'pytest -q'])
+        self.assertTrue(proposals[rid('apiutil')]['gate']['changelog'])
         self.assertFalse((engine / '.agent').exists())
+
+    def test_propose_looks_up_url_and_short_form_in_scan(self):
+        scan = Path(self.tmp) / 'scan'
+        run_cli('scan', str(self.root), '--out', str(scan), '--now', NOW, '--no-scc')
+        code, _, _ = run_cli('gate-propose', rid('apiutil'), 'antifraud-rules/rule-catalog',
+                             f'{HOST}/team/antifraud-rules/rule-engine', '--in', str(scan))
+        self.assertEqual(code, 0)
+        proposals = json.loads((scan / 'gate-proposals.json').read_text())['proposals']
+        self.assertEqual(set(proposals), {rid('apiutil'), rid('rule-catalog'), rid('rule-engine')})
+        with self.assertRaises(SystemExit):
+            run_cli('gate-propose', 'no-such-repo', '--in', str(scan))
 
     def test_verify_keeps_passing_commands_and_stays_untracked(self):
         engine = self.root / 'antifraud-rules/rule-engine'
-        code, out, _ = run_cli('gate-verify', str(engine), '--timeout', '30')
+        scan = Path(self.tmp) / 'scan-verify'
+        run_cli('scan', str(self.root), '--out', str(scan), '--now', NOW, '--no-scc')
+        code, out, _ = run_cli('gate-verify', rid('rule-engine'), '--in', str(scan), '--timeout', '30',
+                               '--out', str(scan))
         self.assertEqual(code, 0, out)
+        report = json.loads((scan / 'gate-verify.json').read_text())['reports'][0]
+        self.assertEqual(report['repo'], rid('rule-engine'))
         gate = json.loads((engine / '.agent/gate.json').read_text())
         self.assertEqual(gate['commands'], ['make test'])
         self.assertIn('.agent/gate.json', (engine / '.git/info/exclude').read_text())
@@ -321,7 +391,7 @@ class LlmTest(unittest.TestCase):
         env = {'AGENTIC_LLM_BASE_URL': f'http://127.0.0.1:{server.server_port}/', 'AGENTIC_LLM_API_KEY': 'test-key'}
         with mock.patch.dict(os.environ, env):
             code, _, _ = run_cli('llm', '--in', str(self.scan), '--out', str(out), '--provider', 'litellm',
-                                 '--repo', 'apiutil', '--no-cache')
+                                 '--repo', rid('apiutil'), '--no-cache')
         self.assertEqual(code, 0)
         self.assertEqual(seen['path'], '/v1/chat/completions')
         self.assertEqual(seen['auth'], 'Bearer test-key')
@@ -334,7 +404,7 @@ class LlmTest(unittest.TestCase):
         out = Path(self.tmp) / 'llm-nokey'
         with mock.patch.dict(os.environ, {'AGENTIC_LLM_API_KEY': ''}):
             code, _, _ = run_cli('llm', '--in', str(self.scan), '--out', str(out), '--provider', 'litellm',
-                                 '--repo', 'apiutil', '--no-cache')
+                                 '--repo', rid('apiutil'), '--no-cache')
         self.assertEqual(code, 1)
         entry = json.loads((out / 'llm-assessment.json').read_text())['assessments'][rid('apiutil')]
         self.assertEqual(entry['error'], 'AGENTIC_LLM_API_KEY is not set')
@@ -362,6 +432,14 @@ class UnitTest(unittest.TestCase):
         self.assertEqual(discover.classify(('archive', 'svc'), 'svc', facts, True, 500, cfg)[0], 'archived')
         self.assertEqual(discover.classify(('svc',), 'svc', dict(facts, commits_window=2), False, 500, cfg)[0], 'stale')
         self.assertEqual(discover.classify(('svc',), 'svc', dict(facts, commits_window=9), False, 500, cfg)[0], 'active')
+        self.assertEqual(discover.classify(('g', 'gitlab-profile'), 'gitlab-profile', facts, False, 0, cfg)[0], 'docs')
+        self.assertEqual(discover.classify(('svc',), 'svc', facts, True, 150, cfg, doc_lines=400, doc_files=3)[0],
+                         'docs')
+        self.assertEqual(discover.classify(('svc',), 'svc', facts, True, 1500, cfg, doc_lines=4000, doc_files=9)[0],
+                         'stale')
+        # A single GitLab template README is not documentation.
+        self.assertEqual(discover.classify(('svc',), 'svc', facts, False, 0, cfg, doc_lines=59, doc_files=1)[0],
+                         'junk')
 
     def test_redact(self):
         text = common.redact('DB_PASSWORD=abc\nurl=https://u:p@h.example.com\nkey sk-abcdefghijkl')

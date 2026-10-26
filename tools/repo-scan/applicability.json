@@ -5,13 +5,28 @@
     "window_days": 365,
     "archived_segments": ["archive", "archived", "deprecated", "attic"],
     "junk_segments": ["maintenance", "sandbox", "playground", "scratch", "tmp", "trash"],
-    "junk_names": ["gitlab-profile", ".github", "profile"],
+    "junk_names": [],
     "junk_max_code_lines": 100,
+    "docs_names": ["gitlab-profile", ".github", "profile"],
+    "docs_min_doc_files": 2,
+    "docs_min_doc_lines": 20,
+    "docs_max_code_lines": 200,
+    "docs_min_ratio": 2.0,
     "active_min_commits": 1,
     "active_min_commits_without_ci": 5
   },
-  "guidance_classes": ["active", "stale"],
+  "_classes": "A rule applies to repositories whose class is in its `classes` (default: default_rule_classes). Classes outside guidance_classes get no guidance.",
+  "guidance_classes": ["active", "stale", "docs"],
+  "default_rule_classes": ["active", "stale"],
   "repo_rules": [
+    {
+      "id": "documentation",
+      "classes": ["docs"],
+      "when": {"code_lines": 0},
+      "confidence": 0.85,
+      "rules": ["software/general/readme-sync-guide", "software/general/git-workflow-guide"],
+      "workflows": ["software/general/code-review-workflow"]
+    },
     {
       "id": "baseline",
       "when": {"code_lines": 1},

@@ -132,7 +132,10 @@ def apply(cfg, known, record, facts, files, edges):
         return {'class': cls, 'rules': [], 'workflows': [], 'task_routing': {}, 'note': f'no guidance for class {cls}'}
     result = {'class': cls, 'rules': {}, 'workflows': {}, 'task_routing': {}}
     ctx = Context(record, facts, files, edges)
+    default_classes = cfg.get('default_rule_classes', ['active', 'stale'])
     for rule in cfg['repo_rules']:
+        if cls not in rule.get('classes', default_classes):
+            continue
         ok, evidence = evaluate(rule['when'], ctx)
         if not ok:
             continue

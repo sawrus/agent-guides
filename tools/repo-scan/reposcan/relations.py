@@ -57,17 +57,20 @@ class Graph:
         live = [c for c in candidates if self.records[c]['activity']['class'] in ('active', 'stale')]
         return live[0] if len(live) == 1 else None
 
-    def result(self):
+    def result(self, trusted_min):
         edges = sorted(self.edges.values(), key=lambda e: (e['kind'], e['from'], e['to']))
+        kinds, trusted = {}, {}
         for edge in edges:
             edge['confidence'] = round(edge['confidence'], 2)
-        kinds = {}
-        for edge in edges:
+            edge['trusted'] = edge['confidence'] >= trusted_min
             kinds[edge['kind']] = kinds.get(edge['kind'], 0) + 1
+            if edge['trusted']:
+                trusted[edge['kind']] = trusted.get(edge['kind'], 0) + 1
         ureasons = {}
         for u in self.unresolved:
             ureasons[f'{u["kind"]}:{u["reason"]}'] = ureasons.get(f'{u["kind"]}:{u["reason"]}', 0) + 1
-        stats = dict(self.stats, edges=len(edges), edges_by_kind=kinds, unresolved=len(self.unresolved),
+        stats = dict(self.stats, edges=len(edges), edges_by_kind=kinds, trusted_min=trusted_min,
+                     trusted=sum(trusted.values()), trusted_by_kind=trusted, unresolved=len(self.unresolved),
                      unresolved_by_reason=ureasons)
         return {'edges': edges, 'unresolved': self.unresolved, 'stats': stats}
 
@@ -83,8 +86,11 @@ def ev(repo, path, line=None, key=None, note=None):
     return out
 
 
-def build(records):
-    """records: repository records with `facts` (manifests.parse_repo output) attached."""
+def build(records, trusted_min=0.8):
+    """records: repository records with `facts` (manifests.parse_repo output) attached.
+
+    Edges with confidence >= trusted_min get `trusted: true`.
+    """
     g = Graph(records)
     url_index = {}
     for r in records:
@@ -96,7 +102,7 @@ def build(records):
     kafka(g, records)
     grpc(g, records)
     ci_and_deploy(g, records, url_index)
-    return g.result()
+    return g.result(trusted_min)
 
 
 def publishers(records):
