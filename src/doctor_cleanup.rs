@@ -7,6 +7,7 @@ use crate::app::App;
 use crate::mempalace::run_with_timeout;
 use crate::ui;
 use rusqlite::{Connection, OpenFlags};
+use std::ffi::OsString;
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
@@ -17,7 +18,9 @@ const SESSION_DELETE_TIMEOUT: Duration = Duration::from_secs(30);
 /// Decides which paths belong to leftover agentic temp directories.
 pub struct TmpScope {
     roots: Vec<PathBuf>,
-    protected: Option<PathBuf>,
+    /// Name of the `agentic-*` directory that holds the protected project. All roots are the same temp
+    /// directory, so the name is compared, not the path (`/var` vs `/private/var` on macOS).
+    protected: Option<OsString>,
 }
 
 impl TmpScope {
@@ -29,10 +32,18 @@ impl TmpScope {
                 roots.push(canonical);
             }
         }
-        let protected = protected
-            .filter(|p| !p.as_os_str().is_empty())
-            .map(|p| p.canonicalize().unwrap_or_else(|_| p.to_path_buf()));
-        Self { roots, protected }
+        let mut scope = Self {
+            roots,
+            protected: None,
+        };
+        if let Some(path) = protected.filter(|p| !p.as_os_str().is_empty()) {
+            let canonical = path.canonicalize().ok();
+            scope.protected = std::iter::once(path)
+                .chain(canonical.as_deref())
+                .find_map(|p| scope.top_dir(p))
+                .and_then(|top| top.file_name().map(|name| name.to_os_string()));
+        }
+        scope
     }
 
     /// The top-level `<tmp>/agentic-*` directory that contains `path`, if any.
@@ -52,10 +63,7 @@ impl TmpScope {
         let Some(top) = self.top_dir(path) else {
             return false;
         };
-        match &self.protected {
-            Some(protected) => self.top_dir(protected).is_none_or(|p| p != top),
-            None => true,
-        }
+        self.protected.as_deref() != top.file_name()
     }
 
     /// Claude Code names a project directory after its path with every non-alphanumeric char replaced by `-`.
@@ -149,11 +157,16 @@ pub fn opencode_session_ids(data_home: &Path, scope: &TmpScope) -> Vec<String> {
 pub fn claude_project_dirs(claude_home: &Path, scope: &TmpScope) -> Vec<PathBuf> {
     let prefixes = scope.claude_project_prefixes();
     // The encoding is lossy, so anything that may be inside the protected temp directory is kept.
-    let protected = scope
+    let protected: Vec<String> = scope
         .protected
-        .as_deref()
-        .and_then(|p| scope.top_dir(p))
-        .map(|top| claude_encode(&top));
+        .iter()
+        .flat_map(|name| {
+            scope
+                .roots
+                .iter()
+                .map(move |root| claude_encode(&root.join(name)))
+        })
+        .collect();
     let Ok(entries) = std::fs::read_dir(claude_home.join("projects")) else {
         return Vec::new();
     };
@@ -163,9 +176,9 @@ pub fn claude_project_dirs(claude_home: &Path, scope: &TmpScope) -> Vec<PathBuf>
         .filter(|entry| {
             let name = entry.file_name().to_string_lossy().to_string();
             prefixes.iter().any(|p| name.starts_with(p.as_str()))
-                && protected
-                    .as_deref()
-                    .is_none_or(|p| !(name == p || name.starts_with(&format!("{p}-"))))
+                && !protected
+                    .iter()
+                    .any(|p| name == *p || name.starts_with(&format!("{p}-")))
         })
         .map(|entry| entry.path())
         .collect()
@@ -399,6 +412,28 @@ mod tests {
             .map(|d| d.file_name().unwrap().to_string_lossy().to_string())
             .collect();
         assert_eq!(names, vec!["agentic-doctor.x"]);
+    }
+
+    /// macOS: `$TMPDIR` is under `/var`, a symlink to `/private/var`, and the project path is canonical.
+    #[cfg(unix)]
+    #[test]
+    fn protected_project_is_kept_when_tmp_is_a_symlink() {
+        let tmp = tempfile::tempdir().unwrap();
+        let real = tmp.path().join("real");
+        std::fs::create_dir_all(real.join("agentic-project")).unwrap();
+        std::fs::create_dir_all(real.join("agentic-doctor.x")).unwrap();
+        let link = tmp.path().join("link");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+
+        for protected in [link.join("agentic-project"), real.join("agentic-project")] {
+            let scope = TmpScope::new(&link, Some(&protected));
+            let names: Vec<_> = stale_tmp_dirs(&link, &scope)
+                .iter()
+                .map(|d| d.file_name().unwrap().to_string_lossy().to_string())
+                .collect();
+            assert_eq!(names, vec!["agentic-doctor.x"]);
+            assert!(!scope.contains(&real.join("agentic-project/src")));
+        }
     }
 
     #[test]
