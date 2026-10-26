@@ -91,11 +91,12 @@ pub fn opencode_profile_is_none(profile_id: &str) -> bool {
 
 pub const OPENCODE_PROFILE_IDS: [&str; 2] = ["openai", "githubcopilot"];
 
+/// Model profile label: `models: <provider> · role→model`, so it never reads like a role profile.
 pub fn opencode_profile_label(id: &str) -> String {
     match id {
-        "openai" => "OpenAI Model Profile".to_string(),
-        "githubcopilot" => "GitHub Copilot Model Profile".to_string(),
-        _ => format!("{id} profile"),
+        "openai" => "models: OpenAI (openai) · role→model".to_string(),
+        "githubcopilot" => "models: GitHub Copilot (githubcopilot) · role→model".to_string(),
+        _ => format!("models: {id} · role→model"),
     }
 }
 
@@ -104,6 +105,12 @@ pub fn opencode_profile_id_from_label(label: &str) -> String {
         if label == opencode_profile_label(id) {
             return id.to_string();
         }
+    }
+    if let Some(id) = label
+        .strip_prefix("models: ")
+        .and_then(|rest| rest.strip_suffix(" · role→model"))
+    {
+        return id.to_string();
     }
     if let Some(stripped) = label.strip_suffix(" profile") {
         return stripped.to_string();
@@ -495,7 +502,7 @@ pub fn write_codex_features_config(app: &mut App) -> crate::Result<()> {
     let existing = std::fs::read_to_string(&dest).ok();
     let text = existing.clone().unwrap_or_default();
     // Codex memories add the user's cross-project memory to every request; only `team` uses them.
-    let mut body = if crate::profile::is_team(app) {
+    let mut body = if crate::profile::is_team_for(app, "codex") {
         tomledit::enable_codex_memories(&text)
     } else if crate::upgrade_config::owns_key(app, ".codex/config.toml", "features.memories") {
         crate::util::unique_append(
@@ -512,7 +519,7 @@ pub fn write_codex_features_config(app: &mut App) -> crate::Result<()> {
         return Ok(());
     }
     // Only the JEV role team needs extra threads; lean keeps the Codex default.
-    let wants_capacity = crate::profile::is_team(app) && app.jev_enabled == Some(true);
+    let wants_capacity = crate::profile::is_team_for(app, "codex") && app.jev_enabled == Some(true);
     let add_capacity = wants_capacity
         && !tomledit::has_table_key(&text, "agents", "max_threads")
         && !tomledit::has_table_key(&text, "agents", "max_concurrent_threads_per_session");
@@ -520,7 +527,7 @@ pub fn write_codex_features_config(app: &mut App) -> crate::Result<()> {
         // Six SDLC roles plus two post-task specialists must fit without
         // consolidating roles or replacing live agents to change models.
         body = tomledit::set_table_key(&body, "agents", "max_threads", "8");
-    } else if !crate::profile::is_team(app)
+    } else if !crate::profile::is_team_for(app, "codex")
         && crate::upgrade_config::owns_key(app, ".codex/config.toml", "agents.max_threads")
     {
         // A team -> lean switch drops the capacity agentic added; team keeps it as before.
@@ -727,6 +734,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
 
     configure_opencode_plugins_if_needed(app)?;
     crate::notify::configure(app)?;
+    crate::profile::prepare(app)?;
     crate::claude::configure_profile(app)?;
     crate::legacy::migrate_renamed_roles(app, &project_dir)?;
     copy_extensions(app, &project_dir)?;
@@ -735,6 +743,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     crate::profile::apply_opencode(app, &project_dir)?;
     copy_specialization_assets(app, &project_dir)?;
     crate::claude::generate_commands(app, &project_dir)?;
+    crate::profile::install_commands(app, &project_dir)?;
     agentsmd::generate_agents_md(app, &project_dir)?;
     agentsmd::copy_memory_md(app, &project_dir)?;
     agentsmd::copy_review_pipeline(app, &project_dir)?;
@@ -819,10 +828,17 @@ mod tests {
 
     #[test]
     fn profile_labels_roundtrip() {
-        assert_eq!(opencode_profile_label("openai"), "OpenAI Model Profile");
         assert_eq!(
-            opencode_profile_id_from_label("OpenAI Model Profile"),
+            opencode_profile_label("openai"),
+            "models: OpenAI (openai) · role→model"
+        );
+        assert_eq!(
+            opencode_profile_id_from_label(&opencode_profile_label("openai")),
             "openai"
+        );
+        assert_eq!(
+            opencode_profile_id_from_label(&opencode_profile_label("custom")),
+            "custom"
         );
         assert_eq!(opencode_profile_id_from_label("custom profile"), "custom");
         assert_eq!(

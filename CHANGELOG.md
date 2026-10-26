@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Role profiles per host: `~/.config/agentic/<claude|codex|opencode>/profiles/<id>/profile.json` with `base`
+  (`lean`/`team`), `agents` (the role files to install), and `models` (a model profile id). `lean/` and `team/`
+  are seeded and never overwritten. The TUI asks for a role profile per selected host. New
+  `agentic profile list|show|use|create`; `use` reinstalls through the upgrade path, removes unmodified old role
+  files, and saves `settings.profile_ids` in `.agentic.json`. `--profile` accepts custom ids and
+  `claude=team,codex=lean`. New `/profile` command for Claude Code and OpenCode and the Codex skill
+  `agentic-profile`. Model profile menus now read `models: <provider> · role→model`.
 - Lean + JEV: JEV no longer forces the `team` profile. With `--profile lean` (the default), JEV makes one
   workflow call per session and adds a short checklist hint for the chosen workflow. The native main session
   performs the steps and starts subagents only where the core rules ask; spawn hooks still route the models of

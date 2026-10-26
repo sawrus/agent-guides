@@ -78,7 +78,7 @@ pub fn copy_dir_contents(
             && rel.starts_with("agents/")
             && rel.ends_with(".toml")
         {
-            let team = crate::profile::is_team(app);
+            let team = crate::profile::is_team_for(app, "codex");
             content = content
                 .lines()
                 .filter(|line| {
