@@ -1,0 +1,214 @@
+{
+  "version": 1,
+  "_comment": "Declarative rules. Guide ids are paths under areas/: <area>/<group>/<name> for areas/<area>/<group>/workflows/<name>.md or rules/<name>.md. repo_rules decide what applies to a repository. task_routing only orders candidate workflows per task kind; JEV makes the real choice per task.",
+  "activity": {
+    "window_days": 365,
+    "archived_segments": ["archive", "archived", "deprecated", "attic"],
+    "junk_segments": ["maintenance", "sandbox", "playground", "scratch", "tmp", "trash"],
+    "junk_names": ["gitlab-profile", ".github", "profile"],
+    "junk_max_code_lines": 100,
+    "active_min_commits": 1,
+    "active_min_commits_without_ci": 5
+  },
+  "guidance_classes": ["active", "stale"],
+  "repo_rules": [
+    {
+      "id": "baseline",
+      "when": {"code_lines": 1},
+      "confidence": 0.9,
+      "rules": ["software/general/git-workflow-guide", "software/general/code-style-guide", "software/general/readme-sync-guide"],
+      "workflows": ["software/general/code-review-workflow", "software/general/development-cycle-workflow"]
+    },
+    {
+      "id": "agent-onboarding",
+      "when": {"all": [{"activity": ["active"]}, {"not": {"agents": "agents_md"}}]},
+      "confidence": 0.8,
+      "workflows": ["software/general/project-setup-workflow"]
+    },
+    {
+      "id": "makefile",
+      "when": {"manifest": "makefile"},
+      "confidence": 0.95,
+      "rules": ["software/general/makefile-guide", "software/general/lint-format-guide"]
+    },
+    {
+      "id": "gitlab-ci",
+      "when": {"manifest": "gitlab-ci"},
+      "confidence": 0.95,
+      "rules": ["software/general/gitlab-ci-guide", "devops/ci-cd/pipeline-standards", "devops/ci-cd/quality-gates"],
+      "workflows": ["devops/ci-cd/pipeline-debug"]
+    },
+    {
+      "id": "github-actions",
+      "when": {"manifest": "github-actions"},
+      "confidence": 0.95,
+      "rules": ["software/general/github-workflow-guide", "devops/ci-cd/pipeline-standards"],
+      "workflows": ["devops/ci-cd/pipeline-debug"]
+    },
+    {
+      "id": "no-ci",
+      "when": {"all": [{"code_lines": 300}, {"not": {"any": [{"manifest": "gitlab-ci"}, {"manifest": "github-actions"}]}}]},
+      "confidence": 0.7,
+      "workflows": ["devops/ci-cd/onboard-repo"]
+    },
+    {
+      "id": "docker-compose",
+      "when": {"manifest": "docker-compose"},
+      "confidence": 0.9,
+      "rules": ["software/general/docker-compose-guide"]
+    },
+    {
+      "id": "container",
+      "when": {"manifest": "dockerfile"},
+      "confidence": 0.9,
+      "rules": ["devops/devsecops/container-security", "devops/ci-cd/supply-chain-security"]
+    },
+    {
+      "id": "python",
+      "when": {"language": "Python", "min_lines": 200},
+      "confidence": 0.85,
+      "rules": ["software/full-stack/python-venv-guide", "software/full-stack/code-quality-guide"]
+    },
+    {
+      "id": "python-web-service",
+      "when": {"all": [{"language": "Python", "min_lines": 200}, {"dependency": "fastapi|flask|django|aiohttp|starlette|sanic|litestar|tornado|uvicorn|gunicorn"}]},
+      "confidence": 0.9,
+      "rules": ["software/backend/architecture", "software/backend/security", "software/backend/testing", "software/full-stack/api-design-guide", "software/full-stack/error-handling-guide", "software/full-stack/logging-observability-guide"],
+      "workflows": ["software/backend/develop-feature", "software/backend/debug-issue", "software/backend/create-endpoint", "software/backend/refactor-module", "software/backend/test-feature"]
+    },
+    {
+      "id": "async-python",
+      "when": {"dependency": "aiohttp|asyncpg|aiokafka|httpx|anyio|aiomysql|aioredis|motor"},
+      "confidence": 0.75,
+      "rules": ["software/full-stack/async-concurrency-guide"]
+    },
+    {
+      "id": "go-service",
+      "when": {"language": "Go", "min_lines": 200},
+      "confidence": 0.8,
+      "rules": ["software/backend/architecture", "software/backend/testing"],
+      "workflows": ["software/backend/develop-feature", "software/backend/debug-issue", "software/backend/refactor-module"]
+    },
+    {
+      "id": "database",
+      "when": {"any": [{"dependency": "sqlalchemy|sqlmodel|asyncpg|psycopg2|psycopg2-binary|psycopg|alembic|django|aiomysql|pymysql|peewee|tortoise-orm|gorm\\.io/gorm|github\\.com/jackc/pgx.*|prisma|typeorm|sequelize"}, {"file": "**/alembic.ini"}, {"file": "alembic.ini"}]},
+      "confidence": 0.85,
+      "rules": ["software/backend/data_access", "software/full-stack/database-access-guide", "software/full-stack/database-migrations-guide"],
+      "workflows": ["software/backend/add-migration"]
+    },
+    {
+      "id": "background-jobs",
+      "when": {"dependency": "celery|apscheduler|rq|dramatiq|arq|huey"},
+      "confidence": 0.8,
+      "rules": ["software/full-stack/background-jobs-guide"]
+    },
+    {
+      "id": "env-config",
+      "when": {"manifest": "env"},
+      "confidence": 0.85,
+      "rules": ["software/full-stack/env-settings-guide", "software/security/secrets-policy"]
+    },
+    {
+      "id": "internal-library",
+      "when": {"relationship": "library", "direction": "in"},
+      "confidence": 0.85,
+      "rules": ["software/security/dependency-policy", "software/qa/test-strategy"],
+      "workflows": ["software/qa/regression-suite", "software/backend/refactor-module"]
+    },
+    {
+      "id": "http-consumer",
+      "when": {"relationship": "http", "direction": "out"},
+      "confidence": 0.75,
+      "rules": ["software/full-stack/api-design-guide", "software/full-stack/error-handling-guide"],
+      "workflows": ["software/full-stack/debug-issue-fullstack"]
+    },
+    {
+      "id": "kafka",
+      "when": {"any": [{"relationship": "kafka", "direction": "any"}, {"dependency": "kafka-python|aiokafka|confluent-kafka|faust|faust-streaming|kafkajs|github\\.com/segmentio/kafka-go"}]},
+      "confidence": 0.8,
+      "rules": ["software/data-engineering/schema-management", "software/data-engineering/pipeline-integrity"],
+      "workflows": ["software/data-engineering/lineage-trace", "software/data-engineering/schema-migration"]
+    },
+    {
+      "id": "grpc",
+      "when": {"any": [{"manifest": "proto"}, {"relationship": "grpc", "direction": "any"}]},
+      "confidence": 0.8,
+      "rules": ["software/full-stack/api-design-guide", "software/data-engineering/schema-management"]
+    },
+    {
+      "id": "helm-kubernetes",
+      "when": {"manifest": "helm"},
+      "confidence": 0.9,
+      "rules": ["devops/kubernetes/workload-security", "devops/kubernetes/resource-governance", "devops/kubernetes/cluster-standards"],
+      "workflows": ["devops/kubernetes/onboard-service", "devops/kubernetes/debug-workload"]
+    },
+    {
+      "id": "argocd-gitops",
+      "when": {"manifest": "argocd"},
+      "confidence": 0.9,
+      "rules": ["software/platform/immutability", "devops/infrastructure/immutability"],
+      "workflows": ["software/platform/deploy-production", "software/platform/drift-check"]
+    },
+    {
+      "id": "deployable-service",
+      "when": {"all": [{"manifest": "dockerfile"}, {"any": [{"manifest": "gitlab-ci"}, {"manifest": "helm"}, {"relationship": "deploy", "direction": "in"}]}, {"code_lines": 300}]},
+      "confidence": 0.75,
+      "rules": ["devops/observability/golden-signals", "software/platform/reliability"],
+      "workflows": ["devops/observability/onboard-service-monitoring", "devops/sre/incident-response", "devops/ci-cd/release-pipeline"]
+    },
+    {
+      "id": "infrastructure-as-code",
+      "when": {"any": [{"file": "**/*.tf"}, {"file": "*.tf"}, {"file": "ansible.cfg"}, {"file": "**/ansible.cfg"}, {"file": "**/playbook*.yml"}, {"file": "playbook*.yml"}]},
+      "confidence": 0.85,
+      "rules": ["devops/infrastructure/iac-standards", "devops/infrastructure/secret-hygiene", "devops/infrastructure/state-management"],
+      "workflows": ["devops/infrastructure/module-development", "devops/infrastructure/drift-remediation"]
+    },
+    {
+      "id": "frontend",
+      "when": {"dependency": "react|vue|svelte|@angular/core|next|nuxt|vite"},
+      "confidence": 0.85,
+      "rules": ["software/frontend/architecture", "software/frontend/quality", "software/frontend/accessibility", "software/frontend/performance"],
+      "workflows": ["software/frontend/scaffold-component", "software/frontend/a11y-fix", "software/frontend/bundle-analyze"]
+    },
+    {
+      "id": "ml",
+      "when": {"dependency": "scikit-learn|sklearn|torch|tensorflow|xgboost|lightgbm|catboost|mlflow|transformers"},
+      "confidence": 0.8,
+      "rules": ["software/mlops/reproducibility", "software/mlops/model-governance", "software/mlops/data-integrity"],
+      "workflows": ["software/mlops/train-experiment", "software/mlops/evaluate-model"]
+    },
+    {
+      "id": "data-pipelines",
+      "when": {"any": [{"dependency": "apache-airflow|dbt-core|pyspark|dagster|prefect"}, {"file": "dags/**"}]},
+      "confidence": 0.8,
+      "rules": ["software/data-engineering/pipeline-integrity", "software/data-engineering/data-governance", "software/data-engineering/pii-handling"],
+      "workflows": ["software/data-engineering/backfill-data", "software/data-engineering/data-quality-incident"]
+    },
+    {
+      "id": "has-tests",
+      "when": {"any": [{"file": "tests/**"}, {"file": "test/**"}, {"file": "**/*_test.go"}]},
+      "confidence": 0.8,
+      "rules": ["software/qa/test-strategy", "software/qa/flakiness-policy"],
+      "workflows": ["software/qa/test-coverage-report"]
+    },
+    {
+      "id": "no-tests",
+      "when": {"all": [{"code_lines": 300}, {"not": {"any": [{"file": "tests/**"}, {"file": "test/**"}, {"file": "**/*_test.go"}, {"file": "**/test_*.py"}]}}]},
+      "confidence": 0.7,
+      "rules": ["software/qa/test-strategy"],
+      "workflows": ["software/backend/test-feature"]
+    }
+  ],
+  "task_routing": {
+    "feature": ["software/backend/develop-feature", "software/frontend/scaffold-component", "software/data-engineering/new-model", "software/mlops/train-experiment", "devops/infrastructure/module-development", "software/general/development-cycle-workflow"],
+    "bugfix": ["software/backend/debug-issue", "software/full-stack/debug-issue-fullstack", "devops/kubernetes/debug-workload", "software/general/development-cycle-workflow"],
+    "refactor": ["software/backend/refactor-module", "software/general/code-review-workflow"],
+    "tests": ["software/backend/test-feature", "software/qa/regression-suite", "software/qa/test-coverage-report"],
+    "migration": ["software/backend/add-migration", "software/data-engineering/schema-migration"],
+    "ci-failure": ["devops/ci-cd/pipeline-debug", "devops/ci-cd/onboard-repo"],
+    "release": ["devops/ci-cd/release-pipeline", "software/platform/deploy-production"],
+    "incident": ["devops/sre/incident-response", "devops/kubernetes/debug-workload", "software/data-engineering/data-quality-incident"],
+    "review": ["software/general/code-review-workflow"],
+    "onboarding": ["software/general/project-setup-workflow", "devops/ci-cd/onboard-repo"]
+  }
+}

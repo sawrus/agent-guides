@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- `tools/repo-scan`: offline analysis of many local Git repositories (Python standard library; `scc` when present).
+  `scan` writes `repositories.json` (URL mapping `~/work/<host>/<path>` checked against `origin`, activity class
+  active/stale/archived/junk, languages, Makefile, CI, manifests, env keys and hosts only), `relationships.json`
+  (`library`, `http`, `kafka`, `grpc`, `ci`, `deploy` edges with evidence and confidence; unresolved links are
+  listed, not guessed), `guide-applicability.json` (declarative rules in `tools/repo-scan/applicability.json` with
+  real workflow and rule ids, separate task routing hints) and `graph.mmd`. `--write-repo-artifacts` writes
+  `.agentic/` files into each repository and git-excludes them. `gate-propose` builds `.agent/gate.json` candidates
+  without running code; `gate-verify` runs them only in named repositories. `llm` adds an assessment through
+  `claude -p` or an OpenAI-compatible LiteLLM endpoint, cached by HEAD sha. New targets `make repo-scan` and
+  `make test-repo-scan` (part of `make test`). See docs/repo-scan.md.
 - Lean + JEV: JEV no longer forces the `team` profile. With `--profile lean` (the default), JEV makes one
   workflow call per session and adds a short checklist hint for the chosen workflow. The native main session
   performs the steps and starts subagents only where the core rules ask; spawn hooks still route the models of

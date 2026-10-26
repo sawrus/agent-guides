@@ -1,0 +1,9 @@
+include:
+  - project: 'team/infra/gitlab_ci'
+    ref: main
+    file: '/common/.gitlab-ci.yml'
+
+test:
+  stage: test
+  script:
+    - make test
