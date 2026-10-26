@@ -64,7 +64,7 @@ pub fn remove_if_unmodified(
     Ok(false)
 }
 
-fn drop_renamed_keys(config: &mut Value) -> bool {
+pub fn drop_renamed_keys(config: &mut Value) -> bool {
     let mut changed = false;
     let Some(agents) = config.get_mut("agent").and_then(Value::as_object_mut) else {
         return false;
@@ -90,7 +90,7 @@ fn drop_renamed_keys(config: &mut Value) -> bool {
 /// treats as npm packages (install fails with 404).
 const LOCAL_PLUGIN_REFS: [&str; 2] = ["telegram-notification", "agent-model-mapper"];
 
-fn drop_local_plugin_refs(config: &mut Value) -> bool {
+pub fn drop_local_plugin_refs(config: &mut Value) -> bool {
     let Some(map) = config.as_object_mut() else {
         return false;
     };

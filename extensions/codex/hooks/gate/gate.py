@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Agentic quality gate for Claude Code, Codex, and OpenCode (docs/agentic-v2-lean/README.md).
 
-`--event stop`: when the working tree changed, run the project checks; on failure ask the agent to continue
+`--event stop`: when the working tree changed since install (`.agentic/gate/baseline.json` holds the hashes of
+files that were uncommitted then), run the project checks; on failure ask the agent to continue
 with the output (Stop `{"decision": "block", "reason": ...}`). It also asks once for a CHANGELOG entry when
 source files changed. `--event guard`: deny secret reads, force pushes, and recursive deletes outside the
 project (PreToolUse `permissionDecision: deny`). Settings: optional `.agent/gate.json`
 {"commands": ["make test"], "changelog": true, "max_blocks": 3}. Standard library only.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -54,7 +56,24 @@ def changed_files(project):
     except (OSError, subprocess.SubprocessError):
         return []
     files = [line[3:].strip('"').split(' -> ')[-1] for line in out.splitlines()]
-    return [f for f in files if not f.startswith(RUNTIME_DIRS) and '__pycache__/' not in f and not f.endswith('.pyc')]
+    files = [f for f in files if not f.startswith(RUNTIME_DIRS) and '__pycache__/' not in f and not f.endswith('.pyc')]
+    baseline = install_baseline(project)
+    return [f for f in files if f not in baseline or baseline[f] != file_hash(project / f)]
+
+
+def install_baseline(project):
+    try:
+        files = json.loads((project / '.agentic/gate/baseline.json').read_text()).get('files')
+    except (OSError, ValueError, AttributeError):
+        return {}
+    return files if isinstance(files, dict) else {}
+
+
+def file_hash(path):
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
 
 
 def changelog_updated(project, changed):
