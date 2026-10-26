@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.1.2
+
+- `agentic upgrade` adopts a gate hook group that is identical to the one it writes when the ownership record is
+  missing. Upgrades with v2.1.0 lost `.agentic/codex-gate-hook-entries.json` and
+  `.agentic/claude-gate-hook-entries.json`, so later upgrades warned `Preserving conflicting Gate hook entry`.
+  A user-edited group is still left alone.
+
 ## v2.1.1
 
 - OpenCode model profiles saved by older releases no longer bring back `telegram-notification` and
