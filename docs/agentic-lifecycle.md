@@ -25,7 +25,9 @@ Supported values are `auto`, `dark`, and `light`.
 
 Target projects receive `.agentic.json`. It stores selected install settings, optional project-level OpenCode plugin enablement, managed file paths, source paths, hashes, generated marker type, and skipped files from the latest rerun. When Telegram notifications are enabled, raw `botToken` and `chatId` values are stored in `$HOME/.config/agentic/config.json`, while `.agentic.json` stores enablement only.
 
-The install-time OpenCode doctor smoke check does not reuse the user's live OpenCode session state. Instead, Agentic creates a temporary XDG home for that doctor run, copies only the OpenCode config directory plus `auth.json` and cached `models.json`, and lets any temporary OpenCode session database live only inside the doctor temp root.
+The install-time OpenCode doctor smoke check does not reuse the user's live OpenCode session state. Instead, Agentic creates a temporary XDG home for that doctor run, copies only the OpenCode config directory, `auth.json`, cached `models.json`, and the provider credentials from `opencode.db` (the `credential` and account tables; every other table is emptied), and lets any temporary OpenCode session live only inside the doctor temp root. It runs the model the user picked last (`recent[0]` in `state/opencode/model.json`) via `--model`, and sets `OPENCODE_DISABLE_MODELS_FETCH=1` when `models.json` is cached.
+
+Before each doctor run, Agentic removes leftover `$TMPDIR/agentic-*` directories from earlier runs. It first stops the processes still running in them (Linux), then deletes the agent sessions that ran in them: Codex threads (`codex delete --force`), OpenCode sessions (`opencode session delete`), and Claude Code project transcripts under `~/.claude/projects`. The directory that holds the target project and the run log files are kept. After the smoke checks, the doctor also stops processes left in its own temp root, such as MCP servers that outlived the agent.
 
 ## Instruction sources
 

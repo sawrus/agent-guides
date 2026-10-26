@@ -18,11 +18,18 @@ fn write_fake_bin(dir: &Path, name: &str, script: &str) {
 fn agentic(home: &Path, fake_bin: &Path) -> Command {
     let mut cmd = Command::cargo_bin("agentic").unwrap();
     let path = format!("{}:/usr/bin:/bin", fake_bin.display());
+    // Doctor cleans `$TMPDIR/agentic-*`, so every test gets its own temp root.
+    let tmp = home.join("tmp");
+    std::fs::create_dir_all(&tmp).unwrap();
     cmd.env("HOME", home)
         .env("XDG_CONFIG_HOME", home.join(".config"))
         .env("XDG_DATA_HOME", home.join(".local/share"))
         .env("XDG_CACHE_HOME", home.join(".cache"))
+        .env("XDG_STATE_HOME", home.join(".local/state"))
+        .env("TMPDIR", &tmp)
         .env("PATH", path)
+        .env_remove("CODEX_HOME")
+        .env_remove("CLAUDE_CONFIG_DIR")
         .env_remove("AGENTIC_ENABLE_MCPS")
         .env_remove("AGENTIC_ENABLE_CONTEXT7")
         .env_remove("AGENTIC_ENABLE_MEMPALACE")
@@ -96,6 +103,125 @@ fn doctor_reports_timeout_failure_and_fatal_output() {
         .stdout(predicate::str::contains(
             "Agentic doctor completed with 3 failing check(s)",
         ));
+}
+
+#[test]
+fn doctor_cleans_stale_agentic_tmp_dirs_and_their_sessions() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let fake_bin = tempfile::tempdir().unwrap();
+    write_fake_bin(fake_bin.path(), "codex", "echo AGENTIC_DOCTOR_OK");
+    let mut cmd = agentic(home.path(), fake_bin.path());
+
+    let tmp = home.path().join("tmp").canonicalize().unwrap();
+    let stale = tmp.join("agentic-doctor.old/claude");
+    std::fs::create_dir_all(&stale).unwrap();
+    std::fs::write(tmp.join("agentic-20261026-120000.log"), "run log").unwrap();
+    let encoded: String = stale
+        .to_string_lossy()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    let claude_project = home.path().join(".claude/projects").join(encoded);
+    std::fs::create_dir_all(&claude_project).unwrap();
+    std::fs::write(claude_project.join("s1.jsonl"), "{}").unwrap();
+    let other_project = home.path().join(".claude/projects/-home-u-repo");
+    std::fs::create_dir_all(&other_project).unwrap();
+
+    install_args(&mut cmd, project.path(), "codex")
+        .env("AGENTIC_DOCTOR", "1")
+        .env("AGENTIC_DOCTOR_TIMEOUT_SECONDS", "5")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "claude projects 1, temp directories 1",
+        ));
+
+    assert!(!tmp.join("agentic-doctor.old").exists());
+    assert!(tmp.join("agentic-20261026-120000.log").exists());
+    assert!(!claude_project.exists());
+    assert!(other_project.exists());
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn doctor_stops_processes_left_by_the_agent() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let fake_bin = tempfile::tempdir().unwrap();
+    let pid_file = home.path().join("child.pid");
+    write_fake_bin(
+        fake_bin.path(),
+        "codex",
+        &format!(
+            "sleep 300 >/dev/null 2>&1 &\necho $! > {}\necho AGENTIC_DOCTOR_OK",
+            pid_file.display()
+        ),
+    );
+
+    let mut cmd = agentic(home.path(), fake_bin.path());
+    install_args(&mut cmd, project.path(), "codex")
+        .env("AGENTIC_DOCTOR", "1")
+        .env("AGENTIC_DOCTOR_TIMEOUT_SECONDS", "5")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "✅ codex: lightweight smoke passed",
+        ))
+        .stdout(predicate::str::contains(
+            "Doctor stopped 1 leftover process(es) in the temp root",
+        ));
+
+    let pid = std::fs::read_to_string(&pid_file).unwrap();
+    let stat = std::fs::read_to_string(format!("/proc/{}/stat", pid.trim())).unwrap_or_default();
+    // A killed child of an exited parent is reaped by init; a zombie (state Z) also counts as stopped.
+    assert!(
+        stat.is_empty() || stat.contains(") Z "),
+        "child still running: {stat}"
+    );
+}
+
+#[test]
+fn opencode_doctor_uses_the_recent_model() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let fake_bin = tempfile::tempdir().unwrap();
+    let args_file = home.path().join("opencode.args");
+    write_fake_bin(
+        fake_bin.path(),
+        "opencode",
+        &format!(
+            "echo \"$* fetch=$OPENCODE_DISABLE_MODELS_FETCH\" > {}\necho AGENTIC_DOCTOR_OK",
+            args_file.display()
+        ),
+    );
+    let state = home.path().join(".local/state/opencode");
+    std::fs::create_dir_all(&state).unwrap();
+    std::fs::write(
+        state.join("model.json"),
+        r#"{"recent":[{"providerID":"openai","modelID":"gpt-x"}]}"#,
+    )
+    .unwrap();
+    let cache = home.path().join(".cache/opencode");
+    std::fs::create_dir_all(&cache).unwrap();
+    std::fs::write(cache.join("models.json"), "{}").unwrap();
+
+    let mut cmd = agentic(home.path(), fake_bin.path());
+    install_args(&mut cmd, project.path(), "opencode")
+        .env("AGENTIC_DOCTOR", "1")
+        .env("AGENTIC_DOCTOR_TIMEOUT_SECONDS", "5")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "✅ opencode: lightweight smoke passed",
+        ));
+
+    let args = std::fs::read_to_string(&args_file).unwrap();
+    assert!(
+        args.contains("--model openai/gpt-x Reply with exactly"),
+        "{args}"
+    );
+    assert!(args.contains("fetch=1"), "{args}");
 }
 
 #[test]

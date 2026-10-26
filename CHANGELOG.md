@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- The OpenCode doctor smoke check no longer fails with `missing required Authorization header`. OpenCode V2 keeps
+  provider credentials in `opencode.db`, not in `auth.json`, so the isolated doctor home had none. The doctor now
+  copies the credential tables (without sessions).
+- The OpenCode doctor runs the model you used last (`recent[0]` in `state/opencode/model.json`) with `--model`.
+  Without it, `opencode run` took the first model of whichever provider loaded first, so the check hit a
+  different provider from run to run and sometimes failed on its quota (`HTTP 429`) or hung. The doctor also
+  sets `OPENCODE_DISABLE_MODELS_FETCH=1` when `models.json` is cached, so startup does not wait for models.dev.
+- Before each doctor run, `agentic install` and `agentic upgrade` remove leftover `$TMPDIR/agentic-*` directories.
+  They first stop the processes still running there and delete the Codex, OpenCode, and Claude Code sessions that
+  ran in those directories, so temp runs no longer pile up in the agents' session lists. The directory of the
+  target project is kept.
+- After the smoke checks, the doctor stops processes left in its temp root. MCP servers such as `anydb-mcp`
+  outlived OpenCode and kept writing logs there.
+
 ## v2.1.2
 
 - `agentic upgrade` adopts a gate hook group that is identical to the one it writes when the ownership record is
