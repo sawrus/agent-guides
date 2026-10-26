@@ -296,7 +296,8 @@ A profile has two axes: the role set and an optional model profile. Each host ha
   overwritten; an edited `lean/profile.json` is used instead of the built-in definition.
 - A directory with only `opencode.json` stays an OpenCode model profile and is not listed as a role profile.
 - `.agentic.json` stores `settings.profile_ids` (host → id) and `settings.profile`, the base for JEV: `team` only
-  when every selected host has a `team` base.
+  when every selected host has a `team` base. `settings.profile_defs` keeps a copy of each custom profile, so a
+  sync or upgrade without the user file (for example on a teammate's machine) installs the same roles.
 - Install: `--profile <id>` for every host, or `--profile claude=team,codex=lean` per host. The TUI asks once per
   selected host, after the Agent OS step.
 - CLI: `agentic profile list|show <id>|use <id> [--project DIR]|create <id> --from lean|team`, each with an optional

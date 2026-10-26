@@ -126,13 +126,31 @@ pub fn load(app: &App, host: &str, id: &str) -> crate::Result<Profile> {
         profile.validate(id)?;
         return Ok(profile);
     }
-    builtin(id).ok_or_else(|| {
-        format!(
-            "unknown {host} profile '{id}' (expected {})",
-            path.display()
-        )
-        .into()
-    })
+    if let Some(profile) = builtin(id) {
+        return Ok(profile);
+    }
+    if let Some(profile) = snapshot(app, host, id) {
+        profile.validate(id)?;
+        return Ok(profile);
+    }
+    Err(format!(
+        "unknown {host} profile '{id}' (expected {})",
+        path.display()
+    )
+    .into())
+}
+
+/// The copy of a custom profile saved in the project manifest for this host.
+fn snapshot(app: &App, host: &str, id: &str) -> Option<Profile> {
+    let value = app.profile_snapshots.get(host)?;
+    if value.get("id").and_then(Value::as_str) != Some(id) {
+        return None;
+    }
+    let mut profile: Profile = serde_json::from_value(value.clone()).ok()?;
+    if profile.name.is_empty() {
+        profile.name = id.into();
+    }
+    Some(profile)
 }
 
 /// Profile id for a host: the per-host choice, then the install-wide one, then `lean`.
@@ -152,7 +170,7 @@ pub fn resolve(app: &App, host: &str) -> Profile {
         if let Ok(profile) = load(app, host, &id) {
             return profile;
         }
-    } else if let Some(profile) = builtin(&id) {
+    } else if let Some(profile) = builtin(&id).or_else(|| snapshot(app, host, &id)) {
         return profile;
     } else {
         // Hosts without their own store (for example gemini) follow the first host that defines the id.
@@ -197,12 +215,42 @@ pub fn effective(app: &App) -> &'static str {
 /// Per-host profile ids of the selected hosts, saved as `settings.profile_ids`.
 pub fn manifest_ids(app: &App) -> Value {
     let mut map = serde_json::Map::new();
-    for host in HOSTS {
-        if app.selected_agent_os_contains(host) {
-            map.insert(host.into(), json!(id_for(app, host)));
-        }
+    for host in &app.selected_agent_os {
+        map.insert(host.clone(), json!(id_for(app, host)));
     }
     Value::Object(map)
+}
+
+/// Resolved custom profiles of the selected hosts, saved as `settings.profile_defs`, so a sync or upgrade
+/// keeps the same roles when the user file is missing.
+pub fn manifest_defs(app: &App) -> Value {
+    let mut map = serde_json::Map::new();
+    for host in &app.selected_agent_os {
+        let id = id_for(app, host);
+        if builtin(&id).is_some() {
+            continue;
+        }
+        let profile = resolve(app, host);
+        if profile.name == LEAN && profile == builtin(LEAN).unwrap() {
+            continue;
+        }
+        let mut value = serde_json::to_value(&profile).unwrap_or(Value::Null);
+        if let Some(obj) = value.as_object_mut() {
+            obj.insert("id".into(), json!(id));
+        }
+        map.insert(host.clone(), value);
+    }
+    Value::Object(map)
+}
+
+/// Reject unknown or invalid profiles of the selected hosts before the install writes anything.
+pub fn validate_selected(app: &App) -> crate::Result<()> {
+    for host in HOSTS {
+        if app.selected_agent_os_contains(host) {
+            load(app, host, &id_for(app, host))?;
+        }
+    }
+    Ok(())
 }
 
 /// Validate the chosen profiles before any write and apply their model profiles.
@@ -213,6 +261,14 @@ pub fn prepare(app: &mut App) -> crate::Result<()> {
         }
         let id = id_for(app, host);
         let profile = load(app, host, &id)?;
+        if builtin(&id).is_none() && !profile_file(app, host, &id).is_file() {
+            crate::ui::warn(
+                app,
+                &format!(
+                    "{host} profile '{id}' has no user file; using the copy saved in .agentic.json"
+                ),
+            );
+        }
         let Some(models) = profile.models.clone() else {
             continue;
         };
@@ -350,9 +406,6 @@ pub fn apply_opencode(app: &mut App, project: &Path) -> crate::Result<()> {
         return Ok(());
     }
     let profile = resolve(app, "opencode");
-    if builtin(TEAM).as_ref() == Some(&profile) {
-        return Ok(());
-    }
     let dest = project.join(".opencode/opencode.json");
     let Ok(text) = std::fs::read_to_string(&dest) else {
         return Ok(());
@@ -675,6 +728,37 @@ mod tests {
                 && agents.contains_key("explorer")
                 && agents.contains_key("reviewer")
         );
+    }
+
+    #[test]
+    fn team_opencode_config_drops_lean_helpers() {
+        let mut data =
+            json!({"agent": {"explorer": {"mode": "subagent"}, "developer": {}, "mine": {}}});
+        opencode_agents(&mut data, &builtin(TEAM).unwrap());
+        let agents = data["agent"].as_object().unwrap();
+        assert!(!agents.contains_key("explorer"));
+        assert!(agents.contains_key("developer") && agents.contains_key("mine"));
+    }
+
+    #[test]
+    fn saved_copy_resolves_hosts_without_a_user_file() {
+        let home = tempfile::tempdir().unwrap();
+        let mut app = test_app(home.path());
+        app.selected_agent_os = vec!["claude".into(), "gemini".into()];
+        app.install_profile = "my".into();
+        let saved = json!({"id": "my", "name": "my", "base": "team", "agents": ["qa"]});
+        app.profile_snapshots.insert("claude".into(), saved.clone());
+        app.profile_snapshots.insert("gemini".into(), saved);
+        assert!(validate_selected(&app).is_ok());
+        for host in ["claude", "gemini"] {
+            let profile = resolve(&app, host);
+            assert_eq!(profile.agents, ["qa"], "{host}");
+            assert!(profile.is_team());
+        }
+        assert_eq!(manifest_ids(&app)["gemini"], "my");
+        assert_eq!(manifest_defs(&app)["gemini"]["agents"], json!(["qa"]));
+        app.profile_snapshots.clear();
+        assert!(validate_selected(&app).is_err());
     }
 
     #[test]

@@ -404,6 +404,7 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
             "jev": crate::jev_defaults::manifest_settings(app, &old_settings),
             "profile": crate::profile::effective(app),
             "profile_ids": crate::profile::manifest_ids(app),
+            "profile_defs": crate::profile::manifest_defs(app),
             "gate": {"enabled": crate::gate::enabled(app)},
             "opencode_profile": app.selected_opencode_profile,
             "opencode_plugins": Value::Object(opencode_plugins),
@@ -467,6 +468,13 @@ pub fn load_install_settings_from_manifest(
     let loaded_mcps = load_list("mcp_integrations");
     if app.gate_enabled.is_none() {
         app.gate_enabled = settings["gate"]["enabled"].as_bool();
+    }
+    if let Some(defs) = settings["profile_defs"].as_object() {
+        for (host, def) in defs {
+            app.profile_snapshots
+                .entry(host.clone())
+                .or_insert_with(|| def.clone());
+        }
     }
     // An install-wide profile from the CLI or environment replaces every saved per-host choice.
     if app.install_profile.is_empty() {

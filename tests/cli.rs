@@ -3,7 +3,7 @@
 
 use assert_cmd::Command;
 use predicates::prelude::*;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::path::Path;
 
 fn agentic(home: &Path) -> Command {
@@ -1584,10 +1584,28 @@ fn custom_profile_installs_only_listed_agents_on_each_host() {
                 .unwrap();
         assert_eq!(manifest["settings"]["profile_ids"][host], "my");
         assert_eq!(manifest["settings"]["profile"], "team");
+        assert_eq!(
+            manifest["settings"]["profile_defs"][host]["agents"],
+            json!(["developer", "qa"])
+        );
         if let Ok(config) = std::fs::read_to_string(p.join(".opencode/opencode.json")) {
             let data: Value = serde_json::from_str(&config).unwrap();
             assert!(data["agent"].get("product-owner").is_none());
         }
+        // Without the user file (a teammate's machine) a sync keeps the saved roles.
+        std::fs::remove_dir_all(&dir).unwrap();
+        agentic(home.path())
+            .env_remove("AGENTIC_PROFILE")
+            .args(["__sync-project", "--project-dir"])
+            .arg(p)
+            .assert()
+            .success();
+        let mut synced: Vec<String> = std::fs::read_dir(p.join(agents))
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+            .collect();
+        synced.sort();
+        assert_eq!(synced, installed, "{host} after sync");
     }
     // Unknown profiles fail before any write.
     let home = tempfile::tempdir().unwrap();
@@ -1609,6 +1627,7 @@ fn custom_profile_installs_only_listed_agents_on_each_host() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("unknown claude profile 'ghost'"));
+    assert_eq!(std::fs::read_dir(project.path()).unwrap().count(), 0);
 }
 
 #[test]

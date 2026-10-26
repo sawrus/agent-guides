@@ -723,6 +723,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     }
     normalize_selected_agent_os(app);
     validate_inputs(app)?;
+    crate::profile::validate_selected(app)?;
 
     app.project_dir = util::normalize_project_dir_path(&app.project_dir);
     let project_dir = PathBuf::from(&app.project_dir);
