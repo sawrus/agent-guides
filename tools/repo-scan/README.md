@@ -27,6 +27,14 @@ which agent-guides workflows and rules fit each repository and how the repositor
 ## Commands
 
 ```bash
+# Both stages in one command: scan, then the LLM assessment (focus repositories, else --classes active)
+python3 tools/repo-scan/repo_scan.py run ~/work/<host>/<group> [more roots] --out OUT [--provider claude --model haiku]
+python3 tools/repo-scan/repo_scan.py run ROOTS --out OUT --skip-llm          # stage 1 only
+
+# One repository (focus mode): its links still resolve, see "Focus mode" below
+python3 tools/repo-scan/repo_scan.py run ~/work/<host>/<group>/team/service --out OUT
+python3 tools/repo-scan/repo_scan.py scan ROOTS --focus team/service --out OUT
+
 # Stage 1: static scan
 python3 tools/repo-scan/repo_scan.py scan ~/work/<host>/<group> [more roots] --out OUT
 # Optional GitLab URL per root (repeatable); without it the URL is inferred from the path
@@ -52,15 +60,38 @@ python3 tools/repo-scan/repo_scan.py gate-verify URL|PATH... [--in OUT] [--timeo
 python3 tools/repo-scan/repo_scan.py llm --in OUT --provider claude --model haiku \
   --repo https://gitlab.example.com/group/team/service --repo libs/common-lib
 python3 tools/repo-scan/repo_scan.py llm --in OUT --provider claude --model sonnet --classes active --limit 5
-AGENTIC_LLM_API_KEY=... python3 tools/repo-scan/repo_scan.py llm --in OUT --provider litellm --repo rule-engine
+AGENTIC_LLM_API_KEY=... python3 tools/repo-scan/repo_scan.py llm --in OUT --provider litellm --repo service
 ```
 
 `--now ISO8601` fixes the reference time of the activity window (tests use it). `--no-scc` forces the built-in
 counter. `--jobs N` sets parallel workers (default 8).
 
 `--repo` (llm) and the positional arguments of the gate commands accept a GitLab URL, `host/path`, a path suffix
-such as `antifraud-rules/rule-engine`, a repository name, or a local path. Names other than local checkouts are
+such as `team/service`, a repository name, or a local path. Names other than local checkouts are
 looked up in `--in OUT/repositories.json`.
+
+## Agent skill
+
+`tools/repo-scan/skill/repo-scan/` is a skill for Claude Code, OpenCode and Codex: `SKILL.md` plus the wrapper
+`scripts/repo-scan.sh` (`run`, `scan`, `llm`, `gate-propose`, `gate-verify`, `check`, `tools`). `make repo-scan-skill`
+copies it to `SKILL_TARGET` (default `~/.claude/skills`) and records this checkout in
+`~/.config/agentic/agent-guides-home`. Local defaults (roots, root URLs, context roots, LLM endpoint and model, never
+the key) go into `~/.config/agentic/repo-scan.env`; a company copy of the skill can ship them in `defaults.env`.
+
+## Focus mode (one or a few repositories)
+
+A repository scanned alone cannot resolve its links: the library publisher, the HTTP peer and the CI template
+live in other repositories. Focus mode scans context roots to build the index, then writes only the view of the
+focus repositories: their edges and unresolved links, the focus records (`"focus": true`) plus their direct
+neighbours, and applicability for the focus only. `relationships.json` lists the ids under `focus`.
+
+- Focus: `--focus REPO` (repeatable: path, URL or short form). Roots that are repositories themselves are the
+  focus by default, so `scan ~/work/<host>/<group>/team/service` is focus mode.
+- Context roots, first found: `--context-root DIR` (repeatable), env `REPO_SCAN_CONTEXT_ROOTS` (space or `:`
+  separated), `context_roots` in `~/.config/agentic/repo-scan.json`, else the `<host>/<group>` directory above each
+  focus repository. Links to another GitLab host resolve only when its root is in the context.
+- `--no-context` scans the focus alone (links to other repositories stay unresolved).
+- `run` assesses only the focus repositories in stage 2, whatever their activity class.
 
 ## Identity
 

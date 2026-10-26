@@ -94,6 +94,15 @@ def cmd_scan(args):
         root_urls[Path(directory).expanduser().resolve()] = url.rstrip('/')
     roots = [Path(r).expanduser().resolve() for r in args.roots]
     roots += [r for r in root_urls if r not in roots]
+    # Focus mode: report only the chosen repositories and their links, but scan context roots so the links resolve.
+    focus = list(args.focus or [])
+    if not focus and roots and all((r / '.git').exists() for r in roots):
+        focus = [str(r) for r in roots]
+    if focus and not args.no_context:
+        for ctx in context_roots(args, roots):
+            if ctx.is_dir() and not any(ctx == r or ctx.is_relative_to(r) for r in roots):
+                roots = [r for r in roots if not r.is_relative_to(ctx)] + [ctx]
+        print(f'focus: {len(focus)} repositories; context roots: {", ".join(str(r) for r in roots)}', file=sys.stderr)
     jobs = []
     for root in roots:
         if not root.is_dir():
@@ -128,6 +137,17 @@ def cmd_scan(args):
               'repositories': {}}
     for r, (_, facts, files) in zip(records, scanned):
         guides['repositories'][r['id']] = applicability.apply(cfg, known, r, facts, files, rel['edges'])
+    focus_ids = []
+    if focus:
+        focus_ids = [r['id'] for r in match_repos(records, focus)]
+        missing = [f for f in focus if not match_repos(records, [f])]
+        if missing:
+            print(f'error: focus repositories not found: {", ".join(missing)}', file=sys.stderr)
+            return 2
+        rel = focus_view(rel, set(focus_ids), args.trusted_min)
+        keep = set(focus_ids) | {e['from'] for e in rel['edges']} | {e['to'] for e in rel['edges']}
+        records = [dict(r, focus=r['id'] in focus_ids) for r in records if r['id'] in keep]
+        guides['repositories'] = {k: v for k, v in guides['repositories'].items() if k in focus_ids}
     public = [{k: v for k, v in r.items() if k != 'facts'} for r in records]
     out = Path(args.out)
     classes = {}
@@ -138,6 +158,8 @@ def cmd_scan(args):
                        'source': 'root-url' if r in root_urls else 'path'} for r in roots],
             'tools': {'counter': 'scc' if use_scc else 'builtin', 'semgrep': shutil.which('semgrep') is not None},
             'counts': {'repositories': len(public), 'by_class': classes}}
+    if focus_ids:
+        meta['focus'] = focus_ids
     # Local paths appear only here (llm and gate stages need them), never as identity.
     write_json(out / 'repositories.json', dict(meta, root_paths=[str(r) for r in roots], repositories=public))
     write_json(out / 'relationships.json', dict(meta, **rel))
@@ -145,12 +167,58 @@ def cmd_scan(args):
     (out / 'graph.mmd').write_text(mermaid(public, rel['edges']))
     if args.write_repo_artifacts:
         for r in public:
+            if focus_ids and r['id'] not in focus_ids:
+                continue
             write_repo_artifacts(r, rel, guides['repositories'][r['id']])
     print(json.dumps({'out': str(out), 'repositories': len(public), 'by_class': classes,
                       'edges_by_kind': rel['stats']['edges_by_kind'],
                       'trusted_by_kind': rel['stats']['trusted_by_kind'], 'unresolved': rel['stats']['unresolved']},
                      indent=1))
     return 0
+
+
+def context_roots(args, roots):
+    """Roots scanned only to resolve links of focus repositories: --context-root, then REPO_SCAN_CONTEXT_ROOTS
+    (os.pathsep or space separated), then `context_roots` in ~/.config/agentic/repo-scan.json, else the top group
+    directory `<host>/<group>` above each focus repository."""
+    raw = list(args.context_root or [])
+    if not raw and os.environ.get('REPO_SCAN_CONTEXT_ROOTS'):
+        raw = os.environ['REPO_SCAN_CONTEXT_ROOTS'].replace(os.pathsep, ' ').split()
+    if not raw:
+        cfg = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config') / 'agentic/repo-scan.json'
+        try:
+            raw = json.loads(cfg.read_text()).get('context_roots', [])
+        except (OSError, ValueError, AttributeError):
+            raw = []
+    if raw:
+        return [Path(r).expanduser().resolve() for r in raw]
+    found = []
+    for root in roots:
+        parts = root.parts
+        hosts = [i for i, part in enumerate(parts[:-1]) if discover.DOMAIN.match(part)]
+        if hosts and hosts[-1] + 2 <= len(parts):
+            top = Path(*parts[:hosts[-1] + 2])
+            if top not in found:
+                found.append(top)
+    return found
+
+
+def focus_view(rel, focus_ids, trusted_min):
+    """Edges and unresolved links that touch the focus repositories, with recomputed stats."""
+    edges = [e for e in rel['edges'] if e['from'] in focus_ids or e['to'] in focus_ids]
+    unresolved = [u for u in rel['unresolved'] if u['from'] in focus_ids]
+    kinds, trusted, reasons = {}, {}, {}
+    for e in edges:
+        kinds[e['kind']] = kinds.get(e['kind'], 0) + 1
+        if e['trusted']:
+            trusted[e['kind']] = trusted.get(e['kind'], 0) + 1
+    for u in unresolved:
+        key = f'{u["kind"]}:{u["reason"]}'
+        reasons[key] = reasons.get(key, 0) + 1
+    stats = dict(rel['stats'], edges=len(edges), edges_by_kind=kinds, trusted_min=trusted_min,
+                 trusted=sum(trusted.values()), trusted_by_kind=trusted, unresolved=len(unresolved),
+                 unresolved_by_reason=reasons)
+    return {'edges': edges, 'unresolved': unresolved, 'stats': stats}
 
 
 def write_repo_artifacts(record, rel, guide):
@@ -281,11 +349,8 @@ def cmd_llm(args):
     return 0 if ok else 1
 
 
-def main(argv=None):
-    p = argparse.ArgumentParser(prog='repo_scan.py', description='Offline analysis of many Git repositories.')
-    sub = p.add_subparsers(dest='cmd', required=True)
-    s = sub.add_parser('scan', help='stage 1: static scan (no network, no repository code runs)')
-    s.add_argument('roots', nargs='+')
+def add_scan_args(s):
+    s.add_argument('roots', nargs='+', help='group directories or single repositories')
     s.add_argument('--out', required=True)
     s.add_argument('--root-url', action='append', metavar='DIR=URL',
                    help='GitLab URL of a root (repeatable), e.g. ~/work/gitlab.example.com/group=https://gitlab.example.com/group; '
@@ -296,9 +361,50 @@ def main(argv=None):
     s.add_argument('--now', help='reference time (ISO 8601) for the activity window')
     s.add_argument('--jobs', type=int, default=8)
     s.add_argument('--no-scc', action='store_true', help='use the built-in counter even when scc is on PATH')
+    s.add_argument('--focus', action='append', metavar='REPO',
+                   help='report only this repository and its links (repeatable; path, URL or short form); '
+                        'roots that are repositories themselves are the focus by default')
+    s.add_argument('--context-root', action='append', metavar='DIR',
+                   help='extra root scanned only to resolve focus links (repeatable; default: REPO_SCAN_CONTEXT_ROOTS, '
+                        '~/.config/agentic/repo-scan.json, else the <host>/<group> directory above the focus)')
+    s.add_argument('--no-context', action='store_true', help='focus mode without context roots')
     s.add_argument('--write-repo-artifacts', action='store_true',
                    help='write .agentic/repo-scan.json and .agentic/dependencies.json into each repository')
+
+
+def add_llm_args(m):
+    m.add_argument('--provider', choices=sorted(llm.PROVIDERS), default='claude')
+    m.add_argument('--model')
+    m.add_argument('--repo', action='append', help='GitLab URL, host/path, path suffix, name or local path; repeatable')
+    m.add_argument('--classes', default='active')
+    m.add_argument('--limit', type=int, default=0)
+    m.add_argument('--timeout', type=int, default=300)
+    m.add_argument('--no-cache', action='store_true')
+
+
+def cmd_run(args):
+    code = cmd_scan(args)
+    if code or args.skip_llm:
+        return code
+    stage2 = argparse.Namespace(**vars(args))
+    stage2.scan_dir, stage2.out = args.out, None
+    if not args.repo:  # focus repositories are assessed whatever their class
+        stage2.repo = list(args.focus or []) or \
+            [r for r in args.roots if (Path(r).expanduser() / '.git').exists()] or None
+    return cmd_llm(stage2)
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(prog='repo_scan.py', description='Offline analysis of many Git repositories.')
+    sub = p.add_subparsers(dest='cmd', required=True)
+    s = sub.add_parser('scan', help='stage 1: static scan (no network, no repository code runs)')
+    add_scan_args(s)
     s.set_defaults(func=cmd_scan)
+    r = sub.add_parser('run', help='stage 1 + stage 2: scan, then the LLM assessment of the selected repositories')
+    add_scan_args(r)
+    add_llm_args(r)
+    r.add_argument('--skip-llm', action='store_true', help='stage 1 only')
+    r.set_defaults(func=cmd_run)
     g = sub.add_parser('gate-propose', help='candidate .agent/gate.json from Makefile and CI (nothing runs)')
     g.add_argument('repos', nargs='*', help='repository paths, or URLs / short forms looked up in --in; '
                                             'default: all repositories from --in')
@@ -317,13 +423,7 @@ def main(argv=None):
     m = sub.add_parser('llm', help='stage 2: LLM assessment over stage-1 output')
     m.add_argument('--in', dest='scan_dir', required=True)
     m.add_argument('--out')
-    m.add_argument('--provider', choices=sorted(llm.PROVIDERS), default='claude')
-    m.add_argument('--model')
-    m.add_argument('--repo', action='append', help='GitLab URL, host/path, path suffix, name or local path; repeatable')
-    m.add_argument('--classes', default='active')
-    m.add_argument('--limit', type=int, default=0)
-    m.add_argument('--timeout', type=int, default=300)
-    m.add_argument('--no-cache', action='store_true')
+    add_llm_args(m)
     m.set_defaults(func=cmd_llm)
     args = p.parse_args(argv)
     return args.func(args)

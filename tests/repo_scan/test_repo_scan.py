@@ -311,6 +311,61 @@ class GateTest(unittest.TestCase):
         self.assertEqual(result['exit'], 124)
 
 
+class FocusTest(unittest.TestCase):
+    """One repository: the context roots are scanned so its links resolve, the output keeps only its view."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp(prefix='repo-scan-focus-')
+        cls.root = make_workspace(cls.tmp)
+        cls.env = mock.patch.dict(os.environ, {'XDG_CONFIG_HOME': str(Path(cls.tmp) / 'config')})
+        cls.env.start()
+        os.environ.pop('REPO_SCAN_CONTEXT_ROOTS', None)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.env.stop()
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def scan(self, name, *extra):
+        out = Path(self.tmp) / name
+        code, _, err = run_cli('scan', *extra, '--out', str(out), '--now', NOW, '--no-scc')
+        self.assertEqual(code, 0, err)
+        rel = json.loads((out / 'relationships.json').read_text())
+        repos = json.loads((out / 'repositories.json').read_text())['repositories']
+        guides = json.loads((out / 'guide-applicability.json').read_text())
+        return rel, {r['id']: r for r in repos}, guides
+
+    def test_single_repository_resolves_links_from_its_group(self):
+        rel, repos, guides = self.scan('one', str(self.root / 'antifraud-rules/rule-engine'))
+        engine = rid('rule-engine')
+        self.assertEqual(rel['focus'], [engine])
+        pairs = {(e['to'], e['kind']) for e in rel['edges']}
+        self.assertIn((rid('apiutil'), 'library'), pairs)
+        self.assertIn((rid('rule-catalog'), 'http'), pairs)
+        self.assertTrue(all(engine in (e['from'], e['to']) for e in rel['edges']))
+        self.assertEqual(set(repos), {engine, rid('apiutil'), rid('rule-catalog')})
+        self.assertTrue(repos[engine]['focus'] and not repos[rid('apiutil')]['focus'])
+        self.assertEqual(list(guides['repositories']), [engine])
+
+    def test_no_context_leaves_links_unresolved(self):
+        rel, repos, _ = self.scan('alone', str(self.root / 'antifraud-rules/rule-engine'), '--no-context')
+        self.assertEqual(list(repos), [rid('rule-engine')])
+        self.assertFalse(any(e['to'] == rid('apiutil') for e in rel['edges']))
+
+    def test_focus_inside_group_roots(self):
+        rel, repos, _ = self.scan('group', str(self.root), '--focus', 'pypi/apiutil')
+        self.assertEqual(rel['focus'], [rid('apiutil')])
+        self.assertIn((rid('rule-engine'), rid('apiutil')), {(e['from'], e['to']) for e in rel['edges']})
+        self.assertNotIn(rid('handbook'), repos)
+
+    def test_unknown_focus_fails(self):
+        code, _, err = run_cli('scan', str(self.root), '--focus', 'no/such-repo', '--out',
+                               str(Path(self.tmp) / 'bad'), '--now', NOW, '--no-scc')
+        self.assertEqual(code, 2)
+        self.assertIn('focus repositories not found', err)
+
+
 class LlmTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

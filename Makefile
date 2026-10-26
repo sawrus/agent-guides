@@ -7,7 +7,7 @@ COVERAGE_MIN ?= 80
 .PHONY: help install dev build release-build test test-unit test-integration \
 	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
 	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode blackbox-claude test-jev-hooks test-notify test-jev-sdk test-gate \
-	test-repo-scan repo-scan repo-scan-check repo-scan-tools context-budget bench-v1 bench-prepare bench bench-selftest bench-report bench-regrade
+	test-repo-scan repo-scan repo-scan-check repo-scan-tools repo-scan-skill context-budget bench-v1 bench-prepare bench bench-selftest bench-report bench-regrade
 
 help:
 	@echo "Agentic Makefile targets:"
@@ -33,6 +33,7 @@ help:
 	@echo "  repo-scan        - static scan of REPO_SCAN_ROOTS into REPO_SCAN_OUT (no network, no repo code runs)"
 	@echo "  repo-scan-check  - check repo-scan requirements (python3 >= 3.11, git; offers to install scc)"
 	@echo "  repo-scan-tools  - install optional repo-scan tools (REPO_SCAN_TOOLS, default scc) into ~/.local/bin"
+	@echo "  repo-scan-skill  - install the repo-scan skill into SKILL_TARGET (default ~/.claude/skills)"
 	@echo "  blackbox         - real local Codex/OpenCode/Claude + JEV calculator checks (paid)"
 	@echo "  blackbox-codex   - real Codex + JEV calculator check"
 	@echo "  blackbox-opencode - real OpenCode V2 + JEV calculator check"
@@ -109,6 +110,13 @@ repo-scan-check:
 
 repo-scan-tools:
 	sh tools/repo-scan/install-tools.sh $(REPO_SCAN_TOOLS)
+
+SKILL_TARGET ?= $(HOME)/.claude/skills
+repo-scan-skill:
+	mkdir -p "$(SKILL_TARGET)/repo-scan" "$${XDG_CONFIG_HOME:-$(HOME)/.config}/agentic"
+	cp -R tools/repo-scan/skill/repo-scan/. "$(SKILL_TARGET)/repo-scan/"
+	echo "$(CURDIR)" > "$${XDG_CONFIG_HOME:-$(HOME)/.config}/agentic/agent-guides-home"
+	@echo "installed $(SKILL_TARGET)/repo-scan (agent-guides: $(CURDIR))"
 
 repo-scan: repo-scan-check
 	@test -n "$(REPO_SCAN_ROOTS)" || (echo "set REPO_SCAN_ROOTS='<dir> [<dir>...]'" >&2; exit 2)

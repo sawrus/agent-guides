@@ -4,6 +4,11 @@
 
 ## v2.1.0
 
+- repo-scan `run`: scan and LLM assessment in one command. Focus mode (`--focus`, or a repository given as the
+  root) scans context roots (`--context-root`, `REPO_SCAN_CONTEXT_ROOTS`, `~/.config/agentic/repo-scan.json`, else
+  the `<host>/<group>` above the repository) so the links of one repository resolve, and reports only its view.
+- repo-scan skill: `tools/repo-scan/skill/repo-scan` (`SKILL.md` and `scripts/repo-scan.sh`) runs both stages or
+  one, for one repository or many; `make repo-scan-skill` installs it into `~/.claude/skills`.
 - repo-scan requirements: `make repo-scan-check` (plain `sh`) checks `python3` >= 3.11 and `git`, prints the install
   command for the OS, and on a terminal offers to install a missing `scc`; `make repo-scan` runs it first.
   `make repo-scan-tools` installs `scc` (pinned release, checksum verified) and, on request, `semgrep`.
