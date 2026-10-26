@@ -7,7 +7,7 @@ COVERAGE_MIN ?= 80
 .PHONY: help install dev build release-build test test-unit test-integration \
 	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
 	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode blackbox-claude test-jev-hooks test-notify test-jev-sdk test-gate \
-	test-repo-scan repo-scan context-budget bench-v1 bench-prepare bench bench-selftest bench-report bench-regrade
+	test-repo-scan repo-scan repo-scan-check repo-scan-tools context-budget bench-v1 bench-prepare bench bench-selftest bench-report bench-regrade
 
 help:
 	@echo "Agentic Makefile targets:"
@@ -31,6 +31,8 @@ help:
 	@echo "  test-gate        - offline quality gate tests (Stop checks, PreToolUse guard)"
 	@echo "  test-repo-scan   - offline tests of tools/repo-scan on fixture repositories"
 	@echo "  repo-scan        - static scan of REPO_SCAN_ROOTS into REPO_SCAN_OUT (no network, no repo code runs)"
+	@echo "  repo-scan-check  - check repo-scan requirements (python3 >= 3.11, git; offers to install scc)"
+	@echo "  repo-scan-tools  - install optional repo-scan tools (REPO_SCAN_TOOLS, default scc) into ~/.local/bin"
 	@echo "  blackbox         - real local Codex/OpenCode/Claude + JEV calculator checks (paid)"
 	@echo "  blackbox-codex   - real Codex + JEV calculator check"
 	@echo "  blackbox-opencode - real OpenCode V2 + JEV calculator check"
@@ -101,7 +103,14 @@ test-gate:
 REPO_SCAN_ROOTS ?=
 REPO_SCAN_OUT ?= .agentic-blackbox/repo-scan
 REPO_SCAN_ARGS ?=
-repo-scan:
+REPO_SCAN_TOOLS ?= scc
+repo-scan-check:
+	@sh tools/repo-scan/check-tools.sh
+
+repo-scan-tools:
+	sh tools/repo-scan/install-tools.sh $(REPO_SCAN_TOOLS)
+
+repo-scan: repo-scan-check
 	@test -n "$(REPO_SCAN_ROOTS)" || (echo "set REPO_SCAN_ROOTS='<dir> [<dir>...]'" >&2; exit 2)
 	PYTHONDONTWRITEBYTECODE=1 python3 tools/repo-scan/repo_scan.py scan $(REPO_SCAN_ROOTS) --out $(REPO_SCAN_OUT) $(REPO_SCAN_ARGS)
 

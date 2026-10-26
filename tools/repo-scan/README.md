@@ -12,6 +12,18 @@ which agent-guides workflows and rules fit each repository and how the repositor
 - Env files keep only key names, line numbers and URL hosts. Secret values are never stored. Local secret
   files (`.env`, `.env.local`, ...) are skipped; templates (`sample.env`, `*.env`, `.env.example`) are read.
 
+## Requirements
+
+| Tool | Need | Check or install |
+|---|---|---|
+| `python3` >= 3.11, `git` | required | `make repo-scan-check` prints the install command for your OS |
+| `scc` | optional: exact line counts; without it a built-in counter runs | `make repo-scan-tools` (pinned release, checksum verified, into `~/.local/bin`) |
+| `semgrep` | optional: detected only, call rules are planned | `make repo-scan-tools REPO_SCAN_TOOLS='scc semgrep'` (pipx or uv) |
+| `claude` | only for `llm --provider claude` | `sh tools/repo-scan/check-tools.sh --llm-claude` |
+
+`make repo-scan` runs the check first. On a terminal the check offers to install a missing `scc`
+(`REPO_SCAN_NO_PROMPT=1` turns the offer off). The check is plain `sh`, so it also works where Python is missing.
+
 ## Commands
 
 ```bash

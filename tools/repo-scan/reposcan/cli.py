@@ -102,6 +102,8 @@ def cmd_scan(args):
         for path in discover.find_repos([root]):
             jobs.append((path, root, root_urls.get(root)))
     print(f'repo-scan {VERSION}: {len(jobs)} repositories, counter={"scc" if use_scc else "builtin"}', file=sys.stderr)
+    if not use_scc and not args.no_scc:
+        print('hint: scc is not installed; run `make repo-scan-tools` or tools/repo-scan/check-tools.sh', file=sys.stderr)
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
         scanned = list(pool.map(lambda j: scan_one(j[0], j[1], j[2], cfg, now, use_scc), jobs))
     counts = {}

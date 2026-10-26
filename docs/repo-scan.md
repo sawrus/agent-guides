@@ -15,6 +15,8 @@ is inferred from `~/work/<host>/<path>` or set per root with `--root-url <dir>=<
 `active`, `stale`, `docs`, `archived`, `junk`.
 
 ```bash
+make repo-scan-check            # python3 >= 3.11 and git; offers to install scc
+make repo-scan-tools            # optional tools: scc (default), REPO_SCAN_TOOLS='scc semgrep'
 make repo-scan REPO_SCAN_ROOTS="~/work/<host>/<group-a> ~/work/<host>/<group-b>" REPO_SCAN_OUT=/tmp/scan
 python3 tools/repo-scan/repo_scan.py scan ~/work/a --root-url ~/work/a=https://gitlab.example.com/team --out /tmp/scan
 python3 tools/repo-scan/repo_scan.py gate-propose --in /tmp/scan

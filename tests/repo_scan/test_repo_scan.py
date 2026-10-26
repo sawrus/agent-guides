@@ -459,5 +459,45 @@ class UnitTest(unittest.TestCase):
         self.assertEqual(result['code_lines'], 120)
 
 
+
+class CheckToolsTest(unittest.TestCase):
+    """check-tools.sh is plain sh, so it must report a missing or old Python itself."""
+
+    def run_check(self, tools):
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp)
+            for name, target in tools.items():
+                path = bin_dir / name
+                if target is None:
+                    path.write_text('#!/bin/sh\ncase "$*" in *version_info*) exit 1;; *) echo 3.9.18;; esac\n')
+                    path.chmod(0o755)
+                else:
+                    path.symlink_to(target)
+            env = {'PATH': str(bin_dir), 'REPO_SCAN_NO_PROMPT': '1'}
+            return subprocess.run(['/bin/sh', str(TOOL / 'check-tools.sh')], env=env, capture_output=True,
+                                  text=True, stdin=subprocess.DEVNULL)
+
+    def base(self):
+        return {'dirname': shutil.which('dirname'), 'git': shutil.which('git')}
+
+    def test_missing_python_fails_with_install_hint(self):
+        result = self.run_check(self.base())
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('missing: python3 >= 3.11', result.stderr)
+
+    def test_old_python_fails(self):
+        result = self.run_check({**self.base(), 'python3': None})
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('needs >= 3.11', result.stderr)
+
+    def test_missing_git_fails_and_ok_without_optional_tools(self):
+        result = self.run_check({'dirname': shutil.which('dirname'), 'python3': sys.executable})
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('missing: git', result.stderr)
+        result = self.run_check({**self.base(), 'python3': sys.executable})
+        self.assertEqual(result.returncode, 0)
+        self.assertIn('optional scc is not installed', result.stderr)
+
+
 if __name__ == '__main__':
     unittest.main()

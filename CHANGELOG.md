@@ -4,6 +4,9 @@
 
 ## v2.1.0
 
+- repo-scan requirements: `make repo-scan-check` (plain `sh`) checks `python3` >= 3.11 and `git`, prints the install
+  command for the OS, and on a terminal offers to install a missing `scc`; `make repo-scan` runs it first.
+  `make repo-scan-tools` installs `scc` (pinned release, checksum verified) and, on request, `semgrep`.
 - Release policy: docs/release-policy.md says when to bump MAJOR, MINOR, and PATCH.
 - Removed the stale `error.txt` CI log.
 - Role profiles per host: `~/.config/agentic/<claude|codex|opencode>/profiles/<id>/profile.json` with `base`
