@@ -477,6 +477,8 @@ pub struct WizardSelections {
     pub clear_mcps: bool,
     pub areas: Vec<String>,
     pub specs: Vec<String>,
+    /// Role profile id per host (crate::profile::HOSTS); empty keeps the default.
+    pub profiles: std::collections::BTreeMap<String, String>,
 }
 
 pub fn run_tui(app: &mut App) -> crate::Result<()> {
@@ -519,6 +521,26 @@ pub fn apply_selections(app: &mut App, selections: WizardSelections) {
         selections.areas
     };
     app.selected_specs = selections.specs;
+    app.host_profiles = selections.profiles;
+    // One shared choice is also the install-wide profile; mixed choices stay per host.
+    let mut ids: Vec<&String> = app.host_profiles.values().collect();
+    ids.dedup();
+    if let [id] = ids.as_slice() {
+        app.install_profile = (*id).clone();
+    }
+}
+
+/// Role profile select of one host: `(prompt, ids, labels)`. The cursor starts on the current choice.
+pub fn profile_step(app: &App, host: &str) -> (String, Vec<String>, Vec<String>) {
+    let options = crate::profile::options(app, host);
+    let current = crate::profile::id_for(app, host);
+    let mut ids: Vec<String> = options.iter().map(|(id, _)| id.clone()).collect();
+    let mut labels: Vec<String> = options.into_iter().map(|(_, label)| label).collect();
+    if let Some(pos) = ids.iter().position(|id| *id == current) {
+        ids.swap(0, pos);
+        labels.swap(0, pos);
+    }
+    (format!("Select role profile for {host}:"), ids, labels)
 }
 
 fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
@@ -561,6 +583,28 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
     let state = SelectState::new("Select Agent OS target(s):", app.kb.agentos_choices(), true);
     let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
     selections.agent_os = state.picked();
+
+    // 3b. Role profile per selected host
+    for host in crate::profile::HOSTS {
+        if !selections.agent_os.iter().any(|a| a == host) {
+            continue;
+        }
+        if !app.dry_run {
+            let _ = crate::profile::seed(app, host);
+        }
+        let (prompt, ids, labels) = profile_step(app, host);
+        let state = SelectState::new(&prompt, labels.clone(), false);
+        let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
+        let picked = state.picked();
+        if let Some(index) = picked
+            .first()
+            .and_then(|label| labels.iter().position(|l| l == label))
+        {
+            selections
+                .profiles
+                .insert(host.to_string(), ids[index].clone());
+        }
+    }
 
     // 4. MCP servers with detections
     let detected =
@@ -737,6 +781,7 @@ mod tests {
             clear_mcps: false,
             areas: vec![],
             specs: vec!["software.backend".to_string()],
+            profiles: Default::default(),
         };
         apply_selections(&mut app, selections);
         assert_eq!(app.theme, "light");
@@ -759,6 +804,7 @@ mod tests {
             clear_mcps: true,
             areas: vec!["devops".to_string()],
             specs: vec!["devops.sre".to_string()],
+            profiles: Default::default(),
         };
         apply_selections(&mut app, selections);
         assert_eq!(app.selected_agent_os, vec!["opencode"]);
@@ -787,6 +833,93 @@ mod tests {
         crate::mcp::sync_selected_mcps_from_env(&mut app);
         assert_eq!(app.jev_enabled, Some(false));
         assert!(!app.selected_mcp_contains("jev"));
+    }
+
+    #[test]
+    fn profile_step_lists_roles_and_starts_on_current_choice() {
+        let home = tempfile::tempdir().unwrap();
+        let mut app = App::new().unwrap();
+        app.home = home.path().to_path_buf();
+        app.config_home_override = Some(home.path().join(".config"));
+        app.install_profile = "team".into();
+        let dir = app.user_profiles_dir("claude").join("my");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("profile.json"),
+            r#"{"name":"my","base":"lean","agents":["explorer"],"models":"anthropic"}"#,
+        )
+        .unwrap();
+        let (prompt, ids, labels) = profile_step(&app, "claude");
+        assert_eq!(prompt, "Select role profile for claude:");
+        assert_eq!(ids, ["team", "lean", "my"]);
+        assert_eq!(labels[0], "team · 9 roles: product-owner, pm, team-lead, …");
+        assert_eq!(labels[1], "lean · explorer, reviewer · native main session");
+        assert_eq!(labels[2], "my · explorer · base lean · models: anthropic");
+    }
+
+    #[test]
+    fn apply_selections_saves_host_profiles() {
+        let mut app = App::new().unwrap();
+        app.install_profile.clear();
+        let mixed = WizardSelections {
+            project_dir: "/tmp/p".into(),
+            agent_os: vec!["claude".into(), "codex".into()],
+            profiles: [
+                ("claude".into(), "team".into()),
+                ("codex".into(), "lean".into()),
+            ]
+            .into(),
+            ..Default::default()
+        };
+        apply_selections(&mut app, mixed);
+        assert_eq!(crate::profile::id_for(&app, "claude"), "team");
+        assert_eq!(crate::profile::id_for(&app, "codex"), "lean");
+        assert!(app.install_profile.is_empty());
+        let same = WizardSelections {
+            project_dir: "/tmp/p".into(),
+            agent_os: vec!["claude".into()],
+            profiles: [("claude".into(), "team".into())].into(),
+            ..Default::default()
+        };
+        apply_selections(&mut app, same);
+        assert_eq!(app.install_profile, "team");
+    }
+
+    #[test]
+    fn tui_profile_choice_is_saved_to_manifest() {
+        let home = tempfile::tempdir().unwrap();
+        let project = tempfile::tempdir().unwrap();
+        let mut app = App::new().unwrap();
+        app.home = home.path().to_path_buf();
+        app.config_home_override = Some(home.path().join(".config"));
+        app.install_profile.clear();
+        app.interactive_override = Some(false);
+        app.doctor_enabled_env = false;
+        let selections = WizardSelections {
+            project_dir: project.path().to_string_lossy().into(),
+            agent_os: vec!["claude".into(), "codex".into()],
+            specs: vec!["software.general".into()],
+            profiles: [
+                ("claude".into(), "team".into()),
+                ("codex".into(), "lean".into()),
+            ]
+            .into(),
+            ..Default::default()
+        };
+        apply_selections(&mut app, selections);
+        install::run_install(&mut app).unwrap();
+        let manifest: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(project.path().join(".agentic.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            manifest["settings"]["profile_ids"],
+            serde_json::json!({"claude": "team", "codex": "lean"})
+        );
+        assert_eq!(manifest["settings"]["profile"], "lean");
+        assert!(project.path().join(".claude/agents/developer.md").is_file());
+        assert!(!project.path().join(".codex/agents/developer.toml").exists());
+        assert!(project.path().join(".codex/agents/explorer.toml").is_file());
     }
 
     #[test]

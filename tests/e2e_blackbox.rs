@@ -321,7 +321,7 @@ fn opencode_profile_env_applied() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "Applied OpenCode profile: GitHub Copilot Model Profile",
+            "Applied OpenCode profile: models: GitHub Copilot (githubcopilot) · role→model",
         ));
     let config: Value = serde_json::from_str(
         &std::fs::read_to_string(project.path().join(".opencode/opencode.json")).unwrap(),

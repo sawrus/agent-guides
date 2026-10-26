@@ -1470,3 +1470,172 @@ fn sha2_digest(bytes: &[u8]) -> impl std::fmt::LowerHex {
     use sha2::Digest;
     sha2::Sha256::digest(bytes)
 }
+
+fn install_host(home: &Path, project: &Path, host: &str, profile: &str) {
+    agentic(home)
+        .env_remove("AGENTIC_ENABLE_JEV")
+        .env_remove("AGENTIC_PROFILE")
+        .env_remove("AGENTIC_OPENCODE_PROFILE")
+        .env_remove("AGENTIC_CLAUDE_PROFILE")
+        .args(["install", "--project-dir"])
+        .arg(project)
+        .args([
+            "--agent-os",
+            host,
+            "--areas",
+            "software",
+            "--specializations",
+            "software.general",
+            "--no-doctor",
+            "--profile",
+            profile,
+        ])
+        .assert()
+        .success();
+}
+
+fn host_layout(host: &str) -> (&'static str, &'static str, &'static str) {
+    match host {
+        "codex" => (
+            ".codex/agents",
+            "toml",
+            ".agents/skills/agentic-profile/SKILL.md",
+        ),
+        "claude" => (".claude/agents", "md", ".claude/commands/profile.md"),
+        _ => (".opencode/agents", "md", ".opencode/commands/profile.md"),
+    }
+}
+
+/// `agentic profile use` reinstalls through the upgrade path: team -> lean removes unmodified team roles,
+/// keeps edited ones, and records the profile in `.agentic.json`.
+#[test]
+fn profile_use_switches_team_to_lean_on_each_host() {
+    for host in ["codex", "claude", "opencode"] {
+        let (agents, suffix, command) = host_layout(host);
+        let home = tempfile::tempdir().unwrap();
+        let project = tempfile::tempdir().unwrap();
+        let p = project.path();
+        install_host(home.path(), p, host, "lean");
+        assert!(p.join(command).is_file(), "{host}: profile command");
+        agentic(home.path())
+            .env_remove("AGENTIC_PROFILE")
+            .args(["profile", "use", "team", "--project"])
+            .arg(p)
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("Restart the agent session"));
+        let role = |name: &str| p.join(format!("{agents}/{name}.{suffix}"));
+        assert!(role("developer").is_file(), "{host}");
+        assert!(!role("explorer").exists(), "{host}");
+        std::fs::write(role("qa"), "user edit\n").unwrap();
+        agentic(home.path())
+            .env_remove("AGENTIC_PROFILE")
+            .args(["profile", "use", "lean", "--project"])
+            .arg(p)
+            .assert()
+            .success();
+        assert!(!role("developer").exists(), "{host}");
+        assert!(!role("product-owner").exists(), "{host}");
+        assert!(role("explorer").is_file(), "{host}");
+        assert!(role("qa").is_file(), "{host}: edited role file stays");
+        let manifest: Value =
+            serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap())
+                .unwrap();
+        assert_eq!(manifest["settings"]["profile"], "lean");
+        assert_eq!(manifest["settings"]["profile_ids"][host], "lean");
+        // The built-in seeds now exist and stay user-owned.
+        assert!(home
+            .path()
+            .join(format!(".config/agentic/{host}/profiles/team/profile.json"))
+            .is_file());
+    }
+}
+
+/// A custom profile in `~/.config/agentic/<host>/profiles/<id>/profile.json` installs only its agents.
+#[test]
+fn custom_profile_installs_only_listed_agents_on_each_host() {
+    for host in ["codex", "claude", "opencode"] {
+        let (agents, suffix, _) = host_layout(host);
+        let home = tempfile::tempdir().unwrap();
+        let project = tempfile::tempdir().unwrap();
+        let p = project.path();
+        let dir = home
+            .path()
+            .join(format!(".config/agentic/{host}/profiles/my"));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("profile.json"),
+            r#"{"name":"my","base":"team","agents":["developer","qa"],"models":null}"#,
+        )
+        .unwrap();
+        install_host(home.path(), p, host, "my");
+        let mut installed: Vec<String> = std::fs::read_dir(p.join(agents))
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+            .collect();
+        installed.sort();
+        assert_eq!(
+            installed,
+            [format!("developer.{suffix}"), format!("qa.{suffix}")],
+            "{host}"
+        );
+        let manifest: Value =
+            serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap())
+                .unwrap();
+        assert_eq!(manifest["settings"]["profile_ids"][host], "my");
+        assert_eq!(manifest["settings"]["profile"], "team");
+        if let Ok(config) = std::fs::read_to_string(p.join(".opencode/opencode.json")) {
+            let data: Value = serde_json::from_str(&config).unwrap();
+            assert!(data["agent"].get("product-owner").is_none());
+        }
+    }
+    // Unknown profiles fail before any write.
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    agentic(home.path())
+        .env_remove("AGENTIC_PROFILE")
+        .args(["install", "--project-dir"])
+        .arg(project.path())
+        .args([
+            "--agent-os",
+            "claude",
+            "--areas",
+            "software",
+            "--specializations",
+            "software.general",
+            "--profile",
+            "ghost",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unknown claude profile 'ghost'"));
+}
+
+#[test]
+fn profile_cli_list_create_show() {
+    let home = tempfile::tempdir().unwrap();
+    agentic(home.path())
+        .args(["profile", "list", "--host", "codex"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "codex\tlean\tlean · explorer, reviewer · native main session",
+        ))
+        .stdout(predicate::str::contains("codex\tteam\tteam · 9 roles"));
+    agentic(home.path())
+        .args(["profile", "create", "mine", "--from", "lean"])
+        .assert()
+        .success();
+    agentic(home.path())
+        .args(["profile", "show", "mine", "--host", "opencode"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"base\": \"lean\""));
+    let project = tempfile::tempdir().unwrap();
+    agentic(home.path())
+        .args(["profile", "use", "team", "--project"])
+        .arg(project.path())
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("run `agentic install` first"));
+}

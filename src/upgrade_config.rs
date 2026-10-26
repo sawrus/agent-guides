@@ -46,7 +46,7 @@ pub fn record_text_keys(app: &mut App, dest: &Path, source: &str, content: &str)
         return;
     }
     let rel = app.project_rel_path(dest);
-    let team = crate::profile::is_team(app);
+    let team = crate::profile::is_team_for(app, "codex");
     let keys = app.config_owned_keys.entry(rel).or_default();
     if source == "generated:codex-features-config" {
         if team {
