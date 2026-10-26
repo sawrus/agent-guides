@@ -19,6 +19,8 @@
   costs 1.02 × lean per accepted task on Claude, 1.12 × on OpenCode, and 1.43 × on Codex, where JEV routed helper
   spawns to a frontier model. It stays opt-in; no savings are claimed.
 - README tagline: native agents by default; workflows, helper agents and model routing only when the task needs them.
+- Docs: orchestration research (docs/agentic-orchestration-research/): mechanism map, measured loss sources from
+  round 4 raw cells, host constraints, target architecture, prioritized plan, and comparison designs.
 
 ## v2.0.0
 
