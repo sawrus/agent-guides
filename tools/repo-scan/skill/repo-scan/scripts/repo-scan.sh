@@ -115,6 +115,10 @@ case "$cmd" in
     [[ -n "$REPO_SCAN_CONTEXT_ROOTS" ]] || unset REPO_SCAN_CONTEXT_ROOTS
     extra=()
     has_opt --out "$@" || extra+=(--out "$(default_out)")
+    # Repository targets are the focus explicitly: --root-url roots are scanned too and would hide the default.
+    all_repos=1
+    for t in "${targets[@]}"; do [[ -e "$t/.git" ]] || all_repos=0; done
+    if [[ $all_repos -eq 1 ]]; then for t in "${targets[@]}"; do extra+=(--focus "$t"); done; fi
     for pair in ${REPO_SCAN_ROOT_URLS:-}; do extra+=(--root-url "${pair//\~/$HOME}"); done
     if [[ "$cmd" == run ]]; then
       has_opt --provider "$@" || extra+=(--provider "${REPO_SCAN_PROVIDER:-claude}")

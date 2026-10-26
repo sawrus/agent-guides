@@ -348,6 +348,12 @@ class FocusTest(unittest.TestCase):
         self.assertTrue(repos[engine]['focus'] and not repos[rid('apiutil')]['focus'])
         self.assertEqual(list(guides['repositories']), [engine])
 
+    def test_repository_inside_a_root_is_scanned_once(self):
+        rel, repos, _ = self.scan('nested', str(self.root / 'antifraud-rules/rule-engine'),
+                                  '--root-url', f'{self.root}=https://{HOST}/team')
+        self.assertEqual(rel['focus'], [rid('rule-engine')])
+        self.assertFalse(any('#copy' in rid_ for rid_ in repos))
+
     def test_no_context_leaves_links_unresolved(self):
         rel, repos, _ = self.scan('alone', str(self.root / 'antifraud-rules/rule-engine'), '--no-context')
         self.assertEqual(list(repos), [rid('rule-engine')])

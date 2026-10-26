@@ -96,13 +96,17 @@ def cmd_scan(args):
     roots += [r for r in root_urls if r not in roots]
     # Focus mode: report only the chosen repositories and their links, but scan context roots so the links resolve.
     focus = list(args.focus or [])
-    if not focus and roots and all((r / '.git').exists() for r in roots):
-        focus = [str(r) for r in roots]
+    given = [Path(r).expanduser().resolve() for r in args.roots]
+    if not focus and all((r / '.git').exists() for r in given):
+        focus = [str(r) for r in given]
     if focus and not args.no_context:
         for ctx in context_roots(args, roots):
             if ctx.is_dir() and not any(ctx == r or ctx.is_relative_to(r) for r in roots):
                 roots = [r for r in roots if not r.is_relative_to(ctx)] + [ctx]
-        print(f'focus: {len(focus)} repositories; context roots: {", ".join(str(r) for r in roots)}', file=sys.stderr)
+    # A root inside another root would be scanned twice.
+    roots = [r for r in roots if not any(o != r and r.is_relative_to(o) for o in roots)]
+    if focus:
+        print(f'focus: {len(focus)} repositories; roots: {", ".join(str(r) for r in roots)}', file=sys.stderr)
     jobs = []
     for root in roots:
         if not root.is_dir():
