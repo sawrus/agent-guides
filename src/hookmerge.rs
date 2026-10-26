@@ -89,12 +89,16 @@ pub fn sync(app: &mut App, project: &Path, set: &HookSet, enabled: bool) -> crat
             .or_insert_with(|| json!([]))
             .as_array_mut()
             .ok_or("Invalid hook event array")?;
-        let previous = owned.get(*event).cloned();
+        let mut previous = owned.get(*event).cloned();
         let matching: Vec<Value> = groups
             .iter()
             .filter(|g| is_managed(g, set))
             .cloned()
             .collect();
+        // v2.1.0 upgrades lost the gate ownership records; a group equal to ours is ours.
+        if previous.is_none() && matching == [entry.clone()] {
+            previous = Some(entry.clone());
+        }
         if matching.iter().any(|g| Some(g) != previous.as_ref()) || matching.len() > 1 {
             crate::ui::warn(
                 app,
@@ -217,6 +221,35 @@ mod tests {
         assert_eq!(read(p)["hooks"]["Stop"].as_array().unwrap().len(), 2);
         sync(&mut a, p, &set(vec![("Stop", "", cmd, 10)]), false).unwrap();
         assert_eq!(read(p), user);
+    }
+
+    #[test]
+    fn identical_group_without_ownership_is_adopted() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path();
+        let cmd = "python3 .agent/test/hook.py".to_string();
+        let ours = group("", &cmd, 10, "Agentic Test");
+        std::fs::create_dir_all(p.join(".claude")).unwrap();
+        let config = json!({"hooks": {"Stop": [ours.clone()]}});
+        std::fs::write(p.join(".claude/settings.json"), config.to_string()).unwrap();
+        let mut a = app(p);
+        sync(&mut a, p, &set(vec![("Stop", "", cmd.clone(), 10)]), true).unwrap();
+        assert!(a.skipped_managed_paths.is_empty());
+        assert_eq!(read(p)["hooks"]["Stop"], json!([ours]));
+        let owned: Value = serde_json::from_str(
+            &std::fs::read_to_string(p.join(".agentic/test-entries.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(owned["Stop"], ours);
+        // A user-edited group without ownership stays foreign.
+        let mut edited = config.clone();
+        edited["hooks"]["Stop"][0]["hooks"][0]["timeout"] = json!(99);
+        std::fs::write(p.join(".claude/settings.json"), edited.to_string()).unwrap();
+        std::fs::remove_file(p.join(".agentic/test-entries.json")).unwrap();
+        let mut b = app(p);
+        sync(&mut b, p, &set(vec![("Stop", "", cmd, 10)]), true).unwrap();
+        assert!(!b.skipped_managed_paths.is_empty());
+        assert_eq!(read(p)["hooks"]["Stop"][0]["hooks"][0]["timeout"], 99);
     }
 
     #[test]
