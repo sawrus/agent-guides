@@ -2,11 +2,16 @@
 
 ## Unreleased
 
+## v2.1.0
+
+- Release policy: docs/release-policy.md says when to bump MAJOR, MINOR, and PATCH.
+- Removed the stale `error.txt` CI log.
 - Role profiles per host: `~/.config/agentic/<claude|codex|opencode>/profiles/<id>/profile.json` with `base`
   (`lean`/`team`), `agents` (the role files to install), and `models` (a model profile id). `lean/` and `team/`
   are seeded and never overwritten. The TUI asks for a role profile per selected host. New
   `agentic profile list|show|use|create`; `use` reinstalls through the upgrade path, removes unmodified old role
-  files, and saves `settings.profile_ids` in `.agentic.json`. `--profile` accepts custom ids and
+  files, and saves `settings.profile_ids` in `.agentic.json`. Custom profiles are also copied to
+  `settings.profile_defs`, so a sync or upgrade keeps the same roles when the user file is missing. `--profile` accepts custom ids and
   `claude=team,codex=lean`. New `/profile` command for Claude Code and OpenCode and the Codex skill
   `agentic-profile`. Model profile menus now read `models: <provider> · role→model`.
 - `tools/repo-scan`: offline analysis of many local Git repositories (Python standard library; `scc` when present).
