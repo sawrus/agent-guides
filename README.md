@@ -1,6 +1,6 @@
 # agentic — one AI engineering team for every coding agent
 
-> Give Codex, Claude Code and OpenCode the same roles, rules and quality gates — installed into any project with one command.
+> Adaptive SDLC setup for Claude Code, Codex and OpenCode. Native agents by default; workflows, helper agents and model routing only when the task needs them.
 
 ![Codex · real runs](https://img.shields.io/badge/Codex-real%20runs%20✓-2ea44f?logo=openai&logoColor=white)
 ![Claude Code · real runs](https://img.shields.io/badge/Claude%20Code-real%20runs%20✓-2ea44f?logo=anthropic&logoColor=white)
@@ -113,21 +113,21 @@ Pick the specializations your project needs — 10 software (backend, frontend, 
 
 ## Honest numbers
 
-We measure instead of promising. Small bounded tasks, one run each: an infra check, a code review, a CLI
-calculator, a bugfix, a feature, a question, a scope trap, and a bugfix in a file that already fails `make lint`.
-Cells show accepted tasks out of tasks run.
+We measure instead of promising. Latest round: 7 small tasks (bugfixes, a feature, a question, a scope trap, a
+bugfix in a file that already fails `make lint`, a multi-module bugfix and feature), 3 runs each, 21 runs per
+agent and mode. Cells show accepted runs and cost per accepted run (Codex and OpenCode: API-equivalent estimate).
 
-| Agent | Plain agent | Role team | Role team + JEV | Lean (default) |
+| Agent | Plain agent | Lean (default) | Lean + JEV | Role team + JEV |
 |:--|:-:|:-:|:-:|:-:|
-| Claude Code | 7/8 | 4/7 | 1/3 | **5/5** |
-| Codex | **8/8** | 1/7 | 1/3 | **5/5** |
-| OpenCode | 6/8 | 5/7 | 1/3 | **5/5** |
-| Tokens vs plain | 1× | 1.2–9× | 1.2–2.1× | 1.35–2.8× |
+| Claude Code (`sonnet`) | 18/21 · $0.092 | **21/21** · $0.095 | **21/21** · $0.097 | **21/21** · $0.073¹ |
+| Codex (`gpt-5.6-terra`) | 18/21 · $0.059 | **21/21** · $0.072 | **21/21** · $0.103 | 18/21 · $0.301 |
+| OpenCode (Qwen3.8-Flash-Next) | 19/21 · $0.026 | 19/21 · $0.041 | 17/21 · $0.046 | 18/21 · $0.047 |
 
-- The plain agent is the cheapest everywhere. It failed the lint task on Claude Code and OpenCode: it left
-  `make lint` failing. Lean passed it on every agent.
-- The role team often hit the token cap on these small tasks. JEV helps it, but not up to plain.
-- Not measured yet: lean + JEV, and large multi-step tasks.
+- The plain agent is the cheapest everywhere. Every plain failure is the lint task: it left `make lint` failing.
+  Lean passed that task on every Claude Code and Codex run.
+- Lean + JEV accepts as many runs as lean, or fewer, and costs 1.02–1.43 × lean. It stays opt-in.
+- ¹ Prompt-cache effect: the role team's long fixed prefix was already cached by earlier runs.
+- Not measured yet: large multi-step tasks. The multi-module tasks did not make the plain agent fail.
 
 All numbers, per task: [comparison](docs/agentic-v2-lean/comparison.md).
 

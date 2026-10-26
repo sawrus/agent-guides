@@ -469,6 +469,10 @@ pub fn load_install_settings_from_manifest(
     }
     if app.install_profile.is_empty() {
         app.install_profile = settings["profile"].as_str().unwrap_or_default().to_string();
+        // Manifests without a profile predate it; their JEV installs had the role team, which JEV forced.
+        if app.install_profile.is_empty() && settings["jev"]["enabled"].as_bool() == Some(true) {
+            app.install_profile = crate::profile::TEAM.into();
+        }
     }
     if app.jev_enabled.is_none() {
         app.jev_enabled = settings["jev"]["enabled"].as_bool();
@@ -600,6 +604,29 @@ mod tests {
         assert_eq!(app2.selected_agent_os, vec!["opencode"]);
         assert_eq!(app2.selected_areas, vec!["software"]);
         assert_eq!(app2.selected_specs, vec!["software.backend"]);
+    }
+
+    #[test]
+    fn profile_replay_keeps_team_for_jev_installs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join(".agentic.json");
+        let replay = |settings: Value| {
+            std::fs::write(&path, json!({ "settings": settings }).to_string()).unwrap();
+            let mut app = App::new().unwrap();
+            app.install_profile.clear();
+            load_install_settings_from_manifest(&mut app, &path).unwrap();
+            app.install_profile
+        };
+        assert_eq!(replay(json!({"jev": {"enabled": true}})), "team");
+        assert_eq!(replay(json!({"jev": {"enabled": false}})), "");
+        assert_eq!(
+            replay(json!({"profile": "lean", "jev": {"enabled": true}})),
+            "lean"
+        );
+        assert_eq!(
+            replay(json!({"profile": "team", "jev": {"enabled": true}})),
+            "team"
+        );
     }
 
     #[test]

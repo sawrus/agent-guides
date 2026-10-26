@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- Lean + JEV: JEV no longer forces the `team` profile. With `--profile lean` (the default), JEV makes one
+  workflow call per session and adds a short checklist hint for the chosen workflow. The native main session
+  performs the steps and starts subagents only where the core rules ask; spawn hooks still route the models of
+  `explorer`, `reviewer`, and native agents. A `native` answer adds no context. Lean keeps the Codex thread
+  default and the helpers' reasoning effort. `team` + JEV is unchanged, and projects that saved `team`, or
+  that have JEV but no saved profile, stay on `team`. A new `--enable-jev` install without `--profile` is now `lean`.
+- SDLC benchmark: arms `lean-jev`, `team`, and `team-jev`; `--reps` with a seeded random order; one stable
+  project per host and arm (Codex trusts hooks per path), with a copy per cell for regrading; host crashes
+  and missing JEV records count as `harness_error`, not as failures; output tokens, API-equivalent cost from
+  `tests/bench/prices.json`, cost per accepted task, Wilson intervals, and `summary.json`. New tasks T6
+  (multi-module bugfix) and T7 (multi-module feature with an all-or-nothing edge case). `--effort codex=<level>`
+  sets the Codex coordinator effort. OpenCode JEV routing stays on the coordinator's provider, so one cell never
+  mixes providers. A routed model without a price leaves the cost empty instead of borrowing the coordinator's price.
+- Benchmark round 4 (252 cells, 3 reps, docs/agentic-v2-lean/results.md): Lean + JEV matches lean on success,
+  costs 1.02 × lean per accepted task on Claude, 1.12 × on OpenCode, and 1.43 × on Codex, where JEV routed helper
+  spawns to a frontier model. It stays opt-in; no savings are claimed.
+- README tagline: native agents by default; workflows, helper agents and model routing only when the task needs them.
+
 ## v2.0.0
 
 Breaking: the default install is now the `lean` profile. See UPGRADE.md, "Migrating to v2.0.0".

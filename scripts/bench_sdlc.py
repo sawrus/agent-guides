@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Opt-in paid SDLC benchmark: plain host vs v1 pack vs lean pack (docs/agentic-v2-lean/README.md).
+"""Opt-in paid SDLC benchmark: plain host, lean and team profiles, with and without JEV (docs/agentic-v2-lean/README.md).
 
 Every cell copies tests/bench/fixture into a fresh Git project outside any repository, installs the arm,
 runs one native turn (plus at most one follow-up), and grades the result with deterministic checks:
 hidden tests, the existing suite, lint, CHANGELOG, allowed files, and exact answers. Never bypasses
-native trust or permissions.
+native trust or permissions. Cells run in a seeded random order and repeat `--reps` times.
 """
 import argparse
 import json
+import math
+import os
 from pathlib import Path
+import random
 import re
 import shutil
 import signal
@@ -16,6 +19,7 @@ import statistics
 import subprocess
 import sys
 import time
+import tomllib
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,13 +30,16 @@ from pilot_jev import Meter, claude_cost, command, git, host_env, opencode_child
 
 BENCH = ROOT / 'tests/bench'
 TASKS = json.loads((BENCH / 'tasks.json').read_text())
-MODES = ('plain', 'v1', 'lean')
+# `<profile>-jev` arms install the profile with JEV hooks; `v1` is the frozen v1.6 binary (`make bench-v1`).
+MODES = ('plain', 'v1', 'lean', 'lean-jev', 'team', 'team-jev')
+DEFAULT_MODES = ('plain', 'lean', 'lean-jev', 'team-jev')
 HOSTS = ('claude', 'codex', 'opencode')
 SELECTION = ('software', 'software.backend,software.general')
-# Per-mode medians compare the same task set; seeded tasks (T5) run on plain/lean only and get their own table.
-SUMMARY_TASKS = tuple(t for t in TASKS if not TASKS[t].get('seed'))
 # Outside any repository, so no parent AGENTS.md/CLAUDE.md leaks into a run; Codex trusts hooks per path.
 PROJECTS = Path('/tmp/agentic-bench')
+PRICES = BENCH / 'prices.json'
+JEV_API_URL = os.environ.get('JEV_API_URL') or 'https://api.typesafe.ai/v1/systemone'
+RETRY_STATUSES = ('quota_exhausted', 'harness_error')
 RUN_SECONDS = 480
 RUN_UNCACHED_TOKENS = 80_000
 EDIT_TOOLS = {'edit', 'write', 'multiedit', 'notebookedit', 'patch', 'apply_patch'}
@@ -59,12 +66,32 @@ def copy_fixture(task, project):
     git(project, *AUTHOR, 'commit', '-q', '-m', 'bench: fixture')
 
 
+def project_path(host, mode):
+    """One stable path per host and arm: Codex trusts hooks per absolute path, so every task and rep reuses it."""
+    return PROJECTS / f'{host}-{mode}'
+
+
+def install_flags(mode):
+    if mode in ('plain', 'v1'):
+        return []
+    profile, _, jev = mode.partition('-')
+    return ['--profile', profile, *(['--enable-jev', '--jev-api-url', JEV_API_URL] if jev else [])]
+
+
+def forget_host_state(host, project):
+    """Claude keeps transcripts and auto-memory per project path; a stable path would carry them into the next cell."""
+    if host == 'claude':
+        shutil.rmtree(Path.home() / '.claude/projects' / re.sub(r'[^A-Za-z0-9]', '-', str(project)), ignore_errors=True)
+
+
 def prepare(host, task, mode, args):
-    project = PROJECTS / f'{host}-{task}-{mode}'
+    project = project_path(host, mode)
+    forget_host_state(host, project)
     copy_fixture(task, project)
     if mode != 'plain':
         result = subprocess.run([str(binary(mode, args)), 'install', '--project-dir', str(project), '--agent-os', host,
-                                 '--areas', SELECTION[0], '--specializations', SELECTION[1], '--no-doctor'],
+                                 '--areas', SELECTION[0], '--specializations', SELECTION[1], '--no-doctor',
+                                 *install_flags(mode)],
                                 capture_output=True, text=True)
         if result.returncode:
             raise RuntimeError('agentic install failed: ' + result.stderr[-400:])
@@ -199,10 +226,43 @@ def start_opencode(project, env, name):
     return process, server
 
 
-def run_cell(host, task, mode, args):
-    cell = args.out / f'{host}-{task}-{mode}'
+def codex_untrusted(project):
+    """Hook entries of the project's hooks.json without a Codex trust record (the user reviews them in `/hooks`)."""
+    hooks = project / '.codex/hooks.json'
+    if not hooks.is_file():
+        return []
+    try:
+        state = tomllib.loads((Path.home() / '.codex/config.toml').read_text()).get('hooks', {}).get('state', {})
+    except (OSError, tomllib.TOMLDecodeError):
+        state = {}
+    missing = []
+    for event, groups in json.loads(hooks.read_text()).get('hooks', {}).items():
+        snake = re.sub(r'(?<!^)(?=[A-Z])', '_', event).lower()
+        for g, group in enumerate(groups):
+            missing += [f'{hooks}:{snake}:{g}:{h}' for h in range(len(group.get('hooks', [])))
+                        if f'{hooks}:{snake}:{g}:{h}' not in state]
+    return missing
+
+
+def cell_name(host, task, mode, rep):
+    return f'{host}-{task}-{mode}-r{rep}'
+
+
+def write_result(cell, result):
+    cell.mkdir(parents=True, exist_ok=True)
+    (cell / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
+    return result
+
+
+def run_cell(host, task, mode, rep, args):
+    cell = args.out / cell_name(host, task, mode, rep)
     cell.mkdir(parents=True, exist_ok=True)
     project = prepare(host, task, mode, args)
+    base = {'host': host, 'task': task, 'mode': mode, 'rep': rep, 'model': pilot_jev.COORDINATOR[host],
+            'effort': pilot_jev.EFFORT.get(host)}
+    if host == 'codex' and codex_untrusted(project):
+        # Untrusted hooks never run, so the cell would silently measure another arm.
+        return write_result(cell, base | {'status': 'harness_error', 'reason': 'codex hooks not trusted: ' + project.name})
     env, trace, server_process, server = host_env(host, project), cell / 'trace.jsonl', None, None
     trace.write_text('')
     if host == 'opencode':
@@ -218,12 +278,15 @@ def run_cell(host, task, mode, args):
     turns = 1
     events, final_text = trace_events(host, trace)
     stopped_early = not changed_files(project) and TASKS[task]['kind'] != 'question'
-    if not reason and stopped_early and time.monotonic() < deadline - 30:
+    quota = pilot_jev.QUOTA.search(trace.read_text(errors='replace'))
+    if not reason and stopped_early and not quota and time.monotonic() < deadline - 30:
         # The coordinator stopped for approval without changing anything; answer it once.
         followup = blackbox_jev.followup_turn(host, shutil.which(host), argv, trace)
         if followup:
             if host == 'codex':
+                # Without -m, resume falls back to the config model, which the account may not serve.
                 followup = ([followup[0][0], 'exec', 'resume', '--json', '--skip-git-repo-check',
+                             '-m', pilot_jev.COORDINATOR['codex'], *pilot_jev.codex_effort(),
                              '-c', 'sandbox_mode="danger-full-access"', *followup[0][-2:]], None)
             turns += 1
             code, reason = turn(*followup, project, env, trace, meter, deadline)
@@ -231,33 +294,47 @@ def run_cell(host, task, mode, args):
     if host == 'opencode':
         opencode_children(trace, server, env, meter)
         pilot_jev.os.killpg(server_process.pid, signal.SIGKILL)
+    elapsed = round(time.time() - started, 1)
     if pilot_jev.QUOTA.search(trace.read_text(errors='replace')):
-        result = {'host': host, 'task': task, 'mode': mode, 'status': 'quota_exhausted', 'elapsed_s': round(time.time() - started, 1)}
-        (cell / 'result.json').write_text(json.dumps(result, indent=2))
-        return result
-    verdict = grade(task, project, final_text)
+        return write_result(cell, base | {'status': 'quota_exhausted', 'elapsed_s': elapsed})
     rows = meter.rows()
     measured = [r for r in rows if r.get('uncached') is not None]
+    jev = pilot_jev.jev_evidence(project) if mode.endswith('-jev') else None
+    reason_error = None
+    if not measured or not sum(r['uncached'] for r in measured):
+        reason_error = f'host produced no token usage (exit {code})'  # a crashed CLI is not an agent failure
+    elif jev is not None and not jev['decisions']:
+        reason_error = 'JEV hooks recorded no decision'
+    if reason_error:
+        return write_result(cell, base | {'status': 'harness_error', 'reason': reason_error, 'exit': code, 'elapsed_s': elapsed})
+    verdict = grade(task, project, final_text)
+    snapshot = cell / 'project'
+    if snapshot.exists():
+        shutil.rmtree(snapshot)
+    # The stable project path is reused by the next cell; regrading works on this copy.
+    shutil.copytree(project, snapshot, symlinks=True, ignore=shutil.ignore_patterns('__pycache__'))
     subagents = sum(1 for kind, _ in events if kind == 'spawn')
     if host == 'codex':
         subagents = max(subagents, sum(1 for r in rows if r.get('agent_path', '/root') != '/root'))
     if host == 'opencode':
         subagents = max(subagents, len(meter.sessions))
-    result = {'host': host, 'task': task, 'mode': mode, 'status': 'accepted' if verdict['accepted'] else (reason or 'rejected'),
-              'cap': reason, 'exit': code, 'turns': turns, 'elapsed_s': round(time.time() - started, 1), 'acceptance': verdict,
-              'verified_after_edit': verified_after_edit(events), 'subagents': subagents,
-              'tokens': {'uncached': sum(r['uncached'] for r in measured), 'cached': sum(r['cached'] for r in measured),
-                         'complete': len(measured) == len(rows) and bool(rows), 'agents': rows},
-              'cost_usd': claude_cost(trace) if host == 'claude' else None}
-    (cell / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
-    return result
+    result = base | {'status': 'accepted' if verdict['accepted'] else (reason or 'rejected'),
+                     'cap': reason, 'exit': code, 'turns': turns, 'elapsed_s': elapsed, 'acceptance': verdict,
+                     'verified_after_edit': verified_after_edit(events), 'subagents': subagents, 'project': str(snapshot),
+                     'gate_evidence': (project / '.agentic/gate/last.json').is_file(),
+                     'tokens': {'uncached': sum(r['uncached'] for r in measured), 'cached': sum(r['cached'] for r in measured),
+                                'output': sum(r.get('output') or 0 for r in measured),
+                                'complete': len(measured) == len(rows) and bool(rows), 'agents': rows},
+                     'cost_usd': claude_cost(trace) if host == 'claude' else None, 'jev': jev}
+    return write_result(cell, result)
 
 
 def regrade(out):
     """Grade saved cells again with the current tasks.json; hidden tests copied by the first grading are removed."""
     for path in sorted(Path(out).glob('*/result.json')):
         result = json.loads(path.read_text())
-        project = PROJECTS / path.parent.name
+        # Older cells have no snapshot; their project lived at the per-cell /tmp path.
+        project = Path(result.get('project') or PROJECTS / path.parent.name)
         if 'acceptance' not in result or not project.is_dir():
             continue
         for copied in (project / 'tests').glob('test_hidden_*.py'):
@@ -296,49 +373,146 @@ def selftest():
 
 
 def input_tokens(tokens):
-    return (tokens.get('uncached') or 0) + (tokens.get('cached') or 0) if tokens.get('uncached') is not None else ''
+    """Uncached + cached: every token the host processed (uncached also counts output)."""
+    return (tokens.get('uncached') or 0) + (tokens.get('cached') or 0) if tokens.get('uncached') is not None else None
 
 
-def median(values):
-    values = [v for v in values if v is not None]
-    return statistics.median(values) if values else None
+def quantiles(values):
+    """Median and interquartile range, or None when no value is known."""
+    values = sorted(v for v in values if v is not None)
+    if not values:
+        return None
+    if len(values) < 2:
+        return values[0], values[0], values[0]
+    q1, q2, q3 = statistics.quantiles(values, n=4, method='inclusive')
+    return q2, q1, q3
+
+
+def wilson(successes, n, z=1.96):
+    """95% Wilson score interval for a success rate."""
+    if not n:
+        return None
+    p = successes / n
+    centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+    return max(0.0, centre - half), min(1.0, centre + half)
+
+
+def jev_cost(cell, prices):
+    """JEV decision API cost of a cell from its recorded usage; None when the price is unknown."""
+    usage, price = (cell.get('jev') or {}).get('usage') or {}, prices.get('typesafe/jev')
+    if not usage:
+        return 0.0
+    if not price:
+        return None
+    return (usage.get('input_tokens', 0) * price['input'] + usage.get('output_tokens', 0) * price['output']) / 1_000_000
+
+
+def estimated_cost(cell, prices):
+    """Host cost plus JEV cost. Claude reports its own cost; Codex and OpenCode use API-equivalent prices per 1M
+    tokens from prices.json. None when a model or JEV has no price."""
+    jev = jev_cost(cell, prices)
+    host = cell['cost_usd'] if cell.get('cost_usd') is not None else host_cost(cell, prices)
+    return None if host is None or jev is None else host + jev
+
+
+def host_cost(cell, prices):
+    total = 0.0
+    for row in (cell.get('tokens') or {}).get('agents') or []:
+        if row.get('uncached') is None:
+            return None
+        # A routed model without a price leaves the cost unknown instead of borrowing the coordinator's price.
+        price = prices.get(row.get('model') or cell.get('model'))
+        if not price or None in (price.get('input'), price.get('cached_input'), price.get('output')):
+            return None
+        output = row.get('output') or 0
+        total += ((row['uncached'] - output) * price['input'] + row['cached'] * price['cached_input']
+                  + output * price['output']) / 1_000_000
+    return total
+
+
+def fmt_tokens(value):
+    return '' if value is None else f'{value / 1000:.1f}k'
+
+
+def fmt_range(q):
+    return '' if q is None else f'{fmt_tokens(q[0])} ({fmt_tokens(q[1])}–{fmt_tokens(q[2])})'
+
+
+def summarize(cells, prices):
+    """Per host and mode, over the tasks that every reported mode ran on that host."""
+    rows = []
+    for host in HOSTS:
+        valid = [c for c in cells if c['host'] == host and c['status'] not in RETRY_STATUSES]
+        modes = [m for m in MODES if any(c['mode'] == m for c in valid)]
+        tasks = sorted(set.intersection(*[{c['task'] for c in valid if c['mode'] == m} for m in modes])) if modes else []
+        for mode in modes:
+            group = [c for c in valid if c['mode'] == mode and c['task'] in tasks]
+            errors = sum(c['host'] == host and c['mode'] == mode and c['status'] in RETRY_STATUSES for c in cells)
+            accepted = sum(c['status'] == 'accepted' for c in group)
+            costs = [estimated_cost(c, prices) for c in group]
+            known = None not in costs and bool(costs)
+            jev = [c.get('jev') or {} for c in group]
+            rows.append({
+                'host': host, 'mode': mode, 'tasks': tasks, 'n': len(group), 'accepted': accepted,
+                'success_rate': accepted / len(group) if group else None, 'wilson95': wilson(accepted, len(group)),
+                'green': sum(bool((c.get('acceptance') or {}).get('delivered_green')) for c in group),
+                'full_tokens': quantiles([input_tokens(c.get('tokens') or {}) for c in group]),
+                'uncached_tokens': quantiles([(c.get('tokens') or {}).get('uncached') for c in group]),
+                'subagents_mean': statistics.mean(c.get('subagents') or 0 for c in group) if group else None,
+                'cost_total': sum(costs) if known else None,
+                'cost_per_success': sum(costs) / accepted if known and accepted else None,
+                'jev_calls_mean': statistics.mean(j.get('calls') or 0 for j in jev) if mode.endswith('-jev') and group else None,
+                'jev_tokens': sum(sum((j.get('usage') or {}).values()) for j in jev) if mode.endswith('-jev') else None,
+                'jev_cost': (sum(jev_cost(c, prices) or 0 for c in group) if mode.endswith('-jev') and prices.get('typesafe/jev')
+                             else None),
+                'harness_errors': errors})
+    return rows
 
 
 def report(out, path):
-    """Markdown table per host/task/mode plus the K-criteria summary of docs/agentic-v2-lean/README.md."""
+    """Markdown report per cell, per host and mode, and per task; summary.json next to it."""
     cells = [json.loads(p.read_text()) for p in sorted(Path(out).glob('*/result.json'))]
-    # Uncached alone depends on prompt-cache hits between runs; Input (uncached + cached) is the context size.
-    lines = ['| Host | Task | Mode | Status | Input | Uncached | Cached | Cost $ | Turns | Subagents | Green | Verified | Failed checks |',
-             '|---|---|---|---|---|---|---|---|---|---|---|---|---|']
-    for c in sorted(cells, key=lambda c: (c['host'], c['task'], MODES.index(c['mode']))):
+    prices = {k: v for k, v in json.loads(PRICES.read_text()).items() if not k.startswith('_')} if PRICES.is_file() else {}
+    lines = ['| Host | Task | Mode | Rep | Status | Full | Uncached | Cached | Cost $ | Turns | Subagents | JEV calls | Green | Failed checks |',
+             '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
+    for c in sorted(cells, key=lambda c: (c['host'], c['task'], MODES.index(c['mode']), c.get('rep', 1))):
         acceptance = c.get('acceptance') or {}
-        failed = [k for k, v in (acceptance.get('checks') or {}).items() if not v]
+        failed = [k for k, v in (acceptance.get('checks') or {}).items() if not v] or ([c['reason']] if c.get('reason') else [])
         tokens = c.get('tokens') or {}
-        cost = c.get('cost_usd')
-        lines.append(f"| {c['host']} | {c['task']} | {c['mode']} | {c['status']} | {input_tokens(tokens)} | {tokens.get('uncached', '')} | {tokens.get('cached', '')} | "
-                     f"{'' if cost is None else round(cost, 3)} | {c.get('turns', '')} | {c.get('subagents', '')} | "
-                     f"{acceptance.get('delivered_green', '')} | {c.get('verified_after_edit', '')} | {', '.join(failed)} |")
-    lines += ['', '| Host | Mode | Accepted | Green | Median input | Median uncached | Median cost $ |',
-              '|---|---|---|---|---|---|---|']
-    for host in HOSTS:
-        for mode in MODES:
-            group = [c for c in cells if c['host'] == host and c['mode'] == mode and c['status'] != 'quota_exhausted'
-                     and c['task'] in SUMMARY_TASKS]
-            if group:
-                accepted = sum(c['status'] == 'accepted' for c in group)
-                green = sum(bool((c.get('acceptance') or {}).get('delivered_green')) for c in group)
-                full = median([input_tokens(c.get('tokens') or {}) or None for c in group])
-                tokens = median([(c.get('tokens') or {}).get('uncached') for c in group])
-                cost = median([c.get('cost_usd') for c in group])
-                lines.append(f"| {host} | {mode} | {accepted}/{len(group)} | {green}/{len(group)} | {full} | {tokens} | "
-                             f"{'' if cost is None else round(cost, 3)} |")
-    seeded = [c for c in cells if c['task'] not in SUMMARY_TASKS and c['status'] != 'quota_exhausted']
-    if seeded:
-        lines += ['', '| Seeded task | Host | Mode | Status | Green | Input |', '|---|---|---|---|---|---|']
-        for c in sorted(seeded, key=lambda c: (c['task'], c['host'], MODES.index(c['mode']))):
-            lines.append(f"| {c['task']} | {c['host']} | {c['mode']} | {c['status']} | "
-                         f"{(c.get('acceptance') or {}).get('delivered_green', '')} | {input_tokens(c.get('tokens') or {})} |")
+        cost = estimated_cost(c, prices) if tokens else None
+        lines.append(f"| {c['host']} | {c['task']} | {c['mode']} | {c.get('rep', 1)} | {c['status']} | {fmt_tokens(input_tokens(tokens))} | "
+                     f"{fmt_tokens(tokens.get('uncached'))} | {fmt_tokens(tokens.get('cached'))} | {'' if cost is None else round(cost, 3)} | "
+                     f"{c.get('turns', '')} | {c.get('subagents', '')} | {(c.get('jev') or {}).get('calls', '')} | "
+                     f"{acceptance.get('delivered_green', '')} | {', '.join(failed)} |")
+    summary = summarize(cells, prices)
+    lines += ['', 'Full = uncached + cached tokens. Tokens: median (IQR). Cost per success = total cost / accepted cells. '
+              'Codex and OpenCode cost is an API-equivalent estimate from `tests/bench/prices.json`; empty when a price is unknown. '
+              'Cost includes the JEV API (also shown alone as JEV $).',
+              '', '| Host | Mode | Tasks | Accepted | Success (95% CI) | Green | Full tokens | Uncached tokens | Subagents (mean) | '
+              'Cost $ | Cost per success $ | JEV calls (mean) | JEV tokens | JEV $ | Harness errors |',
+              '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
+    for r in summary:
+        ci = r['wilson95']
+        rate = '' if r['success_rate'] is None else f"{r['success_rate']:.0%} ({ci[0]:.0%}–{ci[1]:.0%})"
+        money = (lambda v: '' if v is None else f'{v:.3f}')
+        lines.append(f"| {r['host']} | {r['mode']} | {','.join(r['tasks'])} | {r['accepted']}/{r['n']} | {rate} | {r['green']}/{r['n']} | "
+                     f"{fmt_range(r['full_tokens'])} | {fmt_range(r['uncached_tokens'])} | "
+                     f"{'' if r['subagents_mean'] is None else round(r['subagents_mean'], 2)} | {money(r['cost_total'])} | "
+                     f"{money(r['cost_per_success'])} | {'' if r['jev_calls_mean'] is None else round(r['jev_calls_mean'], 2)} | "
+                     f"{'' if r['jev_tokens'] is None else fmt_tokens(r['jev_tokens'])} | "
+                     f"{'' if r['jev_cost'] is None else round(r['jev_cost'], 4)} | {r['harness_errors']} |")
+    valid = [c for c in cells if c['status'] not in RETRY_STATUSES]
+    modes = [m for m in MODES if any(c['mode'] == m for c in valid)]
+    lines += ['', '| Task | ' + ' | '.join(modes) + ' |', '|---|' + '---|' * len(modes)]
+    for task in sorted({c['task'] for c in valid}):
+        counts = []
+        for mode in modes:
+            group = [c for c in valid if c['task'] == task and c['mode'] == mode]
+            counts.append(f"{sum(c['status'] == 'accepted' for c in group)}/{len(group)}" if group else '')
+        lines.append(f'| {task} | ' + ' | '.join(counts) + ' |')
     Path(path).write_text('\n'.join(lines) + '\n')
+    Path(path).with_name('summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     print('\n'.join(lines))
 
 
@@ -347,14 +521,18 @@ def main():
     parser.add_argument('--out', type=Path, default=ROOT / '.agentic-blackbox/bench')
     parser.add_argument('--hosts', default=','.join(HOSTS))
     parser.add_argument('--tasks', default=','.join(TASKS))
-    parser.add_argument('--modes', default=','.join(MODES))
+    parser.add_argument('--modes', default=','.join(DEFAULT_MODES), help='Any of ' + ', '.join(MODES))
+    parser.add_argument('--reps', type=int, default=1, help='Runs per host, task and mode')
+    parser.add_argument('--seed', type=int, default=0, help='Seed of the random cell order')
     parser.add_argument('--v1-binary', type=Path, default=ROOT / 'target/bench-v1/target/debug/agentic')
     parser.add_argument('--model', action='append', default=[], help='host=model override, for example claude=opus')
+    parser.add_argument('--effort', action='append', default=[], help='host=effort override, for example codex=low')
     parser.add_argument('--seconds', type=int, default=RUN_SECONDS)
     parser.add_argument('--cap', type=int, default=RUN_UNCACHED_TOKENS, help='Uncached tokens per cell')
-    parser.add_argument('--prepare-only', action='store_true', help='Create copies and installs; no model calls')
+    parser.add_argument('--prepare-only', action='store_true',
+                        help='Create the stable host-mode projects (trust Codex hooks there); no model calls')
     parser.add_argument('--selftest', action='store_true', help='Check graders against tests/bench/reference; no model calls')
-    parser.add_argument('--report', type=Path, help='Write the Markdown report from --out and exit')
+    parser.add_argument('--report', type=Path, help='Write the Markdown report and summary.json from --out and exit')
     parser.add_argument('--regrade', action='store_true', help='Grade saved cells again with the current tasks.json')
     args = parser.parse_args()
     if args.selftest:
@@ -369,29 +547,42 @@ def main():
     for override in args.model:
         host, _, model = override.partition('=')
         pilot_jev.COORDINATOR[host] = model
-    modes = args.modes.split(',')
+    for override in args.effort:
+        host, _, effort = override.partition('=')
+        pilot_jev.EFFORT[host] = effort
+    hosts, tasks, modes = args.hosts.split(','), args.tasks.split(','), args.modes.split(',')
+    unknown = [m for m in modes if m not in MODES] + [t for t in tasks if t not in TASKS]
+    if unknown:
+        sys.exit(f'[bench] unknown modes or tasks: {unknown}')
     if 'v1' in modes and not args.v1_binary.is_file():
         sys.exit(f'[bench] missing v1 binary {args.v1_binary}; run `make bench-v1`')
-    for host in args.hosts.split(','):
-        for task in args.tasks.split(','):
+    if args.prepare_only:
+        for host in hosts:
             for mode in modes:
-                name = f'{host}-{task}-{mode}'
-                if args.prepare_only:
-                    print(json.dumps({'cell': name, 'project': str(prepare(host, task, mode, args))}), flush=True)
-                    continue
-                previous = args.out / name / 'result.json'
-                if previous.exists() and json.loads(previous.read_text()).get('status') != 'quota_exhausted':
-                    continue  # never repeat a completed cell for a preferred result
-                try:
-                    result = run_cell(host, task, mode, args)
-                except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
-                    result = {'host': host, 'task': task, 'mode': mode, 'status': 'harness_error', 'reason': str(error)[-400:]}
-                    (args.out / name).mkdir(parents=True, exist_ok=True)
-                    (args.out / name / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
-                print(json.dumps({k: result.get(k) for k in ('host', 'task', 'mode', 'status', 'elapsed_s', 'turns', 'subagents')}
-                                 | {'uncached': (result.get('tokens') or {}).get('uncached')}, ensure_ascii=False), flush=True)
-                if result.get('status') == 'quota_exhausted':
-                    break
+                project = prepare(host, tasks[0], mode, args)
+                untrusted = codex_untrusted(project) if host == 'codex' else []
+                print(json.dumps({'project': str(project), 'untrusted_hooks': len(untrusted)}), flush=True)
+        return 0
+    cells = [(h, t, m, r) for h in hosts for t in tasks for m in modes for r in range(1, args.reps + 1)]
+    # A fixed order lets later arms reuse an earlier arm's prompt cache; a seeded shuffle spreads that effect.
+    random.Random(args.seed).shuffle(cells)
+    stopped = set()
+    for host, task, mode, rep in cells:
+        if host in stopped:
+            continue
+        name = cell_name(host, task, mode, rep)
+        previous = args.out / name / 'result.json'
+        if previous.exists() and json.loads(previous.read_text()).get('status') not in RETRY_STATUSES:
+            continue  # never repeat a completed cell for a preferred result
+        try:
+            result = run_cell(host, task, mode, rep, args)
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            result = write_result(args.out / name, {'host': host, 'task': task, 'mode': mode, 'rep': rep,
+                                                    'status': 'harness_error', 'reason': str(error)[-400:]})
+        print(json.dumps({k: result.get(k) for k in ('host', 'task', 'mode', 'rep', 'status', 'elapsed_s', 'turns', 'subagents')}
+                         | {'uncached': (result.get('tokens') or {}).get('uncached')}, ensure_ascii=False), flush=True)
+        if result.get('status') == 'quota_exhausted':
+            stopped.add(host)  # Codex and OpenCode share one ChatGPT quota; rerun later with the same --out
     return 0
 
 

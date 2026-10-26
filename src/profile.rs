@@ -1,5 +1,6 @@
 //! Install profile. `lean` (default) installs two helper subagents and lets the native harness lead;
-//! `team` installs the v1 SDLC role team. JEV routes between team roles, so it always uses `team`.
+//! `team` installs the v1 SDLC role team. JEV works with both: under `lean` it only suggests a workflow and
+//! routes models; under `team` it also delegates to the role agents.
 
 use crate::app::App;
 use serde_json::{json, Value};
@@ -22,7 +23,7 @@ pub const TEAM_AGENTS: [&str; 9] = [
 ];
 
 pub fn is_team(app: &App) -> bool {
-    app.install_profile == TEAM || app.jev_enabled == Some(true)
+    app.install_profile == TEAM
 }
 
 pub fn effective(app: &App) -> &'static str {
@@ -127,9 +128,31 @@ mod tests {
             "extensions/codex",
             "agents/reviewer.toml"
         ));
-        app.install_profile = LEAN.into();
         app.jev_enabled = Some(true);
         assert_eq!(effective(&app), TEAM);
+    }
+
+    #[test]
+    fn lean_jev_keeps_lean_helpers() {
+        let mut app = App::new().unwrap();
+        app.install_profile = LEAN.into();
+        app.jev_enabled = Some(true);
+        assert_eq!(effective(&app), LEAN);
+        assert!(skips_extension_file(
+            &app,
+            "extensions/codex",
+            "agents/developer.toml"
+        ));
+        assert!(!skips_extension_file(
+            &app,
+            "extensions/codex",
+            "agents/reviewer.toml"
+        ));
+        assert!(skips_extension_file(
+            &app,
+            "extensions/codex",
+            "AGENTS.override.md"
+        ));
     }
 
     #[test]

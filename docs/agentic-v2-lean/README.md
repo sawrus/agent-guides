@@ -1,8 +1,9 @@
 # agentic v2 "lean"
 
 Status: v2.0.0 candidate, not shippable yet (see results.md). Scope: root layer (`AGENTS.md`, `MEMORY.md`, `REVIEW_PIPELINE.md`), `software/general`,
-`software/backend`, installer profiles, and the quality gate. JEV is frozen: unchanged, and off in every
-measurement.
+`software/backend`, installer profiles, and the quality gate. JEV was off in the measurements of rounds 1–3.
+Lean + JEV is installable since the Unreleased change (see [jev-integration](../jev-integration/README.md#lean--jev)).
+Round 4 (3 repetitions) measured it: same success as lean, 1.02–1.43 × its cost; it stays opt-in.
 
 ## Why
 
@@ -33,8 +34,9 @@ deterministic checks.
 ### Profiles
 
 - `agentic install --profile lean` (default): two helper subagents and the native main session.
-- `agentic install --profile team`: the v1 role team, `product-owner` as main session, Codex override. JEV
-  always uses `team`, because it routes between team roles.
+- `agentic install --profile team`: the v1 role team, `product-owner` as main session, Codex override.
+- JEV works with both profiles. Under `lean` it suggests a workflow as a checklist and routes subagent models;
+  it does not start role agents. Under `team` it also delegates to the role agents.
 - The profile is saved in `.agentic.json` (`settings.profile`) and replayed by `agentic upgrade`.
 
 ### Quality gate
@@ -78,21 +80,48 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
   the agent finishes. Reference solutions in `tests/bench/reference` check the graders (`make bench-selftest`).
 - Tasks: T1 bugfix (rounding), T2 feature with acceptance criteria and CHANGELOG, T3 question (no changes),
   T4 bugfix next to tempting cleanup (`legacy_report.py` and `_old_level_dump` must stay), T5 bugfix in a file
-  that already fails `make lint` (the suite is green, so only an agent or gate that runs lint sees it).
+  that already fails `make lint` (the suite is green, so only an agent or gate that runs lint sees it), T6
+  multi-module bugfix (the symptom is in `orders.py`; the causes are in `pricing.py` and in the tax base), T7
+  multi-module feature (`Stock.reserve_many` plus a CLI command; hidden tests check that lines with the same SKU
+  count together and that the existing over-reservation bug does not leak into the new API).
 - Seeds: a task with `seed` in `tasks.json` copies `tests/bench/<seed>` over the fixture before the first
-  commit. T5 uses it, so T1–T4 keep a lint-clean fixture.
+  commit. T5 and T6 use it, so the other tasks keep the base fixture.
 - Allowlists include the version file and `docs/`, because the pack's own completion contract requires them.
-  The first baseline grading rejected two v1 cells only for a version bump. `make bench-regrade` applied the
-  final allowlists to every cell.
-- Re-runs: `make bench` skips any cell that already has a `result.json`. For a new round, set a new output
-  folder, for example `BENCH_OUT=.agentic-blackbox/bench-r2`, or delete the cells to repeat.
-- Commands: `make bench-v1`, `make bench-prepare`, `make bench BENCH_ARGS="--modes lean"` (paid),
-  `make bench-regrade`, `make bench-report`. Results: `.agentic-blackbox/bench/` (Git-ignored).
-- Tokens: `Input` = uncached + cached. Uncached alone follows prompt-cache hits between runs: Codex lean T3 was
-  12.2k vs 7.5k uncached, but 56.0k vs 56.9k input. Claude runs use `--strict-mcp-config`, because an
-  account MCP connector attached to one arm only.
-- Codex runs project hooks only after `/hooks` trust per absolute path. Trust the
-  `/tmp/agentic-bench/codex-T*-lean` projects after `make bench-prepare BENCH_ARGS="--hosts codex --modes lean"`.
+- Arms (`--modes`): `plain`, `lean`, `lean-jev`, `team-jev` by default; also `team` and `v1` (v1.6 binary from
+  `make bench-v1`). A `-jev` arm installs with `--enable-jev`; `JEV_API_URL` overrides the endpoint.
+- Repetitions: `--reps N` runs every host × task × arm N times. The cell order is shuffled with `--seed`
+  (default 0), so no arm always runs right after another and reuses its prompt cache.
+- Projects: one stable path per host and arm (`/tmp/agentic-bench/<host>-<arm>`), because Codex trusts hooks
+  per absolute path. Before each Claude cell the benchmark deletes `~/.claude/projects/<path>/` (transcripts and
+  auto-memory), so no cell sees notes from an earlier one. Each cell copies the finished project into
+  `<out>/<cell>/project`; `make bench-regrade` grades that copy.
+- Invalid cells: a host that reports no token usage, a `-jev` cell without a JEV decision record, or a Codex
+  cell whose hooks have no trust record is `harness_error`. It is not counted as a failure, and the next
+  `make bench` with the same `BENCH_OUT` runs it again, as it does for `quota_exhausted`. A provider quota stop
+  pauses only that host.
+- Re-runs: `make bench` skips any cell that already has a valid `result.json`. For a new round, set a new output
+  folder, for example `BENCH_OUT=.agentic-blackbox/bench-r4`.
+- Commands: `make bench-v1`, `make bench-prepare`, `make bench BENCH_ARGS="--reps 3"` (paid),
+  `make bench-regrade`, `make bench-report` (Markdown and `summary.json`). Results: `.agentic-blackbox/bench/`
+  (Git-ignored).
+- Tokens: Full = uncached + cached; uncached counts output too. Uncached alone follows prompt-cache hits between
+  runs: Codex lean T3 was 12.2k vs 7.5k uncached, but 56.0k vs 56.9k full. The report shows median and IQR.
+  Claude runs use `--strict-mcp-config`, because an account MCP connector attached to one arm only.
+- Cost: Claude reports `total_cost_usd`. Codex and OpenCode on a ChatGPT plan report none; the report estimates
+  an API-equivalent cost only for models with a price in `tests/bench/prices.json` and leaves it empty
+  otherwise. Prices (2026-10-23, secondary sources listed in the file): `gpt-6-astra` $10 / $1 cached / $50 output,
+  `gpt-6-luna` $0.10 / $0.01 / $0.50 per 1M tokens. Cost includes the JEV API at $0.042 per 1M input tokens
+  (output free); the report also shows it alone (JEV $). Cost per success = total cost of the arm's cells /
+  accepted cells.
+- Models: `--model host=model` and `--effort codex=<level>`. OpenCode JEV routing stays on the provider of the
+  coordinator model (`AGENTIC_JEV_MODEL_PROVIDER` overrides it). A routed model without a price in `prices.json`
+  leaves the cell cost empty.
+- Codex runs project hooks only after `/hooks` trust per absolute path. Run
+  `make bench-prepare BENCH_ARGS="--hosts codex --modes lean,lean-jev,team-jev"`, open `codex` in each printed
+  project, and trust the hooks in `/hooks`. The command prints `untrusted_hooks` per project.
+- Decision rule for lean + JEV (fixed before round 4): recommend it only if, on a host, its success rate is not
+  below lean (the Wilson intervals overlap or lean + JEV is higher) and its cost per success is at most 1.1 ×
+  lean, with no worse success rate on the other hosts. Otherwise it stays opt-in, with no savings claimed.
 
 ## Results
 

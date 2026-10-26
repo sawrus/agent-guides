@@ -28,6 +28,22 @@ CODEX_DELEGATION = ('Act as its declared initiator and coordinate delivery. Dele
 CLAUDE_DELEGATION = ('Act as its declared initiator in this main session and coordinate delivery. Delegate repository exploration '
                      'and implementation to its declared role agents through the Agent tool (subagent_type = role name).', 'Agent hooks')
 OWN_OUTPUT = ('SubagentStart', 'UserPromptSubmit', 'PermissionRequest')
+# `lean` installs no role agents: the workflow is a checklist for the native main session, which keeps its own
+# planning and delegation. Spawn hooks still route the models of the subagents it chooses to start.
+LEAN_CONTEXT = ('JEV suggests installed workflow {id}. Use {path} as a checklist for the ORIGINAL user request and perform '
+                'its steps yourself in this main session; there are no role agents. Start a subagent only where the project '
+                'core rules call for one; {hooks} route its model, so omit guessed model overrides. Keep the scope of the '
+                'ORIGINAL request; do not add requirements.')
+
+
+def install_profile(project):
+    """Installed profile from .agentic.json; manifests without one predate `lean`, when JEV always installed `team`."""
+    try:
+        settings = json.loads((project / '.agentic.json').read_text(encoding='utf-8')).get('settings') or {}
+    except (OSError, ValueError, AttributeError):
+        return 'team'
+    profile = settings.get('profile') if isinstance(settings, dict) else None
+    return profile if profile in ('lean', 'team') else 'team'
 
 
 def prepared_name(task_name):
@@ -88,8 +104,10 @@ def review_additional_context(packet):
     return review_context() + ' Explicitly read ' + packet + ' and its referenced decision records. These files are Git-ignored; do not rely on ordinary search to discover them.'
 
 
-def workflow_context(workflow, delegation):
+def workflow_context(workflow, delegation, lean=False):
     sentence, hooks = delegation
+    if lean:
+        return LEAN_CONTEXT.format(id=workflow['id'], path=workflow['path'], hooks=hooks)
     return ('JEV selected installed workflow ' + workflow['id'] + '. Load ' + workflow['path'] + ' and execute it for the ORIGINAL user request. '
             + sentence + ' Keep the scope of the ORIGINAL request; do not add requirements. Model routing happens automatically through '
             + hooks + '; omit guessed model overrides (Codex prepared selections are explicit exceptions). ' + review_context())
@@ -108,8 +126,10 @@ def shared_output(core, project, name, event, result, delegation):
         # Blocking erases the switch prompt, so `/jev off|on|status` costs no model turn.
         return {'decision': 'block', 'reason': result['message']}
     if name == 'UserPromptSubmit' and result.get('workflow'):
-        context = workflow_context(result['workflow'], delegation)
-        if event.get('host') == 'codex':
+        lean = install_profile(project) == 'lean'
+        context = workflow_context(result['workflow'], delegation, lean)
+        # Prepared spawns serve role delegation; lean spawns are routed by the PreToolUse spawn hook alone.
+        if event.get('host') == 'codex' and not lean:
             task = core.read_json(core.private_dir(project) / ('context-' + core.short_hash(event['session_id']) + '.json'), {})
             context += (' Before each Codex V2 spawn, call the local JSON interface: python3 .agent/jev/hook.py --host codex --prepare-spawn. '
                         'Send session_id=' + str(event['session_id']) + ', task_id=' + str(task.get('task_id')) +
