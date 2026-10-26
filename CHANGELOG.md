@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v2.1.1
+
 - OpenCode model profiles saved by older releases no longer bring back `telegram-notification` and
   `agent-model-mapper` in the `opencode.json` `plugin` array. OpenCode V2 tried to install them from npm and
   reported `Plugin failed: telegram-notification`.
