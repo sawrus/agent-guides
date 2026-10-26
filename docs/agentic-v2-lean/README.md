@@ -48,6 +48,9 @@ deterministic checks.
   those targets exist. A failure returns `{"decision": "block", "reason": <command + last 40 lines>}`, so the
   agent continues with the output. Source changes without a new CHANGELOG line are asked about once per
   session. After `max_blocks` consecutive blocks, the gate lets the agent stop and report.
+- Install baseline: install and upgrade write `.agentic/gate/baseline.json` with the hashes of the files that are
+  uncommitted at that moment (the installed artifacts, `.gitignore`, earlier work). A file that still matches its
+  hash is not a change, so a session that only reads code runs no checks.
 - Guard: denies `.env*` (except `.example`, `.sample`, `.template`), private keys, `git push -f/--force`,
   and recursive deletes outside the project and the system temp directory.
 - Evidence: `.agentic/gate/last.json` (changed files, commands, exit codes, output tails).

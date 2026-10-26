@@ -1,4 +1,5 @@
 """Offline tests of the shared quality gate (extensions/codex/hooks/gate/gate.py)."""
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -31,6 +32,16 @@ class StopGate(unittest.TestCase):
         root = project(RED)
         self.assertEqual(gate.stop(root, {'session_id': 's'}), {})
         self.assertEqual(json.loads((root / '.agentic/gate/last.json').read_text())['checks'], [])
+
+    def test_install_baseline_is_not_a_change(self):
+        root = project(RED)
+        (root / 'AGENTS.md').write_text('guide\n')
+        (root / '.agentic/gate').mkdir(parents=True)
+        digest = hashlib.sha256(b'guide\n').hexdigest()
+        (root / '.agentic/gate/baseline.json').write_text(json.dumps({'files': {'AGENTS.md': digest}}))
+        self.assertEqual(gate.stop(root, {'session_id': 's'}), {})
+        (root / 'AGENTS.md').write_text('edited\n')
+        self.assertEqual(gate.stop(root, {'session_id': 's'})['decision'], 'block')
 
     def test_failed_check_blocks_with_output(self):
         root = project(RED)

@@ -15,6 +15,8 @@ const ROOT_FILES: &[&str] = &[
     ".agentic/claude-settings-entries.json",
     ".agentic/claude-notify-hook-entries.json",
     ".agentic/codex-notify-hook-entries.json",
+    ".agentic/claude-gate-hook-entries.json",
+    ".agentic/codex-gate-hook-entries.json",
     ".mcp.json",
     "opencode.json",
     ".mempalaceignore",
@@ -79,6 +81,10 @@ fn collect(root: &Path, rel: &str, files: &mut BTreeMap<String, Vec<u8>>) -> cra
     if path.is_dir() {
         for entry in std::fs::read_dir(&path)? {
             let entry = entry?;
+            // Hosts install plugin dependencies here (with .bin symlinks); agentic never owns them.
+            if entry.file_name() == "node_modules" {
+                continue;
+            }
             collect(
                 root,
                 &format!("{rel}/{}", entry.file_name().to_string_lossy()),
@@ -151,4 +157,37 @@ pub fn owned_files(files: &BTreeMap<String, Vec<u8>>, data: &Value) -> BTreeMap<
         }
     }
     owned
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn inventory_skips_host_node_modules() {
+        let root = tempfile::tempdir().unwrap();
+        let bin = root.path().join(".opencode/node_modules/.bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        std::os::unix::fs::symlink("../pkg/cli.js", bin.join("cli")).unwrap();
+        std::fs::write(root.path().join(".opencode/opencode.json"), "{}").unwrap();
+        let files = inventory(root.path()).unwrap();
+        assert!(files.contains_key(".opencode/opencode.json"));
+        assert!(!files.keys().any(|k| k.contains("node_modules")));
+    }
+
+    #[test]
+    fn inventory_keeps_hook_ownership_records() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(root.path().join(".agentic")).unwrap();
+        for name in [
+            "claude-gate-hook-entries.json",
+            "codex-gate-hook-entries.json",
+        ] {
+            std::fs::write(root.path().join(".agentic").join(name), "{}").unwrap();
+        }
+        let files = inventory(root.path()).unwrap();
+        assert!(files.contains_key(".agentic/claude-gate-hook-entries.json"));
+        assert!(files.contains_key(".agentic/codex-gate-hook-entries.json"));
+    }
 }

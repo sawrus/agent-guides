@@ -27,9 +27,11 @@ pub fn doctor_timeout_seconds() -> u64 {
         .unwrap_or(10)
 }
 
+/// A match stays inside one phrase (no quote), so a long JSON event line that names an MCP tool
+/// and, much later, says "required" is not a failure.
 pub fn output_has_fatal_patterns(output: &str) -> bool {
     let re = Regex::new(
-        r"(?i)MCP.*(error|failed|failure|connection|connect|startup)|plugin.*(error|failed|failure)|auth.*(required|failed)|login required|permission.*(denied|required)|SyntaxError|Traceback|Invalid regular expression flags|An unexpected critical error occurred|FatalError|RuntimeError|EPERM|EACCES|panic:",
+        r#"(?i)MCP[^"\n]{0,80}(error|failed|failure|connection|connect|startup)|plugin[^"\n]{0,80}(error|failed|failure)|auth[^"\n]{0,80}(required|failed)|"status":"failed"|login required|permission[^"\n]{0,80}(denied|required)|SyntaxError|Traceback|Invalid regular expression flags|An unexpected critical error occurred|FatalError|RuntimeError|EPERM|EACCES|panic:"#,
     )
     .unwrap();
     output.lines().any(|line| re.is_match(line))
@@ -140,21 +142,23 @@ fn build_doctor_command(
         "opencode" => {
             let runtime = prepare_opencode_doctor_runtime(app, doctor_root);
             let mut cmd = Command::new("opencode");
-            cmd.args(["run", "--pure", "--dir"])
-                .arg(work_dir)
-                .args([
-                    "--dangerously-skip-permissions",
-                    "--format",
-                    "json",
-                    "--log-level",
-                    "ERROR",
-                ])
-                .arg(DOCTOR_PROMPT)
-                .env("HOME", &runtime.home)
-                .env("XDG_CONFIG_HOME", &runtime.config_home)
-                .env("XDG_DATA_HOME", &runtime.data_home)
-                .env("XDG_CACHE_HOME", &runtime.cache_home)
-                .env("OPENCODE_DISABLE_AUTOUPDATE", "1");
+            // OpenCode V2 has no --pure/--dir; a private server keeps the isolated HOME.
+            cmd.args([
+                "run",
+                "--standalone",
+                "--auto",
+                "--format",
+                "json",
+                "--log-level",
+                "error",
+            ])
+            .arg(DOCTOR_PROMPT)
+            .current_dir(work_dir)
+            .env("HOME", &runtime.home)
+            .env("XDG_CONFIG_HOME", &runtime.config_home)
+            .env("XDG_DATA_HOME", &runtime.data_home)
+            .env("XDG_CACHE_HOME", &runtime.cache_home)
+            .env("OPENCODE_DISABLE_AUTOUPDATE", "1");
             Some(cmd)
         }
         "claude" => {
@@ -165,6 +169,8 @@ fn build_doctor_command(
                 "bypassPermissions",
                 "--output-format",
                 "stream-json",
+                // `--print` with stream-json output requires --verbose.
+                "--verbose",
             ])
             .arg(DOCTOR_PROMPT)
             .current_dir(work_dir);
@@ -332,6 +338,12 @@ mod tests {
         assert!(output_has_fatal_patterns("auth failed"));
         assert!(!output_has_fatal_patterns("AGENTIC_DOCTOR_OK"));
         assert!(!output_has_fatal_patterns("all good"));
+        assert!(!output_has_fatal_patterns(
+            r#"{"tools":["mcp__anydb__db_query"],"permission_denials":[],"reason":"sdk_opt_in_required","is_error":false}"#
+        ));
+        assert!(output_has_fatal_patterns(
+            r#"{"mcp_servers":[{"name":"anydb","status":"failed"}]}"#
+        ));
     }
 
     #[test]

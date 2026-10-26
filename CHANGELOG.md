@@ -1,6 +1,26 @@
 # Changelog
 
-## Unreleased
+## v2.1.1
+
+- OpenCode model profiles saved by older releases no longer bring back `telegram-notification` and
+  `agent-model-mapper` in the `opencode.json` `plugin` array. OpenCode V2 tried to install them from npm and
+  reported `Plugin failed: telegram-notification`.
+- `agentic upgrade` skips `node_modules` in agent directories. OpenCode installs plugin dependencies there, and
+  their `.bin` symlinks stopped the upgrade with `Symlink project path`.
+- OpenCode model profiles saved by older releases no longer bring back the pre-1.4 role names (`designer`,
+  `instruction_reviewer`, `memory_curator`); under `lean` they appeared as extra OpenCode agents.
+- Quality gate: install and upgrade record `.agentic/gate/baseline.json`, the hashes of the files uncommitted at
+  that moment. The Stop gate ignores files that still match, so the uncommitted installed artifacts no longer
+  make it run `make test` after a session that only read code.
+- `agentic upgrade` keeps the gate hook ownership records (`.agentic/claude-gate-hook-entries.json`,
+  `.agentic/codex-gate-hook-entries.json`) in its staging copy, so it no longer warns
+  `Preserving conflicting Gate hook entry` about its own hooks.
+- A first install into a project without `.agentic.json` moves the agentic-marked files it no longer installs
+  (for example the role team of an older install) into `.agentic-backups/<stamp>-legacy/`. Configurations stay.
+- Claude Code doctor passes `--verbose`, which `--print` with `stream-json` output requires. The doctor's error
+  patterns match within one phrase, so long JSON event lines no longer count as integration errors.
+- OpenCode doctor works with OpenCode V2: it runs `opencode run --standalone --auto` in the project copy instead of
+  the removed `--pure` and `--dir` flags.
 
 ## v2.1.0
 

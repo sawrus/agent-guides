@@ -258,6 +258,9 @@ pub fn configure_opencode_profile_if_needed(app: &mut App) -> crate::Result<()> 
     }
     crate::upgrade_config::record_json_keys(app, &dest, &profile);
     merge_json(&mut data, &profile);
+    // Profiles saved by older releases still list local plugins as npm packages and pre-1.4 role names.
+    crate::legacy::drop_local_plugin_refs(&mut data);
+    crate::legacy::drop_renamed_keys(&mut data);
     let output = markers::to_pretty_json(&data);
     let source_ref = format!("generated:opencode-profile-{profile_id}");
     if existing.as_deref() == Some(output.as_str()) {
@@ -727,6 +730,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
 
     app.project_dir = util::normalize_project_dir_path(&app.project_dir);
     let project_dir = PathBuf::from(&app.project_dir);
+    let first_install = !app.upgrade_mode && !app.project_manifest_path().exists();
     app.ensure_dir(&project_dir);
 
     mcp::sync_selected_mcps_from_env(app);
@@ -767,6 +771,10 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     if app.upgrade_mode {
         return Ok(());
     }
+    if first_install {
+        crate::project_update::retire_legacy_artifacts(app, &project_dir)?;
+    }
+    crate::gate::write_baseline(app, &project_dir)?;
     print_report(app);
     print_missing_agent_binary_guides(app);
     print_current_changelog(app);
@@ -1045,6 +1053,31 @@ mod tests {
         .unwrap();
         assert_eq!(data["keepme"], serde_json::json!(1));
         assert!(data.as_object().unwrap().len() > 1);
+    }
+
+    #[test]
+    fn user_profile_drops_local_plugin_refs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tempfile::tempdir().unwrap();
+        let mut app = test_app(tmp.path());
+        app.home = home.path().to_path_buf();
+        app.selected_agent_os = vec!["opencode".to_string()];
+        app.selected_opencode_profile = "legacy".to_string();
+        let dir = app.opencode_user_profiles_dir().join("legacy");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("opencode.json"),
+            r#"{"plugin": ["telegram-notification", "custom-plugin"], "agent": {"designer": {}, "mine": {}}}"#,
+        )
+        .unwrap();
+        configure_opencode_profile_if_needed(&mut app).unwrap();
+        let data: Value = serde_json::from_str(
+            &std::fs::read_to_string(tmp.path().join(".opencode/opencode.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(data["plugin"], serde_json::json!(["custom-plugin"]));
+        assert!(data["agent"].get("designer").is_none());
+        assert!(data["agent"].get("mine").is_some());
     }
 
     #[test]

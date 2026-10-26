@@ -11,6 +11,7 @@ pub const RUNTIME_REL: &str = ".agent/gate/gate.py";
 const RUNTIME_SOURCE: &str = "extensions/codex/hooks/gate/gate.py";
 const RUNTIME: &str = include_str!("../extensions/codex/hooks/gate/gate.py");
 pub const OPENCODE_PLUGIN_REL: &str = "plugins/agentic-gate.ts";
+const BASELINE_REL: &str = ".agentic/gate/baseline.json";
 const CLAUDE_OWNERSHIP: &str = ".agentic/claude-gate-hook-entries.json";
 const CODEX_OWNERSHIP: &str = ".agentic/codex-gate-hook-entries.json";
 /// Project checks may take minutes; the gate bounds each command itself.
@@ -97,6 +98,46 @@ pub fn install(app: &mut App, project: &Path) -> crate::Result<()> {
     Ok(())
 }
 
+/// Record the uncommitted files as they stand after install, so the Stop gate does not take the
+/// installed artifacts (or older uncommitted work) for agent changes. Hashes only; no contents.
+pub fn write_baseline(app: &mut App, project: &Path) -> crate::Result<()> {
+    if app.dry_run || !enabled(app) {
+        return Ok(());
+    }
+    let Ok(out) = std::process::Command::new("git")
+        .arg("-C")
+        .arg(project)
+        .args(["status", "--porcelain", "-z", "--untracked-files=all"])
+        .output()
+    else {
+        return Ok(());
+    };
+    if !out.status.success() {
+        return Ok(());
+    }
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut files = serde_json::Map::new();
+    let mut entries = text.split('\0').filter(|e| e.len() > 3);
+    while let Some(entry) = entries.next() {
+        let (status, rel) = entry.split_at(3);
+        if status.starts_with('R') || status.starts_with('C') {
+            entries.next(); // the original path of a rename or copy
+        }
+        if rel.starts_with(".agentic/") || rel.starts_with(".git/") {
+            continue;
+        }
+        let hash = crate::util::hash_file(&project.join(rel)).ok();
+        files.insert(rel.to_string(), serde_json::json!(hash));
+    }
+    let path = project.join(BASELINE_REL);
+    std::fs::create_dir_all(path.parent().unwrap())?;
+    std::fs::write(
+        path,
+        crate::markers::to_pretty_json(&serde_json::json!({ "files": files })),
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -123,5 +164,32 @@ mod tests {
         install(&mut a, p).unwrap();
         let claude = std::fs::read_to_string(p.join(".claude/settings.json")).unwrap();
         assert!(!claude.contains(RUNTIME_REL));
+    }
+
+    #[test]
+    fn baseline_records_uncommitted_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path();
+        let git = |args: &[&str]| {
+            std::process::Command::new("git")
+                .arg("-C")
+                .arg(p)
+                .args(args)
+                .output()
+                .unwrap()
+        };
+        git(&["init", "-q"]);
+        std::fs::write(p.join("AGENTS.md"), "guide\n").unwrap();
+        std::fs::create_dir_all(p.join(".agentic")).unwrap();
+        std::fs::write(p.join(".agentic/x.json"), "{}").unwrap();
+        let mut a = app(p, &["claude"]);
+        write_baseline(&mut a, p).unwrap();
+        let data: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(p.join(BASELINE_REL)).unwrap()).unwrap();
+        assert_eq!(
+            data["files"]["AGENTS.md"],
+            serde_json::json!(crate::util::sha256_hex(b"guide\n"))
+        );
+        assert_eq!(data["files"].as_object().unwrap().len(), 1);
     }
 }
