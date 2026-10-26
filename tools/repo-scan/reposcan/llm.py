@@ -47,7 +47,7 @@ def excerpt(repo, rel):
 
 
 def build_prompt(record, applicability, relationships, guide_ids):
-    repo = record['path']
+    repo = record['local_path']
     excerpts = {}
     for rel in ('README.md', 'README.rst', 'README', 'Makefile', '.gitlab-ci.yml'):
         text = excerpt(repo, rel)

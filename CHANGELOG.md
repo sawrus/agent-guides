@@ -15,10 +15,12 @@
   `claude=team,codex=lean`. New `/profile` command for Claude Code and OpenCode and the Codex skill
   `agentic-profile`. Model profile menus now read `models: <provider> · role→model`.
 - `tools/repo-scan`: offline analysis of many local Git repositories (Python standard library; `scc` when present).
-  `scan` writes `repositories.json` (URL mapping `~/work/<host>/<path>` checked against `origin`, activity class
-  active/stale/archived/junk, languages, Makefile, CI, manifests, env keys and hosts only), `relationships.json`
-  (`library`, `http`, `kafka`, `grpc`, `ci`, `deploy` edges with evidence and confidence; unresolved links are
-  listed, not guessed), `guide-applicability.json` (declarative rules in `tools/repo-scan/applicability.json` with
+  Repositories are identified by GitLab URL in every output, inferred from `~/work/<host>/<path>` or set per root
+  with `--root-url <dir>=<url>`; the local path stays only in `repositories.json` for later stages.
+  `scan` writes `repositories.json` (URL checked against `origin`, activity class
+  active/stale/docs/archived/junk, languages, Makefile, CI, manifests, env keys and hosts only), `relationships.json`
+  (`library`, `http`, `kafka`, `grpc`, `ci`, `deploy` edges with evidence, confidence and a `trusted` flag at
+  `--trusted-min`, default 0.8; unresolved links are listed, not guessed), `guide-applicability.json` (declarative rules in `tools/repo-scan/applicability.json` with
   real workflow and rule ids, separate task routing hints) and `graph.mmd`. `--write-repo-artifacts` writes
   `.agentic/` files into each repository and git-excludes them. `gate-propose` builds `.agent/gate.json` candidates
   without running code; `gate-verify` runs them only in named repositories. `llm` adds an assessment through

@@ -15,27 +15,25 @@ TOOL_DIR = Path(__file__).resolve().parent.parent
 GUIDES_ROOT = TOOL_DIR.parent.parent
 
 
-def scan_one(path, root, cfg, now, use_scc):
+def scan_one(path, root, root_url, cfg, now, use_scc):
     files = list_files(path)
     facts = manifests.parse_repo(path, files)
     gfacts = discover.git_facts(path, now, cfg['activity']['window_days'])
-    remote_host = (gfacts['remote_key'] or '').split('/')[0] or None
-    url_key, url_expected = discover.expected_url(path, root, remote_host)
+    ident = discover.identity(path, root, root_url, gfacts['remote_key'])
     m = metrics.count(path, files, use_scc)
     has_ci = bool(facts['gitlab_ci'] or facts['github'])
     rel_parts = path.relative_to(root).parts if path != root else (path.name,)
     cls, reasons = discover.classify(rel_parts, path.name, gfacts, has_ci, m['code_lines'] + m['config_lines'],
-                                     cfg['activity'])
-    rid = url_key or gfacts['remote_key'] or str(path)
+                                     cfg['activity'], doc_lines=m['doc_lines'], doc_files=m['doc_files'])
     py = facts['pyproject'] or {}
     record = {
-        'id': rid,
+        'id': ident['url'],
         'name': path.name,
-        'path': str(path),
         'group_path': '/'.join(rel_parts),
-        'url_key': url_key,
-        'url_expected': url_expected,
-        'url_verified': bool(url_key and gfacts['remote_key'] and url_key == gfacts['remote_key']),
+        'url_key': ident['key'],
+        'url_source': ident['source'],
+        'url_verified': bool(ident['key'] and gfacts['remote_key'] and ident['key'] == gfacts['remote_key']),
+        'local_path': str(path),
         'git': gfacts,
         'activity': {'class': cls, 'reasons': reasons, 'has_ci': has_ci},
         'metrics': m,
@@ -84,29 +82,44 @@ def cmd_scan(args):
         now = now.replace(tzinfo=dt.timezone.utc)
     cfg, known = applicability.load_config(args.rules, args.guides_root)
     use_scc = shutil.which('scc') is not None and not args.no_scc
+    root_urls = {}
+    for item in args.root_url or []:
+        if '=' not in item:
+            print(f'error: --root-url expects <dir>=<url>: {item}', file=sys.stderr)
+            return 2
+        directory, url = item.split('=', 1)
+        if not url.startswith(('https://', 'http://')):
+            print(f'error: --root-url needs an http(s) URL: {url}', file=sys.stderr)
+            return 2
+        root_urls[Path(directory).expanduser().resolve()] = url.rstrip('/')
+    roots = [Path(r).expanduser().resolve() for r in args.roots]
+    roots += [r for r in root_urls if r not in roots]
     jobs = []
-    for root in args.roots:
-        root = Path(root).expanduser().resolve()
+    for root in roots:
         if not root.is_dir():
             print(f'error: not a directory: {root}', file=sys.stderr)
             return 2
         for path in discover.find_repos([root]):
-            jobs.append((path, root))
+            jobs.append((path, root, root_urls.get(root)))
     print(f'repo-scan {VERSION}: {len(jobs)} repositories, counter={"scc" if use_scc else "builtin"}', file=sys.stderr)
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
-        scanned = list(pool.map(lambda j: scan_one(j[0], j[1], cfg, now, use_scc), jobs))
-    seen = {}
-    for record, _, _ in scanned:  # two checkouts of one remote keep distinct ids
-        if record['id'] in seen:
-            record['id'] = f'{record["id"]}#{record["path"]}'
-        seen[record['id']] = True
+        scanned = list(pool.map(lambda j: scan_one(j[0], j[1], j[2], cfg, now, use_scc), jobs))
+    counts = {}
+    for record, _, _ in scanned:  # two checkouts of one URL keep distinct ids
+        base = record['id']
+        counts[base] = counts.get(base, 0) + 1
+        if counts[base] > 1:
+            record['id'] = f'{base}#copy{counts[base]}'
     records = []
     for record, facts, _ in scanned:
         records.append(dict(record, facts=facts))
-    rel = relations.build(records)
+    rel = relations.build(records, trusted_min=args.trusted_min)
     for r in records:
         r.setdefault('kafka_topics', [])
-    guides = {'guides_root': str(Path(args.guides_root).resolve()), 'rules_file': str(Path(args.rules).resolve()),
+    rules_file = Path(args.rules).resolve()
+    guides_root = Path(args.guides_root).resolve()
+    guides = {'rules_file': (rules_file.relative_to(guides_root).as_posix()
+                             if rules_file.is_relative_to(guides_root) else rules_file.name),
               'note': 'repository applicability only; per-task workflow choice stays with JEV (task_routing is a hint)',
               'guide_ids': {'workflows': sorted(g for k, g in known if k == 'workflows'),
                             'rules': sorted(g for k, g in known if k == 'rules')},
@@ -118,10 +131,13 @@ def cmd_scan(args):
     classes = {}
     for r in public:
         classes[r['activity']['class']] = classes.get(r['activity']['class'], 0) + 1
-    meta = {'version': VERSION, 'generated_at': now.isoformat(), 'roots': [str(Path(r).resolve()) for r in args.roots],
+    meta = {'version': VERSION, 'generated_at': now.isoformat(),
+            'roots': [{'url': root_urls.get(r) or (discover.expected_url(r / '_', r)[1] or '')[:-2] or None,
+                       'source': 'root-url' if r in root_urls else 'path'} for r in roots],
             'tools': {'counter': 'scc' if use_scc else 'builtin', 'semgrep': shutil.which('semgrep') is not None},
             'counts': {'repositories': len(public), 'by_class': classes}}
-    write_json(out / 'repositories.json', dict(meta, repositories=public))
+    # Local paths appear only here (llm and gate stages need them), never as identity.
+    write_json(out / 'repositories.json', dict(meta, root_paths=[str(r) for r in roots], repositories=public))
     write_json(out / 'relationships.json', dict(meta, **rel))
     write_json(out / 'guide-applicability.json', dict(meta, **guides))
     (out / 'graph.mmd').write_text(mermaid(public, rel['edges']))
@@ -129,16 +145,17 @@ def cmd_scan(args):
         for r in public:
             write_repo_artifacts(r, rel, guides['repositories'][r['id']])
     print(json.dumps({'out': str(out), 'repositories': len(public), 'by_class': classes,
-                      'edges_by_kind': rel['stats']['edges_by_kind'], 'unresolved': rel['stats']['unresolved']},
+                      'edges_by_kind': rel['stats']['edges_by_kind'],
+                      'trusted_by_kind': rel['stats']['trusted_by_kind'], 'unresolved': rel['stats']['unresolved']},
                      indent=1))
     return 0
 
 
 def write_repo_artifacts(record, rel, guide):
-    repo = Path(record['path'])
+    repo = Path(record['local_path'])
     target = repo / '.agentic'
     target.mkdir(exist_ok=True)
-    write_json(target / 'repo-scan.json', dict(record, guides=guide))
+    write_json(target / 'repo-scan.json', dict({k: v for k, v in record.items() if k != 'local_path'}, guides=guide))
     write_json(target / 'dependencies.json', {
         'repo': record['id'],
         'outgoing': [e for e in rel['edges'] if e['from'] == record['id']],
@@ -154,12 +171,14 @@ def mermaid(records, edges):
     lines = ['flowchart LR']
     for r in sorted(records, key=lambda r: r['id']):
         if r['id'] in ids:
-            host = (r.get('url_key') or '').split('.')[0]
-            label = (f'{host}: ' if host else '') + r['group_path'].replace('"', "'")
+            label = r['id'].split('://', 1)[-1].replace('"', "'")
             lines.append(f'  {ids[r["id"]]}["{label}"]:::{r["activity"]["class"]}')
+    lines.append('  %% solid: trusted (confidence >= trusted_min); dashed: below the threshold')
     for e in edges:
-        lines.append(f'  {ids[e["from"]]} -->|{e["kind"]} {e["confidence"]}| {ids[e["to"]]}')
+        arrow = '-->' if e.get('trusted') else '-.->'
+        lines.append(f'  {ids[e["from"]]} {arrow}|{e["kind"]} {e["confidence"]}| {ids[e["to"]]}')
     lines += ['  classDef active fill:#d4f4dd,stroke:#2a7a3b', '  classDef stale fill:#fff4cc,stroke:#a07800',
+              '  classDef docs fill:#dbe9ff,stroke:#2f5fa8',
               '  classDef archived fill:#e6e6e6,stroke:#777', '  classDef junk fill:#f8d7da,stroke:#a33']
     return '\n'.join(lines) + '\n'
 
@@ -168,16 +187,51 @@ def scan_records(scan_dir):
     return load_json(Path(scan_dir) / 'repositories.json')['repositories']
 
 
+def match_repos(records, wanted):
+    """Records for a GitLab URL (with or without https://), the old 'host/path' or short form, a path suffix
+    (`antifraud-rules/rule-engine`), a repository name, or a local path."""
+    out = []
+    for w in wanted:
+        key = w.split('://', 1)[-1].strip('/').lower()
+        local = str(Path(w).expanduser().resolve()) if not w.startswith(('http://', 'https://')) else None
+        for r in records:
+            rid = r['id'].split('://', 1)[-1].lower()
+            if (rid == key or rid.endswith('/' + key) or r['name'] == w or r.get('local_path') == local) \
+                    and r not in out:
+                out.append(r)
+    return out
+
+
+def resolve_targets(args):
+    """(id, local path) pairs for gate commands: plain directories, or ids looked up in --in."""
+    targets, records = [], None
+    for w in args.repos:
+        path = Path(w).expanduser()
+        if path.is_dir() and (path / '.git').exists():
+            path = path.resolve()
+            remote = discover.git_facts(path, dt.datetime.now(dt.timezone.utc), 1)['remote_key']
+            targets.append((discover.identity(path, path.parent, None, remote)['url'], str(path)))
+            continue
+        if records is None:
+            records = scan_records(args.scan_dir) if args.scan_dir else []
+        found = match_repos(records, [w])
+        if len(found) != 1:
+            raise SystemExit(f'error: {w!r} matches {len(found)} repositories'
+                             + ('' if args.scan_dir else ' (pass --in SCAN_DIR to look up URLs)'))
+        targets.append((found[0]['id'], found[0]['local_path']))
+    return targets
+
+
 def cmd_gate_propose(args):
     if args.repos:
-        targets = [(str(Path(p).resolve()), str(Path(p).resolve())) for p in args.repos]
+        targets = resolve_targets(args)
     else:
-        targets = [(r['id'], r['path']) for r in scan_records(args.scan_dir)
+        targets = [(r['id'], r['local_path']) for r in scan_records(args.scan_dir or '.')
                    if r['activity']['class'] in args.classes.split(',')]
     proposals = {}
     for rid, path in targets:
-        proposals[rid] = dict(gates.propose_for(path), path=path)
-    out = Path(args.out or args.scan_dir)
+        proposals[rid] = gates.propose_for(path)
+    out = Path(args.out or args.scan_dir or '.')
     write_json(out / 'gate-proposals.json', {'note': 'candidates only; nothing was executed', 'proposals': proposals})
     with_cmds = sum(1 for p in proposals.values() if p['gate']['commands'])
     print(f'{len(proposals)} proposals, {with_cmds} with commands -> {out / "gate-proposals.json"}')
@@ -186,12 +240,12 @@ def cmd_gate_propose(args):
 
 def cmd_gate_verify(args):
     reports = []
-    for repo in args.repos:
-        path = Path(repo).expanduser().resolve()
+    for rid, local in resolve_targets(args):
+        path = Path(local)
         if not (path / '.git').exists():
             print(f'error: not a git repository: {path}', file=sys.stderr)
             return 2
-        report = gates.verify(path, timeout=args.timeout, write=not args.no_write, force=args.force)
+        report = dict(gates.verify(path, timeout=args.timeout, write=not args.no_write, force=args.force), repo=rid)
         reports.append(report)
         for res in report['results']:
             print(f'{res["exit"]:>4} {res["seconds"]:>6}s  {path.name}: {res["command"]}')
@@ -212,9 +266,7 @@ def cmd_llm(args):
 
     def select(repos):
         if args.repo:
-            wanted = set(args.repo)
-            chosen = [r for r in repos if r['id'] in wanted or r['name'] in wanted or r['group_path'] in wanted
-                      or r['path'] in wanted]
+            chosen = match_repos(repos, args.repo)
         else:
             chosen = [r for r in repos if r['activity']['class'] in args.classes.split(',')]
         return chosen[:args.limit] if args.limit else chosen
@@ -233,6 +285,10 @@ def main(argv=None):
     s = sub.add_parser('scan', help='stage 1: static scan (no network, no repository code runs)')
     s.add_argument('roots', nargs='+')
     s.add_argument('--out', required=True)
+    s.add_argument('--root-url', action='append', metavar='DIR=URL',
+                   help='GitLab URL of a root (repeatable), e.g. ~/work/x/afteam=https://glb.tp.p001af.com/afteam; '
+                        'default: inferred from the path')
+    s.add_argument('--trusted-min', type=float, default=0.8, help='confidence for trusted edges (default 0.8)')
     s.add_argument('--rules', default=str(TOOL_DIR / 'applicability.json'))
     s.add_argument('--guides-root', default=str(GUIDES_ROOT))
     s.add_argument('--now', help='reference time (ISO 8601) for the activity window')
@@ -242,13 +298,15 @@ def main(argv=None):
                    help='write .agentic/repo-scan.json and .agentic/dependencies.json into each repository')
     s.set_defaults(func=cmd_scan)
     g = sub.add_parser('gate-propose', help='candidate .agent/gate.json from Makefile and CI (nothing runs)')
-    g.add_argument('repos', nargs='*', help='repository paths; default: repositories from --in')
-    g.add_argument('--in', dest='scan_dir', default='.')
+    g.add_argument('repos', nargs='*', help='repository paths, or URLs / short forms looked up in --in; '
+                                            'default: all repositories from --in')
+    g.add_argument('--in', dest='scan_dir')
     g.add_argument('--out')
     g.add_argument('--classes', default='active,stale')
     g.set_defaults(func=cmd_gate_propose)
     v = sub.add_parser('gate-verify', help='RUNS candidate checks in the named repositories; writes .agent/gate.json')
-    v.add_argument('repos', nargs='+')
+    v.add_argument('repos', nargs='+', help='repository paths, or URLs / short forms looked up in --in')
+    v.add_argument('--in', dest='scan_dir')
     v.add_argument('--timeout', type=int, default=600)
     v.add_argument('--no-write', action='store_true')
     v.add_argument('--force', action='store_true', help='overwrite a tracked .agent/gate.json in the working copy')
@@ -259,7 +317,7 @@ def main(argv=None):
     m.add_argument('--out')
     m.add_argument('--provider', choices=sorted(llm.PROVIDERS), default='claude')
     m.add_argument('--model')
-    m.add_argument('--repo', action='append', help='id, name, group path or path; repeatable')
+    m.add_argument('--repo', action='append', help='GitLab URL, host/path, path suffix, name or local path; repeatable')
     m.add_argument('--classes', default='active')
     m.add_argument('--limit', type=int, default=0)
     m.add_argument('--timeout', type=int, default=300)

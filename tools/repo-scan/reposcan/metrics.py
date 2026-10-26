@@ -12,7 +12,7 @@ LANGUAGES = {
     '.ts': 'TypeScript', '.tsx': 'TypeScript', '.vue': 'Vue', '.svelte': 'Svelte', '.rb': 'Ruby', '.php': 'PHP',
     '.cs': 'C#', '.c': 'C', '.h': 'C', '.cpp': 'C++', '.hpp': 'C++', '.cc': 'C++', '.swift': 'Swift',
     '.sh': 'Shell', '.bash': 'Shell', '.sql': 'SQL', '.tf': 'Terraform', '.hcl': 'HCL', '.proto': 'Protocol Buffers',
-    '.yml': 'YAML', '.yaml': 'YAML', '.json': 'JSON', '.toml': 'TOML', '.md': 'Markdown', '.rst': 'Markdown',
+    '.yml': 'YAML', '.yaml': 'YAML', '.json': 'JSON', '.toml': 'TOML', '.md': 'Markdown', '.rst': 'Markdown', '.adoc': 'AsciiDoc',
     '.html': 'HTML', '.css': 'CSS', '.scss': 'CSS', '.ipynb': 'Jupyter', '.lua': 'Lua', '.groovy': 'Groovy',
     '.tpl': 'Go Template', '.j2': 'Jinja', '.jinja': 'Jinja', '.avsc': 'Avro',
 }
@@ -22,6 +22,7 @@ NOT_CODE = {'Markdown', 'JSON', 'YAML', 'TOML', 'Jupyter', 'Avro', 'Plain Text',
             'Unknown'}
 # Configuration languages: a repository of CI templates or GitOps manifests is not junk.
 CONFIG = {'YAML', 'JSON', 'TOML'}
+DOCS = {'Markdown', 'reStructuredText', 'AsciiDoc', 'Plain Text'}
 
 
 def language_of(rel):
@@ -68,4 +69,8 @@ def count(repo, files, use_scc=None):
     langs = dict(sorted(langs.items(), key=lambda kv: -kv[1]['code']))
     code = sum(v['code'] for k, v in langs.items() if k not in NOT_CODE)
     config = sum(v['code'] for k, v in langs.items() if k in CONFIG)
-    return {'tool': tool, 'languages': langs, 'code_lines': code, 'config_lines': config, 'files': len(files)}
+    docs = sum(v['code'] for k, v in langs.items() if k in DOCS)
+    doc_files = sum(v['files'] for k, v in langs.items() if k in DOCS)
+    return {'tool': tool, 'languages': langs, 'code_lines': code, 'config_lines': config, 'doc_lines': docs,
+            'doc_files': doc_files,
+            'files': len(files)}

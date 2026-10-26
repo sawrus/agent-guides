@@ -17,6 +17,10 @@ which agent-guides workflows and rules fit each repository and how the repositor
 ```bash
 # Stage 1: static scan
 python3 tools/repo-scan/repo_scan.py scan ~/work/<host>/<group> [more roots] --out OUT
+# Optional GitLab URL per root (repeatable); without it the URL is inferred from the path
+python3 tools/repo-scan/repo_scan.py scan ~/work/glb/afteam --root-url ~/work/glb/afteam=https://glb.tp.p001af.com/afteam --out OUT
+# Edges with confidence >= 0.8 are trusted; change the threshold
+python3 tools/repo-scan/repo_scan.py scan ROOT --out OUT --trusted-min 0.9
 make repo-scan REPO_SCAN_ROOTS="~/work/<host>/<group>" REPO_SCAN_OUT=/tmp/scan
 
 # Optional: also write .agentic/repo-scan.json and .agentic/dependencies.json into every repository.
@@ -25,14 +29,16 @@ python3 tools/repo-scan/repo_scan.py scan ROOT --out OUT --write-repo-artifacts
 
 # Quality gate candidates (.agent/gate.json for extensions/codex/hooks/gate/gate.py); nothing runs
 python3 tools/repo-scan/repo_scan.py gate-propose --in OUT            # all active+stale repos -> OUT/gate-proposals.json
-python3 tools/repo-scan/repo_scan.py gate-propose PATH... --out DIR    # selected repositories
+python3 tools/repo-scan/repo_scan.py gate-propose https://glb.tp.p001af.com/afteam/antifraud-rules/rule-engine --in OUT
+python3 tools/repo-scan/repo_scan.py gate-propose PATH... --out DIR    # local checkouts, no scan needed
 
 # RUNS the candidate commands in the named repositories only, keeps passing ones,
 # writes .agent/gate.json locally and adds it to .git/info/exclude
-python3 tools/repo-scan/repo_scan.py gate-verify PATH... [--timeout 600] [--no-write] [--out DIR]
+python3 tools/repo-scan/repo_scan.py gate-verify URL|PATH... [--in OUT] [--timeout 600] [--no-write] [--out DIR]
 
 # Stage 2: LLM assessment over stage-1 output
-python3 tools/repo-scan/repo_scan.py llm --in OUT --provider claude --model haiku --repo rule-engine --repo apiutil
+python3 tools/repo-scan/repo_scan.py llm --in OUT --provider claude --model haiku \
+  --repo https://glb.tp.p001af.com/afteam/antifraud-rules/rule-engine --repo pypi/apiutil
 python3 tools/repo-scan/repo_scan.py llm --in OUT --provider claude --model sonnet --classes active --limit 5
 AGENTIC_LLM_API_KEY=... python3 tools/repo-scan/repo_scan.py llm --in OUT --provider litellm --repo rule-engine
 ```
@@ -40,25 +46,48 @@ AGENTIC_LLM_API_KEY=... python3 tools/repo-scan/repo_scan.py llm --in OUT --prov
 `--now ISO8601` fixes the reference time of the activity window (tests use it). `--no-scc` forces the built-in
 counter. `--jobs N` sets parallel workers (default 8).
 
+`--repo` (llm) and the positional arguments of the gate commands accept a GitLab URL, `host/path`, a path suffix
+such as `antifraud-rules/rule-engine`, a repository name, or a local path. Names other than local checkouts are
+looked up in `--in OUT/repositories.json`.
+
+## Identity
+
+A repository is identified by its GitLab URL, `https://<host>/<group>/.../<repo>`, in every output:
+edges (`from`, `to`), `unresolved`, evidence `repo`, `guide-applicability.json`, `graph.mmd`, and the per-repository
+`.agentic/` files. The URL comes from:
+
+1. `--root-url <dir>=<url>` for that root plus the path below the root (`url_source: root-url`);
+2. otherwise the path `~/work/<host>/<path>` (`url_source: path`). The host segment is the one equal to the
+   remote host; otherwise the last domain-like segment of the scan root, so `/home/first.last/...` is not a host;
+3. otherwise the `origin` remote, else a `file://` URL.
+
+`url_verified` tells whether the URL matches `git remote get-url origin`. The local checkout path is kept only in
+`repositories.json` (`local_path`, `root_paths`) because the `llm` and `gate-*` stages read files from it.
+
 ## Stage 1 outputs (`--out`)
 
 | File | Content |
 |---|---|
-| `repositories.json` | One record per repository: id (`<host>/<path>`), expected URL, `remote get-url origin` (credentials removed) and `url_verified`, HEAD, commits in the window, activity class with reasons, languages and lines, top-level entries, `AGENTS.md` / `CLAUDE.md` / `.agent/`, Makefile targets, CI jobs and includes, manifests (pyproject with poetry sources, requirements, package.json, go.mod, Dockerfile, compose, Helm, ArgoCD, env keys), published packages, Kafka topics, gRPC protos. |
-| `relationships.json` | `edges[{from, to, kind, confidence, detail, evidence[{repo, path, line|key}]}]`, `unresolved[{from, kind, ref, reason, evidence}]`, `stats`. |
+| `repositories.json` | One record per repository: id (GitLab URL), `url_source`, `local_path`, `remote get-url origin` (credentials removed) and `url_verified`, HEAD, commits in the window, activity class with reasons, languages and lines, top-level entries, `AGENTS.md` / `CLAUDE.md` / `.agent/`, Makefile targets, CI jobs and includes, manifests (pyproject with poetry sources, requirements, package.json, go.mod, Dockerfile, compose, Helm, ArgoCD, env keys), published packages, Kafka topics, gRPC protos. |
+| `relationships.json` | `edges[{from, to, kind, confidence, trusted, detail, evidence[{repo, path, line|key}]}]`, `unresolved[{from, kind, ref, reason, evidence}]`, `stats` (edges and trusted edges per kind, unresolved per reason). |
 | `guide-applicability.json` | Per repository: `rules` and `workflows` with `id`, `path`, `confidence`, `because` (rule ids) and evidence; `task_routing` (see below); `guide_ids` lists every known id. |
-| `graph.mmd` | Mermaid graph of repositories that have edges, colored by activity class. |
+| `graph.mmd` | Mermaid graph of repositories that have edges, labeled by URL and colored by activity class. Trusted edges are solid (`-->`), others dashed (`-.->`). |
 
-Repository id: the path `~/work/<host>/<path>` maps to `https://<host>/<path>`. The host segment is the one equal
-to the remote host; otherwise the last domain-like segment of the scan root (so `/home/first.last/...` is not a host).
+An edge is `trusted` when its confidence is at least `--trusted-min` (default 0.8): for example dependency +
+import, key + host match, consumer/producer Kafka pairs, CI includes, ArgoCD URLs. Weaker matches stay in the
+graph as dashed edges; cross-project work should rely on trusted edges first.
 
 ### Activity classes
 
 Rules live in `applicability.json` → `activity`:
 
 - `archived`: a path segment such as `archive`.
-- `junk`: a path segment such as `maintenance` (for example `maintenance/bash-scripts`), a `gitlab-profile`
-  repository, no readable HEAD, or no CI and fewer than 100 code+config lines.
+- `junk`: a path segment such as `maintenance` (for example `maintenance/bash-scripts`), no readable HEAD, or no
+  CI and fewer than 100 code+config lines.
+- `docs`: a `gitlab-profile` repository, or a documentation-only repository: at least 2 Markdown/reST/AsciiDoc files
+  and 20 documentation lines, at most 200 code+config lines, and at least twice as many documentation lines as
+  code+config lines. A single README (such as the GitLab template of an empty project) does not count.
+  Such repositories get only the `documentation` rule (rules and workflows marked `"classes": ["docs"]`).
 - `active`: at least 1 commit in 365 days and CI, or at least 5 commits without CI.
 - `stale`: everything else.
 
@@ -68,7 +97,7 @@ Rules live in `applicability.json` → `activity`:
 |---|---|---|
 | `library` | pyproject/requirements/package.json/go.mod dependencies; Python imports | package name → repository that publishes it (`[tool.poetry] name`, `setup.py`, non-private `package.json`, `go.mod module`). Imports count only for modules named after a published package. Dependency + import → 0.95, dependency → 0.85, import only → 0.6. A dependency from a private poetry source without a publishing repository → `unresolved`. |
 | `http` | `*_ENDPOINT`, `*_URL`, `*_URI` keys in env files, compose/values YAML, `os.getenv(...)`, pydantic `BaseSettings` fields | key without env prefix/suffix (`PROD_RULE_CATALOG_ENDPOINT` → `rule-catalog`) and the first label of the URL host → repository name, package name, Makefile `APPLICATION`, or the single Helm chart name. Key and host agree → 0.9, host → 0.75, key → 0.7. Infrastructure keys (database, Redis, Kafka, S3, Sentry, ...) are counted in `stats.skipped_infra_endpoints`. |
-| `kafka` | `*TOPIC*` env keys, `KafkaConsumer(...)`, `.subscribe(...)`, `.send(...)`, `topic=...` literals (non-test files of repositories that use Kafka) | one topic in two repositories. Consumer → producer is `consumes-from` (0.8). Unknown roles → `direction: unknown` (0.5). A topic seen in one repository → `unresolved`. |
+| `kafka` | No central topic registry exists, so topics come from code and config: `*TOPIC*` env keys, `KafkaConsumer(...)`, `.subscribe(...)`, `.send(...)`, `topic=...` literals (non-test files of repositories that use Kafka) | one topic in two repositories. Consumer → producer is `consumes-from` (0.8). Unknown roles → `direction: unknown` (0.5). A topic seen in one repository → `unresolved`. |
 | `grpc` | `.proto` services, `*Stub(` / `New*Client(` clients, `add_*Servicer_to_server` / `Register*Server` servers | client → server repository (0.8) or the only repository with the proto (0.6). |
 | `ci` | `.gitlab-ci.yml` `include: project:` | project path on the same host → repository (0.95). Projects outside the scanned roots → `unresolved` with reason `outside scanned roots`. |
 | `deploy` | ArgoCD `Application` `repoURL` | URL → repository (0.9). |
@@ -79,7 +108,8 @@ the link is `unresolved` with reason `ambiguous` and the candidates.
 ## Guide applicability
 
 `applicability.json` holds declarative rules. Each rule has an `id`, a `when` condition, a `confidence`, and the
-agent-guides ids it enables. Ids are paths under `areas/`: `software/backend/develop-feature` is
+agent-guides ids it enables. Optional `classes` limits a rule to activity classes (default
+`default_rule_classes`: `active`, `stale`); `guidance_classes` lists the classes that get any guidance. Ids are paths under `areas/`: `software/backend/develop-feature` is
 `areas/software/backend/workflows/develop-feature.md`; `software/general/makefile-guide` is
 `areas/software/general/rules/makefile-guide.md`. The tool rejects unknown ids at start.
 
@@ -90,7 +120,8 @@ Conditions: `all`, `any`, `not`, `code_lines`, `language` + `min_lines`, `manife
 
 Repository applicability and task routing are separate:
 
-- `rules` / `workflows`: what fits the repository at all. Only `guidance_classes` (`active`, `stale`) get guidance.
+- `rules` / `workflows`: what fits the repository at all. Only `guidance_classes` (`active`, `stale`, `docs`) get
+  guidance; `archived` and `junk` get none.
 - `task_routing`: for each task kind (`feature`, `bugfix`, `migration`, `ci-failure`, ...) the ordered workflow
   candidates from `applicability.json` → `task_routing`, filtered to the repository's applicable workflows. It is
   a hint. The real per-task choice stays with JEV.
@@ -128,8 +159,9 @@ Providers:
 
 ## Tests
 
-`make test-repo-scan` (part of `make test`) builds four linked repositories from `tests/repo_scan/fixtures` in a
-temporary `work/gitlab.example.com/team/...` tree and checks discovery, URL mapping, classes, edges with evidence,
+`make test-repo-scan` (part of `make test`) builds five repositories from `tests/repo_scan/fixtures` (four linked
+ones plus a docs repository) in a temporary `work/gitlab.example.com/team/...` tree and checks discovery, URL
+identity, `--root-url`, trusted edges, classes including `docs`, edges with evidence,
 unresolved links, secret handling, applicability ids, repository artifacts, gate commands, both LLM providers
 (fake `claude` binary and a local HTTP stub), cache, and `scc` use.
 
