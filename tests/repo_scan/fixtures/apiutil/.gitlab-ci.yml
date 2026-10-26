@@ -1,0 +1,13 @@
+stages:
+  - test
+  - publish
+
+test:
+  stage: test
+  script:
+    - make test
+
+publish:
+  stage: publish
+  script:
+    - make publish

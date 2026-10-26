@@ -1,0 +1,11 @@
+[tool.poetry]
+name = "rule-catalog"
+version = "1.4.0"
+description = "Rule catalog API"
+authors = ["Team"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.111.1"
+aiokafka = "^0.10.0"
+sqlmodel = "^0.0.16"

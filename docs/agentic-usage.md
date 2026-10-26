@@ -101,6 +101,31 @@ agentic install --project-dir /path/to/project --agent-os claude,codex \
 `--claude-profile anthropic|none` (or `AGENTIC_CLAUDE_PROFILE`) pins or clears
 per-role model aliases in `.claude/agents`; see [Claude Code](claude-code/README.md).
 
+### Role profiles
+
+A role profile picks the agent files per host. `lean` (default) installs `explorer` and `reviewer` and keeps
+the native main session. `team` installs the 9 SDLC roles. Custom profiles live in
+`~/.config/agentic/<host>/profiles/<id>/profile.json`:
+
+```json
+{"name": "my", "base": "team", "agents": ["developer", "qa"], "models": null}
+```
+
+```bash
+agentic profile list                      # every host; add --host claude|codex|opencode
+agentic profile create my --from team     # copies the team roles; edit the file afterward
+agentic profile show my --host claude
+agentic profile use team --project /path/to/project
+agentic profile use lean --host codex     # one host only, project = current directory
+agentic install ... --profile claude=team,codex=lean
+```
+
+`agentic profile use` reinstalls the project through the upgrade path. It removes the unmodified role files of
+the old profile, keeps the files you edited, and saves the choice in `.agentic.json`. Restart the agent session
+afterward; hosts load agents only at session start. Inside a session use `/profile team` (Claude Code,
+OpenCode) or ask Codex to switch the profile (skill `agentic-profile`), or run `! agentic profile use team` in
+the Codex prompt. See [reference](agentic-reference.md#role-profiles-all-hosts) for the file format.
+
 Start TUI:
 
 ```bash
@@ -179,6 +204,10 @@ recognized Agentic artifacts without prompts. See [upgrade behavior](agentic-upg
 ## TUI
 
 The interactive wizard is implemented with ratatui and does not require an external `fzf` binary.
+After the Agent OS step it asks for a role profile once per selected host (Claude Code, Codex, OpenCode).
+The labels show the roles and the kind, for example `lean · explorer, reviewer · native main session`,
+`team · 9 roles: product-owner, pm, team-lead, …`, or `my · developer, qa · base team · models: anthropic`.
+The choice is saved in `.agentic.json` (`settings.profile_ids`).
 
 ## OpenCode optional plugins
 
@@ -190,7 +219,7 @@ When `opencode` is selected, interactive installs ask whether to enable `Telegra
 
 Non-interactive installs create a disabled config when no config exists. Interactive installs ask for Telegram `botToken` and `chatId` when `telegram-notification` is selected for the first time, then save those credentials in `$HOME/.config/agentic/config.json` under `opencode.plugins.telegram`. Later interactive `agentic install` and `agentic tui` runs offer to reuse the saved Telegram credentials instead of immediately asking for raw input. The target project `.agentic.json` records Telegram enablement only and does not store raw Telegram secrets. When enabled, `agent-model-mapper` runs during interactive `agentic install`/`agentic tui`, uses `fzf` as a dropdown picker when available, and writes `.opencode/opencode.json` only after a Confirm action. OpenCode startup does not load a mapper runtime plugin or prompt for model mapping. The Telegram plugin targets the OpenCode V2 plugin API and forwards events to the shared `.agent/notify/telegram.py` (installed with it), so OpenCode, Claude Code and Codex send identical messages; see [Telegram notifications](notifications/README.md).
 
-OpenCode model profiles are stored in `extensions/opencode/profiles` and appear in the same optional OpenCode selection menu as the plugin choices. The built-in choices are `OpenAI Model Profile` and `GitHub Copilot Model Profile`; non-interactive installs can choose them with `AGENTIC_OPENCODE_PROFILE=openai` or `AGENTIC_OPENCODE_PROFILE=githubcopilot`. Users can add local profiles under `$HOME/.config/agentic/opencode/profiles/<profile-id>/opencode.json`; for example, `DT/opencode.json` appears as `DT profile` and `GH/opencode.json` appears as `GH profile`. Profile selection merges agent model mappings into `.opencode/opencode.json`, then MCP configuration is merged afterward.
+OpenCode model profiles are stored in `extensions/opencode/profiles` and appear in the same optional OpenCode selection menu as the plugin choices. The built-in choices read `models: OpenAI (openai) · role→model` and `models: GitHub Copilot (githubcopilot) · role→model`; non-interactive installs can choose them with `AGENTIC_OPENCODE_PROFILE=openai` or `AGENTIC_OPENCODE_PROFILE=githubcopilot`. Users can add local profiles under `$HOME/.config/agentic/opencode/profiles/<profile-id>/opencode.json`; for example, `DT/opencode.json` appears as `models: DT · role→model`. Profile selection merges agent model mappings into `.opencode/opencode.json`, then MCP configuration is merged afterward.
 
 OpenCode MCP config uses top-level `mcp`, not `mcpServers`. Agentic migrates legacy OpenCode `mcpServers` entries into `mcp` during install. Codex continues to use `.codex/config.toml` with `[mcp_servers.*]` sections. For selected network-backed Codex MCP servers, agentic writes `[sandbox_workspace_write] network_access = true` in the project config so the generated MCPs can start and reach their upstream services in workspace-write mode.
 

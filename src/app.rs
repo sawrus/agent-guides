@@ -47,6 +47,11 @@ pub struct App {
     pub jev_enabled: Option<bool>,
     /// `lean` or `team` (crate::profile); empty until the CLI, environment, or manifest sets it.
     pub install_profile: String,
+    /// Per-host role profile ids (crate::profile::HOSTS); a missing host uses `install_profile`.
+    pub host_profiles: std::collections::BTreeMap<String, String>,
+    /// Custom profile definitions saved in `.agentic.json` (`settings.profile_defs`), keyed by host. They keep a
+    /// project in sync when the user file is missing, for example on a teammate's machine.
+    pub profile_snapshots: std::collections::BTreeMap<String, serde_json::Value>,
     /// Quality gate hooks (crate::gate); `None` means the default, on.
     pub gate_enabled: Option<bool>,
     pub jev_api_url: Option<String>,
@@ -126,6 +131,8 @@ impl App {
                 .ok()
                 .map(|v| matches!(v.as_str(), "1" | "y" | "yes" | "true")),
             install_profile: std::env::var("AGENTIC_PROFILE").unwrap_or_default(),
+            host_profiles: std::collections::BTreeMap::new(),
+            profile_snapshots: std::collections::BTreeMap::new(),
             gate_enabled: None,
             jev_api_url: std::env::var("JEV_API_URL")
                 .ok()
@@ -180,10 +187,18 @@ impl App {
     }
 
     pub fn opencode_user_profiles_dir(&self) -> PathBuf {
-        self.home
-            .join(".config")
+        self.user_profiles_dir("opencode")
+    }
+
+    /// `~/.config/agentic/<host>/profiles`: role profiles (`profile.json`) and, for OpenCode, model profiles
+    /// (`opencode.json`). It follows `$HOME`, not `XDG_CONFIG_HOME`, as model profiles always did; tests can
+    /// override it with `config_home_override`.
+    pub fn user_profiles_dir(&self, host: &str) -> PathBuf {
+        self.config_home_override
+            .clone()
+            .unwrap_or_else(|| self.home.join(".config"))
             .join(crate::APP_NAME)
-            .join("opencode")
+            .join(host)
             .join("profiles")
     }
 

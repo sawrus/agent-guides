@@ -403,6 +403,8 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
             "context7": {"api_key_mode": app.context7_api_key_mode.clone().unwrap_or_else(|| if app.context7_api_key.is_empty() { "without_api_key".to_string() } else { "api_key".to_string() })},
             "jev": crate::jev_defaults::manifest_settings(app, &old_settings),
             "profile": crate::profile::effective(app),
+            "profile_ids": crate::profile::manifest_ids(app),
+            "profile_defs": crate::profile::manifest_defs(app),
             "gate": {"enabled": crate::gate::enabled(app)},
             "opencode_profile": app.selected_opencode_profile,
             "opencode_plugins": Value::Object(opencode_plugins),
@@ -467,7 +469,24 @@ pub fn load_install_settings_from_manifest(
     if app.gate_enabled.is_none() {
         app.gate_enabled = settings["gate"]["enabled"].as_bool();
     }
+    if let Some(defs) = settings["profile_defs"].as_object() {
+        for (host, def) in defs {
+            app.profile_snapshots
+                .entry(host.clone())
+                .or_insert_with(|| def.clone());
+        }
+    }
+    // An install-wide profile from the CLI or environment replaces every saved per-host choice.
     if app.install_profile.is_empty() {
+        if let Some(ids) = settings["profile_ids"].as_object() {
+            for (host, id) in ids {
+                if let Some(id) = id.as_str().filter(|id| !id.is_empty()) {
+                    app.host_profiles
+                        .entry(host.clone())
+                        .or_insert_with(|| id.to_string());
+                }
+            }
+        }
         app.install_profile = settings["profile"].as_str().unwrap_or_default().to_string();
         // Manifests without a profile predate it; their JEV installs had the role team, which JEV forced.
         if app.install_profile.is_empty() && settings["jev"]["enabled"].as_bool() == Some(true) {

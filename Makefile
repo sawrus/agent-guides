@@ -7,7 +7,7 @@ COVERAGE_MIN ?= 80
 .PHONY: help install dev build release-build test test-unit test-integration \
 	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
 	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode blackbox-claude test-jev-hooks test-notify test-jev-sdk test-gate \
-	context-budget bench-v1 bench-prepare bench bench-selftest bench-report bench-regrade
+	test-repo-scan repo-scan repo-scan-check repo-scan-tools repo-scan-skill context-budget bench-v1 bench-prepare bench bench-selftest bench-report bench-regrade
 
 help:
 	@echo "Agentic Makefile targets:"
@@ -29,6 +29,11 @@ help:
 	@echo "  jev-rnd-verify   - inspect saved research results offline"
 	@echo "  test-notify      - offline Telegram notifier tests (fake Bot API)"
 	@echo "  test-gate        - offline quality gate tests (Stop checks, PreToolUse guard)"
+	@echo "  test-repo-scan   - offline tests of tools/repo-scan on fixture repositories"
+	@echo "  repo-scan        - static scan of REPO_SCAN_ROOTS into REPO_SCAN_OUT (no network, no repo code runs)"
+	@echo "  repo-scan-check  - check repo-scan requirements (python3 >= 3.11, git; offers to install scc)"
+	@echo "  repo-scan-tools  - install optional repo-scan tools (REPO_SCAN_TOOLS, default scc) into ~/.local/bin"
+	@echo "  repo-scan-skill  - install the repo-scan skill into SKILL_TARGET (default ~/.claude/skills)"
 	@echo "  blackbox         - real local Codex/OpenCode/Claude + JEV calculator checks (paid)"
 	@echo "  blackbox-codex   - real Codex + JEV calculator check"
 	@echo "  blackbox-opencode - real OpenCode V2 + JEV calculator check"
@@ -95,6 +100,31 @@ test-jev-hooks:
 test-gate:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=extensions/codex/hooks/gate python3 -m unittest discover -s tests/gate
 
+# Repository analysis (tools/repo-scan/README.md). `scan` reads files and git metadata only.
+REPO_SCAN_ROOTS ?=
+REPO_SCAN_OUT ?= .agentic-blackbox/repo-scan
+REPO_SCAN_ARGS ?=
+REPO_SCAN_TOOLS ?= scc
+repo-scan-check:
+	@sh tools/repo-scan/check-tools.sh
+
+repo-scan-tools:
+	sh tools/repo-scan/install-tools.sh $(REPO_SCAN_TOOLS)
+
+SKILL_TARGET ?= $(HOME)/.claude/skills
+repo-scan-skill:
+	mkdir -p "$(SKILL_TARGET)/repo-scan" "$${XDG_CONFIG_HOME:-$(HOME)/.config}/agentic"
+	cp -R tools/repo-scan/skill/repo-scan/. "$(SKILL_TARGET)/repo-scan/"
+	echo "$(CURDIR)" > "$${XDG_CONFIG_HOME:-$(HOME)/.config}/agentic/agent-guides-home"
+	@echo "installed $(SKILL_TARGET)/repo-scan (agent-guides: $(CURDIR))"
+
+repo-scan: repo-scan-check
+	@test -n "$(REPO_SCAN_ROOTS)" || (echo "set REPO_SCAN_ROOTS='<dir> [<dir>...]'" >&2; exit 2)
+	PYTHONDONTWRITEBYTECODE=1 python3 tools/repo-scan/repo_scan.py scan $(REPO_SCAN_ROOTS) --out $(REPO_SCAN_OUT) $(REPO_SCAN_ARGS)
+
+test-repo-scan:
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/repo_scan
+
 test-notify:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=extensions/codex/hooks/notify:tests/notify python3 -m unittest discover -s tests/notify
 
@@ -107,7 +137,7 @@ install: release-build
 dev:
 	@echo "Run: cargo run -- tui"
 
-test: test-unit test-integration e2e test-content test-jev-hooks test-notify test-gate bench-selftest
+test: test-unit test-integration e2e test-content test-jev-hooks test-notify test-gate test-repo-scan bench-selftest
 
 test-content:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m unittest discover -s tests/content
@@ -141,7 +171,8 @@ clean:
 # --- Content tooling (areas/docs payload, unchanged from the bash era) ---
 
 lint-content:
-	PYTHONPYCACHEPREFIX=/tmp/agentic-pycache-check python3 -m py_compile extensions/codex/hooks/gate/gate.py scripts/context_budget.py scripts/bench_sdlc.py scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/lint_review_pipeline.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py
+	PYTHONPYCACHEPREFIX=/tmp/agentic-pycache-check python3 -m py_compile extensions/codex/hooks/gate/gate.py scripts/context_budget.py scripts/bench_sdlc.py scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/lint_review_pipeline.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py \
+		tools/repo-scan/repo_scan.py tools/repo-scan/reposcan/*.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_prompts.py --strict
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_review_pipeline.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/sync_workflow_diagrams.py --check

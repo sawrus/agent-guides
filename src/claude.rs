@@ -42,6 +42,17 @@ fn profile_agents(app: &App, id: &str) -> Option<Map<String, Value>> {
     profile_section(app, id, "agents")
 }
 
+/// Model profile label: `models: <provider> · role→model`, so it never reads like a role profile.
+pub fn model_profile_label(id: &str) -> String {
+    match id {
+        "anthropic" => {
+            "models: Anthropic (anthropic) · role→model alias (opus, sonnet, haiku)".into()
+        }
+        "none" => "models: none · every agent inherits the session model".into(),
+        _ => format!("models: {id} · role→model"),
+    }
+}
+
 /// Choose and validate the profile; unknown ids warn and fall back to no pinning.
 pub fn configure_profile(app: &mut App) -> crate::Result<()> {
     if !app.selected_agent_os_contains("claude") {
@@ -59,13 +70,12 @@ pub fn configure_profile(app: &mut App) -> crate::Result<()> {
         && !app.dry_run
         && app.is_interactive_terminal()
     {
-        let mut options: Vec<String> = PROFILE_IDS
-            .iter()
-            .map(|id| format!("{id}: model alias per role"))
-            .collect();
-        options.push("none: every agent inherits the session model".into());
+        let mut ids: Vec<&str> = PROFILE_IDS.to_vec();
+        ids.push("none");
+        let options: Vec<String> = ids.iter().map(|id| model_profile_label(id)).collect();
         let choice = crate::prompt::choose_single_by_index(app, "Claude model profile:", &options)?;
-        app.selected_claude_profile = choice.split(':').next().unwrap_or("none").to_string();
+        let index = options.iter().position(|o| *o == choice);
+        app.selected_claude_profile = index.map_or("none", |i| ids[i]).to_string();
     }
     if let Some(id) = selected_profile(app) {
         if profile_agents(app, &id).is_none() {
@@ -209,7 +219,7 @@ pub fn generate_commands(app: &mut App, project: &Path) -> crate::Result<()> {
     if !app.selected_agent_os_contains("claude") {
         return Ok(());
     }
-    let team = crate::profile::is_team(app);
+    let team = crate::profile::is_team_for(app, "claude");
     for spec_key in app.selected_specs.clone() {
         let (area, spec) = spec_key.split_once('.').unwrap_or((spec_key.as_str(), ""));
         let src = format!("areas/{area}/{spec}/workflows");
@@ -287,7 +297,9 @@ pub fn write_settings(app: &mut App, project: &Path) -> crate::Result<()> {
         }
         owned.as_object_mut().unwrap().remove("agent");
     }
-    if selected && crate::profile::is_team(app) && !obj.contains_key("agent") {
+    let profile = crate::profile::resolve(app, "claude");
+    if selected && profile.is_team() && profile.has_agent(MAIN_AGENT) && !obj.contains_key("agent")
+    {
         obj.insert("agent".into(), json!(MAIN_AGENT));
         owned["agent"] = json!(MAIN_AGENT);
     }

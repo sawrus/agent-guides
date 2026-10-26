@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+## v2.1.0
+
+- repo-scan `run`: scan and LLM assessment in one command. Focus mode (`--focus`, or a repository given as the
+  root) scans context roots (`--context-root`, `REPO_SCAN_CONTEXT_ROOTS`, `~/.config/agentic/repo-scan.json`, else
+  the `<host>/<group>` above the repository) so the links of one repository resolve, and reports only its view.
+- repo-scan skill: `tools/repo-scan/skill/repo-scan` (`SKILL.md` and `scripts/repo-scan.sh`) runs both stages or
+  one, for one repository or many; `make repo-scan-skill` installs it into `~/.claude/skills`.
+- repo-scan requirements: `make repo-scan-check` (plain `sh`) checks `python3` >= 3.11 and `git`, prints the install
+  command for the OS, and on a terminal offers to install a missing `scc`; `make repo-scan` runs it first.
+  `make repo-scan-tools` installs `scc` (pinned release, checksum verified) and, on request, `semgrep`.
+- Release policy: docs/release-policy.md says when to bump MAJOR, MINOR, and PATCH.
+- Removed the stale `error.txt` CI log.
+- Role profiles per host: `~/.config/agentic/<claude|codex|opencode>/profiles/<id>/profile.json` with `base`
+  (`lean`/`team`), `agents` (the role files to install), and `models` (a model profile id). `lean/` and `team/`
+  are seeded and never overwritten. The TUI asks for a role profile per selected host. New
+  `agentic profile list|show|use|create`; `use` reinstalls through the upgrade path, removes unmodified old role
+  files, and saves `settings.profile_ids` in `.agentic.json`. Custom profiles are also copied to
+  `settings.profile_defs`, so a sync or upgrade keeps the same roles when the user file is missing. `--profile` accepts custom ids and
+  `claude=team,codex=lean`. New `/profile` command for Claude Code and OpenCode and the Codex skill
+  `agentic-profile`. Model profile menus now read `models: <provider> · role→model`.
+- `tools/repo-scan`: offline analysis of many local Git repositories (Python standard library; `scc` when present).
+  Repositories are identified by GitLab URL in every output, inferred from `~/work/<host>/<path>` or set per root
+  with `--root-url <dir>=<url>`; the local path stays only in `repositories.json` for later stages.
+  `scan` writes `repositories.json` (URL checked against `origin`, activity class
+  active/stale/docs/archived/junk, languages, Makefile, CI, manifests, env keys and hosts only), `relationships.json`
+  (`library`, `http`, `kafka`, `grpc`, `ci`, `deploy` edges with evidence, confidence and a `trusted` flag at
+  `--trusted-min`, default 0.8; unresolved links are listed, not guessed), `guide-applicability.json` (declarative rules in `tools/repo-scan/applicability.json` with
+  real workflow and rule ids, separate task routing hints) and `graph.mmd`. `--write-repo-artifacts` writes
+  `.agentic/` files into each repository and git-excludes them. `gate-propose` builds `.agent/gate.json` candidates
+  without running code; `gate-verify` runs them only in named repositories. `llm` adds an assessment through
+  `claude -p` or an OpenAI-compatible LiteLLM endpoint, cached by HEAD sha. New targets `make repo-scan` and
+  `make test-repo-scan` (part of `make test`). See docs/repo-scan.md.
 - Lean + JEV: JEV no longer forces the `team` profile. With `--profile lean` (the default), JEV makes one
   workflow call per session and adds a short checklist hint for the chosen workflow. The native main session
   performs the steps and starts subagents only where the core rules ask; spawn hooks still route the models of
@@ -19,6 +51,8 @@
   costs 1.02 × lean per accepted task on Claude, 1.12 × on OpenCode, and 1.43 × on Codex, where JEV routed helper
   spawns to a frontier model. It stays opt-in; no savings are claimed.
 - README tagline: native agents by default; workflows, helper agents and model routing only when the task needs them.
+- Docs: orchestration research (docs/agentic-orchestration-research/): mechanism map, measured loss sources from
+  round 4 raw cells, host constraints, target architecture, prioritized plan, and comparison designs.
 
 ## v2.0.0
 

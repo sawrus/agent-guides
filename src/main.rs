@@ -61,6 +61,7 @@ Usage:
   {name} install --project-dir <dir> [--agent-os <comma_list>] --areas <comma_list> --specializations <comma_list> [--theme auto|dark|light]
   {name} tui [--theme auto|dark|light]
   {name} upgrade [--project-dir <path>] [--force] [--dry-run]
+  {name} profile list|show <id>|use <id> [--project DIR]|create <id> --from lean|team [--host claude|codex|opencode]
   {name} self-install [--bin-dir <dir>] [--force] [--dry-run]
   {name} --version
 
@@ -75,7 +76,8 @@ Options:
   --areas               Comma-separated area list (example: software)
   --specializations     Comma-separated specializations in area.spec format (example: software.backend,software.frontend)
   --theme               Interface theme: auto|dark|light (default: config value or auto)
-  --profile             Install profile: lean (two helper subagents, default) | team (v1 SDLC role team)
+  --profile             Role profile: lean (two helper subagents, default) | team (v1 SDLC role team) | <custom id>;
+                        per host: claude=team,codex=lean (custom ids come from ~/.config/agentic/<host>/profiles)
   --no-doctor           Skip real agent smoke checks after install
   --disable-gate        Do not install the quality gate hooks (Stop checks, PreToolUse guard)
   --enable-gate         Install the quality gate hooks again (default: on)
@@ -155,6 +157,7 @@ fn run(args: Vec<String>) -> Result<()> {
         "install" => cmd_install(&mut app, rest),
         "tui" => cmd_tui(&mut app, rest),
         "upgrade" => cmd_upgrade(&mut app, rest),
+        "profile" => profile::run_cli(&mut app, rest),
         "__sync-project" => {
             app.upgrade_mode = true;
             cmd_upgrade(&mut app, rest)
@@ -279,9 +282,9 @@ fn cmd_install(app: &mut App, rest: &[String]) -> Result<()> {
             "--profile" => {
                 let value = rest
                     .get(i + 1)
-                    .filter(|v| crate::profile::CHOICES.contains(&v.as_str()))
-                    .ok_or("--profile requires lean or team")?;
-                app.install_profile = value.clone();
+                    .filter(|v| !v.starts_with("--"))
+                    .ok_or("--profile requires lean, team, a custom id, or host=id pairs")?;
+                parse_profile_option(app, value)?;
                 i += 2;
             }
             "--disable-gate" => {
@@ -356,6 +359,27 @@ fn cmd_install(app: &mut App, rest: &[String]) -> Result<()> {
     install::run_install(app)?;
     if app.theme_explicit {
         config::save_user_config(app);
+    }
+    Ok(())
+}
+
+/// `--profile <id>` sets every host; `--profile claude=team,codex=lean` sets single hosts.
+fn parse_profile_option(app: &mut App, value: &str) -> Result<()> {
+    for part in util::split_csv(value) {
+        let (host, id) = match part.split_once('=') {
+            Some((host, id)) if profile::HOSTS.contains(&host) => (Some(host), id),
+            Some(_) => return Err(format!("--profile: unknown host in '{part}'").into()),
+            None => (None, part.as_str()),
+        };
+        if !profile::valid_id(id) {
+            return Err(format!("--profile: invalid profile id '{id}'").into());
+        }
+        match host {
+            Some(host) => {
+                app.host_profiles.insert(host.into(), id.into());
+            }
+            None => app.install_profile = id.into(),
+        }
     }
     Ok(())
 }
@@ -490,6 +514,7 @@ mod tests {
             "install",
             "tui",
             "upgrade",
+            "profile",
             "self-install",
             "--version",
         ] {

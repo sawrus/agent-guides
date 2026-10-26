@@ -1,0 +1,8 @@
+stages:
+  - test
+
+lint:
+  stage: test
+  script:
+    - ruff check .
+    - pytest -q

@@ -277,20 +277,53 @@ project/.claude/                 ← with --agent-os claude
   `agentic install`/`agentic tui`. Stored internally as `agent-model-mapper`; OpenCode startup never prompts or writes
   project files.
 
+### Role profiles (all hosts)
+
+A profile has two axes: the role set and an optional model profile. Each host has its own store:
+
+```text
+~/.config/agentic/<host>/profiles/<id>/profile.json     # host = claude | codex | opencode
+{"name": "my", "base": "team", "agents": ["developer", "qa"], "models": "anthropic"}
+```
+
+- `base` (`lean` or `team`) drives host behavior: Codex memories and `AGENTS.override.md`, the Claude main agent
+  (`product-owner`, only when the profile lists it), and the Claude workflow command wording.
+- `agents` is a subset of `explorer`, `reviewer` and the 9 team roles. Only these agent files are installed; the
+  OpenCode config declares only these roles. Unknown names, bases, or ids fail the install before any write.
+- `models` names a model profile: `anthropic`/`none` for Claude Code, an OpenCode model profile id for OpenCode.
+  Codex has no model profiles and ignores it with a warning. `null` keeps the current model profile.
+- `lean/` and `team/` are seeded the first time `agentic profile` or the TUI runs. Existing files are never
+  overwritten; an edited `lean/profile.json` is used instead of the built-in definition.
+- A directory with only `opencode.json` stays an OpenCode model profile and is not listed as a role profile.
+- `.agentic.json` stores `settings.profile_ids` (host → id) and `settings.profile`, the base for JEV: `team` only
+  when every selected host has a `team` base. `settings.profile_defs` keeps a copy of each custom profile, so a
+  sync or upgrade without the user file (for example on a teammate's machine) installs the same roles.
+- Install: `--profile <id>` for every host, or `--profile claude=team,codex=lean` per host. The TUI asks once per
+  selected host, after the Agent OS step.
+- CLI: `agentic profile list|show <id>|use <id> [--project DIR]|create <id> --from lean|team`, each with an optional
+  `--host`. `use` reinstalls through the upgrade path: it removes unmodified role files of the old profile, keeps
+  edited ones, and saves the new choice. Restart the agent session afterward.
+- Host commands: `/profile <id>` in Claude Code (`.claude/commands/profile.md`) and OpenCode
+  (`.opencode/commands/profile.md`); the Codex skill `.agents/skills/agentic-profile/`, or `! agentic profile use team`
+  in the Codex prompt.
+
 ### OpenCode Model Profiles
 
-- `OpenAI Model Profile`: applies the bundled OpenAI model mapping from `extensions/opencode/profiles/openai/`.
-- `GitHub Copilot Model Profile`: applies the bundled GitHub Copilot model mapping from
+- `models: OpenAI (openai) · role→model`: applies the bundled OpenAI model mapping from
+  `extensions/opencode/profiles/openai/`.
+- `models: GitHub Copilot (githubcopilot) · role→model`: applies the bundled GitHub Copilot model mapping from
   `extensions/opencode/profiles/githubcopilot/`.
 - User profiles: place `opencode.json` files under `$HOME/.config/agentic/opencode/profiles/<profile-id>/`. For
   example, `$HOME/.config/agentic/opencode/profiles/DT/opencode.json` appears in the optional OpenCode plugin menu as
-  `DT profile`, and `$HOME/.config/agentic/opencode/profiles/GH/opencode.json` appears as `GH profile`.
+  `models: DT · role→model`.
 - `none`: applies no model profile and does not copy the baseline `extensions/opencode/opencode.json` just for profile
   selection. OpenCode MCPs, Telegram notifications, and model mapping may still create or update `.opencode/opencode.json`
   when those options are selected.
 
 ### Claude Code Model Profiles
 
+- The interactive menu labels read `models: Anthropic (anthropic) · role→model alias (opus, sonnet, haiku)` and
+  `models: none · every agent inherits the session model`.
 - `anthropic` (default): `opus` for product-owner and team-lead, `sonnet` for developer, qa, devops-engineer and
   analyst, `haiku` for pm and both reviewers. Written as `model:` in `.claude/agents/*.md`.
 - `none` (`--claude-profile none`): every role inherits the session model.

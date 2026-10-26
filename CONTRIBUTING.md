@@ -168,6 +168,8 @@ Each specialization follows this consistent layout:
 4. Open a PR using the provided PR template.
 5. Respond to review comments within 3 business days.
 
+Versions and releases follow [docs/release-policy.md](docs/release-policy.md).
+
 ### PR title format
 
 ```
