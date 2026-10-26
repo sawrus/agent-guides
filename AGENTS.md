@@ -27,8 +27,9 @@ workflows.
 - After the last edit, run the project checks (Makefile targets such as `make test` and `make lint`, or their
   documented equivalents). Show the command and its result. Do not claim success without that output.
 - Change only what the task needs. List unrelated problems in the report; do not fix them.
-- A user-visible change updates `CHANGELOG.md` (Unreleased) and the matching `docs/` page, if one exists. Only a
-  completed feature updates the project version; a bugfix does not.
+- A user-visible change updates `CHANGELOG.md` and the matching `docs/` page, if one exists. Bump the version and
+  name the CHANGELOG section as the project's release policy says (for example `docs/release-policy.md`). Without
+  a policy, write under `Unreleased`, and only a completed feature updates the project version.
 - Add a new file at the repository root only after the user approves its name and purpose.
 
 ## Git
