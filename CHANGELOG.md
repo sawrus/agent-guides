@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.2.0
+
+- Release policy: every PR ships its own version, and `CHANGELOG.md` has no `Unreleased` section. A feature
+  bumps MAJOR, a fix bumps MINOR, and docs, CI, or test-only changes bump PATCH (`docs/release-policy.md`). The
+  installed `AGENTS.md` now tells agents to follow the project's release policy when it has one.
+- The OpenCode doctor smoke check no longer fails with `missing required Authorization header`. OpenCode V2 keeps
+  provider credentials in `opencode.db`, not in `auth.json`, so the isolated doctor home had none. The doctor now
+  copies the credential tables (without sessions).
+- The OpenCode doctor passes `--model`: `AGENTIC_DOCTOR_OPENCODE_MODEL` if set, else `model` from the project or
+  global OpenCode config, else the model you used last (`recent[0]` in `state/opencode/model.json`). Without it,
+  `opencode run` took the first model of whichever provider loaded first, so the check hit a
+  different provider from run to run and sometimes failed on its quota (`HTTP 429`) or hung. The doctor also
+  sets `OPENCODE_DISABLE_MODELS_FETCH=1` when `models.json` is cached, so startup does not wait for models.dev.
+- The OpenCode doctor run is lighter and fits the default 10s timeout: it reuses your npm cache (`~/.npm`), so
+  `npx` MCP servers are not downloaded again into the empty isolated HOME on every run, and it turns off the file
+  watcher.
+- Before each doctor run, `agentic install` and `agentic upgrade` remove leftover `$TMPDIR/agentic-*` directories.
+  They first stop the processes still running there and delete the Codex, OpenCode, and Claude Code sessions that
+  ran in those directories, so temp runs no longer pile up in the agents' session lists. The directory of the
+  target project is kept.
+- After the smoke checks, the doctor stops processes left in its temp root. MCP servers such as `anydb-mcp`
+  outlived OpenCode and kept writing logs there.
+
 ## v2.1.2
 
 - `agentic upgrade` adopts a gate hook group that is identical to the one it writes when the ownership record is

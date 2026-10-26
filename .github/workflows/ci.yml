@@ -27,7 +27,11 @@ jobs:
         with:
           node-version: '22'
       - name: Install pinned OpenCode SDK for adapter typecheck
-        run: npm install --prefix "$RUNNER_TEMP/agentic-jev-sdk" --ignore-scripts --no-audit --no-fund @opencode/plugin@2.0.28 typescript@5.8.2 @types/node@22
+        # bowser@2.15.0 (via @aws-sdk/core) is tagged latest, but its tarball returns 404 from the registry.
+        run: |
+          mkdir -p "$RUNNER_TEMP/agentic-jev-sdk"
+          echo '{"private":true,"overrides":{"bowser":"2.14.1"}}' > "$RUNNER_TEMP/agentic-jev-sdk/package.json"
+          npm install --prefix "$RUNNER_TEMP/agentic-jev-sdk" --ignore-scripts --no-audit --no-fund @opencode/plugin@2.0.28 typescript@5.8.2 @types/node@22
       - name: OpenCode SDK contract
         run: make test-jev-sdk SDK_DIR="$RUNNER_TEMP/agentic-jev-sdk"
 

@@ -6,6 +6,7 @@ mod claude;
 mod config;
 mod copydir;
 mod doctor;
+mod doctor_cleanup;
 mod gate;
 mod hookmerge;
 mod install;
