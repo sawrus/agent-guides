@@ -73,6 +73,25 @@ class DocsCoverageTest(unittest.TestCase):
         self.commit('chore: remove the helper')
         self.assertEqual(self.check()[0], 0)
 
+    def test_version_only_manifest_change_is_not_code(self):
+        self.write('Cargo.toml', '[package]\nname = "x"\nversion = "1.0.0"\n')
+        self.commit('base manifest')
+        self.git('branch', '-f', 'main')
+        cfg_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(cfg_dir.cleanup)
+        cfg = Path(cfg_dir.name) / 'cfg.toml'
+        cfg.write_text('version_files = ["Cargo.toml"]\n', encoding='utf-8')
+        self.write('Cargo.toml', '[package]\nname = "x"\nversion = "1.1.0"\n')
+        self.commit('chore(release): bump')
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = cdc.main(['--repo', str(self.repo), '--base', 'main', '--config', str(cfg)])
+        self.assertEqual(code, 0, out.getvalue())
+        self.write('Cargo.toml', '[package]\nname = "y"\nversion = "1.2.0"\n')
+        self.commit('feat: rename')
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cdc.main(['--repo', str(self.repo), '--base', 'main', '--config', str(cfg)]), 1)
+
     def test_tests_and_ci_are_not_code(self):
         self.write('tests/test_app.py', 'assert True\n')
         self.write('.github/workflows/ci.yml', 'on: push\n')
