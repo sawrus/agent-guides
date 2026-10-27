@@ -36,5 +36,6 @@ If one PR mixes kinds, the largest kind wins: a feature with fixes is MAJOR.
    the `## vX.Y.Z` section to `CHANGELOG.md`.
 2. Run `make test` and `make lint`. All must pass.
 3. Open the PR. CI must pass on Linux, macOS, and Windows.
-4. After the merge, tag the merge commit `vX.Y.Z` and publish the GitHub release with the CHANGELOG section as
-   notes.
+4. After the merge, tag the merge commit `vX.Y.Z` and push the tag. `release.yml` builds the binaries, creates
+   the GitHub release and calls `publish-npm.yml`, which publishes the npm package (it skips a version that is
+   already on npm). Replace the generated release notes with the CHANGELOG section.

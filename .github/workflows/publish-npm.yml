@@ -4,6 +4,14 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+  # release.yml calls this after it creates the release: a release created with GITHUB_TOKEN does not start
+  # other workflows, so the `release` trigger alone never ran for tagged releases.
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag to publish (vX.Y.Z)
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -15,6 +23,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -30,8 +40,8 @@ jobs:
             echo "Version mismatch: Cargo.toml=$cargo_version package.json=$npm_version" >&2
             exit 1
           fi
-          if [ "${{ github.event_name }}" = "release" ]; then
-            tag="${{ github.event.release.tag_name }}"
+          tag="${{ github.event.release.tag_name || inputs.tag }}"
+          if [ -n "$tag" ]; then
             if [ "v$npm_version" != "$tag" ]; then
               echo "Version mismatch: package.json=v$npm_version release tag=$tag" >&2
               exit 1
@@ -42,6 +52,14 @@ jobs:
         run: node -e "process.env.AGENTIC_NPM_BINARY='/bin/true'; require('./bin/agentic.js')" --version
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        # Skip a version that is already on npm, so a manual release after the automatic one does not fail.
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "$name@$version is already published; skipping."
+            exit 0
+          fi
+          npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
