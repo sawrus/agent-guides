@@ -1,5 +1,14 @@
 # Changelog
 
+## v4.0.0
+
+- `agentic install` and `agentic upgrade` warn when the checkout is older than origin's default branch: a branch
+  with no own commits that is behind `origin/<default>`, or the default branch 20 or more commits behind. The
+  check uses local refs only, never fetches or blocks, and suggests `git switch <default> && git pull`.
+- The quality gate adds `--event start`: one line of session context for a stale checkout. Claude Code and Codex
+  call it from a `SessionStart` hook; the OpenCode gate plugin uses the session `context` hook. Upgrades add the
+  new hook group to existing installs; on Codex, trust it in `/hooks` (it needs codex-cli 0.153 or later).
+
 ## v3.0.0
 
 - Quality gate: `.agentic/gate/last.json` records acceptance: `accepted`, `reason_code` (`checks_passed`,
