@@ -182,6 +182,30 @@ AGENTIC_DOCTOR=0 agentic install ...
 agentic install ... --no-doctor
 ```
 
+### Stale-checkout warning
+
+`agentic install` and `agentic upgrade` check the project checkout before the report and the doctor run. The
+check reads local git refs only. It does not fetch and never blocks. The origin default branch comes from
+`refs/remotes/origin/HEAD`; `ahead` and `behind` come from `git rev-list --left-right --count HEAD...origin/<default>`.
+
+- HEAD is on another branch or detached: warn when HEAD has no own commits (`ahead == 0`) and is behind
+  `origin/<default>` (`behind >= 1`). HEAD is then an older copy of the default branch, for example a local `main`
+  left behind while origin moved to `master`. A feature branch with its own commits never warns.
+- HEAD is on the default branch: warn when it is 20 or more commits behind `origin/<default>`. Local refs can be
+  older than the remote, so the real lag can be larger.
+- A directory outside git, a repository without `origin/HEAD`, or a git error: no warning.
+
+The warning is one line in the output and in the report `Warnings` list:
+
+```text
+[agentic][warn] Stale checkout: HEAD is on branch main, not on the origin default branch master; it has no own commits and is 281 commits behind origin/master, so the code here may be outdated. Run: git switch master && git pull
+```
+
+The doctor has no separate command; it runs inside install and upgrade, after this check, so the warning shows
+once per run. Agent sessions get the same line once at session start through the quality gate
+(`gate.py --event start`): a `SessionStart` hook in Claude Code and Codex, and the `context` hook of the OpenCode
+gate plugin. See [quality gate](agentic-v2-lean/README.md#quality-gate).
+
 List available options:
 
 ```bash

@@ -11,6 +11,8 @@ import { join } from "node:path";
 // OpenCode runs the `permission.evaluate` hook for every permission check that no rule denies, also when the
 // effect is "allow"; the shell tool checks the `shell` permission for every command except plain `cd`. So the
 // guard sees every shell call, also under an agent that auto-allows shell (build).
+// Start: once per session the runtime checks for a stale checkout (local refs only); a warning becomes
+// one extra system line in that session's requests, like SessionStart additionalContext elsewhere.
 export default Plugin.define({
   id: "agentic-gate",
   async setup(ctx) {
@@ -22,7 +24,7 @@ export default Plugin.define({
     const toolInputs = new Map<string, { tool: string; agent: string; input: unknown }>();
     const disposables: Array<{ dispose(): Promise<void> }> = [];
 
-    function gate(event: "stop" | "guard", payload: Record<string, unknown>): Promise<any> {
+    function gate(event: "stop" | "guard" | "start", payload: Record<string, unknown>): Promise<any> {
       if (!existsSync(script)) return Promise.resolve({});
       return new Promise((resolve) => {
         try {
@@ -44,6 +46,17 @@ export default Plugin.define({
     }));
     disposables.push(await ctx.tool.hook("execute.after", async (event) => {
       toolInputs.delete(`${event.sessionID}:${event.id}`);
+    }));
+    const notices = new Map<string, Promise<string | undefined>>();
+    disposables.push(await ctx.session.hook("context", async (event) => {
+      let notice = notices.get(event.sessionID);
+      if (!notice) {
+        notice = gate("start", { session_id: event.sessionID })
+          .then((result) => result?.hookSpecificOutput?.additionalContext as string | undefined);
+        notices.set(event.sessionID, notice);
+      }
+      const text = await notice;
+      if (text) event.system.push({ type: "text", text });
     }));
     disposables.push(await ctx.permission.hook("evaluate", async (event) => {
       const tool = event.source?.type === "tool" ? toolInputs.get(`${event.sessionID}:${event.source.id}`) : undefined;

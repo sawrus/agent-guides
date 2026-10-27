@@ -42,7 +42,7 @@ deterministic checks.
 ### Quality gate
 
 - Runtime: `.agent/gate/gate.py`, standard library only. Claude Code and Codex call it from native
-  `Stop` and `PreToolUse` hooks. OpenCode calls it from `.opencode/plugins/agentic-gate.ts`.
+  `Stop`, `PreToolUse`, and `SessionStart` hooks. OpenCode calls it from `.opencode/plugins/agentic-gate.ts`.
 - Stop: no changed files → no checks. Changed files → run the commands from `.agent/gate.json`
   (`{"commands": [...], "changelog": true, "max_blocks": 3}`), or by default `make test` and `make lint` when
   those targets exist. A failure returns `{"decision": "block", "reason": <command + last 40 lines>}`, so the
@@ -135,6 +135,12 @@ deterministic checks.
   On a `max_blocks` release, `.agentic/gate/state.json` also stores `last_release`
   (`{time, cause, head}`, where `cause` is `checks_failed` or `changelog_missing`) for the session. On Claude Code
   the Stop hook also returns `{"systemMessage": "Agentic gate: NOT ACCEPTED (max_blocks)"}`, so the user sees it.
+- Stale-checkout notice (`--event start`): at session start the runtime reads local git refs (no fetch) and,
+  only when the checkout looks stale, adds one line of context. The rule and text match the install and upgrade
+  warning; see [stale-checkout warning](../agentic-usage.md#stale-checkout-warning). Claude Code and Codex call
+  it from a native `SessionStart` hook (matcher `startup|resume`, output
+  `hookSpecificOutput.additionalContext`; Codex 0.153 accepts this event and field). OpenCode runs it once per
+  session from the `session.hook("context")` callback and appends the line to the request system parts.
 - `--disable-gate` removes the managed hook groups and the runtime. `--enable-gate` restores them.
 
 ## Acceptance criteria

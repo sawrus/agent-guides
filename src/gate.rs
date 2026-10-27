@@ -1,6 +1,7 @@
-//! Quality gate. Claude Code and Codex call the shared runtime from native Stop
-//! and PreToolUse hooks; the OpenCode plugin forwards to the same runtime. On by
-//! default; `--disable-gate` removes the managed hook groups and the runtime.
+//! Quality gate. Claude Code and Codex call the shared runtime from native Stop,
+//! PreToolUse, and SessionStart (stale-checkout notice) hooks; the OpenCode
+//! plugin forwards to the same runtime. On by default; `--disable-gate` removes
+//! the managed hook groups and the runtime.
 
 use crate::app::App;
 use crate::hookmerge::{self, HookSet};
@@ -17,6 +18,10 @@ const CODEX_OWNERSHIP: &str = ".agentic/codex-gate-hook-entries.json";
 /// Project checks may take minutes; the gate bounds each command itself.
 const STOP_TIMEOUT: u64 = 900;
 const GUARD_TIMEOUT: u64 = 10;
+/// Session start reads local refs only (stale-checkout notice, `src/gitstate.rs`).
+const START_TIMEOUT: u64 = 10;
+/// New and resumed sessions; `clear` and `compact` do not repeat the notice.
+const START_MATCHER: &str = "startup|resume";
 
 pub fn enabled(app: &App) -> bool {
     app.gate_enabled != Some(false)
@@ -48,6 +53,12 @@ fn hook_sets() -> [HookSet<'static>; 2] {
             entries: vec![
                 ("Stop", "", command("claude", "stop"), STOP_TIMEOUT),
                 (
+                    "SessionStart",
+                    START_MATCHER,
+                    command("claude", "start"),
+                    START_TIMEOUT,
+                ),
+                (
                     "PreToolUse",
                     "Bash|Read|Edit|Write|MultiEdit",
                     command("claude", "guard"),
@@ -64,6 +75,12 @@ fn hook_sets() -> [HookSet<'static>; 2] {
             label: "Gate",
             entries: vec![
                 ("Stop", "*", command("codex", "stop"), STOP_TIMEOUT),
+                (
+                    "SessionStart",
+                    START_MATCHER,
+                    command("codex", "start"),
+                    START_TIMEOUT,
+                ),
                 (
                     "PreToolUse",
                     "Bash|apply_patch",
@@ -160,13 +177,62 @@ mod tests {
         install(&mut a, p).unwrap();
         let claude = std::fs::read_to_string(p.join(".claude/settings.json")).unwrap();
         assert!(claude.contains("--event stop") && claude.contains("--event guard"));
+        let settings: serde_json::Value = serde_json::from_str(&claude).unwrap();
+        assert_eq!(
+            settings["hooks"]["SessionStart"][0]["matcher"],
+            START_MATCHER
+        );
+        assert!(claude.contains("--event start"));
         let codex = std::fs::read_to_string(p.join(".codex/hooks.json")).unwrap();
-        assert!(codex.contains(RUNTIME_REL));
+        assert!(codex.contains(RUNTIME_REL) && codex.contains("--event start"));
+        let owned = std::fs::read_to_string(p.join(CLAUDE_OWNERSHIP)).unwrap();
+        assert!(owned.contains("SessionStart"));
         assert!(p.join(RUNTIME_REL).is_file());
         a.gate_enabled = Some(false);
         install(&mut a, p).unwrap();
         let claude = std::fs::read_to_string(p.join(".claude/settings.json")).unwrap();
         assert!(!claude.contains(RUNTIME_REL));
+    }
+
+    /// A release without SessionStart left Stop and PreToolUse ownership records; an upgrade adds
+    /// SessionStart and keeps the owned groups, without conflicts.
+    #[test]
+    fn upgrade_adds_session_start_to_older_gate_hooks() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path();
+        let mut a = app(p, &["claude", "codex"]);
+        install(&mut a, p).unwrap();
+        for (config, ownership) in [
+            (".claude/settings.json", CLAUDE_OWNERSHIP),
+            (".codex/hooks.json", CODEX_OWNERSHIP),
+        ] {
+            for rel in [config, ownership] {
+                let path = p.join(rel);
+                let mut data: serde_json::Value =
+                    serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+                let map = if data.get("hooks").is_some() {
+                    &mut data["hooks"]
+                } else {
+                    &mut data
+                };
+                map.as_object_mut().unwrap().remove("SessionStart");
+                std::fs::write(&path, data.to_string()).unwrap();
+            }
+        }
+        let mut b = app(p, &["claude", "codex"]);
+        install(&mut b, p).unwrap();
+        assert!(b.skipped_managed_paths.is_empty());
+        for config in [".claude/settings.json", ".codex/hooks.json"] {
+            let data: serde_json::Value =
+                serde_json::from_str(&std::fs::read_to_string(p.join(config)).unwrap()).unwrap();
+            for event in ["Stop", "PreToolUse", "SessionStart"] {
+                assert_eq!(
+                    data["hooks"][event].as_array().unwrap().len(),
+                    1,
+                    "{config} {event}"
+                );
+            }
+        }
     }
 
     #[test]

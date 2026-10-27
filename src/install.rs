@@ -775,6 +775,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
         crate::project_update::retire_legacy_artifacts(app, &project_dir)?;
     }
     crate::gate::write_baseline(app, &project_dir)?;
+    crate::gitstate::report(app, &project_dir);
     print_report(app);
     print_missing_agent_binary_guides(app);
     print_current_changelog(app);
