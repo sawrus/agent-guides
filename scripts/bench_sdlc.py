@@ -416,13 +416,25 @@ def estimated_cost(cell, prices):
     return None if host is None or jev is None else host + jev
 
 
+def price_for(prices, model):
+    """Price of a model id. An exact key wins. Otherwise a `<provider>/<model>` id matches the one key with the
+    same model part, so a private OpenCode provider prefix (stored as `private_llm/`) still prices its cells."""
+    if not model:
+        return None
+    if model in prices:
+        return prices[model]
+    part = model.rsplit('/', 1)[-1]
+    matches = [v for k, v in prices.items() if '/' in k and k.rsplit('/', 1)[-1] == part]
+    return matches[0] if len(matches) == 1 else None
+
+
 def host_cost(cell, prices):
     total = 0.0
     for row in (cell.get('tokens') or {}).get('agents') or []:
         if row.get('uncached') is None:
             return None
         # A routed model without a price leaves the cost unknown instead of borrowing the coordinator's price.
-        price = prices.get(row.get('model') or cell.get('model'))
+        price = price_for(prices, row.get('model') or cell.get('model'))
         if not price or None in (price.get('input'), price.get('cached_input'), price.get('output')):
             return None
         output = row.get('output') or 0

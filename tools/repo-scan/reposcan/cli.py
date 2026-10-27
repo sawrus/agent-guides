@@ -332,8 +332,8 @@ def cmd_gate_verify(args):
 def cmd_llm(args):
     model = args.model or (os.environ.get('AGENTIC_LLM_MODEL') or llm.DEFAULT_LITELLM_MODEL
                            if args.provider == 'litellm' else 'haiku')
-    if args.provider == 'litellm' and model.startswith('dats_ai/'):
-        model = model.split('/', 1)[1]  # OpenCode provider prefix; the proxy wants the bare id
+    if args.provider == 'litellm':
+        model = llm.bare_model_id(model)
     if args.provider == 'claude' and model not in llm.CLAUDE_MODELS:
         print(f'error: claude model must be one of {", ".join(llm.CLAUDE_MODELS)}', file=sys.stderr)
         return 2

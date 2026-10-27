@@ -9,7 +9,7 @@ was graded again with the final `tasks.json` (`make bench-regrade`). Codex lean 
 252 paid cells: 4 arms × 3 hosts × T1–T7 × 3 repetitions, seeded random order, every cell valid (0
 `harness_error`). Claude cells are in `.agentic-blackbox/bench-r4`; Codex and OpenCode cells, and the joined
 report, are in `.agentic-blackbox/bench-r5` (Git-ignored). Models: Claude `sonnet`; Codex `gpt-5.6-terra` (the
-ChatGPT account rejects `gpt-6.1-sol` and `gpt-6-sol`); OpenCode `dats_ai/coding-agent-default`, which is
+ChatGPT account rejects `gpt-6.1-sol` and `gpt-6-sol`); OpenCode `private_llm/coding-agent-default`, which is
 Qwen3.8-Flash-Next on a private LiteLLM. Codex and OpenCode numbers do not compare with rounds 1–3, which used
 other models.
 

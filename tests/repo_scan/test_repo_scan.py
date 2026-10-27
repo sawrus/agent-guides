@@ -452,7 +452,8 @@ class LlmTest(unittest.TestCase):
         env = {'AGENTIC_LLM_BASE_URL': f'http://127.0.0.1:{server.server_port}/', 'AGENTIC_LLM_API_KEY': 'test-key'}
         with mock.patch.dict(os.environ, env):
             code, _, _ = run_cli('llm', '--in', str(self.scan), '--out', str(out), '--provider', 'litellm',
-                                 '--repo', rid('apiutil'), '--no-cache')
+                                 '--model', 'any_provider/coding-agent-default', '--repo', rid('apiutil'),
+                                 '--no-cache')
         self.assertEqual(code, 0)
         self.assertEqual(seen['path'], '/v1/chat/completions')
         self.assertEqual(seen['auth'], 'Bearer test-key')

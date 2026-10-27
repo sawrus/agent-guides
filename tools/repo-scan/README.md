@@ -198,7 +198,7 @@ Providers:
   run in an empty temporary directory. `AGENTIC_LLM_CLAUDE_BIN` overrides the binary (tests use a fake).
 - `litellm`: OpenAI-compatible `POST <base>/v1/chat/completions`. `AGENTIC_LLM_BASE_URL` (required,
   no default), `AGENTIC_LLM_API_KEY` (required, read only from the environment, never written),
-  `AGENTIC_LLM_MODEL` or `--model` (default `coding-agent-default`; a `dats_ai/` OpenCode prefix is removed).
+  `AGENTIC_LLM_MODEL` or `--model` (default `coding-agent-default`; an OpenCode `<provider>/` prefix such as `private_llm/` is removed).
 
 ## Tests
 
