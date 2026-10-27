@@ -3,6 +3,7 @@ use std::process::ExitCode;
 mod agentsmd;
 mod app;
 mod claude;
+mod company;
 mod config;
 mod copydir;
 mod doctor;
@@ -91,6 +92,10 @@ Options:
   --enable-telegram     Enable Telegram notifications (OpenCode plugin, Claude/Codex hooks)
   --disable-telegram    Disable Telegram notifications
   --claude-profile      Claude model profile: anthropic|none (default: anthropic)
+  --company-rules-path  Company rules directory, relative to the project or absolute (repeatable)
+  --company-rules-git   Company rules git repository: <url>[#ref][:subdir] (repeatable; subdir without ref: <url>#:<subdir>)
+  --company-rules-exclude
+                        Pack rule <area>/<spec>/<rule> to skip (repeatable or comma-separated)
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)
   --force               Reset Agentic project artifacts for upgrade; overwrite binary for self-install
   --dry-run             Show actions without writing files
@@ -331,6 +336,29 @@ fn cmd_install(app: &mut App, rest: &[String]) -> Result<()> {
                     .ok_or("--claude-profile requires a profile id (anthropic|none)")?
                     .clone();
                 app.claude_profile_explicit = true;
+                i += 2;
+            }
+            "--company-rules-path" | "--company-rules-git" | "--company-rules-exclude" => {
+                let flag = rest[i].as_str();
+                let value = rest
+                    .get(i + 1)
+                    .filter(|v| !v.starts_with("--") && !v.trim().is_empty())
+                    .ok_or_else(|| format!("{flag} requires a value"))?;
+                let rules = app.company_rules.get_or_insert_with(Default::default);
+                match flag {
+                    "--company-rules-path" => rules
+                        .sources
+                        .push(company::Source::Path(value.trim().to_string())),
+                    "--company-rules-git" => rules.sources.push(company::parse_git_spec(value)?),
+                    _ => {
+                        for id in util::split_csv(value) {
+                            util::unique_append(
+                                &mut rules.exclude,
+                                &company::normalize_rule_id(&id),
+                            );
+                        }
+                    }
+                }
                 i += 2;
             }
             "-h" | "--help" => {

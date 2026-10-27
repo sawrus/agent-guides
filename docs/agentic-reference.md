@@ -139,6 +139,9 @@ using manifest settings or `default + software.general` when settings are unavai
 - **Unknown specializations.** A specialization that does not exist and has no alias stops `install` and
   `upgrade` with `unknown specialization(s): <ids>. Available: ...`. `upgrade --force` falls back to
   `default + software.general`.
+- **Company rules.** `upgrade` replays `settings.company_rules`, fetches git sources again (or uses the cached
+  copy offline), and removes company files that a source dropped and pack rules that became excluded
+  ([company rules](company-rules.md)).
 Unrelated project files and global configuration are preserved. Backups live in
 `.agentic-backups/` and may contain credentials; exclude them from source control.
 See [smart upgrade behavior](agentic-upgrade/README.md) for details.
@@ -270,17 +273,33 @@ Details: [JEV verification](jev-integration/verification.md).
 ```text
 project/.agent/
 ├── rules/       ← constraints active for every task in this project
+├── company/     ← company rules (only with settings.company_rules)
 ├── skills/      ← capabilities loaded on demand
 └── workflows/   ← processes triggered by slash commands
 
 project/.claude/                 ← with --agent-os claude
 ├── CLAUDE.md    ← @AGENTS.md / @MEMORY.md imports
 ├── agents/      ← 9 role subagents (tools + model per profile)
-├── rules/       ← auto-loaded rules
+├── rules/       ← auto-loaded rules; company-<area>-<name>.md copies of company rules
 ├── skills/      ← native skills
 ├── commands/    ← one /<workflow> wrapper per .agent/workflows/*.md
 └── settings.json← agent: product-owner, MCP approvals, JEV/Telegram hooks (ownership-tracked)
 ```
+
+---
+
+### Company rules in the manifest
+
+`settings.company_rules` is optional; without it the feature is off.
+
+| Field | Meaning |
+|---|---|
+| `sources[]` | `{"path": "<dir>"}` or `{"git": "<url>", "ref": "<ref>", "subdir": "<dir>"}`, in order; the first source wins on equal paths. |
+| `exclude[]` | Pack rule ids `<area>/<spec>/<rule>` that install skips; `replaces:` in a company rule adds to it. |
+
+Company files in `managed_files` have `marker: company` and `source: company:<source-id>/<relpath>`. Install flags:
+`--company-rules-path <dir>`, `--company-rules-git <url>[#ref][:subdir]`, `--company-rules-exclude <id>`. See
+[company rules](company-rules.md).
 
 ---
 

@@ -13,7 +13,7 @@ covers:
 # Artifact standard: rules, skills, workflows
 
 Status: draft for agreement (v1). It is the acceptance contract for every instruction artifact that agentic
-ships from `areas/**` and for every company rule that a target project adds (`docs/company-rules.md`, planned).
+ships from `areas/**` and for every company rule that a target project adds ([company rules](company-rules.md)).
 `scripts/check_artifacts.py` (`make check-artifacts`) checks each requirement that has an `auto` mark and reports
 its id. Reviewers check the `review` items by hand or with an LLM auditor ([regulation.md](regulation.md)).
 
