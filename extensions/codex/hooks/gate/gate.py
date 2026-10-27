@@ -8,8 +8,8 @@ source files changed. Every Stop writes `.agentic/gate/last.json` with `accepted
 `--event guard`: deny secret reads, force pushes, and recursive deletes outside the project (PreToolUse
 `permissionDecision: deny`); ask the user before commands that touch production (`guard.confirm`). Codex hooks
 cannot ask, so on Codex a confirm rule denies. Settings: optional `.agent/gate.json` {"commands": ["make test"],
-"changelog": true, "max_blocks": 3, "guard": {"confirm": [...], "prod_context_pattern": "prod",
-"prod_hosts": []}}. Standard library only.
+"changelog": true, "max_blocks": 3, "guard": {"defaults": true, "confirm": [...],
+"prod_context_pattern": "prod", "prod_hosts": []}}. Standard library only.
 """
 import argparse
 import hashlib
@@ -355,8 +355,9 @@ def confirm_reason(project, command):
     """Reason to ask the user before a command that may touch production; None when no rule matches."""
     guard_config = settings(project).get('guard')
     guard_config = guard_config if isinstance(guard_config, dict) else {}
-    rules = guard_config.get('confirm', ['default'])
-    rules = rules if isinstance(rules, list) else ['default']
+    custom = guard_config.get('confirm')
+    custom = [rule for rule in custom if rule != 'default'] if isinstance(custom, list) else []
+    rules = (['default'] if guard_config.get('defaults', True) is not False else []) + custom
     for rule in rules:
         if rule == 'default':
             prod = compile_pattern(guard_config.get('prod_context_pattern') or 'prod')

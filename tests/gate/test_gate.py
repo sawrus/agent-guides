@@ -263,22 +263,22 @@ class ConfirmGuard(unittest.TestCase):
             self.assertEqual(self.decide(command)[0], 'ask', command)
         self.assertEqual(self.decide('psql -h localhost app'), (None, ''))
 
-    def test_custom_rules_replace_the_defaults(self):
+    def test_custom_rules_add_to_the_defaults(self):
         self.config({'guard': {'confirm': [{'pattern': r'\bterraform\s+apply\b',
                                             'reason': 'terraform apply changes infrastructure'}]}})
         decision, reason = self.decide('terraform apply -auto-approve')
         self.assertEqual(decision, 'ask')
         self.assertIn('terraform apply changes infrastructure', reason)
-        self.assertEqual(self.decide('kubectl --context prod-cluster get ns'), (None, ''))
-
-    def test_custom_rules_can_keep_the_defaults(self):
-        self.config({'guard': {'confirm': ['default', {'pattern': 'terraform apply', 'reason': 'infra'}]}})
         self.assertEqual(self.decide('kubectl --context prod-cluster get ns')[0], 'ask')
-        self.assertEqual(self.decide('terraform apply')[0], 'ask')
 
-    def test_empty_confirm_list_turns_the_rules_off(self):
+    def test_empty_confirm_list_keeps_the_defaults(self):
         self.config({'guard': {'confirm': []}})
+        self.assertEqual(self.decide('kubectl --context prod-cluster get ns')[0], 'ask')
+
+    def test_defaults_false_turns_the_default_rules_off(self):
+        self.config({'guard': {'defaults': False, 'confirm': [{'pattern': 'terraform apply', 'reason': 'infra'}]}})
         self.assertEqual(self.decide('kubectl --context prod-cluster get ns'), (None, ''))
+        self.assertEqual(self.decide('terraform apply')[0], 'ask')
 
     def test_codex_and_unknown_hosts_deny(self):
         for host in ('codex', None):

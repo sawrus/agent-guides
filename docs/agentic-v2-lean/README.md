@@ -54,7 +54,7 @@ deterministic checks.
 - Guard: denies `.env*` (except `.example`, `.sample`, `.template`), private keys, `git push -f/--force`,
   and recursive deletes outside the project and the system temp directory.
 - Production guard (`guard` in `.agent/gate.json`): before a Bash command that may touch production, the gate
-  asks the user. The default rules, used when `guard.confirm` is absent:
+  asks the user. The default rules (on unless `guard.defaults` is `false`):
   - `kubectl`, `helm`, or `oc` with `--context`/`--kube-context` whose value matches `guard.prod_context_pattern`
     (regex, case-insensitive, default `prod`), and `kubectl config use-context <prod>`;
   - `kubectl`, `helm`, or `oc` without a context flag when `kubectl config current-context` (local, 2 s timeout,
@@ -62,12 +62,12 @@ deterministic checks.
   - `psql`, `pg_dump`, `pg_restore`, `mysql`, or `mysqldump` whose host (`-h`, `--host`, `PGHOST=`, a
     `postgresql://`/`mysql://` URI, `host=`) matches a regex in `guard.prod_hosts` (default empty, no rule).
 
-  `guard.confirm` replaces the defaults with a list of `{"pattern": <regex on the Bash command>, "reason": <text>}`.
-  The string `"default"` in the list keeps the default rules; `[]` turns the production guard off. Example:
+  `guard.confirm` adds custom rules to the defaults: a list of `{"pattern": <regex on the Bash command>,
+  "reason": <text>}`. Set `guard.defaults` to `false` to turn the default rules off. Example:
 
   ```json
   {"guard": {"prod_context_pattern": "prod|live", "prod_hosts": ["^db\\.example\\.com$"],
-             "confirm": ["default", {"pattern": "\\bterraform\\s+apply\\b", "reason": "terraform apply changes infrastructure"}]}}
+             "confirm": [{"pattern": "\\bterraform\\s+apply\\b", "reason": "terraform apply changes infrastructure"}]}}
   ```
 
   Host behaviour: Claude Code gets `permissionDecision: "ask"` and shows the reason in its approval prompt.
