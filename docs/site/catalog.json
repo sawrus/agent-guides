@@ -1,9 +1,59 @@
 {
-  "version": "1.3.0",
-  "generated_from": "areas/**/workflows",
+  "version": "1.4.0",
+  "generated_from": "areas/*/*/{rules,skills,workflows}",
   "areas": [
     {
       "area": "devops/ci-cd",
+      "group": "devops",
+      "spec": "ci-cd",
+      "summary": "GitLab CI and GitHub Actions pipelines: stages, gates, secrets, and artifact supply chain.",
+      "agents_path": "areas/devops/ci-cd/AGENTS.md",
+      "rules": [
+        {
+          "name": "pipeline-standards",
+          "description": "Stage order, gates, job settings, and secret handling for GitLab CI and GitHub Actions pipelines.",
+          "paths": [
+            ".gitlab-ci.yml",
+            "**/.gitlab-ci.yml",
+            ".gitlab/**",
+            "**/*.gitlab-ci.yml",
+            ".github/workflows/**",
+            ".github/actions/**"
+          ],
+          "trigger": "",
+          "path": "areas/devops/ci-cd/rules/pipeline-standards.md",
+          "body": "## Stages and gates\n\n- Keep the stage order `lint` → `test` → `build` → `scan` → `deploy-staging` → `smoke-test` → `deploy-production`.\n- Fail the `lint` job on any linter or format error; do not set `allow_failure: true` on lint, test, or scan jobs.\n- Block the merge when any unit or integration test fails; keep line coverage of critical paths at 80 % or more.\n- Fail the `scan` stage on any Critical or High finding of SAST, dependency, image, or secret scans.\n- Tag every built image with the commit SHA (`$CI_COMMIT_SHA`, `${{ github.sha }}`); never push `latest`, `main`, or branch-name tags.\n- Deploy to staging automatically after a merge to the default branch, then run the smoke test job against staging.\n- Gate the `deploy-production` job with a protected environment and a manual approval; require staging to be healthy for 15 minutes first.\n- Set `timeout:` (GitLab) or `timeout-minutes:` (GitHub) on every job.\n\n## GitLab CI\n\n- Use `rules:` for job conditions; do not use `only:` or `except:`.\n- Split large pipelines with `include:` templates; keep shared templates in `.gitlab/ci/` or a template project pinned by `ref:`.\n- Pin every job `image:` to a version tag or `@sha256` digest; never use `:latest`.\n- Use `needs:` to build a DAG instead of waiting for whole stages.\n- Set `cache:key:files:` on the lockfile for dependency caches and pass build outputs with `artifacts:` plus `expire_in:`.\n- Store credentials in CI/CD variables marked `masked` and `protected`; never write a secret value in `.gitlab-ci.yml`.\n- Use `id_tokens:` for cloud and Vault authentication instead of static access keys.\n- Run production deploy jobs only on protected branches or tags and with `environment:` set.\n\n## GitHub Actions\n\n- Set a top-level `permissions:` block with `contents: read` and add wider scopes per job only.\n- Pin every third-party action to a full commit SHA; keep the version in a trailing comment.\n- Use `id-token: write` with OIDC (`aws-actions/configure-aws-credentials`, `google-github-actions/auth`) instead of long-lived cloud keys.\n- Read credentials only from `secrets.*` or environment secrets; never echo a secret or dump `env` in a step.\n- Use reusable workflows (`workflow_call`) for steps shared across repositories.\n- Use GitHub Environments with required reviewers for the production deploy job.\n- Add `.github/dependabot.yml` for `github-actions` and the package ecosystem of the repository.\n\n## Pipeline as code\n\n- Keep all pipeline configuration in the repository; do not configure jobs in the CI web UI.\n- Run deploy jobs on ephemeral runners without privileged mode unless the job file documents the reason.\n- Never store cloud credentials or a kubeconfig on the runner disk after the job ends.\n"
+        },
+        {
+          "name": "supply-chain-security",
+          "description": "Signing, provenance, SBOM, and pinning requirements for artifacts that a pipeline builds and deploys.",
+          "paths": [
+            ".gitlab-ci.yml",
+            "**/.gitlab-ci.yml",
+            ".gitlab/**",
+            ".github/workflows/**",
+            "**/Dockerfile",
+            "**/Containerfile"
+          ],
+          "trigger": "",
+          "path": "areas/devops/ci-cd/rules/supply-chain-security.md",
+          "body": "- Sign every release image keylessly with `cosign sign --yes <image>@sha256:<digest>` from the CI job identity.\n- Verify signatures in the deploy job with `cosign verify --certificate-oidc-issuer` and `--certificate-identity-regexp` bound to the repository and release refs.\n- Keep signing keys in a KMS or HSM and rotate them at least every 90 days when keyless signing is not available.\n- Generate an SLSA provenance attestation for every production build and bind it to the commit SHA.\n- Generate a CycloneDX or SPDX SBOM for the exact image digest and store it with the artifact.\n- Deploy images by `@sha256` digest only; never reference `latest` or another mutable tag in a manifest.\n- Pin base images in every `Dockerfile` by `@sha256` digest.\n- Commit lockfiles (`package-lock.json`, `poetry.lock`, `uv.lock`, `go.sum`, `gradle.lockfile`) for every direct dependency set.\n- Enable checksum verification of the package manager (`npm ci`, `pip install --require-hashes`, `GOFLAGS=-mod=readonly`).\n- Pin CI includes, actions, and plugins to an immutable commit SHA or tag `ref:`.\n- Fail the deploy job when signature, provenance, or SBOM verification fails or the verifier is unreachable.\n- Limit a policy exception to 14 days and record its owner and expiry date in the policy file.\n- Keep commit SHA, SBOM digest, provenance digest, signer identity, and scan results for each release for at least 1 year.\n"
+        }
+      ],
+      "skills": [
+        {
+          "name": "github-actions-patterns",
+          "description": "Procedure to add or change a GitHub Actions workflow: pin actions, set token permissions, cache, reuse workflows, and debug a failed run. Use when you edit files under .github/workflows/.",
+          "path": "areas/devops/ci-cd/skills/github-actions-patterns/SKILL.md",
+          "body": "## 1. Read the current workflows\n\n1. List `.github/workflows/*.yml` and the `on:` triggers of each file.\n2. Find reusable workflows (`on: workflow_call`) and composite actions under `.github/actions/`.\n3. Change the reusable workflow only when the task says so; otherwise change the caller.\n\n## 2. Make the change\n\n1. Set `permissions:` at the top of the workflow to the minimum, for example `contents: read`. Grant more per\n   job only where a step needs it.\n2. Pin every third-party action to a full commit SHA and keep the version in a comment:\n   `uses: actions/checkout@<40-char-sha> # v4.2.2`.\n3. Use `actions/setup-python`, `actions/setup-go`, or `actions/setup-java` with their built-in `cache:` input\n   before you add a separate `actions/cache` step.\n4. Set `timeout-minutes:` on every job.\n5. Add `concurrency:` with `cancel-in-progress: true` for pull request workflows.\n6. Move steps that two workflows share into a reusable workflow or a composite action.\n7. Use `pull_request`, not `pull_request_target`, for code from forks. If `pull_request_target` is required, do\n   not check out the fork head in that job.\n8. Do not put `${{ github.event.* }}` text such as titles or branch names directly into `run:`; pass it through\n   `env:` and quote the variable.\n9. Read cloud credentials with OIDC (`permissions: id-token: write`) instead of long-lived secrets.\n10. Put deploys behind a GitHub Environment with required reviewers. Ask the user first before you trigger a\n    production deploy.\n\n## 3. Validate before you push\n\n```bash\nactionlint                      # syntax, expressions, shellcheck of run: blocks\nzizmor .github/workflows/       # security findings (optional)\n```\n\nIf `actionlint` is not installed, run it as a container: `docker run --rm -v \"$PWD\":/repo -w /repo rhysd/actionlint`.\n\n## 4. Debug a failed run\n\n1. Get the log: `gh run list --limit 5`, then `gh run view <run-id> --log-failed`.\n2. Find the first failing step and its first error line.\n3. Decide the cause class:\n   - **Permissions** — a `403` or `Resource not accessible by integration` needs a `permissions:` entry.\n   - **Secret missing** — secrets are empty in workflows from forks and in environments that do not define them.\n   - **Cache** — check the cache key inputs; a changed lock file must change the key.\n   - **Runner image** — compare the tool versions with the last green run.\n4. Rerun failed jobs with debug logs once: `gh run rerun <run-id> --failed --debug`.\n5. Fix the cause and push. Do not add `continue-on-error: true` to make the run green.\n\n## 5. Done\n\n- `actionlint` passes and the workflow run on the branch is green.\n- No action is referenced by a tag or a branch.\n"
+        },
+        {
+          "name": "gitlab-ci-patterns",
+          "description": "Procedure to add or change a GitLab CI pipeline: validate .gitlab-ci.yml, structure jobs with rules/needs/include, cache, and debug a failed job. Use when you edit .gitlab-ci.yml or files under .gitlab/ci/.",
+          "path": "areas/devops/ci-cd/skills/gitlab-ci-patterns/SKILL.md",
+          "body": "## 1. Read the current pipeline\n\n1. Open `.gitlab-ci.yml` and every file it pulls in with `include:` (`local`, `project`, `template`, `component`).\n2. List the stages, the jobs per stage, and which jobs run on merge requests, on the default branch, and on tags.\n3. If the project uses CI components or a shared template project, change the caller first. Change the shared\n   template only when the task says so.\n\n## 2. Make the change\n\n1. Put job conditions in `rules:`. Do not add `only:` or `except:`.\n2. Express job order with `needs:` when a job does not need the whole previous stage.\n3. Reuse setup with `extends:` or `!reference`; do not copy a `script:` block into a second job.\n4. Pin every `image:` to a version tag or a digest. Do not use `latest`.\n5. Set `timeout:` on jobs that can hang (integration tests, deploys).\n6. Set `interruptible: true` on test jobs so a new push cancels the old pipeline.\n7. Cache dependencies with a key that changes with the lock file:\n\n```yaml\ncache:\n  key:\n    files: [poetry.lock]   # go.sum, pom.xml, package-lock.json\n  paths: [.venv/]\n  policy: pull-push        # use `pull` in jobs that only read the cache\n```\n\n8. Pass build outputs with `artifacts:` and an `expire_in:` value. Use `artifacts:reports:junit` for test results.\n9. Read secrets from CI/CD variables (masked and protected) or from `id_tokens:` with OIDC. Never write a secret\n   into the YAML.\n10. Put deploy jobs on `environment:` with `rules:` that limit them to protected branches or tags. A production\n    deploy job uses `when: manual`; ask the user first before you run it.\n\n## 3. Validate before you push\n\n1. Lint the file with the API or the CLI:\n\n```bash\nglab ci lint                       # uses the project CI lint endpoint\nglab ci lint --dry-run --ref main  # simulate a pipeline on a branch\n```\n\n2. If `glab` is not available, open CI/CD > Editor > Validate in the project UI.\n3. Check that each changed job has the expected `rules:` outcome on a merge request and on the default branch.\n\n## 4. Debug a failed job\n\n1. Get the log: `glab ci view` or `glab ci trace <job-id>`.\n2. Find the first error line, not the last one.\n3. Decide the cause class:\n   - **Script error** — reproduce locally with the same image: `docker run --rm -it -v \"$PWD\":/w -w /w <image> sh`.\n   - **Missing variable** — check that the variable is defined for this environment and that protected\n     variables are not used on an unprotected branch.\n   - **Cache or artifact** — check the cache key and the `needs:`/`dependencies:` list.\n   - **Runner** — check `tags:` against the available runners; a job stuck in `pending` has no matching runner.\n   - **Flaky test** — rerun once. If it passes, open an issue for the flaky test; do not add `retry:` to hide it.\n4. Fix the cause in the repository and push. Do not change the job to `allow_failure: true` to make the\n   pipeline green.\n\n## 5. Done\n\n- The lint passes and a pipeline on the branch is green.\n- The merge request description names the jobs that changed and why.\n"
+        }
+      ],
       "workflows": [
         {
           "trigger": "/release-pipeline",
@@ -11,6 +61,7 @@
           "description": "Build or fix a CI/CD pipeline that tests, builds, and releases a service through gated environments.",
           "workflow_path": "areas/devops/ci-cd/workflows/release-pipeline.md",
           "use_when": "The request asks to create, fix, speed up or harden a GitLab CI or GitHub Actions pipeline, or to set up build, release and deploy jobs for a service.",
+          "avoid_when": "The request is a security scan of existing code or images only; use the security scan workflow.",
           "inputs": [
             "service",
             "pipeline_goal"
@@ -19,10 +70,19 @@
             "pipeline_config",
             "docs_page"
           ],
-          "roles": [],
           "related_rules": [
             "pipeline-standards.md",
             "supply-chain-security.md"
+          ],
+          "rule_refs": [
+            {
+              "name": "pipeline-standards",
+              "path": "areas/devops/ci-cd/rules/pipeline-standards.md"
+            },
+            {
+              "name": "supply-chain-security",
+              "path": "areas/devops/ci-cd/rules/supply-chain-security.md"
+            }
           ],
           "uses_skills": [
             "gitlab-ci-patterns",
@@ -38,8 +98,34 @@
               "path": "areas/devops/ci-cd/skills/github-actions-patterns/SKILL.md"
             }
           ],
-          "quality_gates": [],
-          "workflow_diagram": "",
+          "checks": [],
+          "artifacts": [
+            ".gitlab-ci.yml",
+            ".github/workflows/*.yml"
+          ],
+          "steps": [
+            {
+              "title": "Read the current pipeline",
+              "do": "open `.gitlab-ci.yml` (and its `include:` files) or `.github/workflows/*.yml`. List stages, jobs, triggers, runners, and the last failed job log (`glab ci view`, `gh run view --log-failed`).",
+              "done_when": "you can describe the current flow from commit to release and name what is missing or failing."
+            },
+            {
+              "title": "Change the pipeline",
+              "do": "follow `gitlab-ci-patterns` for GitLab or `github-actions-patterns` for GitHub. Keep the order lint → test → build → scan → release → deploy. Build the artifact once and promote the same digest to every environment. Ask the user first before you change a deploy job that targets production.",
+              "done_when": "the config passes the linter (`glab ci lint`, `actionlint`) and every job has a timeout."
+            },
+            {
+              "title": "Gate the release",
+              "do": "add a protected manual or approval gate before production, and a rollback job or documented rollback command. Ask the user first before you run any deploy job or change protected environment settings.",
+              "done_when": "a production deploy cannot start without the gate and green test, build, and scan jobs."
+            },
+            {
+              "title": "Prove it on a branch",
+              "do": "push to a feature branch and run the pipeline up to the last non-production stage. Fix each failure from its job log. Ask the user first if a job could reach a shared or production environment.",
+              "done_when": "the branch pipeline is green up to staging, and the docs page of the pipeline lists stages, gates, variables, and the rollback command."
+            }
+          ],
+          "body": "",
           "examples": [
             "Add a gated production deploy with a migration job and automatic rollback to the payments-api pipeline for v3.8.0."
           ]
@@ -47,7 +133,115 @@
       ]
     },
     {
+      "area": "devops/database-ops",
+      "group": "devops",
+      "spec": "database-ops",
+      "summary": "Operating production databases: access roles, backups, and safe migration runs.",
+      "agents_path": "areas/devops/database-ops/AGENTS.md",
+      "rules": [
+        {
+          "name": "access-control",
+          "description": "Least-privilege database roles, credentials, pooling, and audit settings for service databases.",
+          "paths": [
+            "**/migrations/**",
+            "**/*.sql",
+            "**/pgbouncer*.ini"
+          ],
+          "trigger": "",
+          "path": "areas/devops/database-ops/rules/access-control.md",
+          "body": "- Create one `app_<service>` role per service with only `SELECT`, `INSERT`, `UPDATE`, `DELETE` on its own tables.\n- Create a separate `migration_<service>` role for DDL; never grant `CREATE`, `ALTER`, or `DROP` to the application role.\n- Create `readonly_<service>` roles with `SELECT` only for reporting and support access.\n- Never use `GRANT ALL` or grant `SUPERUSER` to an application or migration role.\n- Store each service credential in a secret manager (Vault, cloud secret store); never share one password between services.\n- Rotate database credentials at least every 90 days and after offboarding a person with database access.\n- Connect applications through a connection pooler (`pgbouncer` in transaction mode) and set a pool size limit per service.\n- Enable `pgaudit` (or the engine equivalent) for all DDL and role changes.\n- Revoke `CREATE` on schema `public` from `PUBLIC` and put service tables in a named schema.\n- Require TLS (`sslmode=verify-full`) in every client connection string.\n"
+        },
+        {
+          "name": "backup-policy",
+          "description": "Backup schedule, retention, encryption, restore tests, and alerts for production databases.",
+          "paths": [],
+          "trigger": "manual",
+          "path": "areas/devops/database-ops/rules/backup-policy.md",
+          "body": "- Enable continuous WAL archiving to object storage for point-in-time recovery of every production PostgreSQL database.\n- Run a daily full backup in addition to WAL archiving.\n- Keep WAL for 7 days, daily backups for 30 days, weekly backups for 3 months, and monthly backups for 1 year.\n- Take a snapshot before every production migration and keep it until the next major release.\n- Encrypt every backup at rest with KMS-managed keys (AES-256).\n- Store backups in a different account or project than the database and enable object lock or versioning.\n- Run a restore test into an isolated environment every week and record the restore time and a row-count check.\n- Set RTO 30 min and RPO 15 min for tier 1 databases; set RTO 4 h and RPO 1 h for tier 2.\n- Alert when no backup completed in the last 26 hours.\n- Alert when a backup size differs from the 7-day average by more than 20 %.\n- Alert when backup storage use exceeds 70 % of its quota.\n"
+        },
+        {
+          "name": "migration-runbook",
+          "description": "Safety checks for running schema migrations against production databases.",
+          "paths": [],
+          "trigger": "manual",
+          "path": "areas/devops/database-ops/rules/migration-runbook.md",
+          "body": "- Use expand-and-contract for breaking schema changes: add the new column, dual-write, backfill, then remove the old column in a later release.\n- Never rename or drop a column that the running application version still reads.\n- Keep every migration compatible with the application version that runs before and after the deploy.\n- Run the migration on staging with production-size data and record the execution time in the merge request.\n- Take and verify a backup snapshot before running a production migration.\n- Prepare and test the rollback SQL (or the down migration) before the production run.\n- Use `CREATE INDEX CONCURRENTLY` on PostgreSQL tables over 1 million rows.\n- Do not add a `NOT NULL` column with a volatile default to a large table in one statement; add it nullable, backfill, then add the constraint.\n- Set `lock_timeout` (for example `SET lock_timeout = '5s'`) and `statement_timeout` in the migration session.\n- Backfill data in batches of at most 10,000 rows with a pause between batches.\n- Run migrations with the `migration_<service>` role from the CI job, not from a developer machine.\n- Announce a maintenance window when the expected lock time exceeds 5 minutes.\n"
+        }
+      ],
+      "skills": [
+        {
+          "name": "backup-restore",
+          "description": "Procedure to verify a PostgreSQL or MySQL backup by restoring it into a scratch instance, and to run a point-in-time restore. Use when you check backups, set up backup jobs, or must restore data.",
+          "path": "areas/devops/database-ops/skills/backup-restore/SKILL.md",
+          "body": "A backup counts only after a restore from it succeeds. Work on a scratch instance unless the user asks for a\nproduction restore.\n\n## 1. Find the backup setup\n\n1. Find the backup tool and schedule: `pgbackrest`, `wal-g`, `barman`, `pg_dump` cron jobs, a Kubernetes\n   operator (CloudNativePG, Zalando), or a managed service snapshot.\n2. Record the retention, the WAL or binlog archive location, and the encryption key location.\n3. If no backup job exists, stop and tell the user. Do not create one without agreement on the storage target.\n\n## 2. List the latest backups\n\n```bash\npgbackrest --stanza=<name> info\nwal-g backup-list --detail\naws rds describe-db-snapshots --db-instance-identifier <id> --query 'DBSnapshots[-3:]'\n```\n\nCheck that the newest full backup is younger than the policy allows and that WAL archiving has no gap.\n\n## 3. Restore into a scratch instance\n\n1. Start an empty instance with the same major version as the source:\n   `docker run -d --name restore-check -e POSTGRES_PASSWORD=check postgres:<major>`.\n2. Restore the latest backup:\n   - `pg_dump` custom format: `pg_restore --no-owner --dbname=<scratch-url> <file>.dump`.\n   - pgBackRest: `pgbackrest --stanza=<name> --pg1-path=<scratch-data-dir> restore`.\n   - WAL-G: `wal-g backup-fetch <scratch-data-dir> LATEST`, then start the server with recovery settings.\n   - Managed service: restore the snapshot to a new instance name with a `restore-check-` prefix.\n3. Time the restore. Compare it with the recovery time objective (RTO).\n\n## 4. Check the restored data\n\n1. Compare row counts of the largest tables with the source, within the backup age:\n   `SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 10;`\n2. Read the newest timestamp of a write-heavy table. The gap to the backup time is the real recovery point\n   (RPO).\n3. Run `SELECT count(*)` on one table per schema to force a full read of its pages.\n4. If counts or timestamps are off, the backup fails. Report the gap and keep the scratch instance for analysis.\n\n## 5. Point-in-time restore (incident)\n\n1. Ask the user first: confirm the target time, the target instance, and that writes to it are stopped.\n2. Restore to a new instance, never over the damaged one:\n   `pgbackrest --stanza=<name> --type=time --target=\"<YYYY-MM-DD HH:MM:SS+00>\" restore`.\n3. Check the data with step 4 and let the user confirm before traffic moves.\n4. Ask the user first before you switch the application connection string or copy rows back.\n\n## 6. Clean up\n\n- Delete the scratch instance and any restored snapshot copy.\n- Record the restore duration, the measured RPO, and the backup id in the docs page of the database service.\n"
+        }
+      ],
+      "workflows": []
+    },
+    {
       "area": "devops/devsecops",
+      "group": "devops",
+      "spec": "devsecops",
+      "summary": "Security checks in the delivery path: container hardening, scan gates, and admission policies.",
+      "agents_path": "areas/devops/devsecops/AGENTS.md",
+      "rules": [
+        {
+          "name": "container-security",
+          "description": "Hardening requirements for Dockerfiles and container images of backend services.",
+          "paths": [
+            "**/Dockerfile",
+            "**/Dockerfile.*",
+            "**/Containerfile",
+            "**/.dockerignore",
+            "**/.trivyignore"
+          ],
+          "trigger": "",
+          "path": "areas/devops/devsecops/rules/container-security.md",
+          "body": "- Pin every `FROM` image by `@sha256` digest; never use `:latest` or a tag-only reference.\n- Use a multi-stage build and copy only the built artifact into the runtime stage.\n- Use a minimal runtime base image (`distroless`, `-slim`, or Alpine); do not ship compilers or package managers in the runtime stage.\n- Set `USER` to a numeric non-root UID (for example `USER 1000:1000`) in the final stage.\n- Never `COPY` a `.env` file or pass a secret through `ARG` or `ENV`; use BuildKit `--mount=type=secret` for build secrets.\n- Add `.env`, `.git`, and credential files to `.dockerignore`.\n- Remove SETUID and SETGID bits in the runtime stage (`find / -perm /6000 -type f -exec chmod a-s {} +`).\n- Use the exec form of `ENTRYPOINT` and `CMD` so the process receives `SIGTERM`.\n- Run `trivy image --severity CRITICAL,HIGH --exit-code 1` on every built image in CI.\n- Record every `.trivyignore` entry with the CVE id, the reason, a ticket reference, and a review date.\n- Keep the image writable only under mounted paths so it runs with `readOnlyRootFilesystem: true`.\n"
+        },
+        {
+          "name": "policy-as-code",
+          "description": "Admission policies (Kyverno or OPA Gatekeeper) that every cluster enforces, and how to test them.",
+          "paths": [
+            "**/policies/**",
+            "**/kyverno/**",
+            "**/gatekeeper/**",
+            "**/*.rego"
+          ],
+          "trigger": "",
+          "path": "areas/devops/devsecops/rules/policy-as-code.md",
+          "body": "- Keep admission policies in the repository under `policies/`; do not create policies by hand in a cluster.\n- Enforce these policies in every cluster: `disallow-privileged-containers`, `require-non-root-user`, `require-resource-limits`, `require-image-digest`, `disallow-host-namespaces`.\n- Set `require-readonly-root-filesystem` to `Audit` in staging and `Enforce` in production.\n- Require verified image signatures (`verifyImages` in Kyverno or an equivalent constraint) in production namespaces.\n- Use Kyverno YAML policies for single-resource checks; use OPA Rego only when a policy needs cross-resource data.\n- Add a test case for each policy: `kyverno test .` with pass and fail resources, or `opa test policies/ -v` for Rego.\n- Run the policy tests in CI and fail the pipeline on any failed test case.\n- Roll out a new policy with `validationFailureAction: Audit` first and switch to `Enforce` after the audit report shows no violations.\n- Limit a `PolicyException` to named resources and set an expiry date annotation on it.\n"
+        },
+        {
+          "name": "shift-left-policy",
+          "description": "Security scan jobs that CI must run, their severity thresholds, and the fix deadlines per severity.",
+          "paths": [
+            ".gitlab-ci.yml",
+            "**/.gitlab-ci.yml",
+            ".github/workflows/**",
+            ".pre-commit-config.yaml",
+            ".gitleaks.toml",
+            ".semgrep.yml"
+          ],
+          "trigger": "",
+          "path": "areas/devops/devsecops/rules/shift-left-policy.md",
+          "body": "- Run a secret scan (`gitleaks` or `trufflehog`) in a pre-commit hook and in CI on every merge request.\n- Run SAST (`semgrep` or the GitLab SAST template) in CI on every merge request.\n- Run a dependency scan (`trivy fs .`, `osv-scanner`, or the ecosystem audit command) before the build job.\n- Run `trivy image` on the built image before it is pushed to a release registry.\n- Run `syft` to create an SBOM for every release image and attach it with `cosign attest`.\n- Run `cosign verify` on the image in the deploy job before rollout.\n- Fail the merge request pipeline and the deploy job on any `Critical` or `High` finding.\n- Post `Medium` findings as a merge request comment; do not block on `Medium` or `Low` findings.\n- Set the fix deadline for `Critical` findings (CVSS 9.0–10.0) to the same day.\n- Set the fix deadline for `High` findings (CVSS 7.0–8.9) to 72 hours.\n- Create a ticket with a 2-week deadline for every `Medium` finding (CVSS 4.0–6.9).\n- Document every exception in the scanner ignore file with a reason, a ticket, an owner, and an expiry of at most 30 days.\n- Add an inline suppression with a reason for every SAST false positive; never disable a scanner rule globally for one finding.\n"
+        }
+      ],
+      "skills": [
+        {
+          "name": "sbom-supply-chain",
+          "description": "Procedure to generate an SBOM, scan it for vulnerabilities, and sign and verify container images and attestations with cosign. Use when you add SBOM, image signing, or provenance to a pipeline or verify an image.",
+          "path": "areas/devops/devsecops/skills/sbom-supply-chain/SKILL.md",
+          "body": "## 1. Generate the SBOM from the built image\n\nBuild the image once and refer to it by digest in every later step.\n\n```bash\nIMAGE=registry.example.com/group/service@sha256:<digest>\nsyft \"$IMAGE\" -o cyclonedx-json > sbom.cdx.json\n```\n\n- Use the image, not the source tree, so the SBOM lists what ships.\n- Keep `sbom.cdx.json` as a pipeline artifact (`artifacts:` in GitLab, `actions/upload-artifact` in GitHub).\n\n## 2. Scan the SBOM\n\n```bash\ngrype sbom:sbom.cdx.json --fail-on high\ntrivy sbom sbom.cdx.json --severity HIGH,CRITICAL --exit-code 1\n```\n\n1. If a finding has a fixed version, upgrade the package or the base image and rebuild.\n2. If there is no fix, decide with the user: accept with an expiry date in the ignore file\n   (`.grype.yaml` or `.trivyignore`) and a reason comment, or block the release.\n3. Do not raise `--fail-on` to make the job pass.\n\n## 3. Sign the image\n\nPrefer keyless signing with the pipeline OIDC identity.\n\n- GitLab: add `id_tokens: SIGSTORE_ID_TOKEN: aud: sigstore` to the job.\n- GitHub: set `permissions: id-token: write`.\n\n```bash\ncosign sign --yes \"$IMAGE\"\ncosign attest --yes --type cyclonedx --predicate sbom.cdx.json \"$IMAGE\"\n```\n\nIf the project uses a key pair, read it from a KMS (`--key gcpkms://...`, `awskms://...`, `hashivault://...`).\nNever commit `cosign.key`.\n\n## 4. Verify before deploy\n\n```bash\ncosign verify \"$IMAGE\" \\\n  --certificate-identity-regexp '^https://gitlab.example.com/group/service//' \\\n  --certificate-oidc-issuer https://gitlab.example.com\ncosign verify-attestation --type cyclonedx \"$IMAGE\" ...same identity flags...\n```\n\n1. Add the verify step to the deploy job, before the deploy command.\n2. In Kubernetes, enforce the same identity with an admission policy (Kyverno `verifyImages` or Sigstore\n   policy-controller). Ask the user first before you enable enforcement on a production cluster.\n\n## 5. Done\n\n- The pipeline produces the SBOM, fails on high and critical findings, and signs the image by digest.\n- The deploy job verifies the signature and stops on a failed verification.\n"
+        },
+        {
+          "name": "secret-detection",
+          "description": "Procedure to scan a repository and its history for secrets with gitleaks, triage hits, rotate a leaked secret, and add the scan to pre-commit and CI. Use when a secret leaks or when you set up secret scanning.",
+          "path": "areas/devops/devsecops/skills/secret-detection/SKILL.md",
+          "body": "## 1. Scan\n\n```bash\ngitleaks dir . --redact --report-format json --report-path /tmp/gitleaks.json   # working tree\ngitleaks git . --redact --log-opts=\"--all\"                                       # full history\n```\n\nUse `--redact` so the output does not print the secret again.\n\n## 2. Triage each hit\n\n1. Open the file and line. Decide: real secret, test fixture, or false positive.\n2. A test fixture or false positive goes into `.gitleaks.toml` as an allowlist entry with a path or a regex and\n   a comment with the reason. Do not allowlist a whole directory of source code.\n3. A real secret is a leak, even if the branch was never merged. Go to step 3.\n\n## 3. Respond to a real leak\n\n1. Tell the user at once: which secret, where, and since which commit.\n2. Rotate first. Ask the user first, because revoking the old value can break running services. Create the\n   new value in the secret store, deploy it, then revoke the old one.\n3. Check the provider audit log for use of the old value between the leak commit and the revocation.\n4. Remove the value from the code and read it from the environment or the secret store.\n5. Rewrite history only if the user asks: `git filter-repo --replace-text <file>` needs a force push and every\n   clone to re-clone. Rotation is required either way; history rewrite does not undo the leak.\n\n## 4. Prevent the next leak\n\n1. Add the pre-commit hook:\n\n```yaml\n- repo: https://github.com/gitleaks/gitleaks\n  rev: v8.21.2\n  hooks:\n    - id: gitleaks\n```\n\n2. Add a CI job that fails on a hit:\n   - GitLab: include the `Jobs/Secret-Detection.gitlab-ci.yml` template, or run\n     `gitleaks git . --redact --log-opts=\"$CI_MERGE_REQUEST_DIFF_BASE_SHA..HEAD\"` in a job.\n   - GitHub: run `gitleaks git . --redact` in a job, or enable push protection in the repository settings.\n3. Add `.env` and key file patterns (`*.pem`, `*.key`) to `.gitignore`.\n\n## 5. Done\n\n- The full-history scan has no untriaged hits.\n- Every real secret is rotated, and the old value is revoked.\n- Pre-commit and CI run the scan.\n"
+        }
+      ],
       "workflows": [
         {
           "trigger": "/security-scan",
@@ -55,6 +249,7 @@
           "description": "Scan code, dependencies, images, and IaC, triage the findings, and add the scans as pipeline gates.",
           "workflow_path": "areas/devops/devsecops/workflows/security-scan.md",
           "use_when": "The request asks to run or add SAST, secret, dependency, container image or IaC scans, to triage scanner findings, or to produce an SBOM or signed image.",
+          "avoid_when": "Designing or building the release pipeline itself; use the release pipeline workflow.",
           "inputs": [
             "repository_or_image",
             "scan_scope"
@@ -64,11 +259,24 @@
             "pipeline_gate",
             "accepted_risks"
           ],
-          "roles": [],
           "related_rules": [
             "shift-left-policy.md",
             "container-security.md",
             "policy-as-code.md"
+          ],
+          "rule_refs": [
+            {
+              "name": "shift-left-policy",
+              "path": "areas/devops/devsecops/rules/shift-left-policy.md"
+            },
+            {
+              "name": "container-security",
+              "path": "areas/devops/devsecops/rules/container-security.md"
+            },
+            {
+              "name": "policy-as-code",
+              "path": "areas/devops/devsecops/rules/policy-as-code.md"
+            }
           ],
           "uses_skills": [
             "secret-detection",
@@ -84,8 +292,34 @@
               "path": "areas/devops/devsecops/skills/sbom-supply-chain/SKILL.md"
             }
           ],
-          "quality_gates": [],
-          "workflow_diagram": "",
+          "checks": [],
+          "artifacts": [
+            ".gitlab-ci.yml",
+            ".github/workflows/*.yml"
+          ],
+          "steps": [
+            {
+              "title": "Run the scans",
+              "do": "run the scanners that match the scope from the repository root, with pinned versions: `semgrep scan --config auto`, `gitleaks detect --redact`, `trivy fs --severity HIGH,CRITICAL .`, `trivy image <image>@<digest>`, `checkov -d <iac-dir>`. Save machine output (`--format sarif` or `json`).",
+              "done_when": "each scanner exits and you have its findings count by severity."
+            },
+            {
+              "title": "Triage",
+              "do": "for each `HIGH` or `CRITICAL` finding, check reachability and exposure and classify it: `fix-now`, `false-positive` (with evidence), or `accepted-risk` (with owner and expiry). For a leaked secret, follow `secret-detection`: rotate first, then remove.",
+              "done_when": "every high and critical finding has a class and a reason."
+            },
+            {
+              "title": "Fix",
+              "do": "upgrade dependencies and base images, change code or IaC, and record each false positive in the scanner ignore file (`.semgrepignore`, `.trivyignore`, `.gitleaksignore`) with a reason and expiry.",
+              "done_when": "a re-run shows no unclassified `HIGH` or `CRITICAL` finding."
+            },
+            {
+              "title": "Gate the pipeline",
+              "do": "add the scans as blocking jobs on merge requests, and add SBOM and image signing with `sbom-supply-chain`. Ask the user first before you change protected branch settings or production admission policies.",
+              "done_when": "a merge request with a new critical finding fails the pipeline, and the docs page lists the scanners, thresholds, and accepted risks."
+            }
+          ],
+          "body": "",
           "examples": [
             "Add a pre-release security gate for payment-service v2.5.0: semgrep, trivy for the repo and the image, gitleaks, and checkov."
           ]
@@ -94,6 +328,96 @@
     },
     {
       "area": "devops/infrastructure",
+      "group": "devops",
+      "spec": "infrastructure",
+      "summary": "Infrastructure as code with Terraform and Ansible: modules, state, secrets, and drift.",
+      "agents_path": "areas/devops/infrastructure/AGENTS.md",
+      "rules": [
+        {
+          "name": "ansible-standards",
+          "description": "Role layout, idempotency, inventory, and test requirements for Ansible playbooks and roles.",
+          "paths": [
+            "**/playbooks/**",
+            "**/roles/**",
+            "**/inventory/**",
+            "**/group_vars/**",
+            "**/host_vars/**",
+            "ansible.cfg",
+            "**/requirements.yml"
+          ],
+          "trigger": "",
+          "path": "areas/devops/infrastructure/rules/ansible-standards.md",
+          "body": "- Keep each role in `roles/<name>/` with `tasks/main.yml`, `defaults/main.yml`, `handlers/main.yml`, and `meta/main.yml`.\n- Put every overridable variable with a safe default in `defaults/main.yml`; put internal constants in `vars/main.yml`.\n- Use fully qualified module names (`ansible.builtin.apt`, `ansible.builtin.template`).\n- Write idempotent tasks: use `state:` modules instead of `command` or `shell`; add `creates:`, `removes:`, or `changed_when:` when `command` is unavoidable.\n- Trigger service restarts through `notify:` handlers, not through unconditional restart tasks.\n- Set `validate:` on `template` and `copy` tasks for config files that have a checker (`sshd -t -f %s`, `visudo -cf %s`).\n- Name every task and play with `name:`.\n- Keep one inventory directory per environment (`inventory/staging/`, `inventory/production/`); never mix hosts of two environments in one file.\n- Use RFC 5737 addresses (`192.0.2.10`) or host names in examples; never commit real internal host addresses to a public repository.\n- Pin collections and roles with exact versions in `requirements.yml`.\n- Run `ansible-lint` and `ansible-playbook --syntax-check` in CI on every change.\n- Test roles with `molecule test` and require a second converge run to report `changed=0`.\n- Run every production playbook with `--check --diff` first and review the output before the real run.\n"
+        },
+        {
+          "name": "iac-standards",
+          "description": "Layout, version pinning, naming, tagging, and review checks for Terraform code.",
+          "paths": [
+            "**/*.tf",
+            "**/*.tfvars",
+            "**/.terraform.lock.hcl",
+            "**/terragrunt.hcl"
+          ],
+          "trigger": "",
+          "path": "areas/devops/infrastructure/rules/iac-standards.md",
+          "body": "- Keep reusable modules in `modules/<name>/` without environment-specific values; keep `environments/<env>/` for tfvars and backend config.\n- Set `required_version` with an upper bound (for example `\">= 1.9, < 2.0\"`) in every root module.\n- Pin every provider in `required_providers` with a `~>` constraint and commit `.terraform.lock.hcl`.\n- Pin module sources to a version tag (`?ref=v1.4.2` or `version = \"1.4.2\"`); never use `?ref=main` or a branch name.\n- Name resources with the pattern `${var.project}-${var.environment}-${var.name}`.\n- Add the tags `Project`, `Environment`, `ManagedBy = \"terraform\"`, `Owner`, and `CostCenter` to every taggable resource (use provider `default_tags` where available).\n- Declare `type` and `description` for every variable and `description` for every output.\n- Add `validation` blocks for variables with a closed set of values (environment names, sizes).\n- Use `for_each` with stable keys instead of `count` for collections of named resources.\n- Use `moved` blocks to rename or restructure resources instead of destroy and create.\n- Set `prevent_destroy = true` in `lifecycle` for databases, state buckets, and KMS keys.\n- Run `terraform fmt -check`, `terraform validate`, and `tflint` in CI on every change.\n- Post the `terraform plan` output to the merge request and apply only the reviewed plan file (`terraform apply <planfile>`).\n- Apply only from CI; never run `terraform apply` against staging or production from a workstation.\n"
+        },
+        {
+          "name": "immutability",
+          "description": "No in-place changes to running infrastructure, drift checks, and the emergency change path.",
+          "paths": [
+            "**/*.tf",
+            "**/*.tfvars",
+            "**/packer/**",
+            "**/*.pkr.hcl"
+          ],
+          "trigger": "",
+          "path": "areas/devops/infrastructure/rules/immutability.md",
+          "body": "- Fix a running server with a new image and a redeploy; never patch it over SSH or in the cloud console.\n- Change production resources only through Terraform code; do not use the console, CLI, or SDK for them.\n- Build machine images with Packer (`*.pkr.hcl`) and reference them by image ID or digest, not by a `latest` name filter.\n- Use `create_before_destroy = true` for resources that serve traffic during replacement.\n- Run a scheduled drift check (`terraform plan -detailed-exitcode`) at least every 6 hours for each production state.\n- Tag each drift finding `accept`, `remediate`, or `investigate`; fix a `remediate` finding within 48 hours.\n- Create a P1 incident for drift of unknown origin and for any drift in security groups or IAM `policy` resources.\n- Allow a manual production change only during a P0 incident and merge the matching IaC change within 24 hours.\n"
+        },
+        {
+          "name": "secret-hygiene",
+          "description": "Keep secrets out of Terraform and Ansible code, variables, and state.",
+          "paths": [
+            "**/*.tf",
+            "**/*.tfvars",
+            "**/group_vars/**",
+            "**/host_vars/**",
+            "**/inventory/**"
+          ],
+          "trigger": "",
+          "path": "areas/devops/infrastructure/rules/secret-hygiene.md",
+          "body": "- Never write a password, token, or private key as a literal in a `.tf`, `.tfvars`, or Ansible vars file.\n- Read secrets at apply time from a secret manager data source (`aws_secretsmanager_secret_version`, `vault_kv_secret_v2`, `google_secret_manager_secret_version`).\n- Prefer generated secrets (`random_password`) written straight to the secret manager over values passed in variables.\n- Set `sensitive = true` on every variable and output that holds a secret; never override it to `false`.\n- Encrypt Ansible secrets with `ansible-vault` or look them up from Vault; never commit plain-text secrets in `group_vars/` or `host_vars/`.\n- Inject runtime secrets into Kubernetes with External Secrets Operator or a CSI secret driver; do not set them as Terraform string literals in pod env.\n- Add a `gitleaks` or `trufflehog` pre-commit hook and CI job to every infrastructure repository.\n- Rotate a leaked secret first, then remove it from Git history with `git filter-repo`, then check the access logs for its use.\n"
+        },
+        {
+          "name": "state-management",
+          "description": "Remote backend, isolation, locking, protection, and safe state operations for Terraform state.",
+          "paths": [
+            "**/backend.tf",
+            "**/backend*.hcl",
+            "**/versions.tf",
+            "**/terragrunt.hcl",
+            "**/*.tf"
+          ],
+          "trigger": "",
+          "path": "areas/devops/infrastructure/rules/state-management.md",
+          "body": "- Use a remote backend (`s3`, `gcs`, `azurerm`, or HCP Terraform) for every non-local environment.\n- Keep one state per `environment/component` key; never share a state between staging and production.\n- Use separate buckets (or accounts) for staging and production state.\n- Enable state locking (`use_lockfile = true` or `dynamodb_table` for S3; built-in for GCS) and never disable it.\n- Enable versioning, encryption with a KMS key (`encrypt = true`, `kms_key_id`), and a public access block on the state bucket.\n- Limit state bucket access to CI roles and on-call engineers with MFA.\n- Do not read `terraform_remote_state` across environment boundaries; publish shared values to SSM Parameter Store or another key-value store.\n- Use `import` blocks (Terraform 1.5+) to adopt existing resources and require `terraform plan` to show no changes after import.\n- Prefer `moved` blocks over `terraform state mv`; run `terraform state pull > backup-<date>.tfstate` before any `state mv` or `state rm`.\n- Run `terraform force-unlock <LOCK_ID>` only after you confirm that no apply job holds the lock.\n- Never delete old state versions from the bucket by hand.\n"
+        }
+      ],
+      "skills": [
+        {
+          "name": "drift-detection",
+          "description": "Procedure to detect and resolve drift between Terraform/OpenTofu code, state, and real infrastructure with plan -detailed-exitcode, import, and refresh-only. Use when a plan shows unexpected changes or when you set up scheduled drift checks.",
+          "path": "areas/devops/infrastructure/skills/drift-detection/SKILL.md",
+          "body": "Drift means the real resources differ from the code. Resolve it in code; do not hide it.\n\n## 1. Detect\n\n```bash\nterraform init -input=false\nterraform plan -input=false -lock=false -detailed-exitcode -out=drift.tfplan\necho $?   # 0 = no changes, 1 = error, 2 = changes (drift or unapplied code)\nterraform show -no-color drift.tfplan > drift.txt\n```\n\nUse `tofu` instead of `terraform` if the project uses OpenTofu. Run against every environment directory or\nworkspace that the task names.\n\n## 2. Classify each changed resource\n\nRead `drift.txt` and sort every resource into one class:\n\n1. **Unapplied code** — the code changed on the default branch but nobody applied it. Check `git log` for the\n   module. Resolution: apply through the normal pipeline.\n2. **Manual change** — someone changed the resource in the console or with a CLI. Check the cloud audit log\n   (CloudTrail, GCP Audit Logs, Azure Activity Log) for the actor and time.\n3. **Provider-side default** — the provider or service sets a value the code does not set, and the plan shows it\n   on every run. Resolution: set the value in code, or add the attribute to `lifecycle { ignore_changes = [...] }`\n   with a comment that names the reason.\n4. **Resource outside state** — the resource exists but state does not track it.\n\n## 3. Resolve\n\n- Manual change that must stay: copy the value into the code, then run `plan` again until it shows no change.\n- Manual change that must go: keep the code. The next apply reverts it. Ask the user first before that apply.\n- Resource outside state: add an `import` block and plan:\n\n```hcl\nimport {\n  to = aws_s3_bucket.logs\n  id = \"group-service-logs\"\n}\n```\n\n- Changed outputs or data sources only: run `terraform apply -refresh-only` to update state. Ask the user first;\n  it writes state.\n- Never run `terraform state rm` to make drift disappear unless the user wants to stop managing the resource.\n\n## 4. Verify\n\n1. Run step 1 again. The exit code must be `0`, or every remaining change must be a planned code change.\n2. Commit the code changes with the drift cause in the commit body.\n\n## 5. Schedule the check (optional)\n\n- GitLab: a scheduled pipeline job runs step 1 and fails on exit code `2`. Use a read-only cloud role.\n- GitHub: a workflow with `on: schedule` runs the same job with OIDC credentials for a read-only role.\n- Send the failure to the team channel or open an issue with `drift.txt` attached. Do not apply from the\n  scheduled job.\n"
+        },
+        {
+          "name": "terraform-modules",
+          "description": "Procedure to create or change a Terraform/OpenTofu module: inputs and outputs, version pins, fmt/validate/tflint/test, and safe renames with moved blocks. Use when you edit *.tf files of a module or move resources between modules.",
+          "path": "areas/devops/infrastructure/skills/terraform-modules/SKILL.md",
+          "body": "## 1. Read the module and its callers\n\n1. Open `variables.tf`, `outputs.tf`, `versions.tf`, and `main.tf` of the module.\n2. Find every caller: `grep -rn 'source *= *\".*<module-name>' --include=*.tf .`\n3. If the module is published with a version (registry or git tag), check which versions the callers pin.\n\n## 2. Change the interface\n\n1. Give every new variable a `type`, a `description`, and a `validation` block when the value has a fixed form.\n2. Give a new variable a `default` only if every caller can use it. A variable without a default is a breaking\n   change for callers.\n3. Mark secrets `sensitive = true` in variables and outputs.\n4. Do not rename or delete a variable or an output that a caller uses. Add the new one, keep the old one with a\n   deprecation note in its `description`, and remove it in a later major version.\n5. Pin providers in `versions.tf` with `required_providers` and a `~>` constraint, and set `required_version`.\n\n## 3. Rename or move resources without destroy\n\nA changed resource address makes Terraform destroy and recreate the resource. Add a `moved` block instead:\n\n```hcl\nmoved {\n  from = aws_s3_bucket.this\n  to   = aws_s3_bucket.logs\n}\n```\n\n- Moving a resource into a child module: `from = aws_s3_bucket.logs`, `to = module.logs.aws_s3_bucket.this`.\n- Moving between state files needs `terraform state mv` or `removed` + `import` blocks. Ask the user first; it\n  writes state.\n\n## 4. Check\n\n```bash\nterraform fmt -recursive -check\nterraform init -backend=false && terraform validate\ntflint --recursive\nterraform test            # if the module has tests/*.tftest.hcl\n```\n\n1. Add or update a `tests/<name>.tftest.hcl` with `command = plan` for each new input combination.\n2. Run `terraform plan` in one caller environment. The plan must show no `destroy` or `forces replacement` line\n   that the task did not ask for. Look for `# forces replacement` in the output.\n3. If the plan replaces a stateful resource (database, bucket, volume), stop and tell the user.\n\n## 5. Release\n\n1. Update the module `README.md` inputs and outputs table (`terraform-docs markdown table . > README.md` if the\n   project uses terraform-docs).\n2. If the module is versioned, bump the major version for a breaking interface change, the minor version for a\n   new input or output.\n3. Applying the change to an environment goes through the pipeline. Ask the user first before any\n   `terraform apply`.\n"
+        }
+      ],
       "workflows": [
         {
           "trigger": "/iac-change",
@@ -101,6 +425,7 @@
           "description": "Provision, change, fix drift in, or destroy infrastructure through Terraform or Ansible with a reviewed plan.",
           "workflow_path": "areas/devops/infrastructure/workflows/iac-change.md",
           "use_when": "The request asks to provision, change, import, fix drift in, or destroy cloud or server infrastructure defined in Terraform, OpenTofu or Ansible.",
+          "avoid_when": "Kubernetes workload manifests or Helm values only; use the workload workflow.",
           "inputs": [
             "environment",
             "requested_change"
@@ -110,13 +435,34 @@
             "reviewed_plan",
             "docs_page"
           ],
-          "roles": [],
           "related_rules": [
             "iac-standards.md",
             "state-management.md",
             "immutability.md",
             "secret-hygiene.md",
             "ansible-standards.md"
+          ],
+          "rule_refs": [
+            {
+              "name": "iac-standards",
+              "path": "areas/devops/infrastructure/rules/iac-standards.md"
+            },
+            {
+              "name": "state-management",
+              "path": "areas/devops/infrastructure/rules/state-management.md"
+            },
+            {
+              "name": "immutability",
+              "path": "areas/devops/infrastructure/rules/immutability.md"
+            },
+            {
+              "name": "secret-hygiene",
+              "path": "areas/devops/infrastructure/rules/secret-hygiene.md"
+            },
+            {
+              "name": "ansible-standards",
+              "path": "areas/devops/infrastructure/rules/ansible-standards.md"
+            }
           ],
           "uses_skills": [
             "terraform-modules",
@@ -132,8 +478,41 @@
               "path": "areas/devops/infrastructure/skills/drift-detection/SKILL.md"
             }
           ],
-          "quality_gates": [],
-          "workflow_diagram": "",
+          "checks": [
+            "terraform fmt -check -recursive",
+            "terraform validate"
+          ],
+          "artifacts": [
+            "docs/<environment>.md"
+          ],
+          "steps": [
+            {
+              "title": "Read the current state",
+              "do": "find the root module and backend for the environment. Run `terraform init` and `terraform plan -detailed-exitcode -lock=false` against the current code. For Ansible, run `ansible-playbook --check --diff` with the target inventory.",
+              "done_when": "you know whether the code and the real infrastructure match (exit code 0 or 2) and list any drift."
+            },
+            {
+              "title": "Change the code",
+              "do": "follow the step that matches the request: provision or change — edit modules and variables with pinned provider and module versions; drift — decide per resource whether code or reality is right, then update code or use `import` and `moved` blocks; destroy — remove the resources from code and check `prevent_destroy` and backups first.",
+              "done_when": "`terraform fmt -check` and `terraform validate` pass, and secrets come only from variables or a secret store."
+            },
+            {
+              "title": "Review the plan",
+              "do": "run `terraform plan -out=tfplan` and read every replace and destroy action. Explain each one. For a destroy or replace of a stateful resource (database, volume, bucket), name the backup and the restore test.",
+              "done_when": "the plan shows only the expected adds, changes, and destroys."
+            },
+            {
+              "title": "Apply",
+              "do": "ask the user first before `terraform apply`, `terraform destroy`, `terraform state` commands, or a non-check Ansible run. Apply only the reviewed `tfplan`. Prefer the CI pipeline apply job when one exists.",
+              "done_when": "the apply finishes and a new `terraform plan -detailed-exitcode` returns 0."
+            },
+            {
+              "title": "Document",
+              "do": "update the environment docs page (resources, inputs, outputs, how to recreate). Run every command in `checks`.",
+              "done_when": "all `checks` commands exit 0 and the docs page matches the applied state."
+            }
+          ],
+          "body": "",
           "examples": [
             "Provision a staging environment with Terraform: private network 10.20.0.0/16, three worker VMs, and one load balancer."
           ]
@@ -142,6 +521,79 @@
     },
     {
       "area": "devops/kubernetes",
+      "group": "devops",
+      "spec": "kubernetes",
+      "summary": "Kubernetes clusters and workloads: manifests, Helm charts, resources, security, and upgrades.",
+      "agents_path": "areas/devops/kubernetes/AGENTS.md",
+      "rules": [
+        {
+          "name": "cluster-standards",
+          "description": "Control plane, node, runtime, CNI, and exposure standards for Kubernetes clusters and their config.",
+          "paths": [
+            "**/clusters/**",
+            "**/cluster/**",
+            "**/kubeadm*.yaml",
+            "**/talos/**",
+            "**/eks/**",
+            "**/gke/**"
+          ],
+          "trigger": "",
+          "path": "areas/devops/kubernetes/rules/cluster-standards.md",
+          "body": "- Run at least 3 control plane nodes across 3 failure domains in production; allow a single control plane node only in clusters labelled `env=dev`.\n- Never schedule etcd on worker nodes.\n- Use a managed control plane (EKS, GKE, AKS) or kubeadm, RKE2, k3s, or Talos for self-managed clusters.\n- Use `containerd` as the container runtime; never use Docker Engine as the CRI.\n- Keep the same OS image and kernel version within a node group.\n- Add the labels `topology.kubernetes.io/zone`, `topology.kubernetes.io/region`, `node.kubernetes.io/instance-type`, and `environment` to every node.\n- Use Cilium for new clusters; use Calico only for existing clusters; never use Flannel outside dev clusters.\n- Choose pod and service CIDR ranges that do not overlap each other or the routed network.\n- Expose production services through `Ingress`, `Gateway`, or `type: LoadBalancer`; do not use `NodePort` in production.\n- Enable etcd encryption at rest with an `EncryptionConfiguration` that uses a KMS or `aescbc` provider.\n- Enable API server audit logging and ship the audit log to central storage.\n"
+        },
+        {
+          "name": "resource-governance",
+          "description": "Resource requests and limits, probes, autoscaling, disruption budgets, and quotas for Kubernetes workloads.",
+          "paths": [
+            "**/k8s/**",
+            "**/kubernetes/**",
+            "**/manifests/**",
+            "**/charts/**",
+            "**/kustomization.yaml",
+            "**/values*.yaml"
+          ],
+          "trigger": "",
+          "path": "areas/devops/kubernetes/rules/resource-governance.md",
+          "body": "- Set `resources.requests.cpu`, `resources.requests.memory`, and `resources.limits.memory` for every container.\n- Set `limits.memory` equal to `requests.memory` for stateful and tier 1 workloads (`Guaranteed` QoS for memory).\n- Never deploy a `BestEffort` pod (no resources block) to a production namespace.\n- Derive requests from observed usage: set CPU requests near the p95 of `container_cpu_usage_seconds_total` rate and memory requests near the p95 working set plus 20 %.\n- Add `readinessProbe` and `livenessProbe` to every serving container; add `startupProbe` when start takes over 30 seconds.\n- Do not point `livenessProbe` at an endpoint that checks downstream dependencies.\n- Add a `HorizontalPodAutoscaler` with `minReplicas: 2` or more for tier 1 stateless workloads.\n- Do not set a fixed `replicas` value in the manifest when an HPA manages the deployment.\n- Add a `PodDisruptionBudget` with `minAvailable` or `maxUnavailable` for every workload with 2 or more replicas.\n- Add `topologySpreadConstraints` on `topology.kubernetes.io/zone` with `maxSkew: 1` for tier 1 workloads.\n- Add a `LimitRange` with default requests and limits to every production namespace.\n- Add a `ResourceQuota` to every production namespace.\n- Set `terminationGracePeriodSeconds` longer than the longest request timeout of the service.\n"
+        },
+        {
+          "name": "upgrade-policy",
+          "description": "Version skew limits, cadence, pre-checks, and order for Kubernetes cluster upgrades.",
+          "paths": [],
+          "trigger": "manual",
+          "path": "areas/devops/kubernetes/rules/upgrade-policy.md",
+          "body": "- Keep production clusters within 2 minor versions of the latest stable Kubernetes release.\n- Apply patch versions to every cluster within 30 days of release.\n- Upgrade one minor version at a time; never skip a minor version.\n- Upgrade dev and staging first; upgrade production within 60 days after the staging upgrade passed.\n- Keep nodes at most 2 minor versions behind the control plane, and never run `kubelet` newer than `kube-apiserver`.\n- Keep `kubectl` within one minor version of the server.\n- Check that cert-manager, the ingress controller, the CNI, and the GitOps controller list the target version as supported before the upgrade.\n- Run `kubent` or `pluto detect-all-in-cluster` and remove every deprecated API before the upgrade.\n- Take and verify an etcd snapshot within 1 hour before a self-managed control plane upgrade.\n- Check that every node is `Ready` and that no `PodDisruptionBudget` blocks a drain (`ALLOWED DISRUPTIONS` above 0).\n- Do not start an upgrade during an open P0 or P1 incident.\n- Upgrade the control plane before the nodes, one control plane node at a time.\n- Upgrade worker nodes with `kubectl cordon`, `kubectl drain --ignore-daemonsets --delete-emptydir-data`, upgrade, and `kubectl uncordon`.\n- Write the rollback steps (etcd snapshot restore, previous node image) in the upgrade merge request before you start.\n"
+        },
+        {
+          "name": "workload-security",
+          "description": "Pod security, service accounts, RBAC, network policies, and secrets for Kubernetes workloads.",
+          "paths": [
+            "**/k8s/**",
+            "**/kubernetes/**",
+            "**/manifests/**",
+            "**/charts/**",
+            "**/kustomization.yaml",
+            "**/rbac/**"
+          ],
+          "trigger": "",
+          "path": "areas/devops/kubernetes/rules/workload-security.md",
+          "body": "- Pin container images in production manifests by `@sha256` digest; never use the `latest` tag.\n- Label production namespaces `pod-security.kubernetes.io/enforce: restricted` and staging namespaces `enforce: baseline`.\n- Set `runAsNonRoot: true`, a non-zero `runAsUser`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, `capabilities.drop: [\"ALL\"]`, and `seccompProfile.type: RuntimeDefault` on every container.\n- Mount an `emptyDir` volume for paths the application writes, such as `/tmp`.\n- Never set `privileged: true`, `hostNetwork`, `hostPID`, or `hostIPC` in a workload namespace.\n- Create a dedicated `ServiceAccount` per workload; never use the `default` service account.\n- Set `automountServiceAccountToken: false` unless the pod calls the Kubernetes API.\n- Use a namespaced `Role` and `RoleBinding`; use a `ClusterRole` only for cross-namespace access and document the reason in an annotation.\n- Never bind `cluster-admin` or the `system:masters` group to an application identity.\n- Do not use wildcard `*` in `verbs`, `resources`, or `apiGroups` of a Role or ClusterRole.\n- Check every new Role with `kubectl auth can-i --list --as=system:serviceaccount:<ns>:<sa>`.\n- Add a `default-deny-all` NetworkPolicy (`podSelector: {}`, `policyTypes: [Ingress, Egress]`) to every namespace.\n- Allow egress to DNS (UDP and TCP port 53 to `kube-dns`) explicitly in namespaces with default deny.\n- Allow ingress per workload with `podSelector` and `namespaceSelector` on labels; do not allow `0.0.0.0/0` ingress to pods.\n- Never put secrets in a `ConfigMap` or as literal `env` values; sync them with External Secrets Operator from a secret manager.\n"
+        }
+      ],
+      "skills": [
+        {
+          "name": "helm-charts",
+          "description": "Procedure to change a Helm chart: edit values and templates, lint, render, validate against the cluster schema, diff against the live release, and bump the chart version. Use when you edit files under charts/ or a Chart.yaml.",
+          "path": "areas/devops/kubernetes/skills/helm-charts/SKILL.md",
+          "body": "## 1. Read the chart\n\n1. Open `Chart.yaml`, `values.yaml`, and the templates the task touches.\n2. Find the values files per environment (`values-<env>.yaml`, a helmfile, or an Argo CD / Flux manifest).\n3. List chart dependencies: `helm dependency list charts/<name>`.\n\n## 2. Make the change\n\n1. Put every value that differs per environment in `values.yaml` with a safe default and a comment.\n2. Use `required` for values without a safe default: `{{ required \"image.tag is required\" .Values.image.tag }}`.\n3. Quote string values in templates: `{{ .Values.name | quote }}`.\n4. Keep resources, probes, and security context configurable; do not hard-code them in a template.\n5. If the chart has `values.schema.json`, add the new value to it.\n6. Bump `version` in `Chart.yaml` for any chart change. Bump `appVersion` only when the default image changes.\n\n## 3. Lint and render\n\n```bash\nhelm dependency update charts/<name>\nhelm lint charts/<name> -f charts/<name>/values-<env>.yaml\nhelm template test charts/<name> -f charts/<name>/values-<env>.yaml > /tmp/rendered.yaml\nkubeconform -strict -summary -kubernetes-version <cluster-version> /tmp/rendered.yaml\n```\n\n1. Render every environment values file, not only the default one.\n2. Read the rendered output for the changed objects. Check names, labels, selectors, and image tags.\n3. If the chart has unit tests (`helm unittest charts/<name>`), add a test for the change.\n\n## 4. Diff against the live release\n\n```bash\nhelm diff upgrade <release> charts/<name> -n <namespace> -f charts/<name>/values-<env>.yaml\n```\n\n1. This step reads the cluster. Ask the user first which context and namespace to use.\n2. Check the diff for changes to immutable fields (`spec.selector`, `volumeClaimTemplates`). These fail the\n   upgrade and need a delete and recreate; stop and tell the user.\n3. Check that no Secret or PersistentVolumeClaim is deleted.\n\n## 5. Release\n\n1. If GitOps (Argo CD, Flux) deploys the chart, commit the change and let the controller sync it.\n2. If the pipeline runs `helm upgrade`, it must use `--atomic --wait --timeout <n>m`.\n3. Ask the user first before you run `helm upgrade`, `helm install`, or `helm rollback` against a cluster.\n4. After the upgrade: `helm status <release> -n <namespace>` and `kubectl rollout status` for each changed\n   workload.\n"
+        },
+        {
+          "name": "pod-troubleshooting",
+          "description": "Decision procedure to find why a Kubernetes pod is Pending, CrashLoopBackOff, OOMKilled, ImagePullBackOff, not Ready, or unreachable, with read-only kubectl commands. Use when a workload does not start or does not serve traffic.",
+          "path": "areas/devops/kubernetes/skills/pod-troubleshooting/SKILL.md",
+          "body": "All commands in steps 1–4 are read-only. Confirm the context first: `kubectl config current-context`.\n\n## 1. Get the state\n\n```bash\nkubectl get pods -n <ns> -l app=<name> -o wide\nkubectl describe pod <pod> -n <ns>          # read Events at the bottom\nkubectl get events -n <ns> --sort-by=.lastTimestamp | tail -20\n```\n\n## 2. Follow the status\n\n- **Pending**\n  - Event `Insufficient cpu/memory`: requests are larger than free node capacity. Compare with\n    `kubectl describe nodes | grep -A5 Allocated`.\n  - Event `didn't match node affinity/selector` or `untolerated taint`: check `nodeSelector`, `affinity`, and\n    `tolerations`.\n  - Event `unbound PersistentVolumeClaim`: `kubectl get pvc -n <ns>` and check the StorageClass.\n- **ImagePullBackOff / ErrImagePull**\n  - Check the image name and tag in the event. Check `imagePullSecrets` and that the registry allows the node.\n- **CrashLoopBackOff**\n  - Read the previous container log: `kubectl logs <pod> -n <ns> -c <container> --previous`.\n  - Exit code `1` or a stack trace: an application error; read config and env with\n    `kubectl get pod <pod> -n <ns> -o yaml`.\n  - Missing ConfigMap or Secret key: the event says `couldn't find key`.\n- **OOMKilled** (`Last State: Terminated, Reason: OOMKilled`)\n  - Compare `kubectl top pod <pod> -n <ns>` with `resources.limits.memory`. For the JVM, check that\n    `-XX:MaxRAMPercentage` fits the limit. For Go, check `GOMEMLIMIT`.\n- **Running but not Ready**\n  - Read the readiness probe in `describe`. Run the probe from inside:\n    `kubectl exec <pod> -n <ns> -- wget -qO- localhost:<port><path>`.\n- **Ready but unreachable**\n  - `kubectl get endpointslices -n <ns> -l kubernetes.io/service-name=<svc>` must list the pod IPs.\n  - Compare the Service `selector` and `targetPort` with the pod labels and container port.\n  - Check NetworkPolicies in the namespace: `kubectl get networkpolicy -n <ns>`.\n  - Test from a debug pod: `kubectl debug -n <ns> -it <pod> --image=busybox:1.36 -- wget -qO- <svc>:<port>`.\n\n## 3. Check recent changes\n\n```bash\nkubectl rollout history deployment/<name> -n <ns>\nkubectl diff -f <manifest-or-rendered-chart>\n```\n\nCompare the failing revision with the last working one. A change in image, env, or config is the first suspect.\n\n## 4. Write down the cause\n\nState the cause with the event, log line, or metric that proves it.\n\n## 5. Fix\n\n1. Fix the cause in the manifest, chart values, or application code, and ship it through the normal pipeline.\n2. Ask the user first before any change in the cluster: `kubectl rollout undo`, `kubectl delete pod`,\n   `kubectl scale`, `kubectl edit`, or `helm rollback`.\n3. After the fix: `kubectl rollout status deployment/<name> -n <ns>` returns success.\n"
+        }
+      ],
       "workflows": [
         {
           "trigger": "/debug-workload",
@@ -149,6 +601,7 @@
           "description": "Diagnose a failing Kubernetes workload and fix it in the manifests or Helm values.",
           "workflow_path": "areas/devops/kubernetes/workflows/debug-workload.md",
           "use_when": "The request reports a pod in CrashLoopBackOff, Pending, ImagePullBackOff, OOMKilled, failing probes, or a Service with no endpoints in Kubernetes.",
+          "avoid_when": "The application code has a bug that reproduces outside the cluster; use the debug workflow.",
           "inputs": [
             "workload",
             "namespace",
@@ -158,11 +611,24 @@
             "root_cause",
             "manifest_fix"
           ],
-          "roles": [],
           "related_rules": [
             "resource-governance.md",
             "workload-security.md",
             "cluster-standards.md"
+          ],
+          "rule_refs": [
+            {
+              "name": "resource-governance",
+              "path": "areas/devops/kubernetes/rules/resource-governance.md"
+            },
+            {
+              "name": "workload-security",
+              "path": "areas/devops/kubernetes/rules/workload-security.md"
+            },
+            {
+              "name": "cluster-standards",
+              "path": "areas/devops/kubernetes/rules/cluster-standards.md"
+            }
           ],
           "uses_skills": [
             "pod-troubleshooting",
@@ -178,8 +644,35 @@
               "path": "areas/devops/kubernetes/skills/helm-charts/SKILL.md"
             }
           ],
-          "quality_gates": [],
-          "workflow_diagram": "",
+          "checks": [
+            "helm lint <chart>"
+          ],
+          "artifacts": [
+            "charts/<chart>/values*.yaml"
+          ],
+          "steps": [
+            {
+              "title": "Read the state",
+              "do": "confirm the kube context with the user. Run read-only commands: `kubectl get pods -o wide`, `kubectl describe pod <pod>`, `kubectl get events --sort-by=.lastTimestamp`, and `kubectl logs <pod> --previous`. Note the exit code, the reason, and the last good revision (`helm history <release>`).",
+              "done_when": "you can state the pod phase, the container reason, and the time it started."
+            },
+            {
+              "title": "Find the cause",
+              "do": "follow the `pod-troubleshooting` skill for the reason you found. Compare the failing revision with the last good one: image digest, values, ConfigMap, Secret keys, resources, probes (`helm diff revision <release> <good> <bad>` or `git diff`).",
+              "done_when": "one change or limit explains the failure, backed by an event, a log line, or a metric."
+            },
+            {
+              "title": "Fix in source",
+              "do": "change the chart values, manifest, or application config in the repository, not with `kubectl edit`. Render and lint it (`helm template`, `helm lint`, `kubectl apply --dry-run=server` against a non-production cluster). Ask the user first before any command that writes to a cluster.",
+              "done_when": "the rendered manifest contains the fix and `helm lint` passes."
+            },
+            {
+              "title": "Roll out and verify",
+              "do": "ask the user first before `helm upgrade`, `kubectl rollout restart`, or a rollback. After the user runs or approves it, watch `kubectl rollout status` and the restarts count.",
+              "done_when": "all replicas are `Ready`, restarts stay at 0 for 10 minutes, and the docs page of the service notes the cause."
+            }
+          ],
+          "body": "",
           "examples": [
             "payment-service is in CrashLoopBackOff every 30 seconds since the v2.3.1 deploy; find the cause and fix it."
           ]
@@ -187,7 +680,168 @@
       ]
     },
     {
+      "area": "devops/networking",
+      "group": "devops",
+      "spec": "networking",
+      "summary": "Network zones, ingress, and TLS for services and clusters.",
+      "agents_path": "areas/devops/networking/AGENTS.md",
+      "rules": [
+        {
+          "name": "ingress-standards",
+          "description": "TLS, limits, timeouts, and CORS settings for Kubernetes Ingress and Gateway resources.",
+          "paths": [
+            "**/ingress*.yaml",
+            "**/ingress*.yml",
+            "**/gateway*.yaml",
+            "**/httproute*.yaml",
+            "**/charts/**/templates/ingress*.yaml"
+          ],
+          "trigger": "",
+          "path": "areas/devops/networking/rules/ingress-standards.md",
+          "body": "- Set `spec.ingressClassName` on every Ingress; do not rely on the default class annotation.\n- Add a `tls` block with a cert-manager issued secret to every production Ingress; never expose a production route over plain HTTP.\n- Enable the HTTP to HTTPS redirect (`nginx.ingress.kubernetes.io/ssl-redirect: \"true\"` or an `HTTPRoute` redirect filter).\n- Set rate limits on every public Ingress (for example `limit-rps: \"100\"` and `limit-connections: \"20\"`).\n- Set `proxy-body-size` explicitly (default `\"10m\"`) and document any larger value in the manifest.\n- Set `proxy-connect-timeout` and `proxy-read-timeout` explicitly (for example `\"10\"` and `\"60\"`).\n- Set CORS origins to an explicit list; never allow `*` origins on a production host.\n- Use one host per Ingress resource and name the resource after the host.\n- Do not enable `nginx.ingress.kubernetes.io/configuration-snippet` or `server-snippet` annotations.\n"
+        },
+        {
+          "name": "network-segmentation",
+          "description": "Network zones, subnet placement, and access paths for cloud and bare-metal networks defined as code.",
+          "paths": [
+            "**/network/**",
+            "**/vpc/**",
+            "**/firewall*.tf",
+            "**/security_group*.tf",
+            "**/*network*.tf"
+          ],
+          "trigger": "",
+          "path": "areas/devops/networking/rules/network-segmentation.md",
+          "body": "- Define four zones in the network module: public (load balancers), application (nodes and app servers), data (databases, queues, object storage), management (CI runners, bastion, monitoring).\n- Put Kubernetes nodes and application servers in private subnets; never set `associate_public_ip_address = true` on a node.\n- Do not add a NAT gateway or any `0.0.0.0/0` egress route to data subnets.\n- Allow inbound traffic to the data zone only from application zone security groups on the database or queue port.\n- Allow SSH to servers only through a bastion host or VPN with MFA; never open port 22 to `0.0.0.0/0`.\n- Use security group IDs (`source_security_group_id`) in rules instead of wide CIDR blocks.\n- Limit egress of CI runners and nodes to the registries and APIs they need with an egress `policy` or firewall rule.\n- Enable flow logs on every VPC or subnet in production.\n- Use mTLS between services when a service mesh (Istio, Linkerd) runs in the cluster; set `PeerAuthentication` to `STRICT`.\n"
+        },
+        {
+          "name": "tls-policy",
+          "description": "Protocol versions, certificate sources, renewal, and HSTS for TLS endpoints.",
+          "paths": [
+            "**/certificate*.yaml",
+            "**/cluster-issuer*.yaml",
+            "**/issuer*.yaml",
+            "**/ingress*.yaml",
+            "**/nginx*.conf",
+            "**/*lb*.tf"
+          ],
+          "trigger": "",
+          "path": "areas/devops/networking/rules/tls-policy.md",
+          "body": "- Set the minimum protocol to TLS 1.2 on every listener and disable TLS 1.0 and 1.1.\n- Enable TLS 1.3 on every listener that supports it.\n- Issue certificates with cert-manager `Certificate` or Ingress annotations; do not commit certificate or key files.\n- Use an ACME `ClusterIssuer` (Let's Encrypt) for public hosts and a Vault PKI or internal CA issuer for internal hosts.\n- Use the DNS-01 solver for wildcard certificates.\n- Set `renewBefore` so certificates renew with at least 30 days left.\n- Add an alert on `certmanager_certificate_expiration_timestamp_seconds` for certificates that expire in less than 14 days.\n- Add the `Strict-Transport-Security` header with `max-age` of at least `31536000` on every public HTTPS host.\n- Terminate TLS at the ingress or load balancer and re-encrypt to the pod when the traffic crosses an untrusted network.\n"
+        }
+      ],
+      "skills": [],
+      "workflows": []
+    },
+    {
+      "area": "devops/observability",
+      "group": "devops",
+      "spec": "observability",
+      "summary": "Metrics, logs, traces, dashboards, and alerts for production services.",
+      "agents_path": "areas/devops/observability/AGENTS.md",
+      "rules": [
+        {
+          "name": "alerting-standards",
+          "description": "Required labels, severities, burn-rate alerts, and routing for Prometheus alert rules and Alertmanager config.",
+          "paths": [
+            "**/alerts/**",
+            "**/*rules*.yml",
+            "**/*rules*.yaml",
+            "**/prometheus/**",
+            "**/alertmanager*.yml",
+            "**/alertmanager*.yaml",
+            "**/*prometheusrule*.yaml"
+          ],
+          "trigger": "",
+          "path": "areas/devops/observability/rules/alerting-standards.md",
+          "body": "- Add `severity`, `service`, and `team` labels and a `runbook_url` annotation to every alert rule.\n- Use only the severities `critical` (pages on-call), `warning` (team channel), and `info` (no notification).\n- Page only on symptoms that users see (error rate, latency, availability); route cause alerts such as CPU or disk to `warning` or `info`.\n- Define a fast-burn alert (1 h and 5 min windows, burn rate 14.4) and a slow-burn alert (6 h and 30 min windows, burn rate 6) for every SLO.\n- Route fast-burn alerts as `critical` and slow-burn alerts as `warning`.\n- Set a `for:` duration of at least `2m` on every alert that is not a burn-rate alert.\n- Delete or rewrite an alert that fired 5 times in 30 days without a human action.\n- Route alerts in Alertmanager by the `team` and `environment` labels; never page on-call for non-production alerts.\n- Set `repeat_interval` and an escalation receiver for unacknowledged `critical` alerts.\n- Add `inhibit_rules` so a cluster-wide or upstream alert suppresses the dependent service alerts.\n- Create silences with an author, a comment, and an end time; never create a silence without an end time.\n- Test every alert rule file with `promtool check rules` and `promtool test rules` in CI.\n- Limit auto-remediation to reversible actions (restart a stateless pod) and emit an event for every automatic action.\n"
+        },
+        {
+          "name": "data-retention",
+          "description": "Retention, sampling, and cardinality limits for metrics, logs, and traces in the observability stack.",
+          "paths": [
+            "**/prometheus*.yml",
+            "**/prometheus*.yaml",
+            "**/loki*.yaml",
+            "**/tempo*.yaml",
+            "**/otel*.yaml",
+            "**/otel*.yml",
+            "**/values-*observability*.yaml"
+          ],
+          "trigger": "",
+          "path": "areas/devops/observability/rules/data-retention.md",
+          "body": "- Keep raw Prometheus metrics for 15 days and downsampled metrics in long-term storage (Thanos, Mimir, VictoriaMetrics) for 1 year.\n- Keep logs hot for 30 days and in cold storage for 90 days, then delete them.\n- Keep traces for 7 days and do not archive them.\n- Never use `user_id`, `session_id`, `request_id`, or `trace_id` as a metric label.\n- Limit each service to the series budget set in its scrape config with `sample_limit`.\n- Drop unused high-cardinality series with `metric_relabel_configs` before ingestion.\n- Sample `DEBUG` logs at 1 % in production and keep all `INFO`, `WARN`, and `ERROR` logs.\n- Sample 10 % of traces at the head and keep every error trace and every trace slower than p99 with tail sampling.\n- Use recording rules for queries that dashboards run on raw high-volume metrics.\n- Redact secrets and personal data in the collector (`attributes` or `transform` processor) before export.\n"
+        },
+        {
+          "name": "golden-signals",
+          "description": "Golden-signal metrics, SLO coverage, and correlation that every production service exposes and dashboards show.",
+          "paths": [
+            "**/dashboards/**",
+            "**/grafana/**",
+            "**/servicemonitor*.yaml",
+            "**/podmonitor*.yaml",
+            "**/slo*.yaml",
+            "**/sloth/**"
+          ],
+          "trigger": "",
+          "path": "areas/devops/observability/rules/golden-signals.md",
+          "body": "- Expose request rate, error rate, and latency histogram metrics for every endpoint or operation (for example `http_server_request_duration_seconds`).\n- Expose saturation metrics: CPU, memory, connection pool use, and queue depth or worker concurrency.\n- Label error metrics by class (`4xx`, `5xx`, or domain error code) and keep the label set bounded.\n- Use histograms, not summaries, for latency so p50, p95, and p99 can be aggregated across pods.\n- Add a `ServiceMonitor` or `PodMonitor` (or a scrape config) for every production service.\n- Define at least one availability SLO and one latency SLO for every critical service and its main user journeys.\n- Put one dashboard per service in the repository with panels for rate, errors, p99 latency, saturation, and SLO burn.\n- Store dashboards as JSON or code (Grafonnet, Terraform) in the repository; do not edit production dashboards only in the UI.\n- Propagate W3C `traceparent` across every service call and message.\n- Write the `trace_id` into every log line so logs, metrics exemplars, and traces correlate.\n"
+        }
+      ],
+      "skills": [
+        {
+          "name": "prometheus-alertmanager",
+          "description": "Procedure to add or change a Prometheus alerting or recording rule and its Alertmanager route, with promtool unit tests and amtool route checks. Use when you edit Prometheus rule files, PrometheusRule objects, or alertmanager.yml.",
+          "path": "areas/devops/observability/skills/prometheus-alertmanager/SKILL.md",
+          "body": "## 1. Find where rules live\n\n1. Rule files (`*.rules.yml`, `rules/*.yml`) loaded by `rule_files:` in `prometheus.yml`, or `PrometheusRule`\n   objects for the Prometheus Operator, or a Helm chart values block.\n2. The Alertmanager config: `alertmanager.yml` or an `AlertmanagerConfig` object.\n3. Existing alerts for the same service: reuse their labels (`severity`, `team`, `service`).\n\n## 2. Write the query first\n\n1. Run the expression in the Prometheus UI or with `promtool query instant <url> '<expr>'` against real data.\n2. Alert on symptoms users see (error ratio, latency, saturation), not on every cause.\n3. Use a ratio for errors: `sum(rate(http_requests_total{code=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))`.\n4. If the query is expensive or reused, add a recording rule named `level:metric:operations`, for example\n   `service:http_requests:rate5m`.\n\n## 3. Write the rule\n\n```yaml\n- alert: CheckoutHighErrorRate\n  expr: service:http_errors:ratio_rate5m{service=\"checkout\"} > 0.05\n  for: 10m\n  labels:\n    severity: page\n  annotations:\n    summary: \"checkout 5xx ratio above 5% for 10m\"\n    runbook_url: \"https://wiki.example.com/runbooks/checkout-errors\"\n```\n\n- Set `for:` so one scrape spike does not page.\n- Use only the severities that the Alertmanager routes know (for example `page`, `ticket`).\n- Every paging alert has a `runbook_url`.\n\n## 4. Test the rule\n\n```bash\npromtool check rules rules/checkout.rules.yml\npromtool test rules tests/checkout.test.yml\n```\n\nWrite a unit test with `input_series` that fires the alert and one that does not:\n\n```yaml\nrule_files: [../rules/checkout.rules.yml]\ntests:\n  - interval: 1m\n    input_series:\n      - series: 'service:http_errors:ratio_rate5m{service=\"checkout\"}'\n        values: '0.1x20'\n    alert_rule_test:\n      - eval_time: 15m\n        alertname: CheckoutHighErrorRate\n        exp_alerts: [{exp_labels: {severity: page, service: checkout}}]\n```\n\n## 5. Check the route\n\n```bash\namtool check-config alertmanager.yml\namtool config routes test --config.file=alertmanager.yml severity=page service=checkout\n```\n\nThe output must name the receiver you expect. If it names the default receiver, add a route.\n\n## 6. Ship\n\n1. Commit the rule, the test, and the route change together.\n2. After the change reaches Prometheus, check `/rules` or `/api/v1/rules` for the rule state and errors.\n3. Ask the user first before you reload a production Prometheus or Alertmanager by hand\n   (`curl -X POST <url>/-/reload`).\n"
+        },
+        {
+          "name": "slo-implementation",
+          "description": "Procedure to define an SLO for a service and implement it in Prometheus: choose the SLI, write recording rules, and add multi-window multi-burn-rate alerts. Use when you add or change an SLO, an error budget, or burn-rate alerts.",
+          "path": "areas/devops/observability/skills/slo-implementation/SKILL.md",
+          "body": "## 1. Choose the SLI\n\n1. Pick one user journey per SLO (for example \"checkout API responds\").\n2. Choose the SLI type:\n   - **Availability** — good events / valid events, for example non-5xx responses / all responses.\n   - **Latency** — requests faster than a threshold / all requests, from a histogram bucket.\n3. Measure as close to the user as the data allows: load balancer or ingress metrics before application\n   metrics.\n4. Exclude invalid events (health checks, 4xx caused by the client) in the label selector, and write down why.\n\n## 2. Set the target\n\n1. Read the last 4 weeks of the SLI. Set the target slightly below what the service achieves, not above it.\n2. Use a 28-day or 30-day rolling window.\n3. Compute the error budget: `1 - target`. A 99.9% target gives 43 minutes of full outage per 30 days.\n4. Record the SLO in the service docs page: SLI query, target, window, owner.\n\n## 3. Write recording rules\n\nRecord the error ratio for each alert window: 5m, 30m, 1h, 2h, 6h, 1d, 3d.\n\n```yaml\n- record: slo:sli_error:ratio_rate5m\n  labels: {slo: checkout-availability}\n  expr: |\n    sum(rate(http_requests_total{service=\"checkout\",code=~\"5..\"}[5m]))\n    / sum(rate(http_requests_total{service=\"checkout\"}[5m]))\n```\n\nRepeat the rule per window (change only `[5m]` and the name). If the project uses Sloth or Pyrra, write the SLO\nspec file instead and let the tool generate these rules.\n\n## 4. Add burn-rate alerts\n\nUse two windows per alert, so it fires fast and resets fast. For a 99.9% target (budget `0.001`):\n\n| Severity | Long window | Short window | Burn rate | Budget spent |\n|---|---|---|---|---|\n| page | 1h | 5m | 14.4 | 2% |\n| page | 6h | 30m | 6 | 5% |\n| ticket | 3d | 6h | 1 | 10% |\n\n```yaml\n- alert: CheckoutAvailabilityBurnFast\n  expr: |\n    slo:sli_error:ratio_rate1h{slo=\"checkout-availability\"} > (14.4 * 0.001)\n    and slo:sli_error:ratio_rate5m{slo=\"checkout-availability\"} > (14.4 * 0.001)\n  labels: {severity: page}\n```\n\n## 5. Test and check\n\n1. `promtool check rules <file>` and a `promtool test rules` case that fires the fast-burn alert.\n2. Query the recording rules after deploy; each must return one series per SLO.\n3. Add an SLO panel (SLI, target, remaining budget) to the service dashboard.\n\n## 6. Use the budget\n\n- Budget left: changes ship as usual.\n- Budget spent in the window: write it into the service docs page and agree with the user which reliability\n  work comes before new features. Do not lower the target to recover the budget.\n"
+        }
+      ],
+      "workflows": []
+    },
+    {
       "area": "devops/sre",
+      "group": "devops",
+      "spec": "sre",
+      "summary": "Service reliability: SLOs and error budgets, on-call, and incident handling.",
+      "agents_path": "areas/devops/sre/AGENTS.md",
+      "rules": [
+        {
+          "name": "on-call-standards",
+          "description": "Incident severities, response times, runbooks, access, and toil limits for on-call rotations.",
+          "paths": [],
+          "trigger": "manual",
+          "path": "areas/devops/sre/rules/on-call-standards.md",
+          "body": "- Use the severities P0 (full outage or data loss), P1 (major feature broken or over 25 % of users affected), P2 (degraded with a workaround), and P3 (no user impact).\n- Acknowledge P0 pages within 5 minutes, P1 within 15 minutes, and P2 within 1 hour in business hours.\n- Limit each engineer to 1 primary and 1 secondary on-call week per month.\n- Link a runbook from every alert that can page; set an alert without a runbook to `warning` until the runbook exists.\n- Store runbooks in the repository next to the alert rules or in `docs/runbooks/`.\n- Give on-call engineers read access to production and write access limited to rollback, scale, and restart; require a separate MFA step for wider access.\n- Document the escalation path in the paging tool and test it every quarter.\n- Log every manual production action during an incident in the incident channel with a timestamp.\n- Track toil hours per rotation; start automation work when toil exceeds 50 % of on-call time for 2 rotations in a row.\n"
+        },
+        {
+          "name": "slo-policy",
+          "description": "SLI and SLO definitions, targets per tier, and the error budget actions that gate releases.",
+          "paths": [
+            "**/slo*.yaml",
+            "**/slo*.yml",
+            "**/sloth/**",
+            "**/pyrra/**",
+            "**/openslo/**"
+          ],
+          "trigger": "",
+          "path": "areas/devops/sre/rules/slo-policy.md",
+          "body": "- Define an SLI, an SLO target, and an error budget for every tier 1 service in an SLO file in the repository.\n- Write each SLI as a ratio of good events to valid events (`good_requests / total_requests`), not as a raw average.\n- Use availability and latency SLIs for HTTP and gRPC services, freshness or correctness SLIs for pipelines.\n- Set tier 1 targets at 99.9 % (43 min budget per 28 days), tier 2 at 99.5 %, and tier 3 at 99.0 %.\n- Use a 28-day rolling window for every SLO; do not use calendar months.\n- Exclude only documented planned maintenance and synthetic traffic from the SLI query.\n- Keep normal releases while more than 50 % of the budget remains.\n- Add reliability tickets to the next iteration when 25–50 % of the budget remains.\n- Stop feature releases and ship only reliability, security, and critical bug fixes when less than 25 % remains.\n- Write an incident page and block feature releases until the budget recovers when the budget reaches 0 %.\n- Record the approver and reason for every release made during a freeze in the release merge request.\n- Review every SLO target each quarter against the measured reliability and update the SLO file.\n"
+        }
+      ],
+      "skills": [
+        {
+          "name": "incident-command",
+          "description": "Procedure to run a production incident: declare and set severity, gather evidence, mitigate before root cause, keep a timeline, communicate, and hand off. Use when a service is down or degraded or an alert pages.",
+          "path": "areas/devops/sre/skills/incident-command/SKILL.md",
+          "body": "Mitigate first, find the root cause later. Every action on production needs the user's go-ahead.\n\n## 1. Declare\n\n1. State the symptom in one sentence: what fails, for whom, since when.\n2. Set the severity from the project on-call rule (`on-call-standards.md` when the sre spec is installed):\n\n| Severity | Condition |\n|---|---|\n| P0 | Full outage, data loss, or security breach |\n| P1 | Major feature broken or over 25 % of users affected |\n| P2 | Degraded with a workaround |\n| P3 | No user impact yet |\n\n3. Start a timeline with UTC times. Add every action and finding as one line.\n\n## 2. Gather evidence (read-only)\n\n1. Alerts and dashboards: error rate, latency, saturation of the service and its dependencies.\n2. Recent changes: last deploys (`git log --since=<time>`, `kubectl rollout history`, pipeline history),\n   feature flags, config changes, infrastructure changes.\n3. Logs around the start time: filter by the error and by request id.\n4. Dependencies: database, queue, external APIs, DNS, certificates (`openssl s_client -connect <host>:443`).\n5. Write the leading hypothesis and the evidence for it.\n\n## 3. Mitigate\n\nPick the smallest reversible action that stops the impact:\n\n- Change shipped in the window → roll back the deploy or turn off the feature flag.\n- Load spike → scale out or rate-limit.\n- One bad instance or zone → drain it.\n- Dependency down → fail over or degrade the feature.\n\nAsk the user first before each action. Say the exact command, the expected effect, and how to undo it. After the\naction, check the same metric that showed the symptom.\n\n## 4. Communicate\n\n1. P0/P1: post a status update every 30 minutes, even with no news: impact, current action, next update time.\n2. State facts and the next step. Do not guess the root cause in public updates.\n\n## 5. Resolve and hand off\n\n1. Call the incident resolved when the symptom metric is back in its normal range for 15 minutes.\n2. If you hand off to another person, pass the timeline, the current hypothesis, the actions taken, and open\n   risks.\n3. Write the incident page `docs/incidents/<YYYY-MM-DD>-<id>.md`: impact, root cause with evidence, fix with\n   link and regression test, prevention actions with owners.\n\n## 6. Find the root cause\n\n1. Ask \"why\" from the symptom back to the defect until the answer is a change you can make in code, config,\n   tests, alerts, or limits. \"Human error\" is not a root cause; ask why the system allowed it.\n2. Add at least one prevention action: a test, an alert, a limit, or a rule.\n3. Link the fix and its regression test in the incident page.\n"
+        }
+      ],
       "workflows": [
         {
           "trigger": "/incident-response",
@@ -195,6 +849,7 @@
           "description": "Investigate an alert or production incident, mitigate it, fix the cause, and write the incident page.",
           "workflow_path": "areas/devops/sre/workflows/incident-response.md",
           "use_when": "The request reports a firing alert, an outage, elevated errors or latency, a database incident, or asks for a postmortem of a production event.",
+          "avoid_when": "A bug found in development or tests with no production impact; use the debug workflow.",
           "inputs": [
             "alert_or_symptom",
             "affected_service"
@@ -204,10 +859,19 @@
             "fix",
             "incident_page"
           ],
-          "roles": [],
           "related_rules": [
             "on-call-standards.md",
             "slo-policy.md"
+          ],
+          "rule_refs": [
+            {
+              "name": "on-call-standards",
+              "path": "areas/devops/sre/rules/on-call-standards.md"
+            },
+            {
+              "name": "slo-policy",
+              "path": "areas/devops/sre/rules/slo-policy.md"
+            }
           ],
           "uses_skills": [
             "incident-command"
@@ -218,8 +882,38 @@
               "path": "areas/devops/sre/skills/incident-command/SKILL.md"
             }
           ],
-          "quality_gates": [],
-          "workflow_diagram": "",
+          "checks": [],
+          "artifacts": [
+            "docs/incidents/<YYYY-MM-DD>-<id>.md"
+          ],
+          "steps": [
+            {
+              "title": "Assess impact",
+              "do": "read the alert, the dashboard, and the SLO burn rate. Record what fails, for whom, and since when. Set the severity from `on-call-standards.md`. Read-only queries (logs, metrics, `kubectl get`, `describe`) are allowed; ask the user first before any command that changes production.",
+              "done_when": "the incident has a severity, a start time, and one sentence of user impact."
+            },
+            {
+              "title": "Mitigate",
+              "do": "pick the fastest safe action from the evidence: roll back the last deploy, turn off a feature flag, scale out, fail over, or block bad traffic. Ask the user first and state the exact command before you run it.",
+              "done_when": "the error rate or latency is back under the SLO threshold for 15 minutes, or the user decides to stop mitigation."
+            },
+            {
+              "title": "Find the root cause",
+              "do": "build a timeline from deploys, config changes, alerts, and logs. Test each hypothesis against data (queries, commits, traces) until one cause explains all symptoms. For a database incident, include slow queries, locks, replication lag, and connection counts. Use read-only access; ask the user first before a query that could load the production database.",
+              "done_when": "the cause is backed by evidence and is not \"human error\"."
+            },
+            {
+              "title": "Fix and prevent",
+              "do": "change the code, config, or alert that allowed the failure, with a regression test or a check. Add at least one prevention item (test, alert, limit, rule) with an owner. Ask the user first before you deploy it.",
+              "done_when": "the fix is in a change with green checks and each prevention item has an owner."
+            },
+            {
+              "title": "Write the incident page",
+              "do": "write `docs/incidents/<YYYY-MM-DD>-<id>.md` with `covers:` for the changed code and the sections impact, root cause with evidence, fix with link and test, and prevention with owners.",
+              "done_when": "the page has all four sections and links the fix change."
+            }
+          ],
+          "body": "",
           "examples": [
             "order-service returns 100% 5xx since 15:42 UTC and checkout is down; help me mitigate and find the cause."
           ]
@@ -228,6 +922,136 @@
     },
     {
       "area": "software/backend",
+      "group": "software",
+      "spec": "backend",
+      "summary": "Server-side services in Python, Go, and Java: APIs, domain logic, data access, and background jobs.",
+      "agents_path": "areas/software/backend/AGENTS.md",
+      "rules": [
+        {
+          "name": "api-contracts",
+          "description": "HTTP and gRPC API contracts of backend services — schemas, versions, errors, and health endpoints.",
+          "paths": [
+            "**/openapi*.yaml",
+            "**/openapi*.json",
+            "**/*.proto",
+            "**/api/**",
+            "**/routes/**",
+            "**/handlers/**",
+            "**/controllers/**"
+          ],
+          "trigger": "",
+          "path": "areas/software/backend/rules/api-contracts.md",
+          "body": "- Keep the contract in the repository (`openapi.yaml` or `*.proto`) and update it in the same change as the handler.\n- Declare a typed request and response schema for every endpoint; no untyped `dict`, `map[string]any`, or `Object` bodies.\n- Version public APIs in the path (`/v1/`) or package (`package orders.v1`); never break a released version.\n- Treat as breaking: removing a field or endpoint, renaming, changing a type, making an optional field required.\n- Run a breaking-change check (`oasdiff breaking`, `buf breaking`) in CI against the main branch contract.\n- Mark a field or endpoint `deprecated` at least one release before you remove it.\n- Do not change state in `GET`, `HEAD`, or `OPTIONS` handlers.\n- Return one error schema for all errors (for example RFC 9457 `application/problem+json`) with a stable `code` field.\n- Return `400` for invalid input, `401` without credentials, `403` without permission, `404` for unknown ids, `409` for conflicts.\n- Require an `Idempotency-Key` header or a natural key for `POST` endpoints that create payments, orders, or messages.\n- Use cursor pagination with a `limit` cap for list endpoints; never return an unbounded list.\n- Expose `/livez` (or `/healthz`) and `/readyz`; the readiness check covers the database and required brokers.\n- Expose metrics on `/metrics` or through OpenTelemetry for every service.\n"
+        },
+        {
+          "name": "configuration",
+          "description": "Service configuration through environment variables, settings classes, and env example files.",
+          "paths": [
+            "**/settings*.py",
+            "**/config*.py",
+            "**/config/**",
+            "**/application*.yml",
+            "**/application*.yaml",
+            "**/application*.properties",
+            ".env.example"
+          ],
+          "trigger": "",
+          "path": "areas/software/backend/rules/configuration.md",
+          "body": "- Read configuration only through one settings object (Pydantic `BaseSettings`, Spring `@ConfigurationProperties`, a Go config struct); no `os.getenv` calls elsewhere.\n- Validate configuration at startup and fail with a clear error when a required variable is missing.\n- Use one DSN variable per connection (`DATABASE_URL`, `REDIS_URL`); do not split it into host, user, and password variables.\n- Keep `.env.example` in the repository with every variable and placeholder values only.\n- Add `.env` to `.gitignore`; never commit a file with real credentials.\n- Do not put secrets in default values of settings fields.\n- Name variables in upper snake case with a service prefix when several services share an environment.\n- Document each new variable in `.env.example` and the service docs page in the same change.\n- Keep environment-specific values out of code; no `if env == \"prod\"` branches for config values.\n"
+        },
+        {
+          "name": "data_access",
+          "description": "Queries, transactions, and schema migrations for relational stores used by backend services.",
+          "paths": [
+            "**/repositories/**",
+            "**/repository/**",
+            "**/migrations/**",
+            "**/alembic/**",
+            "**/db/migration/**",
+            "**/*.sql"
+          ],
+          "trigger": "",
+          "path": "areas/software/backend/rules/data_access.md",
+          "body": "- Use parameterized queries or the ORM query builder; never build SQL by string concatenation or f-strings.\n- Do not use `SELECT *` in application queries; name the columns.\n- Remove N+1 queries: load relations with a join, `selectinload`/`JOIN FETCH`, or one batched query.\n- Add an index for every new column used in a `WHERE`, `JOIN`, or `ORDER BY` of a hot query; check with `EXPLAIN`.\n- Keep transactions short; set a statement timeout (`statement_timeout`, `QueryTimeout`) for request paths.\n- Use PostgreSQL as the source of truth; use Redis only for cache, rate limits, locks, and transient data.\n- Change the schema only through a versioned migration file (Alembic, Flyway, Liquibase, goose, golang-migrate).\n- Never enable ORM auto-sync (`create_all`, `ddl-auto=update`, `AutoMigrate`) outside tests.\n- Write a downgrade for every migration, or state in the migration file why rollback is not possible.\n- Keep each migration backward compatible with the running code: expand (add), migrate data, then contract (drop) in a later release.\n- Do not rename or drop a column in the same release that stops using it.\n- Create indexes on large PostgreSQL tables with `CREATE INDEX CONCURRENTLY` in a migration without a transaction.\n- Add `NOT NULL` to an existing column only after a backfill, and add the constraint as `NOT VALID` first.\n- Run every migration up and down against a clean database in the test suite.\n"
+        },
+        {
+          "name": "database-safety",
+          "description": "Keep agents and scripts from changing a real database (production, replicas, shared stages).",
+          "paths": [
+            "**/migrations/**",
+            "**/alembic/**",
+            "**/*.sql",
+            "**/db/**",
+            "**/scripts/**",
+            "**/.env.example"
+          ],
+          "trigger": "",
+          "path": "areas/software/backend/rules/database-safety.md",
+          "body": "- Treat any host other than `localhost`, `127.*`, `::1`, a unix socket, or `sqlite` as production; a replica counts.\n- Hand `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `TRUNCATE`, `DROP`, `ALTER`, `CREATE INDEX`, `GRANT`, `REVOKE`,\n  `COPY ... FROM`, `VACUUM`, `ANALYZE`, `REINDEX`, `CLUSTER`, `REFRESH MATERIALIZED VIEW`, and\n  `pg_terminate_backend` for such a host to the user as text; do not execute them.\n- Name the target host and the reason when you ask to use credentials from `load_dotenv`, `source .env`, or\n  `DATABASE_URL`.\n- Open a read-only session (`SET default_transaction_read_only = on`) and set `statement_timeout` for every query\n  on such a host.\n- Use `EXPLAIN` instead of `EXPLAIN ANALYZE` on tables with more than 1 million rows.\n- Write the query into the plan instead of connecting when the host runs in plan or read-only mode.\n- Put schema and data changes into versioned migrations and run them on a local or disposable database first.\n- Print only the host and database name from a connection string; never print passwords or full DSNs.\n- Keep `guard.db` in `.agent/gate.json` at its defaults (`write: deny`) unless the user changes it.\n"
+        },
+        {
+          "name": "security",
+          "description": "Authentication, authorization, input validation, and secret handling in backend service code.",
+          "paths": [
+            "**/*.py",
+            "**/*.go",
+            "**/*.java",
+            "**/*.kt"
+          ],
+          "trigger": "",
+          "path": "areas/software/backend/rules/security.md",
+          "body": "- Deny by default: every endpoint has an explicit authentication requirement and authorization check.\n- Check object-level authorization (owner or tenant) for every read and write by id; add a test for cross-tenant access that expects `403` or `404`.\n- Validate tokens for signature, `iss`, `aud`, `exp`, and `nbf`; reject `alg: none` and unexpected algorithms.\n- Keep access token lifetime at 15 minutes or less; store refresh tokens server-side so they can be revoked.\n- Hash passwords with Argon2id or bcrypt; never use MD5, SHA-1, or unsalted SHA-256 for passwords.\n- Validate every request body against a schema (Pydantic, Bean Validation, struct tags) with unknown fields rejected.\n- Use an allowlist of writable fields; never bind a request body directly to an ORM entity (mass assignment).\n- Read secrets from environment variables or a secret manager at startup; never commit a secret or default it in code.\n- Restrict outbound HTTP to an allowlist of hosts when the URL comes from user input (SSRF).\n- Do not deserialize untrusted data with `pickle`, Java native serialization, or YAML `load` without a safe loader.\n- Check type and size of uploaded files and store them outside the web root.\n- Log authentication failures, permission changes, and admin actions with the user id and request id.\n- Never log passwords, tokens, full card numbers, or session cookies; mask them in logs and traces.\n- Use a separate service account per service and per environment; no shared credentials.\n"
+        },
+        {
+          "name": "service-architecture",
+          "description": "Layering, service boundaries, remote calls, and background jobs in Python, Go, and Java backend services.",
+          "paths": [
+            "**/*.py",
+            "**/*.go",
+            "**/*.java",
+            "**/*.kt"
+          ],
+          "trigger": "",
+          "path": "areas/software/backend/rules/service-architecture.md",
+          "body": "- Keep three layers: handlers (HTTP, gRPC, CLI, consumer) call services; services call repositories and clients.\n- Do not import a repository, ORM session, or database driver in a handler module.\n- Do not import web framework types (`Request`, `HttpServletRequest`, `gin.Context`) in a service or repository.\n- Return domain types or DTOs from a repository; never return ORM entities to a handler.\n- Keep business rules out of handlers; a handler only parses input, calls one service method, and maps the result.\n- Define the transaction boundary in the service layer, not in a handler or repository.\n- Never share a database schema between two services; read another service's data through its API or events.\n- Set an explicit timeout on every outbound HTTP, gRPC, database, and broker call; no call uses an unbounded default.\n- Retry only idempotent remote calls, with capped exponential backoff and jitter; limit retries to 3 by default.\n- Catch specific exception types; never catch the base `Exception`/`Throwable` or discard an `error` value in Go.\n- Map internal errors to one error response type at the handler; do not leak stack traces in a response body.\n- Make every background job and message consumer idempotent: use a deduplication key or an upsert.\n- Set a concurrency limit and a dead-letter queue for every consumer and job queue.\n- Do not run blocking I/O or CPU-heavy work on an async event loop (`asyncio`, Netty, Reactor); offload it.\n- Do not perform external I/O (HTTP, broker publish) inside an open database transaction; use an outbox table.\n- Add new dependencies between modules only in the direction handler → service → repository; no import cycles.\n"
+        },
+        {
+          "name": "service-telemetry",
+          "description": "Logs, metrics, and trace context emitted by backend service code.",
+          "paths": [
+            "**/*.py",
+            "**/*.go",
+            "**/*.java",
+            "**/*.kt"
+          ],
+          "trigger": "",
+          "path": "areas/software/backend/rules/service-telemetry.md",
+          "body": "- Write logs as structured JSON with `timestamp`, `level`, `service`, `message`, and `trace_id`.\n- Use the project logger (`structlog`/`logging`, `slog`/`zap`, SLF4J); never use `print`, `fmt.Println`, or `System.out` in service code.\n- Log an error once, where it is handled, with the stack trace and the ids needed to find the request.\n- Propagate W3C `traceparent` on every inbound and outbound HTTP, gRPC, and broker call.\n- Add the request id to every log line of a request (contextvars, MDC, `context.Context`).\n- Expose request rate, error count, and latency histogram per endpoint (`http_server_request_duration_seconds`).\n- Expose a counter or histogram for every queue consumer and background job (processed, failed, duration).\n- Keep metric label values bounded: never use user id, email, or raw URL path as a label.\n- Do not log request or response bodies that contain personal data or credentials.\n"
+        },
+        {
+          "name": "testing",
+          "description": "Unit, integration, and API test requirements for backend services in Python, Go, and Java.",
+          "paths": [
+            "**/tests/**",
+            "**/test/**",
+            "**/*_test.go",
+            "**/test_*.py",
+            "**/*Test.java",
+            "**/*Test.kt"
+          ],
+          "trigger": "",
+          "path": "areas/software/backend/rules/testing.md",
+          "body": "- Add a unit test for every new or changed public function of the service layer, with one success and one failure case.\n- Mock only external boundaries (HTTP clients, brokers, clock); do not mock the code under test or the ORM.\n- Run integration tests against the real database and broker engine (Testcontainers or a compose service), not SQLite or in-memory fakes.\n- Add an API test for every new endpoint that checks the status code, response schema, and one error response.\n- Add a regression test that fails before the fix for every bug fix.\n- Keep tests independent: each test creates its own data and does not depend on test order.\n- Do not call real third-party services or production endpoints from tests; use a stub server.\n- Use fixed seeds and an injected clock; no test reads the wall clock or random values directly.\n- Keep the coverage threshold in the test config (`--cov-fail-under`, JaCoCo rule, `go test -cover` gate); do not lower it in a change.\n- Do not delete or skip a failing test to make the build pass; mark a quarantined test with a ticket id.\n- Name tests after behaviour (`test_rejects_expired_token`), not after the method (`test_method1`).\n"
+        }
+      ],
+      "skills": [
+        {
+          "name": "api-design",
+          "description": "Procedure to add or change an HTTP (OpenAPI) or gRPC (protobuf) API contract: edit the spec first, check breaking changes with oasdiff or buf, version and deprecate, and add contract tests. Use when you add or change an endpoint, request or response schema, or a proto service.",
+          "path": "areas/software/backend/skills/api-design/SKILL.md",
+          "body": "## 1. Find the contract\n\n1. Look for the spec: `openapi.yaml`, `api/*.yaml`, `docs/api/`, `*.proto` under `proto/` or `api/`.\n2. If the code generates the spec (FastAPI, springdoc, swaggo), find the command that exports it and use the\n   exported file in step 4.\n3. If no spec exists, write down the current request and response of the endpoint from the code and its tests.\n4. Find the consumers: other services, frontends, published SDKs. Ask the user if they are not known.\n\n## 2. Edit the contract first\n\n1. Change the spec before the code. Keep the change to the endpoint or message the task names.\n2. HTTP: one resource per path, plural nouns (`/orders/{orderId}`), standard methods and status codes, one\n   error schema for all endpoints (for example RFC 9457 `application/problem+json`).\n3. List endpoints take `limit` and a cursor (`page_token` / `next_page_token`) and return a bounded page.\n4. A create endpoint that clients may retry accepts an `Idempotency-Key` header.\n5. gRPC: add fields with new field numbers. Never reuse or renumber a field; `reserved` removed numbers and names.\n\n## 3. Classify the change\n\nAdditive (safe):\n- new endpoint, new optional request field, new response field, new enum value that clients ignore.\n\nBreaking:\n- removed or renamed field or endpoint, new required request field, changed type or format, changed status code,\n  stricter validation, changed field number or name in proto.\n\n## 4. Check breaking changes with a tool\n\n```bash\ngit show origin/main:openapi.yaml > /tmp/base.yaml\noasdiff breaking /tmp/base.yaml openapi.yaml --fail-on ERR\nbuf breaking --against '.git#branch=main'\n```\n\nIf the tool reports a breaking change, do one of these:\n\n1. Make it additive: keep the old field, add the new one, and map both in the code.\n2. Add a new version (`/v2/...` path or a new proto package `v2`) and keep the old version running.\n3. If the user accepts the break, mark it as breaking in the changelog and the merge request, and name the\n   consumers that must change.\n\n## 5. Deprecate\n\n1. Mark the old field or endpoint `deprecated: true` (OpenAPI) or `[deprecated = true]` (proto).\n2. HTTP: return `Deprecation` and `Sunset` headers on deprecated endpoints.\n3. Write the removal date in the API docs page. Remove only after consumers stop calling it (check access logs\n   or metrics).\n\n## 6. Implement and test\n\n1. Generate server stubs or types from the spec if the project does so (`buf generate`, `openapi-generator`).\n2. Add tests for the success response, each documented error status, and validation of each new field.\n3. Add a contract test that checks responses against the spec (`schemathesis run openapi.yaml --url <local>`,\n   Pact, or a schema assertion in the API tests).\n4. Update the API docs page and the changelog in the same change.\n"
+        }
+      ],
       "workflows": [
         {
           "trigger": "/add-migration",
@@ -235,6 +1059,7 @@
           "description": "Add a backward-compatible database schema migration with rollback and tests.",
           "workflow_path": "areas/software/backend/workflows/add-migration.md",
           "use_when": "The request asks to add, rename, drop or change a table, column, index or constraint in a service database through a migration.",
+          "avoid_when": "Analytics warehouse models or dbt changes, or a request that only changes queries.",
           "inputs": [
             "schema_change"
           ],
@@ -243,15 +1068,57 @@
             "tests",
             "docs_page"
           ],
-          "roles": [],
           "related_rules": [
             "data_access.md",
             "testing.md"
           ],
+          "rule_refs": [
+            {
+              "name": "data_access",
+              "path": "areas/software/backend/rules/data_access.md"
+            },
+            {
+              "name": "testing",
+              "path": "areas/software/backend/rules/testing.md"
+            }
+          ],
           "uses_skills": [],
           "skill_refs": [],
-          "quality_gates": [],
-          "workflow_diagram": "",
+          "checks": [
+            "make lint",
+            "make test"
+          ],
+          "artifacts": [
+            "docs/<service>.md"
+          ],
+          "steps": [
+            {
+              "title": "Read the current schema",
+              "do": "find the migration tool and its head revision (`alembic heads`, `flyway info`, `goose status`). Read the current table definition and every query that reads or writes the affected columns (`grep -rn`). Estimate the table size from the docs page or ask the user.",
+              "done_when": "you can list the affected tables, columns, indexes, and code paths."
+            },
+            {
+              "title": "Plan expand and contract",
+              "do": "split a breaking change into releases: expand (add nullable column, new table, or index), switch code to dual write and read, backfill, then contract (drop) in a later change. Mark locking operations on large tables and plan `CONCURRENTLY` or `NOT VALID` variants.",
+              "done_when": "the plan says which release runs each migration and the running code works after every step."
+            },
+            {
+              "title": "Write the migration and code",
+              "do": "generate the file with the project tool (`alembic revision -m \"<msg>\"`, a new `V<n>__<msg>.sql`), write `upgrade` and `downgrade`, and change the code for this release only. Put a backfill in a separate, batched, resumable step.",
+              "done_when": "the migration has a downgrade or a comment that says why rollback is impossible."
+            },
+            {
+              "title": "Test up and down",
+              "do": "run upgrade, downgrade, and upgrade again on a clean database (Testcontainers or `docker compose`). Run the repository tests against the migrated schema.",
+              "done_when": "all three runs succeed and the tests pass."
+            },
+            {
+              "title": "Document and hand over",
+              "do": "update the service docs page (schema, rollout order, rollback). Run every command in `checks`. Ask the user first before you run the migration or the backfill against a shared or production database.",
+              "done_when": "all `checks` commands exit 0 and the docs page lists the rollout and rollback steps."
+            }
+          ],
+          "body": "",
           "examples": [
             "Rename users.full_name to users.display_name without downtime."
           ]
@@ -259,7 +1126,229 @@
       ]
     },
     {
+      "area": "software/data-engineering",
+      "group": "software",
+      "spec": "data-engineering",
+      "summary": "Batch and streaming pipelines, dbt models, and warehouse schemas: integrity, schema changes, governance, and personal data.",
+      "agents_path": "areas/software/data-engineering/AGENTS.md",
+      "rules": [
+        {
+          "name": "data-governance",
+          "description": "Documentation, ownership, classification, and freshness requirements for warehouse tables and dbt models.",
+          "paths": [
+            "**/models/**/*.yml",
+            "**/models/**/*.sql",
+            "dbt_project.yml"
+          ],
+          "trigger": "",
+          "path": "areas/software/data-engineering/rules/data-governance.md",
+          "body": "- Add a `description` and an `owner` to every model or table in its schema file.\n- Document every column whose meaning is not obvious from its name.\n- Tag every table with one classification: `public`, `internal`, `confidential`, or `restricted`.\n- Declare a freshness limit for every source and pipeline (for example dbt `freshness`), and alert when it is exceeded by 2x.\n- Tag tables with no queries in 90 days as deprecated, and delete them only after a 30-day notice.\n"
+        },
+        {
+          "name": "pii-handling",
+          "description": "Personal data handling in pipelines and warehouse models, covering hashing, minimization, and erasure.",
+          "paths": [
+            "**/models/**",
+            "**/dags/**",
+            "**/pipelines/**"
+          ],
+          "trigger": "",
+          "path": "areas/software/data-engineering/rules/pii-handling.md",
+          "body": "- Store only a hashed or tokenized `user_id` in analytical tables; never store email, name, or phone columns there.\n- Use SHA-256 with a secret salt, or tokens, for direct identifier columns.\n- Keep only generalized quasi-identifier columns (birth year, ZIP prefix) in analytical models.\n- Encrypt columns with health or financial data and limit read access with a role grant.\n- Delete row-level behavioural data (clickstream, location) after 30 days; keep only aggregates.\n- Apply a user deletion request to every table within 30 days.\n- Document the reason for every new personal data field in the source schema file.\n- Store EU resident data only in EU regions unless the project documents a legal transfer basis in its `docs/` page.\n"
+        },
+        {
+          "name": "pipeline-integrity",
+          "description": "Idempotency, deduplication, failure, and environment isolation for batch and streaming pipelines.",
+          "paths": [
+            "**/dags/**",
+            "**/pipelines/**",
+            "**/models/**/*.sql"
+          ],
+          "trigger": "",
+          "path": "areas/software/data-engineering/rules/pipeline-integrity.md",
+          "body": "- Make every pipeline run idempotent: a rerun for the same input partition must produce the same output.\n- Use natural keys with `MERGE` or `INSERT OVERWRITE` of the target partition to deduplicate writes.\n- Fail the pipeline run on a data quality test failure; never skip the failed check.\n- Add data tests (for example dbt `unique`, `not_null`, `relationships`) to every new model.\n- Read the target database and schema from environment variables; never hardcode a production target.\n- Do not point development or staging pipelines at production sinks.\n- Declare the upstream sources of every model in its schema file so lineage stays complete.\n"
+        },
+        {
+          "name": "schema-management",
+          "description": "Breaking and safe schema changes for warehouse tables and streaming topics.",
+          "paths": [
+            "**/models/**",
+            "**/migrations/**",
+            "**/*.avsc",
+            "**/*.proto"
+          ],
+          "trigger": "",
+          "path": "areas/software/data-engineering/rules/schema-management.md",
+          "body": "- Version the table as breaking when you rename or drop a column, change a type incompatibly, add a `NOT NULL` column without a default, or change the partition key.\n- Ship a breaking change on a table with external consumers as a new versioned table (`orders_v2`) and keep the old version for at least 30 days.\n- Add new columns as nullable or with a default value.\n- Register every streaming topic schema in a schema registry and set its compatibility mode to `BACKWARD` or stricter.\n- Validate messages against the registered schema in the producer before publish.\n- Run the schema compatibility check in CI for every changed `.avsc` or `.proto` file.\n"
+        }
+      ],
+      "skills": [],
+      "workflows": []
+    },
+    {
+      "area": "software/frontend",
+      "group": "software",
+      "spec": "frontend",
+      "summary": "Web UI code in React, Vue, or TypeScript: components, accessibility, performance, and code quality.",
+      "agents_path": "areas/software/frontend/AGENTS.md",
+      "rules": [
+        {
+          "name": "accessibility",
+          "description": "WCAG 2.1 AA constraints for web UI components in React, Vue, or plain HTML.",
+          "paths": [
+            "**/*.tsx",
+            "**/*.jsx",
+            "**/*.vue",
+            "**/*.html"
+          ],
+          "trigger": "",
+          "path": "areas/software/frontend/rules/accessibility.md",
+          "body": "- Give every `button`, `a`, `input`, `select`, and custom widget an accessible name: visible text, `aria-label`, or `aria-labelledby`.\n- Keep text contrast at 4.5:1 or more, and 3:1 or more for large text.\n- Make every action work with the keyboard only (`Tab`, `Shift+Tab`, `Enter`, `Space`, arrow keys).\n- Add a meaningful `alt` to every `img`; use `alt=\"\"` for decorative images.\n- Use an `aria-live` region or move focus to announce toasts, modal openings, and form errors.\n- Do not set a `tabindex` value greater than `0`.\n- Use native elements (`button`, `a href`) instead of a `div` with an `onClick` handler.\n- Run `axe-core` or `eslint-plugin-jsx-a11y` on changed components; fail the check on any WCAG A or AA violation.\n"
+        },
+        {
+          "name": "component-architecture",
+          "description": "Component boundaries, file layout, and import rules for React or Vue frontends.",
+          "paths": [
+            "**/*.tsx",
+            "**/*.jsx",
+            "**/*.vue"
+          ],
+          "trigger": "",
+          "path": "areas/software/frontend/rules/component-architecture.md",
+          "body": "- Keep data fetching in page or container components; presentational components receive data through props.\n- Do not pass a prop through more than 2 component levels; use context, a store, or composition instead.\n- Put a component's styles, tests, and stories in the same directory as the component file.\n- Keep data fetching and complex layout in separate components: a container and a presentational component.\n- Put domain logic in hooks (`use*.ts`) or modules under `lib/`, not in JSX.\n- Do not add circular imports; run the project's import-cycle check (for example `eslint-plugin-import` `no-cycle`) on changed modules.\n- Put feature code under `src/features/<feature>/` and shared UI under `src/components/`.\n- Document the loading, empty, error, and success states of every data-driven component in its story or test.\n"
+        },
+        {
+          "name": "performance",
+          "description": "Performance budget for web frontends covering Core Web Vitals, bundle size, lazy loading, and images.",
+          "paths": [
+            "**/*.tsx",
+            "**/*.jsx",
+            "**/*.vue",
+            "package.json",
+            "vite.config.*",
+            "webpack.config.*",
+            "next.config.*"
+          ],
+          "trigger": "",
+          "path": "areas/software/frontend/rules/performance.md",
+          "body": "- Keep LCP under 2.5 s, INP under 200 ms, and CLS under 0.1 on the production build.\n- Limit the initial JavaScript bundle to 200 KB gzipped on the critical path.\n- Use lazy loading for every route (`React.lazy` with `Suspense`, or the framework's dynamic `import()`).\n- Check the size of a new dependency; document the reason in the change when it adds more than 50 KB gzipped.\n- Do not read `localStorage` synchronously in the render path.\n- Use WebP or AVIF images and set `width` and `height` attributes on every `img`.\n- Run the bundle size check (for example `size-limit` or `bundlesize`) in CI and fail the job when the budget is exceeded.\n"
+        },
+        {
+          "name": "quality",
+          "description": "TypeScript, i18n, DOM access, and test requirements for frontend code.",
+          "paths": [
+            "**/*.ts",
+            "**/*.tsx",
+            "**/*.vue",
+            "tsconfig*.json"
+          ],
+          "trigger": "",
+          "path": "areas/software/frontend/rules/quality.md",
+          "body": "- Set `\"strict\": true` in `tsconfig.json`.\n- Do not use `any` without an `eslint-disable` comment that states the reason.\n- Use i18n keys (`t('key.path')`) for every user-facing string.\n- Do not call `document.getElementById` or `querySelector` inside components; use `useRef` or a template ref.\n- Never mutate state objects in place; return a new object from every reducer or `setState` call.\n- Add at least 1 rendering test and 1 interaction test for every new component.\n- Remove `console.log` calls; use the project logger module.\n"
+        }
+      ],
+      "skills": [],
+      "workflows": []
+    },
+    {
       "area": "software/general",
+      "group": "software",
+      "spec": "general",
+      "summary": "Shared baseline for every software spec: code style, tooling, docs layout, and the general task workflows.",
+      "agents_path": "areas/software/general/AGENTS.md",
+      "rules": [
+        {
+          "name": "code-style-guide",
+          "description": "Code style checks that apply to source files in any language.",
+          "paths": [
+            "**/*.py",
+            "**/*.go",
+            "**/*.java",
+            "**/*.kt",
+            "**/*.ts",
+            "**/*.js",
+            "**/*.rs",
+            "**/*.sh"
+          ],
+          "trigger": "",
+          "path": "areas/software/general/rules/code-style-guide.md",
+          "body": "- Follow the formatter and linter config of the repository; do not reformat lines that the change does not touch.\n- Name functions, variables, and types after intent; no single-letter names outside loop indexes and short lambdas.\n- Keep functions under about 40 lines and nesting at 3 levels or less; use early returns.\n- Replace magic numbers and strings with named constants or enums.\n- Handle every error explicitly; never use an empty `except:`/`catch {}` block or ignore a returned `error`.\n- Remove commented-out code and debug output (`print`, `console.log`) before commit.\n- Write comments that explain why; do not restate what the next line does.\n- Add a ticket id to every new `TODO` comment.\n- Do not hardcode hosts, credentials, or environment names in source files; read them from configuration.\n- Keep files under about 400 lines; split a larger file by responsibility in the same change only when the task asks for it.\n- Do not add a dependency for a function that is under 20 lines to write.\n"
+        },
+        {
+          "name": "docker-compose-guide",
+          "description": "Docker Compose files for local multi-service development.",
+          "paths": [
+            "**/docker-compose*.yml",
+            "**/docker-compose*.yaml",
+            "**/compose*.yml",
+            "**/compose*.yaml"
+          ],
+          "trigger": "",
+          "path": "areas/software/general/rules/docker-compose-guide.md",
+          "body": "- Keep the base config in `compose.yaml` (or `docker-compose.yml`) and local overrides in `compose.override.yaml`.\n- Pin every image to a version tag or digest; never use `latest` in a committed file.\n- Load configuration from `.env` with `env_file`; never write credentials into the compose file.\n- Add `.env` to `.gitignore` and keep `.env.example` next to the compose file.\n- Define a `healthcheck` for every database, cache, and broker service.\n- Use `depends_on` with `condition: service_healthy` for services that need a healthy dependency.\n- Use named volumes for data; use bind mounts only for source code in development.\n- Expose only the ports a developer needs on the host; services talk to each other by service name.\n- Do not bind-mount the home directory, `/`, or `/var/run/docker.sock` unless the service needs it and a comment says why.\n"
+        },
+        {
+          "name": "docs-layout",
+          "description": "Keep docs/ in the root-design / feature / incident layout and cover every code change with a docs page.",
+          "paths": [
+            "docs/**"
+          ],
+          "trigger": "",
+          "path": "areas/software/general/rules/docs-layout.md",
+          "body": "- Put one root design page per whole artifact (service, tool, pipeline) at `docs/<artifact>.md`.\n- Put feature work in `docs/<feature-slug>/README.md`; use a kebab-case slug, optionally prefixed by the ticket id.\n- Put incidents in `docs/incidents/<YYYY-MM-DD>-<id>.md`.\n- Add frontmatter `covers:` with code globs to every root design, feature, and incident page.\n- When you change code, update in the same change at least one docs page whose `covers:` matches the changed path.\n- If the change does not alter behaviour (tests, CI, refactoring, dependency bump), add the commit trailer\n  `Docs-Not-Needed: <reason>` instead.\n- Do not widen `covers:` to `**` to silence coverage; add a root design page for uncovered code.\n- A feature page has: goal, numbered acceptance criteria, out of scope, contracts with examples, design and\n  rejected alternative, risks and rollback, operability, status (`draft|agreed|implemented|superseded`).\n- An incident page has: impact, root cause with evidence, fix with link and regression test, prevention actions.\n- Describe behaviour and decisions; do not copy code into docs.\n"
+        },
+        {
+          "name": "git-workflow-guide",
+          "description": "Git hygiene beyond the core branch and commit format — ignores, hooks, history, and release tags.",
+          "paths": [],
+          "trigger": "manual",
+          "path": "areas/software/general/rules/git-workflow-guide.md",
+          "body": "- Keep one logical change per commit; do not mix a refactoring and a behaviour change in one commit.\n- Add build output, virtual environments, IDE folders, and `.env` files to `.gitignore`.\n- Run the hooks of `.pre-commit-config.yaml` when the repository has one; never commit with `--no-verify`.\n- Rebase a feature branch on the target branch before merge; never force-push a shared or protected branch.\n- Tag releases as `v<major>.<minor>.<patch>` on the release commit.\n- Do not rewrite history that is already pushed to `main` or a release branch.\n- Remove a committed secret by rotating it first; deleting the commit alone does not make the secret safe.\n"
+        },
+        {
+          "name": "lint-format-guide",
+          "description": "Linter and formatter configuration, pre-commit hooks, and CI lint gates.",
+          "paths": [
+            ".pre-commit-config.yaml",
+            "pyproject.toml",
+            "setup.cfg",
+            ".editorconfig",
+            ".golangci.yml",
+            ".golangci.yaml",
+            "checkstyle.xml",
+            "eslint.config.*",
+            ".eslintrc*",
+            ".prettierrc*"
+          ],
+          "trigger": "",
+          "path": "areas/software/general/rules/lint-format-guide.md",
+          "body": "- Configure one formatter and one linter per language in a committed file: `ruff` for Python, `gofmt` and `golangci-lint` for Go, `spotless` or `checkstyle` for Java, `shellcheck` for shell.\n- Keep tool versions pinned in the config (`rev:` in `.pre-commit-config.yaml`, plugin versions in the build file).\n- Add a `make lint` target that runs the format check and the linter without changing files.\n- Add a `make fmt` target that applies the formatter.\n- Run the format check and the linter in CI and fail the job on any finding.\n- Add a reason comment to every inline suppression (`# noqa: E501  reason`, `//nolint:errcheck // reason`).\n- Do not disable a lint rule for the whole repository in the same change that introduces a violation of it.\n- Keep `.editorconfig` with charset, line ending, and indentation per file type.\n"
+        },
+        {
+          "name": "makefile-guide",
+          "description": "Makefile targets and conventions that give every project the same developer commands.",
+          "paths": [
+            "Makefile",
+            "**/Makefile",
+            "**/*.mk"
+          ],
+          "trigger": "",
+          "path": "areas/software/general/rules/makefile-guide.md",
+          "body": "- Keep a `Makefile` at the repository root with the targets `help`, `install`, `test`, `lint`, `fmt`, and `clean`.\n- Add `run` or `dev` when the project starts a local service.\n- Declare every target that does not create a file in `.PHONY`.\n- Add a `## description` comment to every public target and make `help` print them.\n- Put tool names, image names, and versions in variables (`PYTHON ?= python3`) so a caller can override them.\n- Compose larger targets from smaller ones (`ci: lint test`); do not copy the same command into two targets.\n- Use POSIX shell syntax in recipes, or set `SHELL := bash` at the top when a recipe needs bash.\n- Do not hardcode absolute paths from one machine; use `$(CURDIR)` or relative paths.\n- Make `make test` and `make lint` exit non-zero on failure; never append `|| true` to a check.\n"
+        },
+        {
+          "name": "readme-sync-guide",
+          "description": "Keep README.md setup, configuration, and usage sections true to the repository.",
+          "paths": [
+            "README.md",
+            "**/README.md"
+          ],
+          "trigger": "",
+          "path": "areas/software/general/rules/readme-sync-guide.md",
+          "body": "- Update the setup, configuration, and usage sections of `README.md` in the same change that alters them in code.\n- Check that every command in `README.md` exists (`make` target, script path, CLI flag) before you commit.\n- List every required environment variable, or link `.env.example`.\n- Remove references to deleted files, targets, flags, and services.\n- Keep `README.md` runnable for a new developer: install, configure, run, and test commands in that order.\n- Do not change product or business descriptions unless the task asks for it.\n- Do not document planned features; no placeholders or `TODO` lines in `README.md`.\n"
+        }
+      ],
+      "skills": [],
       "workflows": [
         {
           "trigger": "/code-review-workflow",
@@ -267,6 +1356,7 @@
           "description": "Review a merge request or diff against its requirements and the review regulation, with evidence per finding.",
           "workflow_path": "areas/software/general/workflows/code-review-workflow.md",
           "use_when": "The request asks to review an existing pull request, merge request or diff and give review comments.",
+          "avoid_when": "The request asks to write or change code.",
           "inputs": [
             "merge_request_or_diff",
             "requirements"
@@ -275,16 +1365,52 @@
             "review_findings",
             "verdict"
           ],
-          "roles": [],
           "related_rules": [
             "code-style-guide.md",
             "docs-layout.md",
             "git-workflow-guide.md"
           ],
+          "rule_refs": [
+            {
+              "name": "code-style-guide",
+              "path": "areas/software/general/rules/code-style-guide.md"
+            },
+            {
+              "name": "docs-layout",
+              "path": "areas/software/general/rules/docs-layout.md"
+            },
+            {
+              "name": "git-workflow-guide",
+              "path": "areas/software/general/rules/git-workflow-guide.md"
+            }
+          ],
           "uses_skills": [],
           "skill_refs": [],
-          "quality_gates": [],
-          "workflow_diagram": "",
+          "checks": [],
+          "artifacts": [],
+          "steps": [
+            {
+              "title": "Collect the change and its requirements",
+              "do": "get the diff against the merge base (`git diff origin/main...HEAD`, `glab mr diff`, `gh pr diff`). Collect requirements from the linked ticket, the feature page under `docs/`, and the description.",
+              "done_when": "you have the full diff and a numbered list of requirements, or a note that none exist."
+            },
+            {
+              "title": "Check gates and scope",
+              "do": "read the CI result of the last commit. Run the project checks locally when CI is not available. Compare changed paths with the requirements and mark unrelated edits.",
+              "done_when": "gate status is known for build, tests, lint, and security scan, with a link or command output."
+            },
+            {
+              "title": "Review the diff",
+              "do": "check each requirement (`met`, `partial`, `missing`). Look for wrong behaviour, missing tests for changed behaviour, broken contracts (API, schema, config, CLI), unsafe migrations, secrets, unbounded remote calls, and changed code without a matching docs page. Do not report what a linter or formatter enforces.",
+              "done_when": "every finding has a severity (`blocker`, `major`, `minor`, `info`), a file and line, and a fix."
+            },
+            {
+              "title": "Give the verdict",
+              "do": "answer in the review thread or the chat, not in a file: a status table of requirements, findings by severity, and the verdict (`changes_requested`, `approve_with_comments`, `approve`). Do not merge.",
+              "done_when": "the verdict follows the findings: any `missing` requirement or open `blocker`/`major` gives `changes_requested`."
+            }
+          ],
+          "body": "",
           "examples": [
             "Review MR !87 \"Add rate limiting to the public API\"."
           ]
@@ -295,6 +1421,7 @@
           "description": "Find the root cause of a bug, fix it with a regression test, and record the cause.",
           "workflow_path": "areas/software/general/workflows/debug-issue.md",
           "use_when": "The request reports wrong behaviour, an error, a crash, a failing test or a regression in application code and asks to find the cause and fix it.",
+          "avoid_when": "A live production incident that needs mitigation first, or a pod or cluster failure in Kubernetes.",
           "inputs": [
             "bug_report",
             "logs_or_stack_trace"
@@ -304,15 +1431,55 @@
             "regression_test",
             "docs_page"
           ],
-          "roles": [],
           "related_rules": [
             "code-style-guide.md",
             "docs-layout.md"
           ],
+          "rule_refs": [
+            {
+              "name": "code-style-guide",
+              "path": "areas/software/general/rules/code-style-guide.md"
+            },
+            {
+              "name": "docs-layout",
+              "path": "areas/software/general/rules/docs-layout.md"
+            }
+          ],
           "uses_skills": [],
           "skill_refs": [],
-          "quality_gates": [],
-          "workflow_diagram": "",
+          "checks": [
+            "make lint",
+            "make test"
+          ],
+          "artifacts": [],
+          "steps": [
+            {
+              "title": "Reproduce",
+              "do": "turn the report into one command that shows the failure: a failing test, a `curl` call, or a script. Collect the exact error, stack trace, version, and input. Read logs only from the environment named in the report; ask the user first before you query a production system.",
+              "done_when": "the failure reproduces with one command, or you report the missing data that blocks it."
+            },
+            {
+              "title": "Locate the cause",
+              "do": "narrow the fault with evidence: bisect commits (`git bisect run <cmd>`), add temporary logging, or step through the failing path. Write down each hypothesis and the fact that confirms or rejects it.",
+              "done_when": "you can name the line or condition that causes the failure and explain why it was possible."
+            },
+            {
+              "title": "Write the regression test",
+              "do": "add a test at the lowest level that exercises the cause. Run it before the fix.",
+              "done_when": "the new test fails on the current code for the reported reason."
+            },
+            {
+              "title": "Fix",
+              "do": "change the code at the cause, not at the symptom. Remove the temporary logging. Search for the same pattern elsewhere (`grep -rn`) and list other hits instead of fixing them silently.",
+              "done_when": "the regression test and the existing suite pass."
+            },
+            {
+              "title": "Check and document",
+              "do": "run every command in `checks`. Record the cause and the fix on the docs page that covers the changed code; for a bug that reached users, write `docs/incidents/<YYYY-MM-DD>-<id>.md`.",
+              "done_when": "all `checks` commands exit 0 and the docs page names the root cause and the regression test."
+            }
+          ],
+          "body": "",
           "examples": [
             "POST /orders returns 500 when the cart holds a discounted item; find the cause and fix it."
           ]
@@ -323,6 +1490,7 @@
           "description": "Turn a feature request into working code with tests and an up-to-date feature docs page.",
           "workflow_path": "areas/software/general/workflows/develop-feature.md",
           "use_when": "The request asks to build, add or change behaviour in code: a feature, an endpoint, a small program or script, or any coding task that no narrower workflow fits.",
+          "avoid_when": "The request only asks to diagnose a bug, review a diff, restructure code without behaviour change, or change infrastructure.",
           "inputs": [
             "feature_request",
             "acceptance_criteria"
@@ -332,16 +1500,57 @@
             "tests",
             "docs_page"
           ],
-          "roles": [],
           "related_rules": [
             "code-style-guide.md",
             "docs-layout.md",
             "readme-sync-guide.md"
           ],
+          "rule_refs": [
+            {
+              "name": "code-style-guide",
+              "path": "areas/software/general/rules/code-style-guide.md"
+            },
+            {
+              "name": "docs-layout",
+              "path": "areas/software/general/rules/docs-layout.md"
+            },
+            {
+              "name": "readme-sync-guide",
+              "path": "areas/software/general/rules/readme-sync-guide.md"
+            }
+          ],
           "uses_skills": [],
           "skill_refs": [],
-          "quality_gates": [],
-          "workflow_diagram": "",
+          "checks": [
+            "make lint",
+            "make test"
+          ],
+          "artifacts": [
+            "docs/<feature>/README.md"
+          ],
+          "steps": [
+            {
+              "title": "Describe the current behaviour and the target",
+              "do": "read the code paths the request touches and the docs page whose `covers:` matches them. Write numbered acceptance criteria and an explicit out-of-scope list into `docs/<feature>/README.md`. Ask the user only when a criterion has two plausible meanings.",
+              "done_when": "each criterion maps to one planned test, and the feature page has a `covers:` key."
+            },
+            {
+              "title": "Write the failing tests",
+              "do": "add tests for every acceptance criterion at the lowest useful level (unit first, then API or integration). Run them.",
+              "done_when": "the new tests fail for the expected reason and the existing tests still pass."
+            },
+            {
+              "title": "Implement",
+              "do": "change the smallest set of modules that makes the tests pass. Follow the rules that `paths:` loads for the touched files. Keep configuration in settings, not in code.",
+              "done_when": "the new tests pass and `git diff --stat` lists only files the criteria need."
+            },
+            {
+              "title": "Check and document",
+              "do": "run every command in `checks`. Update the feature page (design, contracts, risks, status `implemented`) and `README.md` when setup or usage changed. Add a `CHANGELOG.md` line for a visible change.",
+              "done_when": "all `checks` commands exit 0 and the docs coverage check passes for the changed paths."
+            }
+          ],
+          "body": "",
           "examples": [
             "Add subscription cancellation: DELETE /subscriptions/{id} records a reason and keeps access until the period ends."
           ]
@@ -352,6 +1561,7 @@
           "description": "Restructure a module without changing its observable behaviour, guarded by tests.",
           "workflow_path": "areas/software/general/workflows/refactor-module.md",
           "use_when": "The request asks to restructure, extract, rename, split or clean up existing code while keeping its behaviour the same.",
+          "avoid_when": "The request also changes behaviour or adds a feature; use the feature workflow.",
           "inputs": [
             "module_path",
             "refactoring_goal"
@@ -360,23 +1570,326 @@
             "refactored_code",
             "characterization_tests"
           ],
-          "roles": [],
           "related_rules": [
             "code-style-guide.md",
             "lint-format-guide.md"
           ],
+          "rule_refs": [
+            {
+              "name": "code-style-guide",
+              "path": "areas/software/general/rules/code-style-guide.md"
+            },
+            {
+              "name": "lint-format-guide",
+              "path": "areas/software/general/rules/lint-format-guide.md"
+            }
+          ],
           "uses_skills": [],
           "skill_refs": [],
-          "quality_gates": [],
-          "workflow_diagram": "",
+          "checks": [
+            "make lint",
+            "make test"
+          ],
+          "artifacts": [],
+          "steps": [
+            {
+              "title": "Pin the current behaviour",
+              "do": "list the public entry points of the module and their callers (`grep -rn`). Run the tests that cover them and measure coverage of the module.",
+              "done_when": "every public entry point has at least one passing test, or you add characterization tests that record the current outputs, including odd ones."
+            },
+            {
+              "title": "Plan small steps",
+              "do": "split the refactoring into steps that each keep the build green: extract, move, rename, then delete. Keep public names and signatures unless the request asks to change them.",
+              "done_when": "the plan lists each step and the callers it touches."
+            },
+            {
+              "title": "Refactor step by step",
+              "do": "apply one step, run the module tests, and commit. Do not fix bugs you find on the way; list them.",
+              "done_when": "each step ends with the tests green and the diff contains no behaviour change."
+            },
+            {
+              "title": "Check",
+              "do": "run every command in `checks`. Compare the public API before and after (exported names, routes, CLI flags). Add the commit trailer `Docs-Not-Needed: refactoring without behaviour change` when no docs page needs an update.",
+              "done_when": "all `checks` commands exit 0 and the public API is unchanged."
+            }
+          ],
+          "body": "",
           "examples": [
             "Move the business logic from OrderController into OrderService."
           ]
         }
       ]
+    },
+    {
+      "area": "software/mlops",
+      "group": "software",
+      "spec": "mlops",
+      "summary": "ML training, evaluation, and model serving code: data integrity, reproducibility, governance, and serving safety.",
+      "agents_path": "areas/software/mlops/AGENTS.md",
+      "rules": [
+        {
+          "name": "data-integrity",
+          "description": "Dataset split, leakage, and feature parity constraints for ML training code.",
+          "paths": [
+            "**/training/**",
+            "**/features/**",
+            "**/*.ipynb"
+          ],
+          "trigger": "",
+          "path": "areas/software/mlops/rules/data-integrity.md",
+          "body": "- Use the test split once, for the final candidate evaluation; never tune hyperparameters on it.\n- Split time-series data by a time `column`; do not shuffle future rows into the training set.\n- Define each feature once in shared code that both the training job and the inference service import.\n- Remove any feature `column` that is derived from the target or is not available at prediction time.\n- Document the source table and computation of every feature in the feature definition file.\n"
+        },
+        {
+          "name": "model-governance",
+          "description": "Model registry, evaluation, approval, and model card requirements before a model serves traffic.",
+          "paths": [
+            "**/models/**",
+            "**/serving/**",
+            "**/mlflow*",
+            "**/model_card*.md"
+          ],
+          "trigger": "",
+          "path": "areas/software/mlops/rules/model-governance.md",
+          "body": "- Register every production model in the model registry and promote it only through registry stage transitions.\n- Do not deploy a model with an ad hoc script or `command` that bypasses the registry.\n- Compare a candidate with the current production model on the held-out test set and store the evaluation metrics with the registry version.\n- Require a named human approval on the registry version before promotion.\n- Record who deployed, when, which registry version, and the rollback version for every production deployment.\n- Add a model card with intended use, metrics per subgroup, known limitations, and bias assessment.\n"
+        },
+        {
+          "name": "production-safety",
+          "description": "Fallback, latency, prediction logging, and drift alert requirements for model serving endpoints.",
+          "paths": [
+            "**/serving/**",
+            "**/inference/**"
+          ],
+          "trigger": "",
+          "path": "areas/software/mlops/rules/production-safety.md",
+          "body": "- Define a fallback for every model endpoint: a rule-based baseline, the previous model version, or a degraded response.\n- Set a latency target per endpoint (for example p99 under 200 ms) and test it before release.\n- Log every prediction with its input features, model version, and timestamp.\n- Run high-stakes models (credit, medical, fraud) in shadow mode for at least 2 weeks before live traffic.\n- Configure alerts for input feature drift and prediction drift against the training baseline.\n"
+        },
+        {
+          "name": "reproducibility",
+          "description": "Run tracking, seeds, pinned environments, and data snapshots for reproducible ML training.",
+          "paths": [
+            "**/training/**",
+            "**/*.ipynb",
+            "**/conda*.yaml",
+            "**/requirements*.txt"
+          ],
+          "trigger": "",
+          "path": "areas/software/mlops/rules/reproducibility.md",
+          "body": "- Log the code commit, data snapshot id, hyperparameters, and image digest of every training run before training starts.\n- Set seeds for `random`, `numpy`, and the ML framework, and log the seed as a hyperparameter.\n- Pin every package version in `requirements.txt` or `conda.yaml` for training and inference; do not use `>=`.\n- Train only on immutable dataset snapshots, not on live tables.\n- Keep a retrain command that rebuilds the model from code, data snapshot, and hyperparameters.\n"
+        }
+      ],
+      "skills": [],
+      "workflows": []
+    },
+    {
+      "area": "software/mobile",
+      "group": "software",
+      "spec": "mobile",
+      "summary": "iOS, Android, and React Native app code: offline behaviour, performance, store compliance, and on-device security.",
+      "agents_path": "areas/software/mobile/AGENTS.md",
+      "rules": [
+        {
+          "name": "offline-first",
+          "description": "Offline behaviour and sync queue constraints for iOS, Android, and React Native apps.",
+          "paths": [
+            "**/*.swift",
+            "**/*.kt",
+            "**/*.dart",
+            "ios/**",
+            "android/**"
+          ],
+          "trigger": "",
+          "path": "areas/software/mobile/rules/offline-first.md",
+          "body": "- Update the UI before the network request returns, and roll back the change when the request fails.\n- Show an offline state with a retry action on every screen that needs network data; never render a blank screen.\n- Persist the outgoing action queue to disk (database or file), not only in memory.\n- Run the queued requests when connectivity returns, including from a background task.\n- Define one conflict resolution strategy per synced entity type and document it next to the sync code.\n- Label cached data older than its freshness limit with the time of the last update.\n"
+        },
+        {
+          "name": "performance-budget",
+          "description": "Startup, memory, frame rate, and list rendering limits for iOS, Android, and React Native apps.",
+          "paths": [
+            "**/*.swift",
+            "**/*.kt",
+            "**/*.tsx",
+            "ios/**",
+            "android/**"
+          ],
+          "trigger": "",
+          "path": "areas/software/mobile/rules/performance-budget.md",
+          "body": "- Keep cold start under 3 s and time to interactive under 2 s on the slowest supported device.\n- Limit background memory use to 100 MB.\n- Keep the UI at 60 fps; fail a release check that measures below 30 fps on a supported device.\n- Limit the React Native JavaScript bundle to 4 MB.\n- Do not run long computations on the UI or JavaScript thread; move them to a worker or native module.\n- Use `FlatList` or `FlashList` for lists of unknown length, never `ScrollView`.\n- Resize images to their display size before load and use a caching image component.\n- Enable the Hermes engine (`hermesEnabled`) on both platforms in React Native projects.\n"
+        },
+        {
+          "name": "platform-compliance",
+          "description": "App Store and Play Store requirements for permissions, SDK versions, and privacy declarations.",
+          "paths": [
+            "ios/**/Info.plist",
+            "**/Info.plist",
+            "android/**/build.gradle*",
+            "**/AndroidManifest.xml"
+          ],
+          "trigger": "",
+          "path": "areas/software/mobile/rules/platform-compliance.md",
+          "body": "- Add a usage description key in `Info.plist` for every capability the app uses (camera, location, microphone).\n- Update the App Store privacy labels and the Play Console data safety form in the same change that collects a new data type.\n- Use Apple in-app purchase (`StoreKit`) for digital goods in App Store builds.\n- Set the minimum iOS version to 16 or later unless the project documents another value.\n- Request Android dangerous permissions at the point of use, not at app launch.\n- Keep `targetSdkVersion` within 1 year of the latest Android API level.\n- Include 64-bit builds of every native library.\n"
+        },
+        {
+          "name": "security-mobile",
+          "description": "On-device storage, logging, screenshots, and deep link security for mobile apps.",
+          "paths": [
+            "**/*.swift",
+            "**/*.kt",
+            "**/*.tsx",
+            "ios/**",
+            "android/**"
+          ],
+          "trigger": "",
+          "path": "areas/software/mobile/rules/security-mobile.md",
+          "body": "- Store tokens, passwords, and personal data only in the Keychain or Android Keystore, never in `AsyncStorage` or `SharedPreferences`.\n- Enable certificate pinning in apps that handle payment or health data.\n- Do not log tokens or personal data; disable debug log levels in release builds.\n- Set `FLAG_SECURE` on Android and hide content on iOS for payment and authentication screens.\n- Validate the scheme, host, and path of every deep link before the app reads its query parameters.\n"
+        }
+      ],
+      "skills": [],
+      "workflows": []
+    },
+    {
+      "area": "software/qa",
+      "group": "software",
+      "spec": "qa",
+      "summary": "Automated test suites and CI test gates: strategy, test data, flaky tests, and merge or deploy thresholds.",
+      "agents_path": "areas/software/qa/AGENTS.md",
+      "rules": [
+        {
+          "name": "flakiness-policy",
+          "description": "Handling of flaky tests, covering quarantine, root cause, and the fix deadline.",
+          "paths": [
+            "**/tests/**",
+            "**/test/**",
+            "**/*_test.*",
+            "**/*.spec.*",
+            "**/*.test.*"
+          ],
+          "trigger": "",
+          "path": "areas/software/qa/rules/flakiness-policy.md",
+          "body": "- Quarantine a test that fails in more than 2% of runs on the main branch, and open a tracking issue for it.\n- Fix or delete a quarantined test within 5 business days.\n- Name the cause in the fix commit: race condition, shared state, external service, or time dependency.\n- Do not add `sleep()` or a fixed wait to fix a flaky test; wait on an explicit condition instead.\n- Use an injected or frozen clock in tests instead of `Date.now()` or `time.time()`.\n- Use a fake or a local container instead of external services in unit and integration tests.\n"
+        },
+        {
+          "name": "quality-gates",
+          "description": "Thresholds that block a merge or a deploy, enforced as CI jobs.",
+          "paths": [
+            ".gitlab-ci.yml",
+            ".github/workflows/**",
+            "**/jest.config.*",
+            "**/pytest.ini",
+            "pyproject.toml"
+          ],
+          "trigger": "",
+          "path": "areas/software/qa/rules/quality-gates.md",
+          "body": "- Fail the merge pipeline when any unit or integration test fails.\n- Fail the merge pipeline when line coverage of business logic drops below 80% or below the target branch value.\n- Fail the merge pipeline on any type check or lint error.\n- Fail the merge pipeline on a Critical or High SAST finding and on a Critical dependency CVE.\n- Block a deploy when the smoke test suite has any failure.\n- Block a deploy when p99 latency in the performance test grows by more than 20% against the baseline.\n- Block a deploy when the end-to-end regression suite pass rate is below 98%.\n"
+        },
+        {
+          "name": "test-data",
+          "description": "Test data sources, isolation, and fake value conventions for automated tests.",
+          "paths": [
+            "**/tests/**",
+            "**/fixtures/**",
+            "**/factories/**"
+          ],
+          "trigger": "",
+          "path": "areas/software/qa/rules/test-data.md",
+          "body": "- Never copy production data into tests; use synthetic data from factories.\n- Create the data each test needs inside the test, and delete it in teardown or roll back the transaction.\n- Do not share mutable state between tests; each test must pass when run alone and in random order.\n- Use factories (`factory_boy`, `@faker-js/faker`) instead of raw SQL fixture files.\n- Use `example.com` addresses and obviously fake phone numbers in test data.\n- Set a fixed seed for fake data generators so a failing test reproduces.\n"
+        },
+        {
+          "name": "test-strategy",
+          "description": "Test suite shape, coverage ratchet, and test naming for automated test suites.",
+          "paths": [
+            "**/tests/**",
+            "**/test/**",
+            "**/*_test.*",
+            "**/*.spec.*",
+            "**/*.test.*"
+          ],
+          "trigger": "",
+          "path": "areas/software/qa/rules/test-strategy.md",
+          "body": "- Keep roughly 20 unit tests and 5 integration tests for every end-to-end test.\n- Add the tests for a feature or bug fix in the same change as the code.\n- Add a regression test to every hotfix before the fix counts as complete.\n- Keep coverage at or above the target branch value; do not lower the coverage threshold in config.\n- Name a test as `<unit> <scenario> <expected result>`, for example `checkout with expired card shows error`.\n- Do not name tests with numbers only, such as `test_checkout_2`.\n"
+        }
+      ],
+      "skills": [],
+      "workflows": []
+    },
+    {
+      "area": "software/security",
+      "group": "software",
+      "spec": "security",
+      "summary": "Application security: secure coding, secrets, dependencies, and compliance controls.",
+      "agents_path": "areas/software/security/AGENTS.md",
+      "rules": [
+        {
+          "name": "compliance-baseline",
+          "description": "Minimum compliance controls for services that store user data, with PCI DSS and GDPR additions.",
+          "paths": [],
+          "trigger": "manual",
+          "path": "areas/software/security/rules/compliance-baseline.md",
+          "body": "- Enable encryption at rest for every database `table` store, bucket, and volume that holds user data.\n- Allow only TLS 1.2 or later on every endpoint.\n- Log every admin action with the actor identity and keep the audit log for at least 1 year.\n- Back up user data daily and test a restore at least every quarter.\n- Patch Critical vulnerabilities from the weekly scan within 7 days.\n- Never store card data after authorization; keep only the payment provider token.\n- Put the cardholder data environment in its own network `namespace` or segment when the service handles card data.\n- Keep a data processing inventory for EU or California user data, and complete deletion requests within 30 days.\n- Document the breach notification steps with the 72-hour GDPR deadline.\n"
+        },
+        {
+          "name": "dependency-policy",
+          "description": "Dependency sources, lockfiles, scanning, and vulnerability exceptions for application packages.",
+          "paths": [
+            "package.json",
+            "package-lock.json",
+            "pnpm-lock.yaml",
+            "yarn.lock",
+            "requirements*.txt",
+            "poetry.lock",
+            "uv.lock",
+            "go.mod",
+            "go.sum",
+            "pom.xml",
+            "build.gradle*"
+          ],
+          "trigger": "",
+          "path": "areas/software/security/rules/dependency-policy.md",
+          "body": "- Commit the lockfile and install with the locked mode (`npm ci`, `pip install --require-hashes`, `go mod verify`).\n- Run the dependency scan on every merge request and on the main branch.\n- Block the release on a Critical CVE whose vulnerable code is reachable from the service.\n- Add a fix or an exception for every High CVE within 72 hours.\n- Classify every High or Critical finding as `exploitable-now`, `not-reachable`, or `accepted-risk`, and attach the evidence (call path or runtime boundary) to the scan `config` for `not-reachable`.\n- Add an owner, a reason, a compensating control, and an expiry date at most 30 days ahead to every exception.\n- Fail the scan job when an exception has expired.\n- Allow packages only from the approved registries or proxy configured in the project.\n- Fail the build on a dependency with a prohibited license.\n- Block npm lifecycle scripts (`--ignore-scripts`) unless the project allowlists the package.\n- Check every new dependency for maintainer transfer, unexpected install scripts, and typosquatted package names before you add it.\n"
+        },
+        {
+          "name": "secrets-policy",
+          "description": "Secret storage, scanning, rotation, and leak response for application repositories.",
+          "paths": [
+            "**/.env*",
+            ".gitleaks.toml",
+            ".pre-commit-config.yaml",
+            "**/secrets/**",
+            "**/config/**"
+          ],
+          "trigger": "",
+          "path": "areas/software/security/rules/secrets-policy.md",
+          "body": "- Never commit passwords, API keys, tokens, or private keys, including in `.env.example`; use placeholder values.\n- Run `gitleaks` or `trufflehog` as a pre-commit hook and as a CI job on every merge request.\n- Store secrets in a secret manager (Vault or the cloud provider's secret service) and read them at runtime.\n- Set an expiry for every secret and rotate it at least every 90 days.\n- Enable audit logging for secret reads in the secret manager.\n- Revoke a leaked secret within 30 minutes, then rotate secrets with the same scope and check access logs for the exposure window.\n- Remove a leaked secret from git history with `git filter-repo` only after revocation.\n"
+        },
+        {
+          "name": "secure-coding",
+          "description": "Output encoding, shell and file path handling, and error response safety in application code.",
+          "paths": [
+            "**/*.ts",
+            "**/*.tsx",
+            "**/*.js",
+            "**/*.py",
+            "**/*.go",
+            "**/*.java"
+          ],
+          "trigger": "",
+          "path": "areas/software/security/rules/secure-coding.md",
+          "body": "- Encode user-controlled data before you render it in HTML; do not use `dangerouslySetInnerHTML` or `v-html` without `DOMPurify`.\n- Never pass user input to a shell; call the process with an argument array and an allowlist of values.\n- Resolve file paths from user input to a canonical path and reject paths outside the allowed base directory.\n- Check file uploads for type and size, and store them outside the web root.\n- Return generic error messages to clients; never return stack traces or SQL errors in a response.\n- Require authentication on every endpoint by default and annotate public endpoints explicitly.\n- Do not use a hidden or unlisted endpoint path as an access control.\n"
+        }
+      ],
+      "skills": [
+        {
+          "name": "dependency-audit",
+          "description": "Procedure to audit dependencies of a Python, Go, Java, or Node project: scan, check reachability, classify each finding, and fix or record an exception. Use when you add or update dependencies, triage a vulnerability alert, or prepare a release.",
+          "path": "areas/software/security/skills/dependency-audit/SKILL.md",
+          "body": "## 1. Inventory the change\n\n1. Diff the lock files against the target branch: `git diff origin/main -- '*.lock' go.sum pom.xml\n   requirements*.txt package-lock.json`.\n2. For each new or upgraded package, record: name, old and new version, direct or transitive, registry.\n3. Check new direct packages for red flags: a maintainer change just before the release, install scripts with\n   network calls, obfuscated code, a name close to a popular package, a registry outside the approved list.\n   If you find one, stop and tell the user.\n\n## 2. Scan\n\n| Stack | Command |\n|---|---|\n| Python | `pip-audit -r requirements.txt` or `uv run pip-audit` |\n| Go | `govulncheck ./...` |\n| Java (Maven) | `mvn org.owasp:dependency-check-maven:check` or `osv-scanner -L pom.xml` |\n| Node | `npm audit --omit=dev` |\n| Any lock file | `osv-scanner scan source -r .` |\n\nRecord each High or Critical finding with the advisory id, the package path, and the fixed version.\n\n## 3. Check reachability\n\n1. Go: `govulncheck` reports only vulnerable functions that the code calls; trust its \"not called\" result.\n2. Other stacks: search the code for the vulnerable function or feature named in the advisory.\n3. Check exposure: is the code path reachable from a public endpoint, from user input, or only from tests and\n   build tools?\n\n## 4. Classify and act\n\n- **Exploitable** — reachable from untrusted input. Upgrade to the fixed version now. Block the release until it\n  ships.\n- **Not reachable** — record the evidence (search result, `govulncheck` output) in the ignore file of the scanner\n  with a reason, for example `.osv-scanner.toml` `[[IgnoredVulns]]` with `reason` and `ignoreUntil`.\n- **No fix available** — agree with the user on a compensating control (input validation, feature off, WAF rule)\n  and record an exception with an owner and an expiry date.\n\n## 5. Fix\n\n1. Prefer the smallest upgrade that contains the fix. Run the full test suite after it.\n2. If the upgrade is a major version, read its changelog for breaking changes and fix the call sites.\n3. For a transitive package, upgrade the direct parent first; pin the transitive version only if no parent\n   release has the fix (`constraints.txt`, Maven `dependencyManagement`, `overrides` in `package.json`,\n   `replace` in `go.mod`).\n\n## 6. Done\n\n- The scan shows no unexcepted High or Critical finding.\n- Every exception has a reason, an owner, and an expiry date.\n"
+        }
+      ],
+      "workflows": []
     }
   ],
   "stats": {
+    "rules": 64,
+    "skills": 14,
     "workflows": 10,
     "examples": 10,
     "problems": 0

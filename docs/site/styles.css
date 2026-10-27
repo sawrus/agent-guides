@@ -9,7 +9,6 @@
   --border: #cbd5e1;
   --code-bg: #e2e8f0;
   --code-fg: #0f172a;
-  --mermaid-bg: rgba(226, 232, 240, 0.45);
   --header-offset: 0px;
   --sidebar-width: 250px;
 }
@@ -28,7 +27,6 @@ html[data-theme="dark"] {
   --border: #334155;
   --code-bg: #020617;
   --code-fg: #e2e8f0;
-  --mermaid-bg: rgba(2, 6, 23, 0.35);
 }
 body {
   margin: 0;
@@ -270,18 +268,30 @@ input, select {
 code, pre { background: var(--code-bg); color: var(--code-fg); border-radius: 8px; }
 .chip { display:inline-block; border:1px solid var(--border); border-radius:999px; padding:.15rem .5rem; margin:.15rem; color:var(--muted); font-size:.82rem; }
 .meta { color: var(--muted); }
-.mermaid {
-  max-width: 100%;
-  margin: 1rem 0;
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--mermaid-bg);
+.menu-kind {
+  margin: 0.35rem 0 0.05rem;
+  padding: 0 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.menu-kind:first-child {
+  margin-top: 0;
+}
+#content a {
+  color: var(--accent);
+}
+#content h3 {
+  margin-bottom: 0.4rem;
+}
+#content pre {
+  padding: 0.6rem 0.75rem;
   overflow-x: auto;
 }
-.mermaid svg {
-  display: block;
-  max-width: none;
+#content :not(pre) > code {
+  padding: 0.05rem 0.3rem;
 }
 
 @media (max-width: 980px) {
