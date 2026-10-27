@@ -1,189 +1,68 @@
 ---
 name: slo-implementation
-type: skill
-description: Implement SLOs end-to-end in Prometheus — recording rules, burn rate alerts, error budget dashboards, and Sloth/pyrra integration.
-related-rules:
-  - golden-signals.md
-  - alerting-standards.md
-allowed-tools: Read, Write, Edit, Bash
+description: "Procedure to define an SLO for a service and implement it in Prometheus: choose the SLI, write recording rules, and add multi-window multi-burn-rate alerts. Use when you add or change an SLO, an error budget, or burn-rate alerts."
 ---
 
-# Skill: SLO Implementation
+# SLO: define and implement
 
-> **Expertise:** Prometheus recording rules for SLOs, multi-window burn rate alerts, Sloth code generation, error budget Grafana panels.
+## 1. Choose the SLI
 
-## When to load
+1. Pick one user journey per SLO (for example "checkout API responds").
+2. Choose the SLI type:
+   - **Availability** — good events / valid events, for example non-5xx responses / all responses.
+   - **Latency** — requests faster than a threshold / all requests, from a histogram bucket.
+3. Measure as close to the user as the data allows: load balancer or ingress metrics before application
+   metrics.
+4. Exclude invalid events (health checks, 4xx caused by the client) in the label selector, and write down why.
 
-When implementing SLOs for a service in Prometheus, setting up burn rate alerts, or creating error budget dashboards.
+## 2. Set the target
 
-## Full SLO Stack (single service)
+1. Read the last 4 weeks of the SLI. Set the target slightly below what the service achieves, not above it.
+2. Use a 28-day or 30-day rolling window.
+3. Compute the error budget: `1 - target`. A 99.9% target gives 43 minutes of full outage per 30 days.
+4. Record the SLO in the service docs page: SLI query, target, window, owner.
 
-### Step 1: Define the SLI Recording Rules
+## 3. Write recording rules
 
-```yaml
-# prometheus-rules/slo-checkout-service.yaml
-groups:
-  - name: slo:checkout-service:recording
-    interval: 30s
-    rules:
-      # Good requests: 2xx, latency < 500ms (combine availability + latency SLI)
-      - record: slo:http_requests_good:rate5m
-        labels: { service: checkout-service }
-        expr: |
-          sum(rate(http_requests_total{
-            service="checkout-service",
-            status=~"2.."
-          }[5m]))
-          # For latency SLI, intersect with bucket:
-          # sum(rate(http_request_duration_seconds_bucket{
-          #   service="checkout-service", le="0.5"}[5m]))
-
-      - record: slo:http_requests_total:rate5m
-        labels: { service: checkout-service }
-        expr: |
-          sum(rate(http_requests_total{service="checkout-service"}[5m]))
-
-      # SLI ratio (5m window)
-      - record: slo:http_availability:ratio_rate5m
-        labels: { service: checkout-service }
-        expr: |
-          slo:http_requests_good:rate5m{service="checkout-service"}
-          / slo:http_requests_total:rate5m{service="checkout-service"}
-
-      # Pre-compute multiple windows for burn rate alerts
-      - record: slo:http_availability:ratio_rate30m
-        labels: { service: checkout-service }
-        expr: |
-          sum(rate(http_requests_total{service="checkout-service",status=~"2.."}[30m]))
-          / sum(rate(http_requests_total{service="checkout-service"}[30m]))
-
-      - record: slo:http_availability:ratio_rate1h
-        labels: { service: checkout-service }
-        expr: |
-          sum(rate(http_requests_total{service="checkout-service",status=~"2.."}[1h]))
-          / sum(rate(http_requests_total{service="checkout-service"}[1h]))
-
-      - record: slo:http_availability:ratio_rate6h
-        labels: { service: checkout-service }
-        expr: |
-          sum(rate(http_requests_total{service="checkout-service",status=~"2.."}[6h]))
-          / sum(rate(http_requests_total{service="checkout-service"}[6h]))
-
-      - record: slo:http_availability:ratio_rate1d
-        labels: { service: checkout-service }
-        expr: |
-          sum(rate(http_requests_total{service="checkout-service",status=~"2.."}[1d]))
-          / sum(rate(http_requests_total{service="checkout-service"}[1d]))
-
-      - record: slo:http_availability:ratio_rate28d
-        labels: { service: checkout-service }
-        expr: |
-          sum_over_time(slo:http_availability:ratio_rate5m{service="checkout-service"}[28d])
-          / (28 * 24 * 12)   # 12 samples/hour × 24h × 28d
-```
-
-### Step 2: Multi-Window Burn Rate Alerts
+Record the error ratio for each alert window: 5m, 30m, 1h, 2h, 6h, 1d, 3d.
 
 ```yaml
-  - name: slo:checkout-service:alerts
-    rules:
-      # ── Fast burn (1h + 5m windows, 14.4× rate) ──────────────────
-      # Consumes 2% of 28d budget in 1h → page immediately
-      - alert: CheckoutSLOFastBurn
-        expr: |
-          (slo:http_availability:ratio_rate1h{service="checkout-service"} < (1 - 14.4 * 0.005))
-          and
-          (slo:http_availability:ratio_rate5m{service="checkout-service"} < (1 - 14.4 * 0.005))
-        for: 2m
-        labels:
-          severity: critical
-          service: checkout-service
-          slo: availability-99.5
-        annotations:
-          summary: "Checkout SLO fast burn — error rate > 14.4× baseline"
-          description: "1h availability: {{ $value | humanizePercentage }}. Budget burning rapidly."
-          runbook_url: "https://runbooks.internal/checkout-slo-fast-burn"
-
-      # ── Slow burn (6h + 30m windows, 6× rate) ────────────────────
-      # Consumes 5% of 28d budget in 6h → ticket, fix in business hours
-      - alert: CheckoutSLOSlowBurn
-        expr: |
-          (slo:http_availability:ratio_rate6h{service="checkout-service"} < (1 - 6 * 0.005))
-          and
-          (slo:http_availability:ratio_rate30m{service="checkout-service"} < (1 - 6 * 0.005))
-        for: 15m
-        labels:
-          severity: warning
-          service: checkout-service
-          slo: availability-99.5
-        annotations:
-          summary: "Checkout SLO slow burn — error rate > 6× baseline"
-          runbook_url: "https://runbooks.internal/checkout-slo-slow-burn"
-
-      # ── Budget exhaustion warning ─────────────────────────────────
-      - alert: CheckoutSLOBudgetLow
-        expr: |
-          slo:http_availability:ratio_rate28d{service="checkout-service"}
-          < (1 - 0.005 * 0.75)   # < 25% budget remaining
-        for: 1h
-        labels:
-          severity: warning
-          service: checkout-service
-        annotations:
-          summary: "Checkout error budget < 25% remaining for this month"
-          runbook_url: "https://runbooks.internal/checkout-error-budget"
+- record: slo:sli_error:ratio_rate5m
+  labels: {slo: checkout-availability}
+  expr: |
+    sum(rate(http_requests_total{service="checkout",code=~"5.."}[5m]))
+    / sum(rate(http_requests_total{service="checkout"}[5m]))
 ```
 
-### Step 3: Sloth (generate from YAML spec)
+Repeat the rule per window (change only `[5m]` and the name). If the project uses Sloth or Pyrra, write the SLO
+spec file instead and let the tool generate these rules.
+
+## 4. Add burn-rate alerts
+
+Use two windows per alert, so it fires fast and resets fast. For a 99.9% target (budget `0.001`):
+
+| Severity | Long window | Short window | Burn rate | Budget spent |
+|---|---|---|---|---|
+| page | 1h | 5m | 14.4 | 2% |
+| page | 6h | 30m | 6 | 5% |
+| ticket | 3d | 6h | 1 | 10% |
 
 ```yaml
-# slo/checkout-service.yaml
-version: "prometheus/v1"
-service: checkout-service
-labels: { team: backend, tier: "1" }
-slos:
-  - name: requests-availability
-    objective: 99.5
-    description: "99.5% of checkout requests succeed"
-    sli:
-      events:
-        error_query: |
-          sum(rate(http_requests_total{
-            service="checkout-service",
-            status=~"5.."}[{{.window}}]))
-        total_query: |
-          sum(rate(http_requests_total{
-            service="checkout-service"}[{{.window}}]))
-    alerting:
-      name: CheckoutServiceAvailability
-      page_alert:
-        labels: { severity: critical }
-        annotations:
-          runbook_url: https://runbooks.internal/checkout-availability
-      ticket_alert:
-        labels: { severity: warning }
+- alert: CheckoutAvailabilityBurnFast
+  expr: |
+    slo:sli_error:ratio_rate1h{slo="checkout-availability"} > (14.4 * 0.001)
+    and slo:sli_error:ratio_rate5m{slo="checkout-availability"} > (14.4 * 0.001)
+  labels: {severity: page}
 ```
 
-```bash
-# Generate Prometheus rules + alerts from Sloth spec
-sloth generate -i slo/checkout-service.yaml -o rules/slo-checkout-generated.yaml
-# Produces: recording rules for all windows + multi-window burn rate alerts
-```
+## 5. Test and check
 
-### Step 4: Error Budget Dashboard (Grafana)
+1. `promtool check rules <file>` and a `promtool test rules` case that fires the fast-burn alert.
+2. Query the recording rules after deploy; each must return one series per SLO.
+3. Add an SLO panel (SLI, target, remaining budget) to the service dashboard.
 
-```promql
--- Current error budget remaining (percent of 28d budget)
-(
-  sum_over_time(slo:http_availability:ratio_rate5m{service="checkout-service"}[28d])
-  / (28 * 24 * 12)
-  - (1 - 0.005)
-)
-/ 0.005 * 100
+## 6. Use the budget
 
--- Hours of budget remaining at current burn rate
-(
-  (slo:http_availability:ratio_rate28d{service="checkout-service"} - (1 - 0.005))
-  / 0.005
-) * 28 * 24
-```
+- Budget left: changes ship as usual.
+- Budget spent in the window: write it into the service docs page and agree with the user which reliability
+  work comes before new features. Do not lower the target to recover the budget.

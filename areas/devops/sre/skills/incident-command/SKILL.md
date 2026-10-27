@@ -1,119 +1,63 @@
 ---
 name: incident-command
-type: skill
-description: Structured incident command for P0/P1 — roles, timeline, communication templates, and mitigation-first approach.
-related-rules:
-  - on-call-standards.md
-  - error-budget-policy.md
-allowed-tools: Read, Bash
+description: "Procedure to run a production incident: declare and set severity, gather evidence, mitigate before root cause, keep a timeline, communicate, and hand off. Use when a service is down or degraded or an alert pages."
 ---
 
-# Skill: Incident Command
+# Incident command
 
-> **Expertise:** ICS-inspired incident structure, communication templates, mitigation over diagnosis, blameless culture.
+Mitigate first, find the root cause later. Every action on production needs the user's go-ahead.
 
-## When to load
+## 1. Declare
 
-When responding to a P0/P1 incident, coordinating a multi-engineer response, or writing a war room update.
+1. State the symptom in one sentence: what fails, for whom, since when.
+2. Set the severity from the project on-call rule (`on-call-standards.md` when the sre spec is installed):
 
-## Incident Roles
+| Severity | Condition |
+|---|---|
+| P0 | Full outage, data loss, or security breach |
+| P1 | Major feature broken or over 25 % of users affected |
+| P2 | Degraded with a workaround |
+| P3 | No user impact yet |
 
-| Role | Responsibility | Who |
-|:---|:---|:---|
-| **Incident Commander (IC)** | Owns coordination; makes go/no-go calls | On-call lead or SRE |
-| **Technical Lead** | Diagnoses and implements fix | On-call engineer |
-| **Comms Lead** | Writes status page + stakeholder updates | PM or secondary on-call |
-| **Scribe** | Documents timeline in real-time | Any available engineer |
+3. Start a timeline with UTC times. Add every action and finding as one line.
 
-## P0 Timeline (first 30 minutes)
+## 2. Gather evidence (read-only)
 
-```
-T+0:   ACKNOWLEDGE — "I'm on it" in #incidents Slack
-T+2:   SCOPE — What's broken? Since when? Who's affected?
-       → kubectl get pods -A | grep -v Running
-       → Check Grafana error rate + latency dashboard
-T+5:   PAGE escalation if > 10% users affected or revenue impacted
-T+10:  STATUS PAGE update: "We are investigating reports of [symptom]"
-T+15:  MITIGATION — Rollback > fix. Prefer reversible actions.
-       Order: rollback deploy → feature flag off → scale up → redirect traffic
-T+20:  COMMUNICATE — Slack update with mitigation status + ETA
-T+30:  STABILIZE — Confirm metrics returning to baseline
-       → Watch error rate for 10 min after mitigation
-T+60:  PRELIMINARY POSTMORTEM doc created (timeline captured)
-T+24h: FULL POSTMORTEM — 5-whys, action items, owners
-```
+1. Alerts and dashboards: error rate, latency, saturation of the service and its dependencies.
+2. Recent changes: last deploys (`git log --since=<time>`, `kubectl rollout history`, pipeline history),
+   feature flags, config changes, infrastructure changes.
+3. Logs around the start time: filter by the error and by request id.
+4. Dependencies: database, queue, external APIs, DNS, certificates (`openssl s_client -connect <host>:443`).
+5. Write the leading hypothesis and the evidence for it.
 
-## Mitigation Priority (always prefer fast+reversible)
+## 3. Mitigate
 
-```
-1. Rollback deploy → helm rollback <release> -n <ns>    # < 2 min
-2. Feature flag off → LaunchDarkly / split.io toggle    # < 1 min
-3. Scale up replicas → kubectl scale deploy ... --replicas=N
-4. Restart pods → kubectl rollout restart deploy/<n>
-5. Redirect traffic → DNS change / load balancer weight
-6. Fix forward → only if rollback is not possible
-```
+Pick the smallest reversible action that stops the impact:
 
-## Slack Communication Templates
+- Change shipped in the window → roll back the deploy or turn off the feature flag.
+- Load spike → scale out or rate-limit.
+- One bad instance or zone → drain it.
+- Dependency down → fail over or degrade the feature.
 
-```
-# P0 Opening Message (#incidents channel)
-🔴 **P0 INCIDENT OPEN** — [service] [symptom]
-IC: @you | Scribe: @name
-Impact: [who is affected, estimated user count]
-Current status: Investigating
-Thread: all updates in this thread
-War room: https://meet.google.com/...
+Ask the user first before each action. Say the exact command, the expected effect, and how to undo it. After the
+action, check the same metric that showed the symptom.
 
-# Update every 15 min until resolved
-📊 **UPDATE T+15** — [service]
-Status: Mitigating / Resolved / Monitoring
-Action taken: Rolled back to v2.3.0
-Current error rate: 0.2% (was 8.4%)
-ETA: Monitoring for 10 min, then close
+## 4. Communicate
 
-# Resolution
-✅ **RESOLVED** — [service] — [duration]
-Root cause (preliminary): [1-sentence summary]
-Mitigation: [what fixed it]
-Next: Postmortem within 24h @[owner]
-```
+1. P0/P1: post a status update every 30 minutes, even with no news: impact, current action, next update time.
+2. State facts and the next step. Do not guess the root cause in public updates.
 
-## Status Page Templates
+## 5. Resolve and hand off
 
-```
-# Investigating
-Investigating - We are investigating reports of [symptom] affecting [service].
-Users may experience [impact]. We will provide updates every 15 minutes.
+1. Call the incident resolved when the symptom metric is back in its normal range for 15 minutes.
+2. If you hand off to another person, pass the timeline, the current hypothesis, the actions taken, and open
+   risks.
+3. Write the incident page `docs/incidents/<YYYY-MM-DD>-<id>.md`: impact, root cause with evidence, fix with
+   link and regression test, prevention actions with owners.
 
-# Identified
-Identified - We have identified the issue causing [symptom].
-We are working on a fix and expect resolution by [ETA].
+## 6. Find the root cause
 
-# Monitoring
-Monitoring - A fix has been implemented and we are monitoring the results.
-Users should no longer experience [symptom].
-
-# Resolved
-Resolved - [symptom] affecting [service] has been resolved.
-This incident lasted [duration]. A postmortem will be published within 72 hours.
-```
-
-## Useful Emergency Commands
-
-```bash
-# Immediate rollback
-helm rollback <release-name> -n <namespace>           # rolls back 1 version
-helm rollback <release-name> <revision> -n <namespace> # specific revision
-helm history <release-name> -n <namespace>             # list revisions
-
-# Scale up quickly
-kubectl scale deploy <name> -n <ns> --replicas=10
-
-# Emergency pod restart (without rollout)
-kubectl delete pods -n <ns> -l app=<name>
-
-# Check what changed recently
-kubectl describe deploy <name> -n <ns> | grep -A5 "Events:"
-kubectl rollout history deploy/<name> -n <ns>
-```
+1. Ask "why" from the symptom back to the defect until the answer is a change you can make in code, config,
+   tests, alerts, or limits. "Human error" is not a root cause; ask why the system allowed it.
+2. Add at least one prevention action: a test, an alert, a limit, or a rule.
+3. Link the fix and its regression test in the incident page.

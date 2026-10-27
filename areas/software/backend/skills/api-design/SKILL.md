@@ -1,170 +1,62 @@
 ---
 name: api-design
-type: skill
-description: Design and implement REST APIs with consistent conventions, versioning, error contracts, and security.
-related-rules:
-  - architecture.md
-  - security.md
-allowed-tools: Read, Write, Edit, Bash
+description: "Procedure to add or change an HTTP (OpenAPI) or gRPC (protobuf) API contract: edit the spec first, check breaking changes with oasdiff or buf, version and deprecate, and add contract tests. Use when you add or change an endpoint, request or response schema, or a proto service."
 ---
 
-# API Design Skill
+# API contract: add or change
 
-> **Expertise:** REST API design, HTTP semantics, versioning strategies, error contracts, OpenAPI, pagination, idempotency.
+## 1. Find the contract
 
-## HTTP Method & Status Code Reference
+1. Look for the spec: `openapi.yaml`, `api/*.yaml`, `docs/api/`, `*.proto` under `proto/` or `api/`.
+2. If the code generates the spec (FastAPI, springdoc, swaggo), find the command that exports it and use the
+   exported file in step 4.
+3. If no spec exists, write down the current request and response of the endpoint from the code and its tests.
+4. Find the consumers: other services, frontends, published SDKs. Ask the user if they are not known.
 
-| Operation | Method | Success | Error cases |
-|---|---|---|---|
-| Create resource | POST | 201 Created | 400 Validation, 409 Conflict |
-| Read resource | GET | 200 OK | 404 Not Found, 403 Forbidden |
-| Full update | PUT | 200 OK | 400, 404, 409 |
-| Partial update | PATCH | 200 OK | 400, 404 |
-| Delete | DELETE | 204 No Content | 404, 409 (has dependents) |
-| Async action | POST | 202 Accepted | 400 |
+## 2. Edit the contract first
 
-## URL Design Rules
+1. Change the spec before the code. Keep the change to the endpoint or message the task names.
+2. HTTP: one resource per path, plural nouns (`/orders/{orderId}`), standard methods and status codes, one
+   error schema for all endpoints (for example RFC 9457 `application/problem+json`).
+3. List endpoints take `limit` and a cursor (`page_token` / `next_page_token`) and return a bounded page.
+4. A create endpoint that clients may retry accepts an `Idempotency-Key` header.
+5. gRPC: add fields with new field numbers. Never reuse or renumber a field; `reserved` removed numbers and names.
 
-```
-✅ Nouns, plural, lowercase, kebab-case
-   GET  /users/{id}
-   POST /orders
-   GET  /product-categories
+## 3. Classify the change
 
-❌ Verbs in path
-   POST /createOrder
-   GET  /getUser?id=123
+Additive (safe):
+- new endpoint, new optional request field, new response field, new enum value that clients ignore.
 
-✅ Nesting only for true ownership (max 2 levels)
-   GET  /orders/{order_id}/items          ✅ items belong to order
-   GET  /orders/{order_id}/items/{item_id}/tags   ❌ too deep
+Breaking:
+- removed or renamed field or endpoint, new required request field, changed type or format, changed status code,
+  stricter validation, changed field number or name in proto.
 
-✅ Actions as sub-resources
-   POST /orders/{id}/cancel
-   POST /invoices/{id}/resend
-```
+## 4. Check breaking changes with a tool
 
-## Standard Error Contract
-
-All error responses must follow the same shape:
-```json
-{
-  "error": {
-    "code": "ORDER_NOT_FOUND",        // machine-readable, stable
-    "message": "Order ord_123 not found",  // human-readable
-    "details": [                       // optional: per-field errors
-      { "field": "items[0].quantity", "issue": "must be > 0" }
-    ],
-    "request_id": "req_abc123"        // traceable
-  }
-}
+```bash
+git show origin/main:openapi.yaml > /tmp/base.yaml
+oasdiff breaking /tmp/base.yaml openapi.yaml --fail-on ERR
+buf breaking --against '.git#branch=main'
 ```
 
-```python
-# FastAPI implementation
-from fastapi import HTTPException
-from pydantic import BaseModel
-from typing import Optional, List
+If the tool reports a breaking change, do one of these:
 
-class ErrorDetail(BaseModel):
-    field: str
-    issue: str
+1. Make it additive: keep the old field, add the new one, and map both in the code.
+2. Add a new version (`/v2/...` path or a new proto package `v2`) and keep the old version running.
+3. If the user accepts the break, mark it as breaking in the changelog and the merge request, and name the
+   consumers that must change.
 
-class ErrorResponse(BaseModel):
-    code: str
-    message: str
-    details: Optional[List[ErrorDetail]] = None
-    request_id: Optional[str] = None
+## 5. Deprecate
 
-# Usage
-raise HTTPException(
-    status_code=404,
-    detail=ErrorResponse(
-        code="ORDER_NOT_FOUND",
-        message=f"Order {order_id} not found",
-        request_id=request.state.request_id
-    ).model_dump()
-)
-```
+1. Mark the old field or endpoint `deprecated: true` (OpenAPI) or `[deprecated = true]` (proto).
+2. HTTP: return `Deprecation` and `Sunset` headers on deprecated endpoints.
+3. Write the removal date in the API docs page. Remove only after consumers stop calling it (check access logs
+   or metrics).
 
-## Pagination Patterns
+## 6. Implement and test
 
-### Cursor-based (preferred for large/live datasets)
-```python
-class PaginatedResponse(BaseModel, Generic[T]):
-    items: List[T]
-    next_cursor: Optional[str] = None   # opaque, base64-encoded
-    total_count: Optional[int] = None   # only if cheap to compute
-
-# Encode cursor: hide implementation detail from client
-import base64, json
-
-def encode_cursor(last_id: int, last_created_at: datetime) -> str:
-    payload = {"id": last_id, "ts": last_created_at.isoformat()}
-    return base64.b64encode(json.dumps(payload).encode()).decode()
-
-def decode_cursor(cursor: str) -> dict:
-    return json.loads(base64.b64decode(cursor).decode())
-```
-
-### Offset-based (only for small, static datasets)
-```python
-# Only when total count is cheap and dataset doesn't change under pagination
-@router.get("/products")
-async def list_products(page: int = 1, page_size: int = Query(20, le=100)):
-    offset = (page - 1) * page_size
-    # ...
-```
-
-## Versioning Strategy
-
-```
-URL versioning (recommended for major breaking changes):
-  /api/v1/orders
-  /api/v2/orders  ← new schema, old still supported
-
-Header versioning (for minor variations):
-  Accept: application/vnd.myapi.v2+json
-
-Rules:
-- v1 stays alive for minimum 6 months after v2 launch
-- Deprecated endpoints return: Deprecation: true, Sunset: <date> headers
-- Never remove a field from a response without a major version bump
-```
-
-## Idempotency
-
-```python
-# Idempotency key pattern for POST mutations
-@router.post("/orders", status_code=201)
-async def create_order(
-    body: CreateOrderRequest,
-    idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key"),
-    db: AsyncSession = Depends(get_db),
-    redis: Redis = Depends(get_redis),
-):
-    if idempotency_key:
-        cached = await redis.get(f"idempotency:{idempotency_key}")
-        if cached:
-            return JSONResponse(json.loads(cached), status_code=200)  # 200 = already done
-
-    order = await order_service.create(db, body)
-    response = OrderResponse.model_validate(order)
-
-    if idempotency_key:
-        await redis.setex(
-            f"idempotency:{idempotency_key}",
-            86400,  # 24h TTL
-            response.model_dump_json()
-        )
-    return response
-```
-
-## Security Checklist
-
-- [ ] Auth middleware applied before any handler logic — never inside handler
-- [ ] Ownership check: `if order.user_id != current_user.id: raise 403`
-- [ ] Input validation via Pydantic (FastAPI) or Joi/Zod (Node) on every endpoint
-- [ ] Rate limiting on public endpoints (especially auth, password reset)
-- [ ] No sensitive data in URLs (tokens, passwords) — use request body or headers
-- [ ] CORS configured explicitly: no `allow_origins=["*"]` in production
+1. Generate server stubs or types from the spec if the project does so (`buf generate`, `openapi-generator`).
+2. Add tests for the success response, each documented error status, and validation of each new field.
+3. Add a contract test that checks responses against the spec (`schemathesis run openapi.yaml --url <local>`,
+   Pact, or a schema assertion in the API tests).
+4. Update the API docs page and the changelog in the same change.

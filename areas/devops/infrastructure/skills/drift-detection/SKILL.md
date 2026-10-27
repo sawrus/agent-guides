@@ -1,178 +1,62 @@
 ---
 name: drift-detection
-type: skill
-description: Detect, classify, and automate Terraform drift detection in CI — scheduled plans, drift metrics, cloud-native audit log correlation.
-related-rules:
-  - immutability.md
-  - iac-standards.md
-allowed-tools: Read, Write, Edit, Bash
+description: "Procedure to detect and resolve drift between Terraform/OpenTofu code, state, and real infrastructure with plan -detailed-exitcode, import, and refresh-only. Use when a plan shows unexpected changes or when you set up scheduled drift checks."
 ---
 
-# Skill: Drift Detection
+# Terraform drift: detect and resolve
 
-> **Expertise:** Terraform plan-based drift detection, CI scheduling, cloud audit log correlation, drift classification.
+Drift means the real resources differ from the code. Resolve it in code; do not hide it.
 
-## When to load
-
-When setting up scheduled drift detection, investigating detected drift, or correlating drift with cloud audit events.
-
-## Scheduled Drift Detection (GitHub Actions)
-
-```yaml
-# .github/workflows/drift-detection.yml
-name: Drift Detection
-
-on:
-  schedule:
-    - cron: '0 */6 * * *'   # every 6 hours
-  workflow_dispatch:          # manual trigger
-
-jobs:
-  detect-drift:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        component: [network, k8s-cluster, databases, iam-roles]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.DRIFT_DETECTOR_ROLE_ARN }}
-          aws-region: eu-west-1
-
-      - name: Terraform init
-        working-directory: terraform/environments/production/${{ matrix.component }}
-        run: terraform init -backend-config=backend.hcl
-
-      - name: Terraform plan (drift check)
-        id: plan
-        working-directory: terraform/environments/production/${{ matrix.component }}
-        run: |
-          terraform plan \
-            -var-file=terraform.tfvars \
-            -detailed-exitcode \
-            -out=drift-check.plan \
-            2>&1 | tee drift-output.txt
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
-        continue-on-error: true    # exit 2 = changes, don't fail job
-
-      - name: Classify drift
-        if: steps.plan.outputs.exit_code == '2'
-        run: |
-          # Check for security-sensitive resource changes
-          if grep -E "aws_iam|aws_security_group|aws_kms|encryption" drift-output.txt; then
-            echo "SEVERITY=INVESTIGATE" >> $GITHUB_ENV
-          else
-            echo "SEVERITY=REMEDIATE" >> $GITHUB_ENV
-          fi
-
-      - name: Create GitHub Issue on drift
-        if: steps.plan.outputs.exit_code == '2'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const plan = fs.readFileSync('terraform/environments/production/${{ matrix.component }}/drift-output.txt', 'utf8');
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `[DRIFT] ${{ matrix.component }} — ${process.env.SEVERITY}`,
-              body: `## Drift detected in \`${{ matrix.component }}\`\n\n**Severity:** ${process.env.SEVERITY}\n\n\`\`\`\n${plan.slice(0, 3000)}\n\`\`\``,
-              labels: ['infrastructure', 'drift', process.env.SEVERITY.toLowerCase()]
-            });
-
-      - name: Alert on INVESTIGATE drift
-        if: env.SEVERITY == 'INVESTIGATE'
-        uses: slackapi/slack-github-action@v1
-        with:
-          payload: |
-            {"text": "🚨 *INVESTIGATE drift* in `${{ matrix.component }}` — may indicate unauthorized change. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View>"}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ONCALL_WEBHOOK }}
-```
-
-## GitLab CI Scheduled Drift
-
-```yaml
-# .gitlab-ci.yml — drift detection job (triggered by schedule)
-drift-detect:
-  stage: audit
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-  script:
-    - cd terraform/environments/production/${COMPONENT}
-    - terraform init -backend-config=backend.hcl
-    - terraform plan -var-file=terraform.tfvars -detailed-exitcode
-      -out=drift.plan 2>&1 | tee drift-output.txt || EXITCODE=$?
-    - |
-      if [ "${EXITCODE}" == "2" ]; then
-        echo "DRIFT DETECTED in ${COMPONENT}"
-        # Post to Slack, create MR, or alert via API
-        curl -X POST "$SLACK_WEBHOOK" \
-          -H 'Content-type: application/json' \
-          --data "{\"text\":\"Drift in ${COMPONENT}\"}"
-        exit 1
-      fi
-  parallel:
-    matrix:
-      - COMPONENT: [network, k8s-cluster, databases]
-```
-
-## Drift Classification Logic
+## 1. Detect
 
 ```bash
-# Parse terraform plan output for drift classification
-classify_drift() {
-  local plan_output="$1"
-
-  # INVESTIGATE: security-sensitive resources changed
-  if echo "$plan_output" | grep -qE \
-    "aws_iam_policy|aws_security_group|kms_key|aws_s3_bucket_server_side_encryption|encryption_at_rest"; then
-    echo "INVESTIGATE"
-    return
-  fi
-
-  # INVESTIGATE: resources deleted unexpectedly
-  if echo "$plan_output" | grep -q "# .* will be destroyed"; then
-    echo "INVESTIGATE"
-    return
-  fi
-
-  # REMEDIATE: configuration drift (non-security)
-  echo "REMEDIATE"
-}
+terraform init -input=false
+terraform plan -input=false -lock=false -detailed-exitcode -out=drift.tfplan
+echo $?   # 0 = no changes, 1 = error, 2 = changes (drift or unapplied code)
+terraform show -no-color drift.tfplan > drift.txt
 ```
 
-## Correlating Drift with Cloud Audit Logs
+Use `tofu` instead of `terraform` if the project uses OpenTofu. Run against every environment directory or
+workspace that the task names.
 
-```bash
-# AWS CloudTrail: who changed the drifted resource?
-aws cloudtrail lookup-events \
-  --lookup-attributes AttributeKey=ResourceName,AttributeValue=<resource-id> \
-  --start-time $(date -d '-24 hours' --iso-8601) \
-  --query 'Events[*].{User: Username, Time: EventTime, Event: EventName}' \
-  --output table
+## 2. Classify each changed resource
 
-# GCP Audit Logs
-gcloud logging read \
-  'resource.type="gce_instance" AND protoPayload.methodName:"compute.instances"' \
-  --freshness=24h \
-  --format='table(timestamp, protoPayload.authenticationInfo.principalEmail, protoPayload.methodName)'
-```
+Read `drift.txt` and sort every resource into one class:
 
-## Drift Suppression (accepted exceptions)
+1. **Unapplied code** — the code changed on the default branch but nobody applied it. Check `git log` for the
+   module. Resolution: apply through the normal pipeline.
+2. **Manual change** — someone changed the resource in the console or with a CLI. Check the cloud audit log
+   (CloudTrail, GCP Audit Logs, Azure Activity Log) for the actor and time.
+3. **Provider-side default** — the provider or service sets a value the code does not set, and the plan shows it
+   on every run. Resolution: set the value in code, or add the attribute to `lifecycle { ignore_changes = [...] }`
+   with a comment that names the reason.
+4. **Resource outside state** — the resource exists but state does not track it.
+
+## 3. Resolve
+
+- Manual change that must stay: copy the value into the code, then run `plan` again until it shows no change.
+- Manual change that must go: keep the code. The next apply reverts it. Ask the user first before that apply.
+- Resource outside state: add an `import` block and plan:
 
 ```hcl
-# lifecycle ignore_changes for intentionally managed-outside-TF fields
-resource "aws_autoscaling_group" "workers" {
-  # ...
-  lifecycle {
-    ignore_changes = [
-      desired_capacity,    # managed by cluster autoscaler, not TF
-      min_size,
-    ]
-  }
+import {
+  to = aws_s3_bucket.logs
+  id = "group-service-logs"
 }
 ```
+
+- Changed outputs or data sources only: run `terraform apply -refresh-only` to update state. Ask the user first;
+  it writes state.
+- Never run `terraform state rm` to make drift disappear unless the user wants to stop managing the resource.
+
+## 4. Verify
+
+1. Run step 1 again. The exit code must be `0`, or every remaining change must be a planned code change.
+2. Commit the code changes with the drift cause in the commit body.
+
+## 5. Schedule the check (optional)
+
+- GitLab: a scheduled pipeline job runs step 1 and fails on exit code `2`. Use a read-only cloud role.
+- GitHub: a workflow with `on: schedule` runs the same job with OIDC credentials for a read-only role.
+- Send the failure to the team channel or open an issue with `drift.txt` attached. Do not apply from the
+  scheduled job.

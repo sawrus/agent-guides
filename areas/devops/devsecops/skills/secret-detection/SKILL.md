@@ -1,190 +1,55 @@
 ---
 name: secret-detection
-type: skill
-description: Detect secrets in code, git history, and running containers — pre-commit hooks, CI scanning, and incident response for exposed credentials.
-related-rules:
-  - shift-left-policy.md
-  - secret-hygiene.md (infrastructure)
-allowed-tools: Read, Write, Edit, Bash
+description: "Procedure to scan a repository and its history for secrets with gitleaks, triage hits, rotate a leaked secret, and add the scan to pre-commit and CI. Use when a secret leaks or when you set up secret scanning."
 ---
 
-# Skill: Secret Detection
+# Secret detection and leak response
 
-> **Expertise:** trufflehog, gitleaks, git-secrets, pre-commit hooks, CI scanning, secret rotation playbook.
-
-## When to load
-
-When setting up secret scanning pre-commit or in CI, investigating a potential credential leak, or remediating secrets found in git history.
-
-## Pre-Commit Hook Setup
+## 1. Scan
 
 ```bash
-# Install pre-commit
-pip install pre-commit
-
-# .pre-commit-config.yaml
-repos:
-  - repo: https://github.com/trufflesecurity/trufflehog
-    rev: v3.88.0
-    hooks:
-      - id: trufflehog
-        name: TruffleHog — secret scan
-        entry: trufflehog git file://. --since-commit HEAD --only-verified --fail
-        language: system
-        pass_filenames: false
-
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.21.0
-    hooks:
-      - id: gitleaks
-        name: Gitleaks — detect hardcoded secrets
+gitleaks dir . --redact --report-format json --report-path /tmp/gitleaks.json   # working tree
+gitleaks git . --redact --log-opts="--all"                                       # full history
 ```
 
-```bash
-# Install hooks for all team members (add to onboarding docs)
-pre-commit install
-pre-commit install --hook-type commit-msg
+Use `--redact` so the output does not print the secret again.
 
-# Run against all files (one-time audit)
-pre-commit run trufflehog --all-files
-pre-commit run gitleaks --all-files
-```
+## 2. Triage each hit
 
-## CI: trufflehog (GitHub Actions)
+1. Open the file and line. Decide: real secret, test fixture, or false positive.
+2. A test fixture or false positive goes into `.gitleaks.toml` as an allowlist entry with a path or a regex and
+   a comment with the reason. Do not allowlist a whole directory of source code.
+3. A real secret is a leak, even if the branch was never merged. Go to step 3.
+
+## 3. Respond to a real leak
+
+1. Tell the user at once: which secret, where, and since which commit.
+2. Rotate first. Ask the user first, because revoking the old value can break running services. Create the
+   new value in the secret store, deploy it, then revoke the old one.
+3. Check the provider audit log for use of the old value between the leak commit and the revocation.
+4. Remove the value from the code and read it from the environment or the secret store.
+5. Rewrite history only if the user asks: `git filter-repo --replace-text <file>` needs a force push and every
+   clone to re-clone. Rotation is required either way; history rewrite does not undo the leak.
+
+## 4. Prevent the next leak
+
+1. Add the pre-commit hook:
 
 ```yaml
-- name: Scan for secrets (trufflehog)
-  uses: trufflesecurity/trufflehog@main
-  with:
-    path: ./
-    base: ${{ github.event.repository.default_branch }}
-    head: HEAD
-    extra_args: >
-      --only-verified
-      --fail
-      --format json
-      --json-output trufflehog-results.json
-  continue-on-error: false    # hard fail
-
-- name: Upload results
-  if: failure()
-  uses: actions/upload-artifact@v4
-  with:
-    name: secret-scan-results
-    path: trufflehog-results.json
+- repo: https://github.com/gitleaks/gitleaks
+  rev: v8.21.2
+  hooks:
+    - id: gitleaks
 ```
 
-## CI: gitleaks (GitLab CI)
+2. Add a CI job that fails on a hit:
+   - GitLab: include the `Jobs/Secret-Detection.gitlab-ci.yml` template, or run
+     `gitleaks git . --redact --log-opts="$CI_MERGE_REQUEST_DIFF_BASE_SHA..HEAD"` in a job.
+   - GitHub: run `gitleaks git . --redact` in a job, or enable push protection in the repository settings.
+3. Add `.env` and key file patterns (`*.pem`, `*.key`) to `.gitignore`.
 
-```yaml
-secret-scan:
-  stage: validate
-  image: zricethezav/gitleaks:latest
-  script:
-    - gitleaks detect
-        --source .
-        --config .gitleaks.toml
-        --redact
-        --exit-code 1
-        --report-format json
-        --report-path gitleaks-report.json
-  artifacts:
-    when: on_failure
-    paths: [gitleaks-report.json]
-```
+## 5. Done
 
-## gitleaks Configuration (.gitleaks.toml)
-
-```toml
-# .gitleaks.toml
-title = "MyProject Gitleaks Config"
-
-[extend]
-useDefault = true   # use built-in rules + extend
-
-# Custom rule: internal API keys
-[[rules]]
-id = "internal-api-key"
-description = "Internal API Key"
-regex = '''MYCOMPANY_API_KEY_[A-Za-z0-9]{32}'''
-tags = ["key", "internal"]
-
-# Allowlist: suppress known false positives
-[allowlist]
-description = "Global allowlist"
-regexes = [
-  '''EXAMPLE_.*''',       # example values in docs
-  '''test_.*_key''',      # test fixtures
-]
-paths = [
-  '''.gitleaks.toml''',   # this file itself
-  '''tests/fixtures/''',  # test data
-]
-commits = [
-  "abc123def456"          # specific commit with known false positive
-]
-```
-
-## Full Repo Audit (historical scan)
-
-```bash
-# Scan all branches and full history
-trufflehog git file://. \
-  --only-verified \
-  --format json | tee trufflehog-full-audit.json
-
-# Gitleaks: scan full history
-gitleaks detect \
-  --source . \
-  --log-opts "--all" \
-  --report-format json \
-  --report-path gitleaks-full-audit.json
-
-# Summary: count findings by type
-cat trufflehog-full-audit.json | jq 'group_by(.DetectorName) | map({type: .[0].DetectorName, count: length})'
-```
-
-## Incident Response: Secret Exposed in Git
-
-```bash
-# STOP: rotate the secret FIRST, before anything else
-# Only after rotation (new secret is active and old one invalid):
-
-# 1. Remove from git history using git-filter-repo (safer than filter-branch)
-pip install git-filter-repo
-
-git filter-repo \
-  --replace-text <(echo 'EXPOSED_SECRET==>REMOVED') \
-  --force
-
-# 2. Force push (coordinate with team — everyone must re-clone)
-git push --force --all
-git push --force --tags
-
-# 3. Notify all contributors to re-clone (old clones have the secret in history)
-
-# 4. Check if GitHub/GitLab cached the secret (check forks, PRs, CI logs)
-# GitHub: check cached pipelines in CI for the old secret
-# GitLab: check CI job logs, pipeline artifacts
-
-# 5. Audit: who may have cloned or cached the repo during exposure window
-# Check VCS audit logs for clone events
-
-# 6. File security incident report
-```
-
-## False Positive Management
-
-```bash
-# Inline suppression (trufflehog)
-SOME_VAR="obviously-not-a-secret"  # trufflehog:ignore
-
-# Inline suppression (gitleaks)
-SOME_VAR="test-value"  # gitleaks:allow
-
-# .gitleaksignore file (commit-hash based)
-# Get commit hash of false positive commit:
-git log --oneline | grep "Add example config"
-# Add to .gitleaksignore:
-echo "abc123def456:path/to/file.yaml" >> .gitleaksignore
-```
+- The full-history scan has no untriaged hits.
+- Every real secret is rotated, and the old value is revoked.
+- Pre-commit and CI run the scan.

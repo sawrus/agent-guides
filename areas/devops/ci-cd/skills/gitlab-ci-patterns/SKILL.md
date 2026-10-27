@@ -1,169 +1,68 @@
 ---
 name: gitlab-ci-patterns
-type: skill
-description: GitLab CI/CD pipelines — include templates, environments, OIDC auth, caching, protected runners, deployment gates.
-related-rules:
-  - pipeline-standards.md
-  - quality-gates.md
-allowed-tools: Read, Write, Edit
+description: "Procedure to add or change a GitLab CI pipeline: validate .gitlab-ci.yml, structure jobs with rules/needs/include, cache, and debug a failed job. Use when you edit .gitlab-ci.yml or files under .gitlab/ci/."
 ---
 
-# Skill: GitLab CI Patterns
+# GitLab CI: change and debug a pipeline
 
-> **Expertise:** GitLab CI YAML, include/extends, environments, DAST, protected runners, Kubernetes deploy.
+## 1. Read the current pipeline
 
-## When to load
+1. Open `.gitlab-ci.yml` and every file it pulls in with `include:` (`local`, `project`, `template`, `component`).
+2. List the stages, the jobs per stage, and which jobs run on merge requests, on the default branch, and on tags.
+3. If the project uses CI components or a shared template project, change the caller first. Change the shared
+   template only when the task says so.
 
-When creating or reviewing `.gitlab-ci.yml` files for build, test, or deployment pipelines.
+## 2. Make the change
 
-## Standard Pipeline Structure
-
-```yaml
-# .gitlab-ci.yml
-stages:
-  - validate
-  - build
-  - scan
-  - deploy-staging
-  - smoke-test
-  - deploy-production
-
-variables:
-  IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-  DOCKER_BUILDKIT: "1"
-
-# ── Validate ───────────────────────────────────────────
-lint:
-  stage: validate
-  image: python:3.12-slim
-  cache:
-    key: pip-$CI_COMMIT_REF_SLUG
-    paths: [.cache/pip]
-  script:
-    - pip install ruff mypy --cache-dir .cache/pip
-    - ruff check src/ tests/
-    - mypy src/ --strict
-
-test:
-  stage: validate
-  image: python:3.12-slim
-  cache:
-    key: pip-$CI_COMMIT_REF_SLUG
-    paths: [.cache/pip]
-  script:
-    - pip install -r requirements.txt -r requirements-dev.txt --cache-dir .cache/pip
-    - pytest tests/ --cov=src --cov-report=xml --cov-fail-under=80
-  coverage: '/TOTAL.*\s+(\d+%)$/'
-  artifacts:
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
-
-# ── Build ──────────────────────────────────────────────
-build-image:
-  stage: build
-  image: docker:24
-  services: [docker:24-dind]
-  before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-  script:
-    - docker build --cache-from $CI_REGISTRY_IMAGE:cache
-        --build-arg BUILDKIT_INLINE_CACHE=1
-        -t $IMAGE_NAME
-        -t $CI_REGISTRY_IMAGE:cache .
-    - docker push $IMAGE_NAME
-    - docker push $CI_REGISTRY_IMAGE:cache
-  only: [main, tags]
-
-# ── Scan ───────────────────────────────────────────────
-container-scan:
-  stage: scan
-  image:
-    name: aquasec/trivy:latest
-    entrypoint: [""]
-  script:
-    - trivy image --exit-code 1 --severity CRITICAL,HIGH $IMAGE_NAME
-  needs: [build-image]
-
-sast:
-  stage: scan
-  include:
-    - template: Security/SAST.gitlab-ci.yml
-
-# ── Deploy Staging ─────────────────────────────────────
-deploy-staging:
-  stage: deploy-staging
-  environment:
-    name: staging
-    url: https://staging.example.com
-  script:
-    - helm upgrade --install my-service charts/my-service
-        --set image.tag=$CI_COMMIT_SHA
-        --namespace staging
-        --atomic --timeout 5m
-  only: [main]
-
-# ── Smoke Test ─────────────────────────────────────────
-smoke-staging:
-  stage: smoke-test
-  script:
-    - curl -f https://staging.example.com/health
-  needs: [deploy-staging]
-  only: [main]
-
-# ── Deploy Production ──────────────────────────────────
-deploy-production:
-  stage: deploy-production
-  environment:
-    name: production
-    url: https://app.example.com
-  when: manual                         # manual approval gate
-  allow_failure: false
-  script:
-    - helm upgrade --install my-service charts/my-service
-        --set image.tag=$CI_COMMIT_SHA
-        --namespace production
-        --atomic --timeout 5m
-  only: [main]
-  needs: [smoke-staging]
-```
-
-## Include & Extends (DRY pipelines)
+1. Put job conditions in `rules:`. Do not add `only:` or `except:`.
+2. Express job order with `needs:` when a job does not need the whole previous stage.
+3. Reuse setup with `extends:` or `!reference`; do not copy a `script:` block into a second job.
+4. Pin every `image:` to a version tag or a digest. Do not use `latest`.
+5. Set `timeout:` on jobs that can hang (integration tests, deploys).
+6. Set `interruptible: true` on test jobs so a new push cancels the old pipeline.
+7. Cache dependencies with a key that changes with the lock file:
 
 ```yaml
-# Shared templates in infra repo
-include:
-  - project: 'infra/ci-templates'
-    file: '/templates/docker-build.yml'
-    ref: v1.2.0
-  - template: Security/SAST.gitlab-ci.yml
-
-# Extend base job
-.base-deploy:
-  image: bitnami/helm:3
-  before_script:
-    - echo $KUBECONFIG_B64 | base64 -d > /tmp/kubeconfig
-    - export KUBECONFIG=/tmp/kubeconfig
-
-deploy-staging:
-  extends: .base-deploy
-  environment: staging
-  script: helm upgrade --install ...
+cache:
+  key:
+    files: [poetry.lock]   # go.sum, pom.xml, package-lock.json
+  paths: [.venv/]
+  policy: pull-push        # use `pull` in jobs that only read the cache
 ```
 
-## Protected Runners (bare-metal / internal registry)
+8. Pass build outputs with `artifacts:` and an `expire_in:` value. Use `artifacts:reports:junit` for test results.
+9. Read secrets from CI/CD variables (masked and protected) or from `id_tokens:` with OIDC. Never write a secret
+   into the YAML.
+10. Put deploy jobs on `environment:` with `rules:` that limit them to protected branches or tags. A production
+    deploy job uses `when: manual`; ask the user first before you run it.
 
-```yaml
-# Tag jobs to run on specific runners
-build-internal:
-  tags:
-    - self-hosted
-    - bare-metal
-    - docker
-  script: ...
+## 3. Validate before you push
+
+1. Lint the file with the API or the CLI:
+
+```bash
+glab ci lint                       # uses the project CI lint endpoint
+glab ci lint --dry-run --ref main  # simulate a pipeline on a branch
 ```
 
-Configure in GitLab → Settings → CI/CD → Runners:
-- Protected runners only run on protected branches (main, tags)
-- Untagged jobs run on shared runners only
+2. If `glab` is not available, open CI/CD > Editor > Validate in the project UI.
+3. Check that each changed job has the expected `rules:` outcome on a merge request and on the default branch.
+
+## 4. Debug a failed job
+
+1. Get the log: `glab ci view` or `glab ci trace <job-id>`.
+2. Find the first error line, not the last one.
+3. Decide the cause class:
+   - **Script error** — reproduce locally with the same image: `docker run --rm -it -v "$PWD":/w -w /w <image> sh`.
+   - **Missing variable** — check that the variable is defined for this environment and that protected
+     variables are not used on an unprotected branch.
+   - **Cache or artifact** — check the cache key and the `needs:`/`dependencies:` list.
+   - **Runner** — check `tags:` against the available runners; a job stuck in `pending` has no matching runner.
+   - **Flaky test** — rerun once. If it passes, open an issue for the flaky test; do not add `retry:` to hide it.
+4. Fix the cause in the repository and push. Do not change the job to `allow_failure: true` to make the
+   pipeline green.
+
+## 5. Done
+
+- The lint passes and a pipeline on the branch is green.
+- The merge request description names the jobs that changed and why.

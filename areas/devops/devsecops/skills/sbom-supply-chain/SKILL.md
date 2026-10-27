@@ -1,165 +1,63 @@
 ---
 name: sbom-supply-chain
-type: skill
-description: Generate, attach, and verify SBOMs (CycloneDX/SPDX) for container images; implement SLSA provenance; harden software supply chain.
-related-rules:
-  - supply-chain-security.md (ci-cd)
-  - shift-left-policy.md
-allowed-tools: Read, Write, Edit, Bash
+description: "Procedure to generate an SBOM, scan it for vulnerabilities, and sign and verify container images and attestations with cosign. Use when you add SBOM, image signing, or provenance to a pipeline or verify an image."
 ---
 
-# Skill: SBOM & Supply Chain Security
+# SBOM, scanning, and signing
 
-> **Expertise:** Syft/Trivy SBOM generation, cosign SBOM attestation, SLSA provenance, dependency pinning, OCI attestations.
+## 1. Generate the SBOM from the built image
 
-## When to load
-
-When generating SBOMs for images, attaching attestations to OCI registry, verifying supply chain integrity, or achieving SLSA compliance.
-
-## SBOM Generation (Syft)
+Build the image once and refer to it by digest in every later step.
 
 ```bash
-# Generate CycloneDX SBOM from image (OCI)
-syft registry.example.com/myorg/order-service:v1.2.3 \
-  -o cyclonedx-json=sbom.cdx.json
-
-# Generate SPDX SBOM from image
-syft registry.example.com/myorg/order-service:v1.2.3 \
-  -o spdx-json=sbom.spdx.json
-
-# Generate from local directory (during build)
-syft dir:. -o cyclonedx-json=sbom.cdx.json
-
-# Generate from Dockerfile build context (before push)
-syft packages docker:myimage:latest -o cyclonedx-json=sbom.cdx.json
+IMAGE=registry.example.com/group/service@sha256:<digest>
+syft "$IMAGE" -o cyclonedx-json > sbom.cdx.json
 ```
 
-## SBOM Attestation via cosign
+- Use the image, not the source tree, so the SBOM lists what ships.
+- Keep `sbom.cdx.json` as a pipeline artifact (`artifacts:` in GitLab, `actions/upload-artifact` in GitHub).
+
+## 2. Scan the SBOM
 
 ```bash
-# Sign image and attach SBOM as OCI attestation
-# Step 1: Build and push image
-docker buildx build --push \
-  -t registry.example.com/myorg/order-service:v1.2.3 .
-
-# Step 2: Get digest
-DIGEST=$(crane digest registry.example.com/myorg/order-service:v1.2.3)
-
-# Step 3: Generate SBOM
-syft registry.example.com/myorg/order-service:v1.2.3 \
-  -o cyclonedx-json=sbom.cdx.json
-
-# Step 4: Attach SBOM as attestation (Sigstore keyless)
-cosign attest \
-  --predicate sbom.cdx.json \
-  --type cyclonedx \
-  registry.example.com/myorg/order-service@${DIGEST}
-
-# Step 5: Verify attestation exists
-cosign verify-attestation \
-  --type cyclonedx \
-  --certificate-identity-regexp ".*" \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  registry.example.com/myorg/order-service@${DIGEST} \
-  | jq '.payload | @base64d | fromjson | .predicate.metadata'
-```
-
-## GitHub Actions: Full Supply Chain Pipeline
-
-```yaml
-# .github/workflows/supply-chain.yml
-jobs:
-  build-sign-attest:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write         # for cosign keyless signing
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install cosign
-        uses: sigstore/cosign-installer@v3
-
-      - name: Install syft
-        uses: anchore/sbom-action/download-syft@v0
-
-      - name: Build and push
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          push: true
-          tags: registry.example.com/myorg/order-service:${{ github.sha }}
-
-      - name: Sign image (keyless via OIDC)
-        run: |
-          cosign sign \
-            registry.example.com/myorg/order-service@${{ steps.build.outputs.digest }}
-
-      - name: Generate SBOM
-        run: |
-          syft registry.example.com/myorg/order-service@${{ steps.build.outputs.digest }} \
-            -o cyclonedx-json=sbom.cdx.json
-
-      - name: Attach SBOM attestation
-        run: |
-          cosign attest \
-            --predicate sbom.cdx.json \
-            --type cyclonedx \
-            registry.example.com/myorg/order-service@${{ steps.build.outputs.digest }}
-
-      - name: Generate SLSA provenance
-        uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2
-        with:
-          image: registry.example.com/myorg/order-service
-          digest: ${{ steps.build.outputs.digest }}
-```
-
-## Verify Before Deploy (admission check)
-
-```bash
-# Verify image is signed before deploying
-cosign verify \
-  --certificate-identity-regexp "https://github.com/myorg/myrepo" \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  registry.example.com/myorg/order-service@sha256:<digest>
-
-# Kyverno policy: enforce signed images in production
-# (see opa-policies skill for full Kyverno policy)
-```
-
-## Dependency Pinning (supply chain hardening)
-
-```dockerfile
-# Pin base image to digest — not just tag
-FROM python:3.12-slim@sha256:abc123...   # ✅
-FROM python:3.12-slim                    # ❌ tag can be replaced
-
-# Verify base image digest in CI
-crane digest python:3.12-slim
-```
-
-```bash
-# Python: generate requirements with hashes (pip-compile)
-pip-compile --generate-hashes requirements.in -o requirements.txt
-
-# Install with hash verification
-pip install -r requirements.txt --require-hashes
-
-# Node: lock file with integrity hashes (automatic in npm/yarn)
-npm ci   # uses package-lock.json with sha512 integrity hashes
-```
-
-## SBOM Analysis
-
-```bash
-# Scan SBOM for vulnerabilities (without re-pulling image)
 grype sbom:sbom.cdx.json --fail-on high
-
-# List all packages in SBOM
-cat sbom.cdx.json | jq '.components[] | {name: .name, version: .version, purl: .purl}'
-
-# Check for GPL licenses in SBOM
-cat sbom.cdx.json | jq '.components[] | select(.licenses[]?.license.id | startswith("GPL"))'
+trivy sbom sbom.cdx.json --severity HIGH,CRITICAL --exit-code 1
 ```
+
+1. If a finding has a fixed version, upgrade the package or the base image and rebuild.
+2. If there is no fix, decide with the user: accept with an expiry date in the ignore file
+   (`.grype.yaml` or `.trivyignore`) and a reason comment, or block the release.
+3. Do not raise `--fail-on` to make the job pass.
+
+## 3. Sign the image
+
+Prefer keyless signing with the pipeline OIDC identity.
+
+- GitLab: add `id_tokens: SIGSTORE_ID_TOKEN: aud: sigstore` to the job.
+- GitHub: set `permissions: id-token: write`.
+
+```bash
+cosign sign --yes "$IMAGE"
+cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "$IMAGE"
+```
+
+If the project uses a key pair, read it from a KMS (`--key gcpkms://...`, `awskms://...`, `hashivault://...`).
+Never commit `cosign.key`.
+
+## 4. Verify before deploy
+
+```bash
+cosign verify "$IMAGE" \
+  --certificate-identity-regexp '^https://gitlab.example.com/group/service//' \
+  --certificate-oidc-issuer https://gitlab.example.com
+cosign verify-attestation --type cyclonedx "$IMAGE" ...same identity flags...
+```
+
+1. Add the verify step to the deploy job, before the deploy command.
+2. In Kubernetes, enforce the same identity with an admission policy (Kyverno `verifyImages` or Sigstore
+   policy-controller). Ask the user first before you enable enforcement on a production cluster.
+
+## 5. Done
+
+- The pipeline produces the SBOM, fails on high and critical findings, and signs the image by digest.
+- The deploy job verifies the signature and stops on a failed verification.
