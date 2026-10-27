@@ -12,6 +12,8 @@
   `avoid_when`, `checks`, `artifacts`, `steps`, `rule_refs` and `body`; it drops `roles`, `quality_gates` and
   `workflow_diagram`. `build_docs_catalog.py --validate` checks steps, rule scope and links to unknown rules or
   skills.
+- `check-docs-coverage` no longer asks for a docs change when `Cargo.toml` or `package.json` changes only its
+  version line (`version_files`; regulation DOC-5).
 
 ## v8.0.0
 
