@@ -35,6 +35,18 @@ jobs:
       - name: OpenCode SDK contract
         run: make test-jev-sdk SDK_DIR="$RUNNER_TEMP/agentic-jev-sdk"
 
+  docs-coverage:
+    # docs/regulation.md DOC-4: changed code needs a changed docs page whose `covers:` matches it,
+    # or a commit trailer `Docs-Not-Needed: <reason>`.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Docs coverage
+        run: make check-docs-coverage BASE=origin/${{ github.base_ref }}
+
   test:
     strategy:
       fail-fast: false

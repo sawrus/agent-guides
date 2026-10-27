@@ -1,3 +1,9 @@
+---
+covers:
+  - extensions/opencode/**
+  - src/mapper.rs
+---
+
 # OpenCode setup
 
 ## Configuration

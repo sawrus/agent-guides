@@ -1,3 +1,10 @@
+---
+covers:
+  - extensions/codex/hooks/notify/**
+  - extensions/opencode/plugins/telegram-notification.ts
+  - src/notify.rs
+---
+
 # Telegram notifications
 
 Agentic sends a Telegram message when an agent finishes its turn and when it

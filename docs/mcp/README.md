@@ -1,3 +1,9 @@
+---
+covers:
+  - src/mcp.rs
+  - src/mempalace.rs
+---
+
 # Agentic MCP server selection
 
 `agentic tui` includes a dedicated `Select MCP servers to enable:` step after target agent platform selection. The fzf flow supports multi-select with Space or Tab, Enter to confirm, Esc to skip, and a `None / skip` entry for users who do not want MCP configuration generated for the current install.

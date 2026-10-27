@@ -1,3 +1,11 @@
+---
+covers:
+  - areas/**/prompts/**
+  - scripts/lint_prompts.py
+  - scripts/build_docs_catalog.py
+  - scripts/sync_workflow_diagrams.py
+---
+
 # Prompt format standard (EN/RU)
 
 This repository expects every `areas/**/prompts/*.md` file to follow a strict structure so docs generation can reliably extract examples.

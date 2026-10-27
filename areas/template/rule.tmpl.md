@@ -1,71 +1,31 @@
-# Rule: {{CONSTRAINT_DOMAIN_NAME}}
-
-<!--
-AGENT INSTRUCTIONS:
-1. Replace {{CONSTRAINT_DOMAIN_NAME}} with a noun phrase: "Brand Voice Standards", "Migration Safety Requirements".
-2. Set Priority to P0 or P1 (see definitions below).
-3. Write every constraint as imperative: "must", "never", "required", "forbidden".
-4. Never use: "consider", "try", "ideally", "should" — these are advice, not rules.
-5. Include at least 1 compliant and 1 non-compliant example per section.
-6. Target: under 150 lines.
-7. Delete all AGENT INSTRUCTIONS comments before finalising.
--->
-
-**Priority**: {{P0_OR_P1}} — {{ONE_SENTENCE: what non-compliance causes}}
-
-<!--
-P0 = Non-compliance blocks the task. Agent must refuse to proceed until resolved.
-     Use for: legal risk, security violation, data loss, brand damage requiring immediate fix.
-P1 = Non-compliance triggers a review flag. Agent continues but marks the item for human review.
-     Use for: quality risk, process deviation, inconsistency that humans should assess.
--->
-
+---
+description: {{ONE_SENTENCE, at most 200 chars — when the rule applies, e.g. "Constraints for Kubernetes Deployment manifests."}}
+paths:
+  - "{{GLOB — files where the rule applies, e.g. k8s/**/*.yaml}}"
 ---
 
-## {{SECTION_1 — group related constraints under one coherent concern}}
-
 <!--
-Example section names: "Tone and Voice", "Legal Disclaimers", "Secret Handling", "Migration Safety"
+AGENT INSTRUCTIONS (docs/artifact-standard.md, ART-C*, ART-R*):
+1. Scope the rule with `paths:` globs. Use `trigger: manual` instead of `paths:` only when no file pattern fits.
+   `trigger: always_on` is only for a rule that applies to every change in every project of the segment.
+   Do not use `glob`, `globs`, or `model_decision`.
+2. One topic per rule. Write each item as a checkable imperative with a concrete object (file, flag, field,
+   command, value): "Pin images by `@sha256` digest." At least 70 % of list items must pass this test.
+3. Do not explain the technology, assign roles, or ask for report files. Do not repeat the root AGENTS.md
+   (definition of done, git format, response style).
+4. Keep the rule at most 80 lines and 1,200 tokens. A code block is a short example of the required form
+   (at most 15 lines; code is at most 30 % of the file).
+5. Run `make check-artifacts` and delete these AGENT INSTRUCTIONS before you finish.
 -->
 
-1. **{{CONSTRAINT_NAME}}**
-   - {{SPECIFIC_REQUIREMENT — imperative statement}}
-   - {{SUB_REQUIREMENT_OR_EXCEPTION_IF_ANY}}
+# {{TOPIC — noun phrase, e.g. "Kubernetes workload manifests"}}
 
-2. **{{CONSTRAINT_NAME}}**
-   - {{REQUIREMENT}}
-   - Exception: {{EXCEPTION_CONDITION_IF_ANY}}
+- {{IMPERATIVE — e.g. "Set `resources.requests` and `resources.limits` for every container."}}
+- {{IMPERATIVE — e.g. "Pin every image by `@sha256` digest; never use `:latest`."}}
+- {{IMPERATIVE — e.g. "Add `readinessProbe` and `livenessProbe` to every long-running container."}}
 
-## {{SECTION_2}}
+Example of the required form:
 
-3. **{{CONSTRAINT_NAME}}**
-   - {{REQUIREMENT}}
-
-4. **{{CONSTRAINT_NAME}}**
-   - {{REQUIREMENT}}
-
----
-
-## Compliant examples
-
-✅ {{REAL_EXAMPLE_OF_CORRECT_OUTPUT_OR_BEHAVIOR}}
-
-✅ {{ANOTHER_COMPLIANT_EXAMPLE}}
-
-## Non-compliant examples
-
-❌ {{REAL_EXAMPLE_OF_VIOLATION}} — {{BRIEF_REASON}}
-
-❌ {{ANOTHER_VIOLATION}} — {{REASON}}
-
----
-
-<details>
-<summary>Rationale</summary>
-
-{{WHY_THIS_RULE_EXISTS — 2 to 4 sentences}}
-
-Regulatory / legal basis (if applicable): {{REGULATION_OR_POLICY_REFERENCE}}
-
-Last reviewed: {{DATE_OR_LEAVE_BLANK}}
-</details>
+```{{language}}
+{{AT_MOST_15_LINES — the shape that passes the rule}}
+```

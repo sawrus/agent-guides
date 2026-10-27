@@ -17,7 +17,7 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 HOSTS = ('claude', 'codex', 'opencode')
-SELECTION = ('software', 'software.backend,software.general')
+SELECTION = ('software', 'software.backend,software.general')  # default; --all-selections measures ART-B1
 FRONT_MATTER = re.compile(r'\A---\n(.*?)\n---\n?', re.S)
 # A loading directive in AGENTS.md that tells the agent to read every rule up front.
 RULES_DIRECTIVE = re.compile(r'`\.agent/rules/\*\.md`')
@@ -117,35 +117,76 @@ def install(binary, host, project, areas, specs):
     result = subprocess.run([str(binary), 'install', '--project-dir', str(project), '--agent-os', host, '--areas', areas,
                              '--specializations', specs, '--no-doctor'], capture_output=True, text=True)
     if result.returncode:
-        sys.exit(f'[context-budget] install failed for {host}: {result.stderr[-400:]}')
+        raise RuntimeError(f'[context-budget] install failed for {host} ({specs}): {result.stderr[-400:]}')
+
+
+def installable_specs(root=ROOT):
+    """Every `area.spec` that `agentic install` accepts and that ships at least one install bucket."""
+    buckets = ('rules', 'skills', 'workflows', 'prompts')
+    return [f'{area.name}.{spec.name}' for area in sorted((root / 'areas').iterdir())
+            if area.is_dir() and area.name != 'template'
+            for spec in sorted(area.iterdir()) if spec.is_dir() and any((spec / b).is_dir() for b in buckets)]
+
+
+def common_selections(config=ROOT / 'scripts/check_artifacts.toml'):
+    """Multi-spec selections that ART-B1 measures besides each single spec."""
+    return list(tomllib.loads(read(config)).get('budget', {}).get('common_selections', []))
+
+
+def all_selections(root=ROOT):
+    return [*installable_specs(root), *common_selections()]
+
+
+def measure_selection(binary, hosts, specs, areas=None):
+    """Install `specs` (comma list of area.spec) once per host; return {host: {part: tokens, 'total': n}}."""
+    areas = areas or ','.join(dict.fromkeys(s.split('.', 1)[0] for s in specs.split(',')))
+    results = {}
+    with tempfile.TemporaryDirectory(prefix='agentic-budget-') as tmp:
+        for host in hosts:
+            project = Path(tmp) / host
+            project.mkdir()
+            install(binary, host, project, areas, specs)
+            results[host] = measure(host, project)
+            results[host]['total'] = sum(results[host].values())
+    return results
+
+
+def print_table(results, title=None):
+    columns = ('instructions', 'rules', 'main_agent', 'descriptions', 'total')
+    if title:
+        print(title)
+    print('host      ' + ''.join(f'{c:>14}' for c in columns))
+    for host, parts in results.items():
+        print(f'{host:<10}' + ''.join(f'{parts.get(c, 0):>14}' for c in columns))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary', type=Path, default=ROOT / 'target/debug/agentic')
     parser.add_argument('--hosts', default=','.join(HOSTS))
-    parser.add_argument('--areas', default=SELECTION[0])
+    parser.add_argument('--areas', default=None, help='Default: the areas named in --specializations')
     parser.add_argument('--specializations', default=SELECTION[1])
+    parser.add_argument('--all-selections', action='store_true',
+                        help='Measure every installable spec and the common selections of check_artifacts.toml')
     parser.add_argument('--max-tokens', type=int, help='Fail when any host exceeds this always-on estimate')
     parser.add_argument('--json', type=Path, help='Also write the measurements as JSON')
     args = parser.parse_args()
 
-    results = {}
-    with tempfile.TemporaryDirectory(prefix='agentic-budget-') as tmp:
-        for host in args.hosts.split(','):
-            project = Path(tmp) / host
-            project.mkdir()
-            install(args.binary, host, project, args.areas, args.specializations)
-            results[host] = measure(host, project)
-            results[host]['total'] = sum(results[host].values())
-
-    columns = ('instructions', 'rules', 'main_agent', 'descriptions', 'total')
-    print('host      ' + ''.join(f'{c:>14}' for c in columns))
-    for host, parts in results.items():
-        print(f'{host:<10}' + ''.join(f'{parts.get(c, 0):>14}' for c in columns))
+    hosts = args.hosts.split(',')
+    selections = all_selections() if args.all_selections else [args.specializations]
+    report, over = {}, []
+    try:
+        for specs in selections:
+            results = measure_selection(args.binary, hosts, specs, None if args.all_selections else args.areas)
+            report[specs] = results
+            print_table(results, f'selection {specs}' if args.all_selections else None)
+            over += [f'{specs}:{h}' for h, parts in results.items()
+                     if args.max_tokens and parts['total'] > args.max_tokens]
+    except RuntimeError as exc:
+        sys.exit(str(exc))
     if args.json:
-        args.json.write_text(json.dumps(results, indent=2) + '\n')
-    over = [h for h, parts in results.items() if args.max_tokens and parts['total'] > args.max_tokens]
+        data = report if args.all_selections else report[selections[0]]
+        args.json.write_text(json.dumps(data, indent=2) + '\n')
     if over:
         sys.exit(f'[context-budget] over {args.max_tokens} tokens: {", ".join(over)}')
 

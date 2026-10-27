@@ -1,3 +1,15 @@
+---
+covers:
+  - src/main.rs
+  - src/app.rs
+  - src/tui.rs
+  - src/ui.rs
+  - src/theme.rs
+  - src/install.rs
+  - src/prompt.rs
+  - src/config.rs
+---
+
 # agentic CLI usage
 
 This guide covers day-to-day use of the `agentic` CLI.

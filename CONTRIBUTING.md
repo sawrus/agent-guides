@@ -28,8 +28,10 @@ Thank you for improving this knowledge base. Every quality addition makes agent 
 - Duplicating content already covered in `areas/software/general/`.
 - Generic advice that isn't actionable by an agent (e.g., "write clean code").
 - Prompt examples with placeholder values like `[YOUR_PRODUCT]` or `{{INSERT_URL}}`.
-- Skill files under 150 lines (too thin — expand or fold into an existing skill).
-- Workflow files over 200 lines (too long — split into two workflows).
+- Role assignments (`@pm`, "one subagent per role") and required report files (`*_report.md`).
+- Rules over 80 lines, skills over 250 lines, workflows over 120 lines or with more than 6 steps
+  ([docs/artifact-standard.md](docs/artifact-standard.md)).
+- Framework overviews and scaffolding templates the model can produce on its own.
 
 ---
 
@@ -72,7 +74,7 @@ Each specialization follows this consistent layout:
 ```text
 <specialization>/
 ├── AGENTS.md       # Navigation index — load first
-├── rules/          # Constraints and conventions (always loaded)
+├── rules/          # Checkable constraints, scoped by `paths:` or `trigger: manual`
 ├── skills/         # Technical capabilities (loaded on demand)
 ├── workflows/      # Step-by-step processes (loaded on /command)
 └── prompts/        # Human copy-paste templates (EN + RU)
@@ -87,18 +89,18 @@ Each specialization follows this consistent layout:
 1. Identify which spec the skill belongs to (check `AGENTS.md` in that spec).
 2. Create a directory: `areas/<domain>/<spec>/skills/<kebab-case-name>/`.
 3. Copy `areas/template/skill.tmpl.md` → `SKILL.md` in that directory.
-4. Fill all frontmatter fields; write at least 2 substantive sections + "Common mistakes".
-5. Use real, runnable examples — no placeholder values.
+4. Fill all frontmatter fields; state the trigger in `description` ("Use when ...").
+5. Write a procedure: numbered steps, decision points, exact commands, or a bundled script.
 6. Update the spec's `AGENTS.md` spec map to include the new skill.
-7. Target: 150–350 lines.
+7. Limit: `SKILL.md` ≤ 250 lines, code ≤ 40 % of it; references and assets ≤ 400 lines.
 
 ### Adding a new workflow
 
 1. Create `areas/<domain>/<spec>/workflows/<kebab-case-name>.md`.
 2. Create a matching `areas/<domain>/<spec>/prompts/<kebab-case-name>.md`.
 3. Use `areas/template/workflow.tmpl.md` and `areas/template/prompt.tmpl.md`.
-4. Every step must have `@role`, Input, Actions (specific), and a checkable "Done when".
-5. Add a `selection` block right after `agent:`. JEV workflow routing shows it to the model as the option text:
+4. Write 3–6 steps. Every step has **Do** and a checkable **Done when**. Do not add roles or report files.
+5. Add a `selection` block. JEV workflow routing shows it to the model as the option text:
    ```yaml
    selection:
      general: false
@@ -110,16 +112,16 @@ Each specialization follows this consistent layout:
    - `general: true` marks the catch-all workflow for ordinary requests. Each top-level area (`areas/software`, `areas/devops`) may have at most one; today it is `software/general/development-cycle-workflow`.
    - `make lint-content` fails on a missing or invalid block.
 6. Update the spec's `AGENTS.md` spec map.
-7. Target: 60–200 lines for the workflow.
+7. Limit: 120 lines and 1,800 tokens for the workflow.
 
 ### Adding a new rule
 
 1. Create `areas/<domain>/<spec>/rules/<kebab-case-name>.md`.
 2. Use `areas/template/rule.tmpl.md`.
-3. Set priority P0 or P1 with a clear statement of what non-compliance causes.
-4. Write constraints as imperative statements — "must", "never", "required", "forbidden".
-5. Include at least one compliant and one non-compliant example.
-6. Target: under 150 lines.
+3. Scope the rule with `paths:` globs, or use `trigger: manual`.
+4. Write constraints as checkable imperatives with a concrete object: "Pin images by `@sha256` digest."
+5. Keep code blocks short examples of the required form (≤ 15 lines each).
+6. Limit: 80 lines and 1,200 tokens.
 
 ### Adding a new specialization area
 
@@ -142,15 +144,14 @@ Each specialization follows this consistent layout:
 
 ### Rules for skills
 
-- "When to load" is specific: describes the exact task condition, not just the general topic.
-- Examples are real and runnable — not abbreviated pseudocode.
-- "Common mistakes" section present with at least 3 items.
+- The `description` trigger is specific: it describes the exact task condition, not just the general topic.
+- Commands are real and runnable — not abbreviated pseudocode.
 
 ### Rules for workflows
 
-- Every step has a checkable "Done when" criterion.
-- At least one step includes a documented failure path.
-- Roles use the standard handle set: `@product-owner`, `@pm`, `@team-lead`, `@developer`, `@qa`, `@analyst`.
+- Every step has **Do** and a checkable **Done when** criterion.
+- A step that touches production says "ask the user first".
+- No roles, `agent`, or `execution.initiator`; the main session runs the workflow.
 
 ### Rules for prompts
 
@@ -174,6 +175,15 @@ Every rule, skill, and workflow must meet [docs/artifact-standard.md](docs/artif
 and their docs follow [docs/regulation.md](docs/regulation.md) (Definition of Done for code and design review,
 docs layout and coverage).
 
+Two checks enforce this in CI:
+
+- `make check-artifacts` (part of `make lint-content`) checks every `auto` requirement of the artifact standard.
+  Known findings live in `scripts/check_artifacts_baseline.json`; a PR may shrink that list but must not add to
+  it. Company deny terms for ART-C6 come from `AGENTIC_DENY_TERMS_FILE` outside the repository.
+- `make check-docs-coverage BASE=origin/main` fails when changed code has no changed docs page whose `covers:`
+  matches it. For a change without behaviour change (tests, CI, refactoring), add the commit trailer
+  `Docs-Not-Needed: <reason>`.
+
 ### PR title format
 
 ```
@@ -194,8 +204,9 @@ Reviewers check:
 - [ ] Spec map updated in `AGENTS.md`.
 - [ ] Constraints in rules use imperative language.
 - [ ] Prompt examples contain no placeholder values and include both EN and RU.
-- [ ] New skills have a specific "When to load" section.
-- [ ] Workflow steps have checkable "Done when" criteria.
+- [ ] New skills state a specific trigger in `description`.
+- [ ] Workflow steps have **Do** and checkable **Done when** criteria.
+- [ ] `make check-artifacts` reports no new findings and `make check-docs-coverage` passes.
 
 ---
 

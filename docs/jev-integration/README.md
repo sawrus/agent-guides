@@ -1,3 +1,16 @@
+---
+covers:
+  - extensions/codex/hooks/jev/**
+  - extensions/opencode/hooks/agentic-jev.ts
+  - src/jev_hooks.rs
+  - src/jev_defaults.rs
+  - src/hookmerge.rs
+  - scripts/blackbox_jev.py
+  - scripts/blackbox_calculator_probe.*
+  - scripts/pilot_jev.py
+  - scripts/check_jev_sdk.py
+---
+
 # JEV native hooks
 
 See [native verification results](verification.md) for measured outcomes and limits.

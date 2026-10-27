@@ -1,108 +1,81 @@
 # Template authoring guide
 
-This guide explains how to use the templates in this directory to create new specializations.
+This guide explains how to use the templates in this directory. Every rule, skill, and workflow must meet
+[docs/artifact-standard.md](../../docs/artifact-standard.md); `make check-artifacts` checks the `auto` items.
 
 ---
 
-## The four-layer structure
-
-Every specialization follows this layout — no exceptions:
+## The layers of a specialization
 
 ```text
 <spec-name>/
-├── AGENTS.md      # Navigation index — always loaded first
-├── rules/         # Constraints — always loaded for this spec
-├── skills/        # Capabilities — loaded on demand
-├── workflows/     # Orchestrated processes — triggered by /command
-└── prompts/       # Human-copy-paste templates (EN + RU)
+├── AGENTS.md      # Navigation index for the spec
+├── rules/         # Checkable constraints, scoped by `paths:` or loaded by hand (`trigger: manual`)
+├── skills/        # On-demand procedures
+├── workflows/     # Ordered checklists, triggered by /command
+└── prompts/       # Human copy-paste templates (EN + RU); removal planned
 ```
 
-Each layer has a purpose:
-
-| Layer | Purpose | Load behavior |
+| Layer | Purpose | Load behaviour |
 |:---|:---|:---|
-| `AGENTS.md` | Maps the spec's files; sets load order | Always first |
-| `rules/` | Hard constraints the agent cannot override | Always all |
-| `skills/` | Technical patterns loaded for specific tasks | On demand — agent checks "When to load" |
-| `workflows/` | Step-by-step processes triggered by slash commands | On /command trigger |
+| `AGENTS.md` | Maps the spec's files | Read on demand |
+| `rules/` | Constraints a reviewer can check in a diff | When a changed file matches `paths:`; `trigger: manual` rules when a skill or workflow links them. `trigger: always_on` only for rules that apply to every change in every project of the segment |
+| `skills/` | Procedures the agent would not get right without them | When the task matches the skill `description` or a workflow lists it in `uses-skills` |
+| `workflows/` | One ordered checklist per kind of task | On the `/command` trigger |
 | `prompts/` | Copy-paste inputs for humans (bilingual) | Human reference |
+
+Every artifact costs context tokens. Add one only when it changes what the agent does in a real project and a
+reviewer can check that change. Do not add roles or report files to any artifact.
 
 ---
 
-## Step-by-step: adding a new spec
+## Step-by-step: adding content
 
 ### 1. Choose the parent area
 
 - `areas/software/` — application development domains
 - `areas/devops/` — infrastructure and platform domains
 
-If neither fits, propose a new area in a GitHub issue before creating files.
+If neither fits, propose a new area in a GitHub issue before you create files.
 
-### 2. Create the directory structure
+### 2. Check that the topic is new
 
-```bash
-mkdir -p areas/<domain>/<spec-name>/{rules,skills,workflows,prompts}
-```
+Search the pack for the topic first. One topic lives in one artifact (ART-C3). A rule beats a skill on the same
+topic. File names must be unique across all specs of an area that can be installed together (ART-C5).
 
-### 3. Author `AGENTS.md` using `AGENTS.tmpl.md`
+### 3. Author rules using `rule.tmpl.md`
 
-Fill in:
-- **What this area covers** — one paragraph, specific scope
-- **Inherited constraints** — what the parent area already enforces (don't repeat these in rules)
-- **Spec-specific constraints** — imperatives only; no advice
-- **Spec map** — every file with an inline description
+- Scope with `paths:` globs, or use `trigger: manual`.
+- Write checkable imperatives with a concrete object; at least 70 % of the list items (ART-R2).
+- At most 80 lines and 1,200 tokens; code blocks at most 15 lines and 30 % of the file.
 
-### 4. Author rules using `rule.tmpl.md`
+### 4. Author skills using `skill.tmpl.md`
 
-Rules are constraints, not guidelines. Each file covers one coherent concern. Ask:
-- What must the agent *never* do?
-- What is *required* before proceeding?
-- What blocks the task (P0) vs flags for review (P1)?
+- Write a procedure: numbered steps, decision points, exact commands, or a bundled script.
+- State the trigger in `description` ("Use when ..."), or link the skill from a workflow or rule of the spec.
+- `SKILL.md` at most 250 lines; references and assets at most 400 lines; code at most 40 % of `SKILL.md`.
+- No framework scaffolding templates.
 
-### 5. Author skills using `skill.tmpl.md`
+### 5. Author workflows using `workflow.tmpl.md`
 
-Skills are technical capabilities loaded on demand. Each skill:
-- Has a precise "When to load" section
-- Covers 1–3 related techniques with real code examples
-- Ends with "Common mistakes" (3–5 items)
+- 3–6 steps; each step has **Do** and **Done when**.
+- The first step reproduces or states the current behaviour; a change workflow ends with checks green and docs
+  updated per [docs/regulation.md](../../docs/regulation.md) section 3.
+- A step that touches production says "ask the user first".
+- `trigger` is `/` + `name` and unique across all areas; register it in the area `AGENTS.md`.
+- `selection.use-when` is a quoted sentence of at most 300 characters; `general: true` only for the single
+  catch-all workflow of a top-level area.
+- At most 120 lines and 1,800 tokens.
 
-### 6. Author workflows using `workflow.tmpl.md`
+### 6. Author prompts using `prompt.tmpl.md`
 
-Workflows are orchestrated processes. Each workflow:
-- Maps to a `/command` trigger — unique across ALL areas (check the trigger registry in the area-level `AGENTS.md`)
-- Has 3–8 steps with explicit roles, inputs, actions, and done-when criteria
-- Names the handed-over artifact in `Input:` whenever the step role changes
-- Includes at least one failure path
-- Bounds every loop or retry (max iterations + escalation path) — "loop until done" is a defect
-- Ends with a "Document & Version" step (delivery) or a `docs/incidents/` root-cause doc (incident), and an explicit `Next: /<trigger>` or `Next: terminal` handoff
-- Has measurable quality gates in the frontmatter
-- Has a `selection` block after `agent:`: a quoted `use-when` sentence (≤ 300 characters), an optional `avoid-when`, and `general: false` unless it is the single catch-all workflow of its top-level area. JEV routing shows `use-when` to the model; `make lint-content` rejects a missing or invalid block
+Prompts link a workflow through frontmatter and have 2–3 bilingual examples with realistic values.
 
-### 7. Author prompts using `prompt.tmpl.md`
+### 7. Update the spec and area `AGENTS.md`
 
-Prompts are bilingual (EN + RU) templates for humans to copy-paste. Each prompt:
-- Links to a workflow via frontmatter
-- Has 2–3 examples with realistic values (no placeholders)
-- EN and RU blocks are semantically identical
+Add new files to the spec map and register each workflow trigger in the area trigger registry.
 
-### 8. Update the parent area's `AGENTS.md`
+### 8. Check before you submit
 
-Add the new spec to the spec map and register every workflow trigger in the area's trigger registry. If this is the first spec in a new area, create the area-level `AGENTS.md` using `AGENTS-area.tmpl.md`.
-
-### 9. Test before submitting
-
-Run at least one workflow in a real agent session. Document the tool, model, and outcome in your PR.
-
----
-
-## Quality bar
-
-A spec is ready to submit when:
-
-- All `AGENT INSTRUCTIONS` comment blocks are deleted.
-- All `{{PLACEHOLDER}}` values are replaced with real content.
-- All code examples are runnable without modification.
-- File lengths are within guidelines: rules ≤ 150, skills 150–350, workflows 60–200 lines.
-- Every workflow trigger is unique across all areas and registered in the area-level `AGENTS.md`.
-- Every workflow loop is bounded and every cross-workflow reference is acyclic (or carries a circuit breaker).
-- The spec has been tested in a real agent session.
+Run `make check-artifacts` and `make lint-content`. A new artifact states in the PR which real task it changes and
+why an existing artifact cannot take it.

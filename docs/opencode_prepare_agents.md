@@ -1,3 +1,8 @@
+---
+covers:
+  - extensions/opencode/commands/**
+---
+
 # TASK: Prepare AI Agent Infrastructure
 
 Analyze the codebase and create a complete AI-agent setup, including `AGENTS.md` and the `.agent/` directory.

@@ -1,3 +1,9 @@
+---
+covers:
+  - Cargo.toml
+  - src/**
+---
+
 # Agentic Rust Rewrite — Work Plan
 
 Status tracking for the full rewrite of `agentic` from Bash (5598 lines) to a

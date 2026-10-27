@@ -2,6 +2,7 @@
 covers:
   - areas/software/general/rules/docs-layout.md
   - scripts/check_docs_coverage.py
+  - scripts/check_docs_coverage.toml
   - REVIEW_PIPELINE.md
 ---
 
@@ -125,7 +126,16 @@ Rules:
 
 Enforcement:
 
-- In agent-guides itself: CI fails a pull request that breaks DOC-4 (`make check-docs-coverage`, planned).
+- In agent-guides itself: CI fails a pull request that breaks DOC-3, DOC-4, or DOC-6
+  (`make check-docs-coverage BASE=origin/<target branch>`, job `docs-coverage`).
+- `scripts/check_docs_coverage.py` compares the merge base of `BASE` with `HEAD`. Code paths are all tracked files
+  except `docs/`, tests, CI config, and the `exclude` globs of the config (`scripts/check_docs_coverage.toml`
+  here). A changed code path passes when a changed docs page covers it, or when every commit of the range that
+  touches it has the trailer `Docs-Not-Needed: <reason>`. A changed root, feature, or incident page needs a
+  `covers:` key (`covers: []` for a page without code); a catch-all glob (`**`) fails.
+- `check_docs_coverage.py --report-uncovered` lists tracked code that no `covers:` glob matches (DOC-6), pages
+  without `covers:`, and globs that match no file. The script takes `--repo` and `--config`, so a target project
+  can run it with its own exclusions.
 - In target projects: the agentic quality gate reports DOC-4 violations as a warning. A project turns the warning
   into a block with `"docs_coverage": "block"` in `.agent/gate.json` (planned).
 

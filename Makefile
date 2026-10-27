@@ -7,7 +7,8 @@ COVERAGE_MIN ?= 80
 .PHONY: help install dev build release-build test test-unit test-integration \
 	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
 	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode blackbox-claude test-jev-hooks test-notify test-jev-sdk test-gate \
-	test-repo-scan repo-scan repo-scan-check repo-scan-tools repo-scan-skill context-budget bench-v1 bench-prepare bench bench-selftest bench-report bench-regrade
+	test-repo-scan repo-scan repo-scan-check repo-scan-tools repo-scan-skill context-budget check-artifacts \
+	check-docs-coverage bench-v1 bench-prepare bench bench-selftest bench-report bench-regrade
 
 help:
 	@echo "Agentic Makefile targets:"
@@ -39,6 +40,8 @@ help:
 	@echo "  blackbox-opencode - real OpenCode V2 + JEV calculator check"
 	@echo "  blackbox-claude  - real Claude Code + JEV + Telegram hook calculator check"
 	@echo "  context-budget   - offline always-on context tokens per host (K1)"
+	@echo "  check-artifacts  - rules/skills/workflows vs docs/artifact-standard.md (ARTIFACTS_ARGS=--write-baseline|--project <dir>)"
+	@echo "  check-docs-coverage - changed code is covered by changed docs pages (BASE=origin/main)"
 	@echo "  bench-selftest   - offline check of the SDLC benchmark graders"
 	@echo "  bench-v1         - build the v1 baseline binary from BENCH_V1_REF"
 	@echo "  bench-prepare    - create benchmark projects and installs, no model calls"
@@ -70,6 +73,17 @@ blackbox-claude: build
 CONTEXT_BUDGET_MAX ?=
 context-budget: build
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/context_budget.py $(if $(CONTEXT_BUDGET_MAX),--max-tokens $(CONTEXT_BUDGET_MAX))
+
+# Artifact standard (docs/artifact-standard.md). ART-B1 installs the pack, so it needs the debug binary.
+ARTIFACTS_ARGS ?=
+check-artifacts: build
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/check_artifacts.py $(ARTIFACTS_ARGS)
+
+# Docs coverage of a change (docs/regulation.md, DOC-4).
+BASE ?= origin/main
+DOCS_COVERAGE_ARGS ?=
+check-docs-coverage:
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/check_docs_coverage.py --base $(BASE) $(DOCS_COVERAGE_ARGS)
 
 # SDLC benchmark (docs/agentic-v2-lean/README.md). Only `bench` calls models and spends quota.
 BENCH_V1_REF ?= b92d7ef
@@ -171,12 +185,13 @@ clean:
 # --- Content tooling (areas/docs payload, unchanged from the bash era) ---
 
 lint-content:
-	PYTHONPYCACHEPREFIX=/tmp/agentic-pycache-check python3 -m py_compile extensions/codex/hooks/gate/gate.py scripts/context_budget.py scripts/bench_sdlc.py scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/lint_review_pipeline.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py \
+	PYTHONPYCACHEPREFIX=/tmp/agentic-pycache-check python3 -m py_compile extensions/codex/hooks/gate/gate.py scripts/context_budget.py scripts/check_artifacts.py scripts/check_docs_coverage.py scripts/bench_sdlc.py scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/lint_review_pipeline.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py \
 		tools/repo-scan/repo_scan.py tools/repo-scan/reposcan/*.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_prompts.py --strict
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_review_pipeline.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/sync_workflow_diagrams.py --check
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/build_docs_catalog.py --validate --output /tmp/agentic-catalog-check.json
+	$(MAKE) check-artifacts ARTIFACTS_ARGS=
 	$(MAKE) check-no-pycache
 
 check-version-sync:

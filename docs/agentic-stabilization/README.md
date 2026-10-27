@@ -1,3 +1,9 @@
+---
+covers:
+  - src/doctor.rs
+  - src/doctor_cleanup.rs
+---
+
 # Agentic Stabilization v0.3.0
 
 ## User-Facing Behavior

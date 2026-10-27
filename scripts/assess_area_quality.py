@@ -51,6 +51,10 @@ def has_key(front: str, key: str) -> bool:
     return re.search(rf"^{re.escape(key)}:\s*.+$", front, re.MULTILINE) is not None
 
 
+def declares(front: str, key: str) -> bool:
+    return re.search(rf"^{re.escape(key)}:", front, re.MULTILINE) is not None
+
+
 def spec_dirs() -> Iterable[Path]:
     for area in sorted(AREAS.iterdir()):
         if not area.is_dir() or area.name == "template":
@@ -71,11 +75,10 @@ def assess_spec(spec: Path, environment: str) -> Score:
         "structure": 100,
         "reference_integrity": 100,
         "sdlc_coverage": 100,
-        "role_quality_gates": 100,
+        "workflow_contract": 100,
         "prompt_usefulness": 100,
         "environment_compatibility": 100,
         "token_efficiency": 100,
-        "documentation_readiness": 100,
     }
 
     required_dirs = ["rules", "skills", "workflows", "prompts"]
@@ -113,25 +116,25 @@ def assess_spec(spec: Path, environment: str) -> Score:
             if not has_key(front, key):
                 findings.append(Finding("error", f"workflow missing `{key}` front matter", rel))
                 dimensions["reference_integrity"] -= 5
-        if not yaml_list(front, "roles"):
-            findings.append(Finding("error", "workflow has no roles", rel))
-            dimensions["role_quality_gates"] -= 10
-        if not yaml_list(front, "quality-gates"):
-            findings.append(Finding("error", "workflow has no quality gates", rel))
-            dimensions["role_quality_gates"] -= 15
+        # docs/artifact-standard.md ART-W1: selection, uses-skills, related-rules; no roles or initiator.
+        for key in ["selection", "uses-skills", "related-rules"]:
+            if not declares(front, key):
+                findings.append(Finding("warn", f"workflow missing `{key}` front matter (ART-W1)", rel))
+                dimensions["workflow_contract"] -= 5
+        for key in ["roles", "agent", "execution"]:
+            if declares(front, key):
+                findings.append(Finding("warn", f"workflow declares `{key}`; the standard has no roles (ART-W1)", rel))
+                dimensions["workflow_contract"] -= 5
         for skill in yaml_list(front, "uses-skills"):
             if skill not in skills:
                 findings.append(Finding("error", f"uses missing skill `{skill}`", rel))
                 dimensions["reference_integrity"] -= 12
 
         text = read(workflow).lower()
-        for phase in ["input", "actions", "done when"]:
+        for phase in ["**do", "**done when"]:
             if phase not in text:
-                findings.append(Finding("warn", f"workflow lacks `{phase}` step language", rel))
+                findings.append(Finding("warn", f"workflow steps lack `{phase.strip('*')}` (ART-W2)", rel))
                 dimensions["sdlc_coverage"] -= 5
-        if "docs/" not in text and "document" not in text:
-            findings.append(Finding("warn", "workflow lacks documentation output or docs reference", rel))
-            dimensions["documentation_readiness"] -= 5
 
     for prompt in prompts:
         rel = prompt.relative_to(ROOT).as_posix()

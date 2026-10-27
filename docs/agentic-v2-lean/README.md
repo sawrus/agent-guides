@@ -1,3 +1,17 @@
+---
+covers:
+  - AGENTS.md
+  - MEMORY.md
+  - src/profile.rs
+  - src/gate.rs
+  - extensions/codex/hooks/gate/**
+  - extensions/opencode/plugins/agentic-gate.ts
+  - scripts/bench_sdlc.py
+  - scripts/context_budget.py
+  - extensions/*/agents/explorer.*
+  - extensions/*/agents/reviewer.*
+---
+
 # agentic v2 "lean"
 
 Status: v2.0.0 candidate, not shippable yet (see results.md). Scope: root layer (`AGENTS.md`, `MEMORY.md`, `REVIEW_PIPELINE.md`), `software/general`,

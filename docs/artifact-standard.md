@@ -5,14 +5,17 @@ covers:
   - scripts/lint_prompts.py
   - scripts/check_artifacts.py
   - scripts/context_budget.py
+  - scripts/check_artifacts.toml
+  - scripts/check_artifacts_baseline.json
+  - scripts/assess_area_quality.py
 ---
 
 # Artifact standard: rules, skills, workflows
 
 Status: draft for agreement (v1). It is the acceptance contract for every instruction artifact that agentic
 ships from `areas/**` and for every company rule that a target project adds (`docs/company-rules.md`, planned).
-`scripts/check_artifacts.py` (planned) checks each requirement that has an `[auto]` mark and reports its id.
-Reviewers check the `[review]` items by hand or with an LLM auditor ([regulation.md](regulation.md)).
+`scripts/check_artifacts.py` (`make check-artifacts`) checks each requirement that has an `auto` mark and reports
+its id. Reviewers check the `review` items by hand or with an LLM auditor ([regulation.md](regulation.md)).
 
 ## Why this exists
 
@@ -118,6 +121,42 @@ Remove an artifact from the pack when any of these is true:
 3. It targets a stack outside the segment (ART-C9) and no installed selection uses it.
 4. It is an orphan skill (ART-S6).
 5. It requires roles or report files (ART-C7) and the useful part already exists elsewhere.
+
+## Automatic check
+
+`make check-artifacts` runs `scripts/check_artifacts.py` (Python 3.11+, standard library only). It is part of
+`make lint-content`, so CI runs it on every pull request.
+
+- **Output.** One line per finding: id, file, short message. Each file gets a score: the share of applicable ids
+  that pass. A summary counts files with findings per id. `--json` prints the same data for tools such as
+  `agentic install`; `--verbose` also prints baselined findings and every file score.
+- **Thresholds.** `scripts/check_artifacts.toml` holds every limit of this page, the ART-C2/ART-C3 similarity
+  thresholds (word sets and 5-word shingles with Jaccard similarity), the ART-R2 verb and object lists, the
+  ART-S5 scaffolding terms, and the ART-B1 common selections.
+- **Ratchet.** `scripts/check_artifacts_baseline.json` lists the known findings as `<id> <path>` keys. The run
+  fails only on a finding outside the baseline. A baseline key without a finding is reported as a stale baseline
+  warning; `--strict-baseline` turns it into a failure. Regenerate the baseline with
+  `make check-artifacts ARTIFACTS_ARGS=--write-baseline` only to shrink it.
+- **ART-C1 for skills.** A skill description may be longer than one sentence; ART-S1 sets its limit
+  (1,024 chars). The 200-char, one-sentence limit applies to rules and workflows.
+- **ART-C5 scope.** Specializations of one area can be installed together, and their files land in the same
+  target directories. The check reports equal `rules/<file>`, `skills/<dir>`, and `workflows/<file>` names
+  across specs of one area.
+- **ART-C6 deny list.** The repository holds only generic patterns: private keys, common token formats, and host
+  addresses in private ranges. Company terms stay outside the repository: set `AGENTIC_DENY_TERMS_FILE` or pass
+  `--deny-terms-file <path>`; the file has one term per line, `re:` for a regular expression, and `#` comments.
+  The output names the line number of the term, not the term.
+- **ART-S6 trigger.** A skill passes when a rule or workflow of the same spec lists it in `uses-skills` or names
+  `skills/<name>`, or when its description states a trigger such as "Use when ...".
+- **ART-W6.** Every step whose text mentions deploys, production, cluster changes, or data changes must also say
+  "ask the user".
+- **ART-B1.** The check installs every installable specialization alone and each common selection with the debug
+  binary (`scripts/context_budget.py --all-selections`) and reports each selection over 4,000 tokens on any host.
+- **Project mode.** `check_artifacts.py --project <dir>` checks the company rules in `<dir>/.agent/company/**`
+  (ART-C1, C2, C3, C4, C7, R1–R4) against the pack rules installed in `<dir>/.agent/rules`. ART-K1 reports a
+  company rule that covers the topic of an installed pack rule without `replaces:`, a `replaces:` entry that names
+  no pack rule, and a replaced pack rule that is still installed. ART-K2 reports company statements that restate a
+  pack rule. `--json` adds `replace_suggestions` with the `area/spec/rule` ids to put into `replaces:`.
 
 ## Change process
 

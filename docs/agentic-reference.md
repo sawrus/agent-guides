@@ -1,3 +1,24 @@
+---
+covers:
+  - Cargo.toml
+  - package.json
+  - Makefile
+  - bin/**
+  - install
+  - src/**
+  - extensions/*/agents/**
+  - extensions/*/profiles/**
+  - extensions/*/commands/**
+  - extensions/*/model-tiers.json
+  - extensions/codex/skills/**
+  - extensions/codex/AGENTS.override.md
+  - extensions/claude/CLAUDE.md
+  - extensions/gemini/**
+  - extensions/antigravity/**
+  - scripts/render_coverage_scorecard.py
+  - scripts/generate_how_to_use_agentic_gif.py
+---
+
 # agentic reference
 
 Technical details moved from the README: layout, install options, platform matrix, JEV and run history. Start with the [README](../README.md) for the overview.

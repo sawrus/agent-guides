@@ -1,3 +1,11 @@
+---
+covers:
+  - src/manifest.rs
+  - src/markers.rs
+  - src/agentsmd.rs
+  - src/copydir.rs
+---
+
 # Agentic Token-Minimization Upgrade
 
 This feature reduces the amount of guidance copied into target projects while making future `agentic` reruns safer.

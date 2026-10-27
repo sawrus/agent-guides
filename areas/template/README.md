@@ -16,16 +16,15 @@ Use these templates when adding a new specialization area, spec, skill, workflow
 
 ## Authoring checklist
 
-Before opening a PR with new content:
+Every rule, skill, and workflow must meet [docs/artifact-standard.md](../../docs/artifact-standard.md). Before
+opening a PR with new content:
 
-- [ ] All `{{PLACEHOLDER}}` values replaced with real content.
-- [ ] All `AGENT INSTRUCTIONS` comment blocks deleted.
-- [ ] Frontmatter fields fully populated (no empty values).
-- [ ] Skill "When to load" section is specific and actionable.
-- [ ] Rule constraints use imperative language: "must", "never", "required", "forbidden".
-- [ ] Workflow steps each have: `@role`, Input, Actions, and a checkable "Done when" criterion.
+- [ ] All `{{PLACEHOLDER}}` values replaced and all `AGENT INSTRUCTIONS` comment blocks deleted.
+- [ ] `make check-artifacts` reports no new findings for the files you changed.
+- [ ] Rules are scoped by `paths:` (or `trigger: manual`) and list checkable imperatives.
+- [ ] Skills state their trigger in `description` ("Use when ...") and are procedures, not overviews.
+- [ ] Workflow steps each have **Do** and a checkable **Done when**; no roles and no report files.
 - [ ] Prompt examples contain no placeholders; both EN and RU blocks present.
-- [ ] File stays within line-count targets (skill: 150–350; workflow: 60–200; rule: < 150).
 - [ ] Spec map in `AGENTS.md` matches the actual files on disk.
 
 ## File naming conventions
@@ -35,23 +34,18 @@ Before opening a PR with new content:
 - Rule files: `kebab-case.md` (e.g., `migration-safety.md`)
 - Prompt files: match workflow name (e.g., `create-endpoint.md`)
 
-## Line count targets
+## Size limits
 
-| File type | Target |
+| File type | Limit |
 |:---|:---|
 | Area `AGENTS.md` | ≤ 100 lines |
 | Spec `AGENTS.md` | ≤ 80 lines |
-| `SKILL.md` | 150–350 lines |
-| Workflow | 60–200 lines |
-| Rule | ≤ 150 lines |
+| Rule | ≤ 80 lines and ≤ 1,200 tokens (ART-R3) |
+| `SKILL.md` | ≤ 250 lines; references and assets ≤ 400 lines (ART-S3) |
+| Workflow | ≤ 120 lines and ≤ 1,800 tokens, 3–6 steps (ART-W2, ART-W4) |
 | Prompt | no hard limit, but examples must be self-contained |
 
-## Guidance on quality gates
+## Checks in workflows
 
-Quality gates in workflows must be **objectively checkable** without human judgment:
-
-❌ Bad: "Output looks professional."
-✅ Good: "All required frontmatter fields are populated; file is under 350 lines; no `{{PLACEHOLDER}}` strings remain."
-
-❌ Bad: "Tests pass."
-✅ Good: "All unit tests in `src/__tests__/` pass with exit code 0 when run with `npm test`."
+The `checks` field lists commands that must pass, for example `make test`. A check is a command with an exit code,
+not a judgement such as "output looks professional".

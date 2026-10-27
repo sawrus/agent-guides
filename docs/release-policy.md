@@ -1,3 +1,10 @@
+---
+covers:
+  - Cargo.toml
+  - package.json
+  - Makefile
+---
+
 # Release policy
 
 agentic uses versions of the form `MAJOR.MINOR.PATCH`. The version lives in `Cargo.toml` and `package.json`.

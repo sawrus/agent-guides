@@ -1,3 +1,9 @@
+---
+covers:
+  - src/claude.rs
+  - extensions/claude/**
+---
+
 # Claude Code integration
 
 Agentic 1.4.0 installs native Claude Code assets. Claude Code now gets the same
