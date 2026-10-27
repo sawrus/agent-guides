@@ -1,6 +1,7 @@
 """Offline tests of the shared quality gate (extensions/codex/hooks/gate/gate.py)."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -21,6 +22,10 @@ def project(makefile, changelog=True):
     subprocess.run(['git', 'add', '-A'], cwd=root, check=True)
     subprocess.run(['git', *AUTHOR, 'commit', '-q', '-m', 'init'], cwd=root, check=True)
     return root
+
+
+def last(root):
+    return json.loads((root / '.agentic/gate/last.json').read_text())
 
 
 GREEN = 'test:\n\t@true\nlint:\n\t@true\n'
@@ -84,6 +89,84 @@ class StopGate(unittest.TestCase):
         self.assertEqual(gate.stop(root, {'session_id': 's'}), {})
 
 
+class AcceptanceRecord(unittest.TestCase):
+    def test_no_changes_is_accepted(self):
+        root = project(RED)
+        gate.stop(root, {'session_id': 's'}, 'claude')
+        record = last(root)
+        self.assertEqual((record['accepted'], record['reason_code']), (True, 'no_changes'))
+
+    def test_checks_passed(self):
+        root = project(GREEN, changelog=False)
+        (root / 'app.py').write_text('x = 2\n')
+        self.assertEqual(gate.stop(root, {'session_id': 's'}, 'claude'), {})
+        record = last(root)
+        self.assertEqual((record['accepted'], record['reason_code'], record['passed']), (True, 'checks_passed', True))
+
+    def test_checks_failed(self):
+        root = project(RED, changelog=False)
+        (root / 'app.py').write_text('x = 2\n')
+        self.assertEqual(gate.stop(root, {'session_id': 's'}, 'claude')['decision'], 'block')
+        record = last(root)
+        self.assertEqual((record['accepted'], record['reason_code']), (False, 'checks_failed'))
+
+    def test_changelog_missing(self):
+        root = project(GREEN)
+        (root / 'app.py').write_text('x = 2\n')
+        gate.stop(root, {'session_id': 's'})
+        self.assertEqual((last(root)['accepted'], last(root)['reason_code']), (False, 'changelog_missing'))
+
+    def test_max_blocks_release_is_not_accepted(self):
+        root = project(RED, changelog=False)
+        (root / 'app.py').write_text('x = 2\n')
+        for _ in range(3):
+            gate.stop(root, {'session_id': 's'}, 'claude')
+        released = gate.stop(root, {'session_id': 's'}, 'claude')
+        self.assertEqual(released, {'systemMessage': 'Agentic gate: NOT ACCEPTED (max_blocks)'})
+        record = last(root)
+        self.assertEqual((record['accepted'], record['reason_code']), (False, 'max_blocks'))
+        self.assertIn('released', record)
+        state = json.loads((root / '.agentic/gate/state.json').read_text())['s']
+        self.assertEqual(state['blocks'], 0)
+        self.assertEqual(state['last_release']['cause'], 'checks_failed')
+        self.assertEqual(state['last_release']['head'], record['head'])
+
+    def test_system_message_only_on_claude(self):
+        for host in ('codex', 'opencode', None):
+            root = project(RED, changelog=False)
+            (root / 'app.py').write_text('x = 2\n')
+            for _ in range(3):
+                gate.stop(root, {'session_id': 's'}, host)
+            self.assertEqual(gate.stop(root, {'session_id': 's'}, host), {})
+            self.assertEqual(last(root)['reason_code'], 'max_blocks')
+
+    def test_head_pack_version_and_profile(self):
+        root = project(GREEN, changelog=False)
+        head = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=root, capture_output=True, text=True).stdout.strip()
+        (root / '.agentic.json').write_text(json.dumps({
+            '_agentic': {'created_by': 'v2.0.0', 'updated_by': 'v2.2.0'}, 'version': 2,
+            'settings': {'profile': 'lean'}}))
+        gate.stop(root, {'session_id': 's'})
+        record = last(root)
+        self.assertEqual((record['head'], record['pack_version'], record['profile']), (head, 'v2.2.0', 'lean'))
+
+    def test_no_git_and_no_manifest_give_nulls(self):
+        root = Path(tempfile.mkdtemp(prefix='gate-nogit-'))
+        self.assertEqual(gate.stop(root, {'session_id': 's'}), {})
+        record = last(root)
+        self.assertEqual((record['head'], record['pack_version'], record['profile']), (None, None, None))
+        self.assertEqual(record['reason_code'], 'no_changes')
+
+    def test_main_prints_system_message_for_claude_host(self):
+        root = project(RED, changelog=False)
+        (root / 'app.py').write_text('x = 2\n')
+        script = str(Path(gate.__file__).resolve())
+        argv = ['python3', script, '--host', 'claude', '--event', 'stop', '--project-dir', str(root)]
+        outputs = [subprocess.run(argv, input='{"session_id": "s"}', capture_output=True, text=True).stdout
+                   for _ in range(4)]
+        self.assertEqual(json.loads(outputs[-1]), {'systemMessage': 'Agentic gate: NOT ACCEPTED (max_blocks)'})
+
+
 class Guard(unittest.TestCase):
     def deny(self, payload):
         return gate.guard(Path(tempfile.mkdtemp()), payload).get('hookSpecificOutput', {}).get('permissionDecision')
@@ -103,6 +186,117 @@ class Guard(unittest.TestCase):
 
     def test_ordinary_commands_pass(self):
         self.assertIsNone(self.deny({'tool_name': 'Bash', 'tool_input': {'command': 'make test'}}))
+
+
+def bash(command):
+    return {'tool_name': 'Bash', 'tool_input': {'command': command}}
+
+
+class ConfirmGuard(unittest.TestCase):
+    def setUp(self):
+        # A fake kubectl on PATH answers `config current-context` from $FAKE_CONTEXT; no cluster, no network.
+        self.bin = Path(tempfile.mkdtemp(prefix='gate-bin-'))
+        fake = self.bin / 'kubectl'
+        fake.write_text('#!/bin/sh\n[ "$1 $2" = "config current-context" ] || exit 3\n'
+                        '[ -n "$FAKE_CONTEXT" ] || exit 1\necho "$FAKE_CONTEXT"\n')
+        fake.chmod(0o755)
+        self.saved = {k: os.environ.get(k) for k in ('PATH', 'FAKE_CONTEXT', 'CLAUDE_PROJECT_DIR')}
+        os.environ['PATH'] = f'{self.bin}{os.pathsep}{os.environ.get("PATH", "")}'
+        os.environ['FAKE_CONTEXT'] = 'dev-cluster'
+        self.root = Path(tempfile.mkdtemp(prefix='gate-guard-'))
+
+    def tearDown(self):
+        for key, value in self.saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    def config(self, data):
+        (self.root / '.agent').mkdir(exist_ok=True)
+        (self.root / '.agent/gate.json').write_text(json.dumps(data))
+
+    def decide(self, command, host='claude'):
+        output = gate.guard(self.root, bash(command), host).get('hookSpecificOutput', {})
+        return output.get('permissionDecision'), output.get('permissionDecisionReason', '')
+
+    def test_prod_context_flag_asks(self):
+        for command in ('kubectl --context prod-cluster get ns', 'kubectl get ns --context=PROD-eu',
+                        'helm --kube-context prod-cluster list', 'oc --context=prod get pods',
+                        'cd /srv && /usr/local/bin/kubectl --context prod-cluster get ns | head',
+                        'echo start; sudo -u ops kubectl --context prod-cluster get ns',
+                        'kubectl config use-context prod-cluster'):
+            decision, reason = self.decide(command)
+            self.assertEqual(decision, 'ask', command)
+            self.assertIn('prod', reason.lower())
+
+    def test_dev_context_flag_passes(self):
+        os.environ['FAKE_CONTEXT'] = 'prod-cluster'  # an explicit flag wins over the current context
+        self.assertEqual(self.decide('kubectl --context dev-cluster get pods'), (None, ''))
+        self.assertEqual(self.decide('helm --kube-context=staging list'), (None, ''))
+
+    def test_current_context_is_checked_without_flag(self):
+        self.assertEqual(self.decide('kubectl get pods'), (None, ''))
+        os.environ['FAKE_CONTEXT'] = 'prod-cluster'
+        decision, reason = self.decide('kubectl get pods')
+        self.assertEqual(decision, 'ask')
+        self.assertIn('prod-cluster', reason)
+        self.assertEqual(self.decide('make test'), (None, ''))
+
+    def test_missing_or_failing_kubectl_is_ignored(self):
+        os.environ.pop('FAKE_CONTEXT')
+        self.assertEqual(self.decide('kubectl get pods'), (None, ''))
+        os.environ['PATH'] = str(self.root)  # no kubectl at all
+        self.assertEqual(self.decide('helm list'), (None, ''))
+
+    def test_prod_context_pattern_is_configurable(self):
+        self.config({'guard': {'prod_context_pattern': '^live-'}})
+        self.assertEqual(self.decide('kubectl --context prod-cluster get ns'), (None, ''))
+        self.assertEqual(self.decide('kubectl --context live-eu get ns')[0], 'ask')
+
+    def test_database_hosts(self):
+        self.assertEqual(self.decide('psql -h db.example.com -c "select 1"'), (None, ''))
+        self.config({'guard': {'prod_hosts': [r'^db\.example\.com$']}})
+        for command in ('psql -h db.example.com -c "select 1"', 'pg_dump --host=db.example.com app',
+                        'mysql -hdb.example.com app', 'psql postgresql://ro@db.example.com:5432/app',
+                        'PGHOST=db.example.com psql app'):
+            self.assertEqual(self.decide(command)[0], 'ask', command)
+        self.assertEqual(self.decide('psql -h localhost app'), (None, ''))
+
+    def test_custom_rules_replace_the_defaults(self):
+        self.config({'guard': {'confirm': [{'pattern': r'\bterraform\s+apply\b',
+                                            'reason': 'terraform apply changes infrastructure'}]}})
+        decision, reason = self.decide('terraform apply -auto-approve')
+        self.assertEqual(decision, 'ask')
+        self.assertIn('terraform apply changes infrastructure', reason)
+        self.assertEqual(self.decide('kubectl --context prod-cluster get ns'), (None, ''))
+
+    def test_custom_rules_can_keep_the_defaults(self):
+        self.config({'guard': {'confirm': ['default', {'pattern': 'terraform apply', 'reason': 'infra'}]}})
+        self.assertEqual(self.decide('kubectl --context prod-cluster get ns')[0], 'ask')
+        self.assertEqual(self.decide('terraform apply')[0], 'ask')
+
+    def test_empty_confirm_list_turns_the_rules_off(self):
+        self.config({'guard': {'confirm': []}})
+        self.assertEqual(self.decide('kubectl --context prod-cluster get ns'), (None, ''))
+
+    def test_codex_and_unknown_hosts_deny(self):
+        for host in ('codex', None):
+            decision, reason = self.decide('kubectl --context prod-cluster get ns', host)
+            self.assertEqual(decision, 'deny')
+            self.assertIn('run it themselves', reason)
+        self.assertEqual(self.decide('kubectl --context prod-cluster get ns', 'opencode')[0], 'ask')
+
+    def test_host_detection(self):
+        os.environ['CLAUDE_PROJECT_DIR'] = str(self.root)
+        self.assertEqual(gate.detect_host(None), 'claude')
+        self.assertEqual(gate.detect_host('codex'), 'codex')
+        os.environ.pop('CLAUDE_PROJECT_DIR')
+        self.assertIsNone(gate.detect_host(None))
+
+    def test_deny_rules_still_win(self):
+        self.assertEqual(self.decide('kubectl --context prod-cluster apply -f .env')[0], 'deny')
+        self.assertEqual(self.decide('git push -f origin main')[0], 'deny')
 
 
 if __name__ == '__main__':

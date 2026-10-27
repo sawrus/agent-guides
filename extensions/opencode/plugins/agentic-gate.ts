@@ -6,7 +6,8 @@ import { join } from "node:path";
 
 // Forwards to the shared gate runtime (.agent/gate/gate.py), the same one Claude Code and Codex call
 // from native Stop and PreToolUse hooks. Stop: after a root turn succeeds, a failed check comes back as a
-// new prompt in the same session. Guard: permission evaluation turns a risky tool call into a denial.
+// new prompt in the same session. Guard: permission evaluation turns a risky tool call into a denial, or into
+// a question to the user for production access (`guard.confirm` in .agent/gate.json).
 export default Plugin.define({
   id: "agentic-gate",
   async setup(ctx) {
@@ -22,7 +23,7 @@ export default Plugin.define({
       if (!existsSync(script)) return Promise.resolve({});
       return new Promise((resolve) => {
         try {
-          const child = spawn(python, [script, "--event", event, "--project-dir", project], { stdio: ["pipe", "pipe", "ignore"] });
+          const child = spawn(python, [script, "--host", "opencode", "--event", event, "--project-dir", project], { stdio: ["pipe", "pipe", "ignore"] });
           let out = "";
           child.stdout?.on("data", (chunk) => (out += chunk));
           child.on("error", () => resolve({}));
@@ -46,10 +47,17 @@ export default Plugin.define({
       const input = (tool?.input ?? {}) as Record<string, unknown>;
       const result = await gate("guard", { tool_name: tool?.tool ?? event.action,
         tool_input: { ...input, path: input.filePath ?? input.path ?? event.resources?.[0] } });
-      const reason = result?.hookSpecificOutput?.permissionDecisionReason;
+      const output = result?.hookSpecificOutput;
+      const reason = output?.permissionDecisionReason;
       if (reason) {
-        event.effect = "deny";
-        event.message = reason;
+        // "ask" never relaxes a stricter decision already made by OpenCode or another plugin.
+        if (output?.permissionDecision !== "ask") {
+          event.effect = "deny";
+          event.message = reason;
+        } else if (event.effect !== "deny") {
+          event.effect = "ask";
+          event.message = reason;
+        }
       }
     }));
 

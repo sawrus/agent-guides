@@ -27,7 +27,7 @@ deterministic checks.
 | Rules | All always-on | Path-scoped (`trigger: glob` + `paths:`) or `trigger: manual`. `.claude/rules/` gets only always-on and scoped rules |
 | Subagents | 9 SDLC roles; main session is `product-owner` | `lean` profile (default): `explorer` and `reviewer`. Native main session |
 | Workflows | Spawn one subagent per role | `lean`: the main session performs role steps. `team`: v1 delegation |
-| Quality gate | Prose only | Stop hook runs `make test`/`make lint` when files changed and asks once for a CHANGELOG entry. PreToolUse guard denies secrets, force push, and `rm -rf` outside the project |
+| Quality gate | Prose only | Stop hook runs `make test`/`make lint` when files changed and asks once for a CHANGELOG entry. PreToolUse guard denies secrets, force push, and `rm -rf` outside the project, and asks before production access |
 | Codex skills | `.agent/skills` (Codex does not read it) | `.agents/skills` |
 | Installed workflows | Include the mermaid diagram | Diagram removed (still in the source and docs site) |
 
@@ -53,7 +53,46 @@ deterministic checks.
   hash is not a change, so a session that only reads code runs no checks.
 - Guard: denies `.env*` (except `.example`, `.sample`, `.template`), private keys, `git push -f/--force`,
   and recursive deletes outside the project and the system temp directory.
-- Evidence: `.agentic/gate/last.json` (changed files, commands, exit codes, output tails).
+- Production guard (`guard` in `.agent/gate.json`): before a Bash command that may touch production, the gate
+  asks the user. The default rules, used when `guard.confirm` is absent:
+  - `kubectl`, `helm`, or `oc` with `--context`/`--kube-context` whose value matches `guard.prod_context_pattern`
+    (regex, case-insensitive, default `prod`), and `kubectl config use-context <prod>`;
+  - `kubectl`, `helm`, or `oc` without a context flag when `kubectl config current-context` (local, 2 s timeout,
+    failures ignored; honours `--kubeconfig` and `KUBECONFIG=`) matches the same pattern;
+  - `psql`, `pg_dump`, `pg_restore`, `mysql`, or `mysqldump` whose host (`-h`, `--host`, `PGHOST=`, a
+    `postgresql://`/`mysql://` URI, `host=`) matches a regex in `guard.prod_hosts` (default empty, no rule).
+
+  `guard.confirm` replaces the defaults with a list of `{"pattern": <regex on the Bash command>, "reason": <text>}`.
+  The string `"default"` in the list keeps the default rules; `[]` turns the production guard off. Example:
+
+  ```json
+  {"guard": {"prod_context_pattern": "prod|live", "prod_hosts": ["^db\\.example\\.com$"],
+             "confirm": ["default", {"pattern": "\\bterraform\\s+apply\\b", "reason": "terraform apply changes infrastructure"}]}}
+  ```
+
+  Host behaviour: Claude Code gets `permissionDecision: "ask"` and shows the reason in its approval prompt.
+  OpenCode sets the permission effect to `ask` (it never relaxes a `deny`). Codex PreToolUse hooks do not
+  support `ask` (Codex 0.153 rejects it as `unsupported permissionDecision:ask`), so on Codex, and when
+  the host is unknown, the rule denies the command and tells the agent to ask the user to run it themselves.
+  The hooks pass `--host claude|codex|opencode`; without it, `CLAUDE_PROJECT_DIR` marks Claude Code.
+- Evidence: `.agentic/gate/last.json`, written on every Stop:
+
+  | Field | Meaning |
+  |---|---|
+  | `time`, `session` | Local time and host session id |
+  | `changed` | Changed files (first 50), install baseline excluded |
+  | `checks` | `{command, exit, seconds, tail}` per check command |
+  | `passed` | No failure and no CHANGELOG request in this run (kept for compatibility) |
+  | `released` | Text, present only when `max_blocks` let the agent stop with an open failure |
+  | `accepted` | `true` only for `checks_passed` and `no_changes` |
+  | `reason_code` | `no_changes`, `checks_passed` (changes, checks green or none configured), `checks_failed` (blocked), `changelog_missing` (blocked, asked once), `max_blocks` (released with an open failure) |
+  | `head` | `git rev-parse HEAD`, `null` outside git or before the first commit |
+  | `pack_version` | `.agentic.json` `_agentic.updated_by` (the installer version, for example `v2.2.0`), or `null` |
+  | `profile` | `.agentic.json` `settings.profile`, or `null` |
+
+  On a `max_blocks` release, `.agentic/gate/state.json` also stores `last_release`
+  (`{time, cause, head}`, where `cause` is `checks_failed` or `changelog_missing`) for the session. On Claude Code
+  the Stop hook also returns `{"systemMessage": "Agentic gate: NOT ACCEPTED (max_blocks)"}`, so the user sees it.
 - `--disable-gate` removes the managed hook groups and the runtime. `--enable-gate` restores them.
 
 ## Acceptance criteria

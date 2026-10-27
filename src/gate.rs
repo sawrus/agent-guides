@@ -26,11 +26,14 @@ fn command(host: &str, event: &str) -> String {
     if host == "claude" {
         // Claude may run hooks from a subdirectory; anchor them to the project root.
         return format!(
-            "{} \"$CLAUDE_PROJECT_DIR/{RUNTIME_REL}\" --event {event} --project-dir \"$CLAUDE_PROJECT_DIR\"",
+            "{} \"$CLAUDE_PROJECT_DIR/{RUNTIME_REL}\" --host claude --event {event} --project-dir \"$CLAUDE_PROJECT_DIR\"",
             hookmerge::python()
         );
     }
-    format!("{} {RUNTIME_REL} --event {event}", hookmerge::python())
+    format!(
+        "{} {RUNTIME_REL} --host {host} --event {event}",
+        hookmerge::python()
+    )
 }
 
 fn hook_sets() -> [HookSet<'static>; 2] {
