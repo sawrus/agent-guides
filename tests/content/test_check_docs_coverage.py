@@ -64,6 +64,15 @@ class DocsCoverageTest(unittest.TestCase):
         self.assertIn('DOC-4  src/app.py', out)
         self.assertIn('update docs/tool.md', out)
 
+    def test_deleted_file_is_covered_by_the_page_that_dropped_its_glob(self):
+        self.write('docs/tool.md', '---\ncovers:\n  - src/**\n  - other/tool.sh\n---\n\n# Tool\n')
+        self.commit('docs: cover the helper')
+        self.git('branch', '-f', 'main')
+        (self.repo / 'other/tool.sh').unlink()
+        self.write('docs/tool.md', PAGE.format(n=2))
+        self.commit('chore: remove the helper')
+        self.assertEqual(self.check()[0], 0)
+
     def test_tests_and_ci_are_not_code(self):
         self.write('tests/test_app.py', 'assert True\n')
         self.write('.github/workflows/ci.yml', 'on: push\n')
