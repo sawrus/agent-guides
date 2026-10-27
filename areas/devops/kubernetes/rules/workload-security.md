@@ -11,6 +11,7 @@ paths:
 
 # Workload security
 
+- Pin container images in production manifests by `@sha256` digest; never use the `latest` tag.
 - Label production namespaces `pod-security.kubernetes.io/enforce: restricted` and staging namespaces `enforce: baseline`.
 - Set `runAsNonRoot: true`, a non-zero `runAsUser`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, `capabilities.drop: ["ALL"]`, and `seccompProfile.type: RuntimeDefault` on every container.
 - Mount an `emptyDir` volume for paths the application writes, such as `/tmp`.

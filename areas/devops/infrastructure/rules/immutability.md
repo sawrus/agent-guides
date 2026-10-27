@@ -12,7 +12,6 @@ paths:
 - Fix a running server with a new image and a redeploy; never patch it over SSH or in the cloud console.
 - Change production resources only through Terraform code; do not use the console, CLI, or SDK for them.
 - Build machine images with Packer (`*.pkr.hcl`) and reference them by image ID or digest, not by a `latest` name filter.
-- Use `@sha256` digests for container images in production manifests.
 - Use `create_before_destroy = true` for resources that serve traffic during replacement.
 - Run a scheduled drift check (`terraform plan -detailed-exitcode`) at least every 6 hours for each production state.
 - Tag each drift finding `accept`, `remediate`, or `investigate`; fix a `remediate` finding within 48 hours.
