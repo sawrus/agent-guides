@@ -16,12 +16,18 @@ import urllib.request
 from .common import read_text, redact, write_json
 
 PROMPT_VERSION = 1
-# The proxy expects the bare model id. `dats_ai/coding-agent-default` is the OpenCode provider/model form;
+# The proxy expects the bare model id. `private_llm/coding-agent-default` is the OpenCode provider/model form;
 # the provider prefix is not part of the id (HTTP 403 "team not allowed to access model").
 DEFAULT_LITELLM_MODEL = 'coding-agent-default'
 CLAUDE_MODELS = ('haiku', 'sonnet', 'opus', 'fable')
 EXCERPT_LINES = 60
 EXCERPT_CHARS = 3000
+
+
+def bare_model_id(model):
+    """Remove any OpenCode `<provider>/` prefix: the LiteLLM proxy wants the bare model id."""
+    return model.split('/', 1)[1] if '/' in model else model
+
 
 SYSTEM = ('You assess one software repository for an engineering team that uses a catalog of agent workflows '
           'and rules (agent-guides). Use only the facts given. Do not invent files, services or ids. '

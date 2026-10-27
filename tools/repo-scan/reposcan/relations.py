@@ -128,7 +128,7 @@ def publishers(records):
             pubs[eco].setdefault(key, {}).setdefault(r['id'], evidence)
             if eco == 'python':
                 py_names.add(key)
-        # Only modules that carry the package name (apiutil/, wf_core/) or are declared in poetry packages
+        # Only modules that carry the package name (shared_lib/, catalog_lib/) or are declared in poetry packages
         # count as published; other top-level packages of a service are internal.
         declared = set(py.get('packages') or [])
         for mod in f.get('python_modules') or []:

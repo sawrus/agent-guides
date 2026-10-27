@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "rule-catalog"
+name = "catalog-lib"
 version = "1.4.0"
 description = "Rule catalog API"
 authors = ["Team"]

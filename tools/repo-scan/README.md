@@ -139,7 +139,7 @@ Rules live in `applicability.json` → `activity`:
 | Kind | Source | Resolution |
 |---|---|---|
 | `library` | pyproject/requirements/package.json/go.mod dependencies; Python imports | package name → repository that publishes it (`[tool.poetry] name`, `setup.py`, non-private `package.json`, `go.mod module`). Imports count only for modules named after a published package. Dependency + import → 0.95, dependency → 0.85, import only → 0.6. A dependency from a private poetry source without a publishing repository → `unresolved`. |
-| `http` | `*_ENDPOINT`, `*_URL`, `*_URI` keys in env files, compose/values YAML, `os.getenv(...)`, pydantic `BaseSettings` fields | key without env prefix/suffix (`PROD_RULE_CATALOG_ENDPOINT` → `rule-catalog`) and the first label of the URL host → repository name, package name, Makefile `APPLICATION`, or the single Helm chart name. Key and host agree → 0.9, host → 0.75, key → 0.7. Infrastructure keys (database, Redis, Kafka, S3, Sentry, ...) are counted in `stats.skipped_infra_endpoints`. |
+| `http` | `*_ENDPOINT`, `*_URL`, `*_URI` keys in env files, compose/values YAML, `os.getenv(...)`, pydantic `BaseSettings` fields | key without env prefix/suffix (`PROD_CATALOG_LIB_ENDPOINT` → `catalog-lib`) and the first label of the URL host → repository name, package name, Makefile `APPLICATION`, or the single Helm chart name. Key and host agree → 0.9, host → 0.75, key → 0.7. Infrastructure keys (database, Redis, Kafka, S3, Sentry, ...) are counted in `stats.skipped_infra_endpoints`. |
 | `kafka` | No central topic registry exists, so topics come from code and config: `*TOPIC*` env keys, `KafkaConsumer(...)`, `.subscribe(...)`, `.send(...)`, `topic=...` literals (non-test files of repositories that use Kafka) | one topic in two repositories. Consumer → producer is `consumes-from` (0.8). Unknown roles → `direction: unknown` (0.5). A topic seen in one repository → `unresolved`. |
 | `grpc` | `.proto` services, `*Stub(` / `New*Client(` clients, `add_*Servicer_to_server` / `Register*Server` servers | client → server repository (0.8) or the only repository with the proto (0.6). |
 | `ci` | `.gitlab-ci.yml` `include: project:` | project path on the same host → repository (0.95). Projects outside the scanned roots → `unresolved` with reason `outside scanned roots`. |
@@ -198,7 +198,7 @@ Providers:
   run in an empty temporary directory. `AGENTIC_LLM_CLAUDE_BIN` overrides the binary (tests use a fake).
 - `litellm`: OpenAI-compatible `POST <base>/v1/chat/completions`. `AGENTIC_LLM_BASE_URL` (required,
   no default), `AGENTIC_LLM_API_KEY` (required, read only from the environment, never written),
-  `AGENTIC_LLM_MODEL` or `--model` (default `coding-agent-default`; a `dats_ai/` OpenCode prefix is removed).
+  `AGENTIC_LLM_MODEL` or `--model` (default `coding-agent-default`; an OpenCode `<provider>/` prefix such as `private_llm/` is removed).
 
 ## Tests
 

@@ -72,6 +72,15 @@ class BenchStatistics(unittest.TestCase):
         self.assertAlmostEqual(bench_sdlc.estimated_cost(cell('claude', 'T1', 'lean-jev', cost=0.5, jev=jev), priced), 0.542)
         self.assertIsNone(bench_sdlc.estimated_cost(cell('claude', 'T1', 'lean-jev', cost=0.5, jev=jev), prices))
 
+    def test_price_lookup_matches_any_provider_prefix_by_model_part(self):
+        price = {'input': 0.15, 'cached_input': 0.015, 'output': 0.47}
+        prices = {'private_llm/coding-agent-default': price, 'a/dup': {}, 'b/dup': {}}
+        self.assertIs(bench_sdlc.price_for(prices, 'private_llm/coding-agent-default'), price)
+        self.assertIs(bench_sdlc.price_for(prices, 'corp_llm/coding-agent-default'), price)
+        self.assertIsNone(bench_sdlc.price_for(prices, 'x/dup'))  # ambiguous
+        self.assertIsNone(bench_sdlc.price_for(prices, 'x/unknown'))
+        self.assertIsNone(bench_sdlc.price_for(prices, None))
+
     def test_summary_uses_common_tasks_and_counts_harness_errors_apart(self):
         cells = [cell('codex', 'T1', 'plain', cost=0.1), cell('codex', 'T2', 'plain', status='rejected', cost=0.1),
                  cell('codex', 'T1', 'lean-jev', cost=0.3, jev={'calls': 1, 'usage': {'input_tokens': 50, 'output_tokens': 5}}),

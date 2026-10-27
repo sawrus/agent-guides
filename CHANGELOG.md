@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.3.0
+
+- The benchmark price table and the docs no longer name a private OpenCode provider; they use the placeholder
+  `private_llm`. The benchmark report matches a provider-prefixed model id to its price by the model part after
+  `/`, and repo-scan `--provider litellm` strips any `<provider>/` prefix instead of one hardcoded name.
+- repo-scan fixtures, tests and docs use neutral project names (`shared-lib`, `order-service`, `catalog-lib`,
+  `example-group`).
+
 ## v2.2.0
 
 - Release policy: every PR ships its own version, and `CHANGELOG.md` has no `Unreleased` section. A feature

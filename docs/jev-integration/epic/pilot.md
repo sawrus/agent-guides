@@ -24,7 +24,7 @@ Prompt suffix for every mode:
 
 The harness, not the instruction alone, must enforce deadlines and token accounting. JEV requests are authorized separately without a numeric cap, but count requests and available input/output usage per task/mode. Do not retry answers for a preferred result.
 
-Allowed model families: Codex Luna/Terra/Sol 6.1; Claude Opus 5.5/Sonnet 5.5/Haiku; OpenCode OpenAI/dats. Resolve exact available IDs on work, preserve pins, and never infer a capability tier for an unknown model from its name or price.
+Allowed model families: Codex Luna/Terra/Sol 6.1; Claude Opus 5.5/Sonnet 5.5/Haiku; OpenCode OpenAI/private LiteLLM. Resolve exact available IDs on work, preserve pins, and never infer a capability tier for an unknown model from its name or price.
 
 ## Publication
 
