@@ -479,6 +479,8 @@ pub struct WizardSelections {
     pub specs: Vec<String>,
     /// Role profile id per host (crate::profile::HOSTS); empty keeps the default.
     pub profiles: std::collections::BTreeMap<String, String>,
+    /// Company rules from the optional "Company rules" step; None keeps the feature off.
+    pub company_rules: Option<crate::company::CompanyRules>,
 }
 
 pub fn run_tui(app: &mut App) -> crate::Result<()> {
@@ -522,6 +524,7 @@ pub fn apply_selections(app: &mut App, selections: WizardSelections) {
     };
     app.selected_specs = selections.specs;
     app.host_profiles = selections.profiles;
+    app.company_rules = selections.company_rules;
     // One shared choice is also the install-wide profile; mixed choices stay per host.
     let mut ids: Vec<&String> = app.host_profiles.values().collect();
     ids.dedup();
@@ -667,7 +670,94 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
         }
     }
 
+    // 7. Company rules (optional): a directory and/or a git repository.
+    let saved = saved_company_rules(&selections.project_dir);
+    let (path_default, git_default) = company_defaults(saved.as_ref());
+    let path = run_input(
+        &mut terminal,
+        InputState::new(
+            "Company rules: directory (relative to the project or absolute; empty = none)",
+            &path_default,
+        ),
+        &app.active_theme,
+        &subtitle,
+    )?;
+    let git = run_input(
+        &mut terminal,
+        InputState::new(
+            "Company rules: git repository <url>[#ref][:subdir] (empty = none)",
+            &git_default,
+        ),
+        &app.active_theme,
+        &subtitle,
+    )?;
+    let path = if path.cancelled {
+        String::new()
+    } else {
+        path.result()
+    };
+    let git = if git.cancelled {
+        String::new()
+    } else {
+        git.result()
+    };
+    selections.company_rules = company_selection(saved, &path, &git).map_err(|e| {
+        drop(_guard);
+        ui::error(app, &e);
+        crate::exit1()
+    })?;
+
     Ok(selections)
+}
+
+fn saved_company_rules(project_dir: &str) -> Option<crate::company::CompanyRules> {
+    let path = std::path::Path::new(project_dir).join(crate::PROJECT_MANIFEST_NAME);
+    let data: serde_json::Value = serde_json::from_slice(&std::fs::read(path).ok()?).ok()?;
+    crate::company::from_settings(&data["settings"]["company_rules"])
+}
+
+/// Input defaults: the first saved path source and the first saved git source.
+pub fn company_defaults(saved: Option<&crate::company::CompanyRules>) -> (String, String) {
+    use crate::company::Source;
+    let sources = saved.map(|s| s.sources.as_slice()).unwrap_or_default();
+    let path = sources.iter().find_map(|s| match s {
+        Source::Path(p) => Some(p.clone()),
+        _ => None,
+    });
+    let git = sources.iter().find_map(|s| match s {
+        Source::Git {
+            url,
+            git_ref,
+            subdir,
+        } => Some(match (git_ref.is_empty(), subdir.is_empty()) {
+            (true, true) => url.clone(),
+            (false, true) => format!("{url}#{git_ref}"),
+            _ => format!("{url}#{git_ref}:{subdir}"),
+        }),
+        _ => None,
+    });
+    (path.unwrap_or_default(), git.unwrap_or_default())
+}
+
+/// The step answers replace the saved sources; the saved `exclude` list stays.
+pub fn company_selection(
+    saved: Option<crate::company::CompanyRules>,
+    path: &str,
+    git: &str,
+) -> Result<Option<crate::company::CompanyRules>, String> {
+    let mut rules = crate::company::CompanyRules {
+        sources: Vec::new(),
+        exclude: saved.map(|s| s.exclude).unwrap_or_default(),
+    };
+    if !path.trim().is_empty() {
+        rules
+            .sources
+            .push(crate::company::Source::Path(path.trim().to_string()));
+    }
+    if !git.trim().is_empty() {
+        rules.sources.push(crate::company::parse_git_spec(git)?);
+    }
+    Ok((!rules.is_empty()).then_some(rules))
 }
 
 #[cfg(test)]
@@ -782,6 +872,7 @@ mod tests {
             areas: vec![],
             specs: vec!["software.backend".to_string()],
             profiles: Default::default(),
+            company_rules: None,
         };
         apply_selections(&mut app, selections);
         assert_eq!(app.theme, "light");
@@ -805,6 +896,7 @@ mod tests {
             areas: vec!["devops".to_string()],
             specs: vec!["devops.sre".to_string()],
             profiles: Default::default(),
+            company_rules: None,
         };
         apply_selections(&mut app, selections);
         assert_eq!(app.selected_agent_os, vec!["opencode"]);
@@ -812,6 +904,39 @@ mod tests {
         assert!(app.selected_mcps.is_empty());
         assert_eq!(app.enable_context7_env.as_deref(), Some("n"));
         assert_eq!(app.jev_enabled, Some(false));
+    }
+
+    #[test]
+    fn company_step_replaces_sources_and_keeps_excludes() {
+        use crate::company::{CompanyRules, Source};
+        let saved = CompanyRules {
+            sources: vec![
+                Source::Path("rules".into()),
+                crate::company::parse_git_spec("<url>#main:rules").unwrap(),
+            ],
+            exclude: vec!["software/backend/testing".into()],
+        };
+        assert_eq!(
+            company_defaults(Some(&saved)),
+            ("rules".to_string(), "<url>#main:rules".to_string())
+        );
+        assert_eq!(company_defaults(None), (String::new(), String::new()));
+        let picked = company_selection(Some(saved.clone()), "", "<url>")
+            .unwrap()
+            .unwrap();
+        assert_eq!(picked.sources.len(), 1);
+        assert_eq!(picked.exclude, saved.exclude);
+        assert!(company_selection(None, " ", "").unwrap().is_none());
+        assert!(company_selection(None, "", "<url>#x:../up").is_err());
+        let mut app = App::new().unwrap();
+        apply_selections(
+            &mut app,
+            WizardSelections {
+                company_rules: Some(picked.clone()),
+                ..Default::default()
+            },
+        );
+        assert_eq!(app.company_rules, Some(picked));
     }
 
     #[test]

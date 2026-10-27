@@ -813,7 +813,9 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     configure_opencode_profile_if_needed(app)?;
     crate::mapper::configure_opencode_agent_model_mapper_if_needed(app)?;
     crate::profile::apply_opencode(app, &project_dir)?;
+    let company = crate::company::prepare(app)?;
     copy_specialization_assets(app, &project_dir)?;
+    crate::company::install(app, &project_dir, &company)?;
     crate::claude::generate_commands(app, &project_dir)?;
     crate::profile::install_commands(app, &project_dir)?;
     agentsmd::generate_agents_md(app, &project_dir)?;
@@ -844,6 +846,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     crate::gate::write_baseline(app, &project_dir)?;
     crate::gitstate::report(app, &project_dir);
     print_report(app);
+    crate::company::report_duplicates(app, &project_dir);
     print_missing_agent_binary_guides(app);
     print_current_changelog(app);
     doctor::run_agentic_doctor(app);

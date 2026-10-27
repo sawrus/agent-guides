@@ -319,6 +319,7 @@ pub fn synchronize(app: &mut App) -> crate::Result<()> {
         std::fs::write(path, bytes)?;
     }
     app.project_dir = staging.path().to_string_lossy().to_string();
+    app.company_base_dir = Some(root.clone());
     let dry_run = app.dry_run;
     app.dry_run = false;
     let result = prepare(app, staging.path(), &data, &owned);
@@ -332,6 +333,7 @@ pub fn synchronize(app: &mut App) -> crate::Result<()> {
     crate::gitstate::report(app, &root);
     if !dry_run {
         crate::gate::write_baseline(app, &root)?;
+        crate::company::report_duplicates(app, &root);
         crate::doctor::run_agentic_doctor(app);
         if app.selected_mcp_contains("mempalace") {
             crate::mempalace::setup_mempalace_for_agentic(app, true);

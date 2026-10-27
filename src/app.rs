@@ -77,6 +77,12 @@ pub struct App {
     /// True while running the ratatui wizard flow: interactive questions are
     /// rendered as fullscreen TUI screens instead of line prompts.
     pub tui_mode: bool,
+    /// `settings.company_rules` of `.agentic.json` (docs/company-rules.md); None = feature off.
+    pub company_rules: Option<crate::company::CompanyRules>,
+    /// Pack rule ids (`area/spec/rule`) that the install skips: `company_rules.exclude` and `replaces:`.
+    pub excluded_pack_rules: std::collections::BTreeSet<String>,
+    /// The real project root while an upgrade installs into a staging copy (relative path sources).
+    pub company_base_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -153,6 +159,9 @@ impl App {
             config_home_override: None,
             interactive_override: None,
             tui_mode: false,
+            company_rules: None,
+            excluded_pack_rules: std::collections::BTreeSet::new(),
+            company_base_dir: None,
         })
     }
 

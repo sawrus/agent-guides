@@ -35,6 +35,11 @@ pub fn copy_dir_contents(
         if autoloads_every_rule(dest_root) && is_manual_rule(&content) {
             continue;
         }
+        if crate::company::pack_rule_id(src_rel, &rel)
+            .is_some_and(|id| app.excluded_pack_rules.contains(&id))
+        {
+            continue;
+        }
         if crate::profile::skips_extension_file(app, src_rel, &rel) {
             continue;
         }

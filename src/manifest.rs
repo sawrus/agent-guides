@@ -106,6 +106,17 @@ pub fn write_file_with_agentic_marker(
     dest: &Path,
     source_ref: &str,
 ) -> crate::Result<()> {
+    write_managed_file(app, src_content, dest, source_ref, "internal")
+}
+
+/// `write_file_with_agentic_marker` with the manifest marker kind (`internal`, `company`).
+pub fn write_managed_file(
+    app: &mut App,
+    src_content: &str,
+    dest: &Path,
+    source_ref: &str,
+    marker: &str,
+) -> crate::Result<()> {
     if app.dry_run {
         ui::log(
             app,
@@ -137,11 +148,11 @@ pub fn write_file_with_agentic_marker(
     let output =
         crate::project_update::instruction_output(app, dest, &generated, existing.as_deref())?;
     if existing.as_deref() == Some(output.as_str()) {
-        register_managed_file(app, dest, source_ref, "internal", false);
+        register_managed_file(app, dest, source_ref, marker, false);
         return Ok(());
     }
     std::fs::write(dest, &output)?;
-    register_managed_file(app, dest, source_ref, "internal", true);
+    register_managed_file(app, dest, source_ref, marker, true);
     Ok(())
 }
 
@@ -290,7 +301,7 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
                 "source": record.source,
                 "content_hash": record.content_hash,
                 "marker": record.marker,
-                "generated_hash": if record.marker == "internal" {
+                "generated_hash": if matches!(record.marker.as_str(), "internal" | "company") {
                     util::hash_file(&crate::project_update::baseline_path(project_dir, &record.path)).ok()
                 } else { None },
                 "updated_at": item_updated_at,
@@ -418,6 +429,10 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
         "skipped_files": app.skipped_managed_paths,
     });
 
+    let mut data = data;
+    if let Some(rules) = app.company_rules.as_ref().filter(|r| !r.is_empty()) {
+        data["settings"]["company_rules"] = crate::company::to_settings(rules);
+    }
     if let Some(old) = &old_data {
         let mut old_compare = old.clone();
         let mut new_compare = data.clone();
@@ -573,6 +588,9 @@ pub fn load_install_settings_from_manifest(
                 app.selected_claude_profile = profile.to_string();
             }
         }
+    }
+    if let Some(saved) = crate::company::from_settings(&settings["company_rules"]) {
+        crate::company::merge_saved(app, saved);
     }
     if app.opencode_telegram_enabled.is_empty() {
         // Only an enabled flag needs replay; a saved `false` is preserved as-is.

@@ -138,6 +138,22 @@ afterward; hosts load agents only at session start. Inside a session use `/profi
 OpenCode) or ask Codex to switch the profile (skill `agentic-profile`), or run `! agentic profile use team` in
 the Codex prompt. See [reference](agentic-reference.md#role-profiles-all-hosts) for the file format.
 
+### Company rules
+
+Company rules come from a directory or a git repository and override pack rules on the same topic:
+
+```bash
+agentic install --project-dir /path/to/project --agent-os claude,codex \
+  --areas software --specializations software.backend \
+  --company-rules-git 'git@gitlab.example.com:group/standards.git#main:rules' \
+  --company-rules-exclude software/backend/testing
+```
+
+`--company-rules-path <dir>` adds a local directory. Install copies the rules into `.agent/company/` (Claude Code
+also gets `.claude/rules/company-*.md`), skips the excluded pack rules and the ones named in `replaces:`, and
+prints the pack rules that company rules duplicate. `agentic upgrade` fetches the git source again. See
+[company rules](company-rules.md).
+
 Start TUI:
 
 ```bash
@@ -256,6 +272,8 @@ After the Agent OS step it asks for a role profile once per selected host (Claud
 The labels show the roles and the kind, for example `lean · explorer · native main session`,
 `team · 9 roles: product-owner, pm, team-lead, …`, or `my · developer, qa · base team · models: anthropic`.
 The choice is saved in `.agentic.json` (`settings.profile_ids`).
+The last, optional step "Company rules" asks for a directory and a git repository with company rules
+([company rules](company-rules.md)); empty answers keep the feature off.
 
 ## OpenCode optional plugins
 

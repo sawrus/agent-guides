@@ -2058,3 +2058,271 @@ fn upgrade_without_manifest_stops_unless_forced() {
         ["software.general"]
     );
 }
+
+// --- company rules (docs/company-rules.md) --------------------------------------------------------------
+
+fn company_install(home: &Path, project: &Path, extra: &[&str]) -> assert_cmd::assert::Assert {
+    agentic(home)
+        .env_remove("AGENTIC_ENABLE_JEV")
+        .env_remove("AGENTIC_PROFILE")
+        .args(["install", "--project-dir"])
+        .arg(project)
+        .args([
+            "--agent-os",
+            "claude",
+            "--areas",
+            "software",
+            "--specializations",
+            "software.backend",
+            "--no-doctor",
+        ])
+        .args(extra)
+        .assert()
+        .success()
+}
+
+fn company_sync(project: &Path, home: &Path) -> assert_cmd::assert::Assert {
+    sync_upgrade(project, home, false)
+        .env("XDG_CACHE_HOME", home.join(".cache"))
+        .assert()
+        .success()
+}
+
+fn write(path: &Path, text: &str) {
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, text).unwrap();
+}
+
+fn git(dir: &Path, args: &[&str]) {
+    let status = std::process::Command::new("git")
+        .current_dir(dir)
+        .args(["-c", "user.name=test", "-c", "user.email=test@example.com"])
+        .args(args)
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .status()
+        .unwrap();
+    assert!(status.success(), "git {args:?}");
+}
+
+const API_RULE: &str = "---\npaths:\n  - \"src/**\"\nreplaces: [software/backend/api-contracts]\n---\n# API\n\n- Route every public endpoint through the company gateway.\n";
+
+#[test]
+fn company_rules_from_path_exclude_pack_rules_and_add_one_agents_line() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let p = project.path();
+    write(&p.join("standards/software/api.md"), API_RULE);
+    write(
+        &p.join("standards/software/always.md"),
+        "# Always\n\n- Write commit subjects in English.\n",
+    );
+    write(
+        &p.join("standards/software/manual.md"),
+        "---\ntrigger: manual\n---\n# Manual\n\n- Read the release runbook before a release.\n",
+    );
+    write(&p.join("standards/README.md"), "# Standards\n");
+    company_install(
+        home.path(),
+        p,
+        &[
+            "--company-rules-path",
+            "standards",
+            "--company-rules-exclude",
+            "software/backend/testing",
+        ],
+    )
+    .stdout(predicate::str::contains(
+        "Company rule .agent/company/software/always.md has no `paths:`",
+    ));
+    for rel in [
+        "software/api.md",
+        "software/always.md",
+        "software/manual.md",
+    ] {
+        assert!(p.join(".agent/company").join(rel).is_file(), "{rel}");
+    }
+    assert!(!p.join(".agent/company/README.md").exists());
+    assert!(p.join(".claude/rules/company-software-api.md").is_file());
+    assert!(p.join(".claude/rules/company-software-always.md").is_file());
+    assert!(!p.join(".claude/rules/company-software-manual.md").exists());
+    // `replaces:` and `--company-rules-exclude` drop pack rules for every host.
+    for dir in [".agent/rules", ".claude/rules"] {
+        assert!(!p.join(dir).join("api-contracts.md").exists(), "{dir}");
+        assert!(!p.join(dir).join("testing.md").exists(), "{dir}");
+        assert!(p.join(dir).join("security.md").is_file(), "{dir}");
+    }
+    let agents = std::fs::read_to_string(p.join("AGENTS.md")).unwrap();
+    assert_eq!(
+        agents
+            .matches("Company rules in `.agent/company/` override agent-guides rules on conflict.")
+            .count(),
+        1
+    );
+    let manifest = manifest_json(p);
+    assert_eq!(
+        manifest["settings"]["company_rules"],
+        json!({"sources": [{"path": "standards"}], "exclude": ["software/backend/testing"]})
+    );
+    let item = manifest["managed_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["path"] == ".claude/rules/company-software-api.md")
+        .unwrap()
+        .clone();
+    assert_eq!(item["marker"], "company");
+    assert_eq!(item["source"], "company:standards/software/api.md");
+
+    // Without company rules: no AGENTS.md line and no settings key.
+    let plain = tempfile::tempdir().unwrap();
+    company_install(home.path(), plain.path(), &[]);
+    let agents = std::fs::read_to_string(plain.path().join("AGENTS.md")).unwrap();
+    assert!(!agents.contains("Company rules"));
+    assert!(manifest_json(plain.path())["settings"]
+        .get("company_rules")
+        .is_none());
+    assert!(plain.path().join(".agent/rules/api-contracts.md").is_file());
+}
+
+#[test]
+fn company_rules_in_place_and_user_files_are_preserved() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let p = project.path();
+    let own = "---\npaths:\n  - \"src/**\"\n---\n# Own\n\n- Log every request id.\n";
+    write(&p.join(".agent/company/software/own.md"), own);
+    write(&p.join("standards/software/api.md"), API_RULE);
+    company_install(
+        home.path(),
+        p,
+        &[
+            "--company-rules-path",
+            ".agent/company",
+            "--company-rules-path",
+            "standards",
+        ],
+    );
+    // In place: the file stays as the user wrote it; Claude Code gets a copy.
+    assert_eq!(
+        std::fs::read_to_string(p.join(".agent/company/software/own.md")).unwrap(),
+        own
+    );
+    assert!(p.join(".claude/rules/company-software-own.md").is_file());
+    assert!(p.join(".agent/company/software/api.md").is_file());
+
+    // A user file next to the copies survives the upgrade and stays unmanaged.
+    write(&p.join(".agent/company/notes.txt"), "user notes\n");
+    company_sync(p, home.path());
+    assert_eq!(
+        std::fs::read_to_string(p.join(".agent/company/software/own.md")).unwrap(),
+        own
+    );
+    assert!(p.join(".agent/company/notes.txt").is_file());
+    let manifest = manifest_json(p);
+    let paths: Vec<&str> = manifest["managed_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|i| i["path"].as_str())
+        .collect();
+    assert!(!paths.contains(&".agent/company/software/own.md"));
+    assert!(!paths.contains(&".agent/company/notes.txt"));
+    assert!(paths.contains(&".agent/company/software/api.md"));
+    assert!(!p.join(".agent/rules/api-contracts.md").exists());
+}
+
+#[test]
+fn company_rules_from_git_replay_on_upgrade_and_fall_back_to_cache() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let repos = tempfile::tempdir().unwrap();
+    let p = project.path();
+    let work = repos.path().join("work");
+    let bare = repos.path().join("standards.git");
+    std::fs::create_dir_all(&work).unwrap();
+    git(&work, &["init", "-q", "-b", "main"]);
+    write(&work.join("rules/software/api.md"), API_RULE);
+    write(&work.join("other/ignored.md"), "# Not in the subdir\n");
+    git(&work, &["add", "-A"]);
+    git(&work, &["commit", "-q", "-m", "one"]);
+    git(
+        repos.path(),
+        &["clone", "-q", "--bare", "work", "standards.git"],
+    );
+    let url = format!("file://{}", bare.display());
+    company_install(
+        home.path(),
+        p,
+        &["--company-rules-git", &format!("{url}#main:rules")],
+    );
+    assert!(p.join(".agent/company/software/api.md").is_file());
+    assert!(!p.join(".agent/company/other").exists());
+    assert!(!p.join(".agent/rules/api-contracts.md").exists());
+    assert_eq!(
+        manifest_json(p)["settings"]["company_rules"]["sources"],
+        json!([{"git": url, "ref": "main", "subdir": "rules"}])
+    );
+    let agents = std::fs::read_to_string(p.join("AGENTS.md")).unwrap();
+    assert!(agents.contains("Company rules in `.agent/company/`"));
+
+    // A new commit: upgrade replays the source from the manifest and picks it up.
+    std::fs::remove_file(work.join("rules/software/api.md")).unwrap();
+    write(
+        &work.join("rules/software/sql.md"),
+        "---\npaths:\n  - \"**/*.sql\"\n---\n# SQL\n\n- Name every migration after its ticket.\n",
+    );
+    git(&work, &["add", "-A"]);
+    git(&work, &["commit", "-q", "-m", "two"]);
+    git(&work, &["push", "-q", bare.to_str().unwrap(), "main"]);
+    company_sync(p, home.path());
+    assert!(p.join(".agent/company/software/sql.md").is_file());
+    assert!(p.join(".claude/rules/company-software-sql.md").is_file());
+    assert!(!p.join(".agent/company/software/api.md").exists());
+    assert!(!p.join(".claude/rules/company-software-api.md").exists());
+    // The replaced pack rule comes back once no company rule replaces it.
+    assert!(p.join(".agent/rules/api-contracts.md").is_file());
+
+    // Offline: the fetch fails, the cached copy is used, nothing is removed.
+    std::fs::rename(&bare, repos.path().join("moved.git")).unwrap();
+    company_sync(p, home.path()).stdout(predicate::str::contains("using the cached copy"));
+    assert!(p.join(".agent/company/software/sql.md").is_file());
+    // No cache either: the files that the source installed before stay.
+    std::fs::remove_dir_all(home.path().join(".cache/agentic/company")).unwrap();
+    company_sync(p, home.path()).stdout(predicate::str::contains("no cached copy exists"));
+    assert!(p.join(".agent/company/software/sql.md").is_file());
+    assert!(p.join(".claude/rules/company-software-sql.md").is_file());
+}
+
+#[test]
+fn company_rules_report_duplicate_pack_rules() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let p = project.path();
+    let pack = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("areas/software/backend/rules/testing.md"),
+    )
+    .unwrap();
+    write(&p.join("standards/software/testing.md"), &pack);
+    company_install(home.path(), p, &["--company-rules-path", "standards"])
+        .stdout(predicate::str::contains(
+            "=== Company rules vs pack rules ===",
+        ))
+        .stdout(predicate::str::contains(
+            "--company-rules-exclude software/backend/testing",
+        ));
+    // The suggestion applied: the pack rule is gone and the report is clean.
+    company_install(
+        home.path(),
+        p,
+        &["--company-rules-exclude", "software/backend/testing"],
+    )
+    .stdout(predicate::str::contains(
+        "No company rule duplicates a pack rule.",
+    ));
+    assert!(!p.join(".agent/rules/testing.md").exists());
+    assert_eq!(
+        manifest_json(p)["settings"]["company_rules"]["sources"],
+        json!([{"path": "standards"}])
+    );
+}
