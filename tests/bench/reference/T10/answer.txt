@@ -1,1 +1,1 @@
-По правилу makefile-guide в Makefile не хватает целей make install, make dev, make fmt и make clean.
+По правилу makefile-guide в Makefile не хватает целей make install, make fmt и make clean.
