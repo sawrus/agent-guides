@@ -105,7 +105,7 @@ repository). They follow the same rule requirements (ART-C*, ART-R*). In additio
 
 | Id | Requirement | Check |
 |---|---|---|
-| ART-K1 | A company rule that covers the same topic as a pack rule replaces it: the project lists the pack rule in `company_rules.exclude`. | auto (`check_artifacts --project`) |
+| ART-K1 | A company rule that covers the same topic as a pack rule replaces it: the rule names the pack rule in frontmatter `replaces: [<area>/<spec>/<rule>]`, and the project lists it in `company_rules.exclude`. | auto (`check_artifacts --project`) |
 | ART-K2 | A company rule does not restate a pack rule that stays installed. | auto (similarity) |
 | ART-K3 | Company rules may name internal systems; they never go into the public agent-guides repository. | review |
 
