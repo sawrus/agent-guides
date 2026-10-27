@@ -138,7 +138,7 @@
   },
   "T8": {
     "kind": "bugfix-hidden-defect",
-    "prompt": "Баг: после Stock({'a': 5}).reserve('a', 2) вызов release('a', 3) делает резерв отрицательным, и available('a') возвращает 6, больше, чем есть на складе.\nКритерий приёмки: release только уменьшает резерв и никогда не делает его отрицательным. Любой другой вызов release выбрасывает ValueError и не меняет резерв. Исправь.",
+    "prompt": "Баг: после Stock({'a': 5}).reserve('a', 2) вызов release('a', 3) делает резерв отрицательным, и available('a') возвращает 6, больше, чем есть на складе.\nКритерий приёмки: release и release_many (отмена нескольких строк заказа) только уменьшают резерв и никогда не делают его отрицательным. Любой другой вызов release или release_many выбрасывает ValueError и не меняет резерв. Исправь.",
     "seed": "seed/T8",
     "hidden": "hidden/T8",
     "allowlist": [
@@ -166,6 +166,36 @@
     "checks": [
       "answer",
       "no_changes"
+    ]
+  },
+  "T11": {
+    "kind": "devops-rule",
+    "prompt": "Выкатываем orders-api 1.4.2 в production. Обнови k8s/deployment.yaml: образ registry.example.com/shop/orders-api:1.4.2 и переменная окружения FEATURE_RETURNS=enabled. Манифесты должны соответствовать правилам проекта для production-нагрузок в Kubernetes.",
+    "fixture": "fixture-devops",
+    "areas": [
+      "devops"
+    ],
+    "specializations": [
+      "devops.infrastructure",
+      "devops.kubernetes",
+      "devops.sre"
+    ],
+    "hidden_check": "hidden/T11/check_t11.py",
+    "allowlist": [
+      "k8s/",
+      "CHANGELOG.md",
+      "README.md",
+      "docs/"
+    ],
+    "untouched": [
+      "k8s/service.yaml"
+    ],
+    "checks": [
+      "hidden_check",
+      "suite",
+      "lint",
+      "allowlist",
+      "untouched"
     ]
   }
 }

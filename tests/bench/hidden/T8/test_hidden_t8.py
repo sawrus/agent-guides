@@ -37,5 +37,44 @@ class HiddenReleaseTest(unittest.TestCase):
         self.assertEqual(stock.reserved.get('a', 0), 0)
 
 
+
+class HiddenReleaseManyTest(unittest.TestCase):
+    """The second code path: a cancelled multi-line order must follow the same invariant, all or nothing."""
+
+    def setUp(self):
+        self.stock = Stock({'a': 5, 'b': 5})
+        self.stock.reserve('a', 2)
+        self.stock.reserve('b', 2)
+
+    def assert_unchanged(self):
+        self.assertEqual(self.stock.reserved, {'a': 2, 'b': 2})
+        self.assertEqual((self.stock.available('a'), self.stock.available('b')), (3, 3))
+
+    def test_over_release_on_a_later_line_changes_nothing(self):
+        with self.assertRaises(ValueError):
+            self.stock.release_many([('a', 1), ('b', 3)])
+        self.assert_unchanged()
+
+    def test_lines_with_the_same_sku_count_together(self):
+        with self.assertRaises(ValueError):
+            self.stock.release_many([('a', 2), ('a', 1)])
+        self.assert_unchanged()
+
+    def test_unknown_sku_changes_nothing(self):
+        with self.assertRaises(ValueError):
+            self.stock.release_many([('a', 1), ('c', 1)])
+        self.assert_unchanged()
+
+    def test_non_positive_line_changes_nothing(self):
+        for bad in (0, -1):
+            with self.assertRaises(ValueError):
+                self.stock.release_many([('a', 1), ('b', bad)])
+            self.assert_unchanged()
+
+    def test_valid_release_many_still_works(self):
+        self.assertEqual(self.stock.release_many([('a', 1), ('a', 1), ('b', 2)]), {'a': 5, 'b': 5})
+        self.assertEqual(self.stock.reserved.get('a', 0) + self.stock.reserved.get('b', 0), 0)
+
+
 if __name__ == '__main__':
     unittest.main()

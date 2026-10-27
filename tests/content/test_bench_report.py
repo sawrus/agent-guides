@@ -65,11 +65,21 @@ class BenchArms(unittest.TestCase):
         self.assertEqual(bench_sdlc.project_path('codex', 'lean-jev').name, 'codex-lean-jev')
         self.assertEqual(bench_sdlc.cell_name('codex', 'T1', 'lean-jev', 2), 'codex-T1-lean-jev-r2')
 
+    def test_a_task_selection_gets_its_own_project(self):
+        self.assertEqual(bench_sdlc.project_path('codex', 'lean', 'T8').name, 'codex-lean')
+        self.assertEqual(bench_sdlc.selection('T11'),
+                         (('devops',), ('devops.infrastructure', 'devops.kubernetes', 'devops.sre')))
+        self.assertEqual(bench_sdlc.project_path('codex', 'lean', 'T11').name,
+                         'codex-lean-devops-infrastructure-kubernetes-sre')
+
     def test_every_task_has_a_reference_and_hidden_tests(self):
         for task, spec in bench_sdlc.TASKS.items():
             self.assertTrue((bench_sdlc.BENCH / 'reference' / task).is_dir(), task)
+            self.assertTrue((bench_sdlc.BENCH / spec.get('fixture', 'fixture')).is_dir(), task)
             if 'hidden_tests' in spec['checks']:
                 self.assertTrue(any((bench_sdlc.BENCH / spec['hidden']).glob('test_hidden_*.py')), task)
+            if 'hidden_check' in spec['checks']:
+                self.assertTrue((bench_sdlc.BENCH / spec['hidden_check']).is_file(), task)
 
 
 class BenchStatistics(unittest.TestCase):

@@ -32,6 +32,25 @@ class Stock:
         self.reserved[sku] -= quantity
         return self.available(sku)
 
+    def release_many(self, items):
+        """Release several lines of a cancelled order; items are (sku, quantity) pairs.
+
+        Returns {sku: available units after the release}.
+        Validates every line first, so a rejected call changes no reservation.
+        Lines with the same SKU count together.
+        """
+        totals = {}
+        for sku, quantity in items:
+            if quantity <= 0:
+                raise ValueError('quantity must be positive')
+            totals[sku] = totals.get(sku, 0) + quantity
+        for sku, quantity in totals.items():
+            if quantity > self.reserved.get(sku, 0):
+                raise ValueError(f'cannot release more than reserved for {sku}')
+        for sku, quantity in totals.items():
+            self.reserved[sku] -= quantity
+        return {sku: self.available(sku) for sku in totals}
+
     def ship(self, sku, quantity):
         if quantity > self.reserved.get(sku, 0):
             raise ValueError('cannot ship more than reserved')

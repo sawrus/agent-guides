@@ -180,20 +180,47 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
 
 ## Benchmark
 
-- Fixture: `tests/bench/fixture` (stdlib Python, `make test`, `make lint`). Hidden tests go in only after
-  the agent finishes. Reference solutions in `tests/bench/reference` check the graders (`make bench-selftest`).
+- Fixture: `tests/bench/fixture` (stdlib Python, `make test`, `make lint`). A task with `fixture` in
+  `tasks.json` starts from another folder instead (T11: `tests/bench/fixture-devops`, Kubernetes manifests).
+  Hidden tests go in only after the agent finishes. `make bench-selftest` checks the graders: the seed is
+  rejected, the reference in `tests/bench/reference/<task>` is accepted, and every near-miss in
+  `tests/bench/negative/<task>/<case>` is rejected.
 - Tasks: T1 bugfix (rounding), T2 feature with acceptance criteria and CHANGELOG, T3 question (no changes),
   T4 bugfix next to tempting cleanup (`legacy_report.py` and `_old_level_dump` must stay), T5 bugfix in a file
   that already fails `make lint` (the suite is green, so only an agent or gate that runs lint sees it), T6
   multi-module bugfix (the symptom is in `orders.py`; the causes are in `pricing.py` and in the tax base), T7
   multi-module feature (`Stock.reserve_many` plus a CLI command; hidden tests check that lines with the same SKU
-  count together and that the existing over-reservation bug does not leak into the new API), T8 bugfix with a
-  hidden defect (`Stock.release` lets the reservation go negative; the prompt states the criterion "release only
-  lowers the reservation". The suite and lint stay green. The obvious fix checks only "more than reserved"; the
-  hidden tests also reject a negative quantity, which a careful review of the diff against the criterion
-  catches), T10 question that needs a rule (which standard Makefile targets from the installed
-  `makefile-guide` rule are missing; the answer must name `make install`, `make dev`, `make fmt`, and
-  `make clean`; no changes allowed).
+  count together and that the existing over-reservation bug does not leak into the new API), T8 bugfix with
+  hidden defects in two code paths (T8v2, see below), T10 question that needs a rule (which standard Makefile
+  targets from the installed `makefile-guide` rule are missing; the answer must name `make install`, `make dev`, `make fmt`, and
+  `make clean`; no changes allowed), T11 devops task that needs rules (see below).
+- T8v2 (since the commit that added T11; the id stays `T8`): the seed has `Stock.release` and a batch
+  `Stock.release_many` that calls `release` line by line. The prompt example shows only the visible defect
+  (`release` goes below zero). The criterion names both methods: they only lower the reservation, and any other
+  call raises `ValueError` and does not change the reservation. The hidden defect is in `release_many`: after the
+  obvious fix in `release`, a bad later line still raises after earlier lines were released, and lines with the
+  same SKU are not counted together. Hidden tests check both methods and a negative quantity. The suite and lint
+  stay green. The selftest negative `negative/T8/single-fix` (only `release` fixed) must be rejected. A careful
+  self-review or a reviewer of the diff against the criterion catches the second defect. T8 results before this
+  change (T8v1: one method, round-6 Claude 3/3 in both `lean` and `lean-noreviewer`, no reviewer spawned) are not
+  comparable with T8v2; keep them in another `BENCH_OUT` folder.
+- T11 `devops-rule`: a release request on `k8s/deployment.yaml` (image `orders-api:1.4.2`, env
+  `FEATURE_RETURNS=enabled`) that must also meet "the project rules for production workloads in Kubernetes".
+  The grader `tests/bench/hidden/T11/check_t11.py` (stdlib YAML subset parser) checks the request and only rule
+  items that exist both before and after the content cleanup in `areas/devops/kubernetes/rules/`:
+  `requests.cpu`, `requests.memory`, and `limits.memory` on every container (`resource-governance`);
+  `runAsNonRoot: true`, a non-zero `runAsUser`, `allowPrivilegeEscalation: false`,
+  `readOnlyRootFilesystem: true`, `capabilities.drop: ["ALL"]`, and `seccompProfile.type: RuntimeDefault`
+  (`workload-security`; pod-level values count for inherited fields); a dedicated ServiceAccount defined in
+  `k8s/` with `automountServiceAccountToken: false`. It also checks that the port, probes, and `DATABASE_URL`
+  stay. Other checks: `make test`, `make lint`, allowlist (`k8s/`, `CHANGELOG.md`, `README.md`, `docs/`), and
+  an unchanged `k8s/service.yaml`. Probes and image digests are not graded: probes are a rule only after the
+  cleanup, and after the cleanup the digest item sits in `infrastructure/rules/immutability.md`, which is scoped
+  to Terraform and Packer paths. The selftest negative `negative/T11/image-only` (request done, rules ignored)
+  must be rejected.
+- Install selection per task: `areas` and `specializations` in `tasks.json` (default
+  `software` / `software.backend,software.general`). T11 installs `devops` /
+  `devops.infrastructure,devops.kubernetes,devops.sre`.
 - Seeds: a task with `seed` in `tasks.json` copies `tests/bench/<seed>` over the fixture before the first
   commit. T5, T6, and T8 use it, so the other tasks keep the base fixture.
 - Allowlists include the version file and `docs/`, because the pack's own completion contract requires them.
@@ -205,9 +232,13 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
   text in `AGENTS.md` stays the same, so the agent can still start a native subagent for a review.
 - Repetitions: `--reps N` runs every host × task × arm N times. The cell order is shuffled with `--seed`
   (default 0), so no arm always runs right after another and reuses its prompt cache.
-- Projects: one stable path per host and arm (`/tmp/agentic-bench/<host>-<arm>`), because Codex trusts hooks
-  per absolute path. Before each Claude cell the benchmark deletes `~/.claude/projects/<path>/` (transcripts and
-  auto-memory), so no cell sees notes from an earlier one. Each cell copies the finished project into
+- Projects: one stable path per host, arm, and install selection, because Codex trusts hooks per absolute path:
+  `/tmp/agentic-bench/<host>-<arm>` for the default selection, and `/tmp/agentic-bench/<host>-<arm>-<slug>` for a
+  task with its own selection (slug = areas plus short specialization names; T11:
+  `<host>-<arm>-devops-infrastructure-kubernetes-sre`). `make bench-prepare` creates one project per selection
+  among `--tasks` (all tasks by default). Codex needs `/hooks` trust in each of these paths. Before each Claude
+  cell the benchmark deletes `~/.claude/projects/<path>/` (transcripts and auto-memory), so no cell sees notes
+  from an earlier one. Each cell copies the finished project into
   `<out>/<cell>/project`; `make bench-regrade` grades that copy.
 - Invalid cells: a host that reports no token usage, a `-jev` cell without a JEV decision record, or a Codex
   cell whose hooks have no trust record is `harness_error`. It is not counted as a failure, and the next
@@ -236,7 +267,8 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
   leaves the cell cost empty.
 - Codex runs project hooks only after `/hooks` trust per absolute path. Run
   `make bench-prepare BENCH_ARGS="--hosts codex --modes lean,lean-jev,team-jev"`, open `codex` in each printed
-  project, and trust the hooks in `/hooks`. The command prints `untrusted_hooks` per project.
+  project (also the `-devops-...` projects for T11), and trust the hooks in `/hooks`. The command prints
+  `untrusted_hooks` per project.
 - Decision rule for lean + JEV (fixed before round 4): recommend it only if, on a host, its success rate is not
   below lean (the Wilson intervals overlap or lean + JEV is higher) and its cost per success is at most 1.1 ×
   lean, with no worse success rate on the other hosts. Otherwise it stays opt-in, with no savings claimed.
@@ -257,7 +289,8 @@ Before the first paid command (no model calls), create the projects and trust th
 make bench-prepare BENCH_OUT=.agentic-blackbox/bench-r6 BENCH_ARGS="--hosts codex --modes lean,lean-noreviewer,lean-jev"
 ```
 
-Run order: H4, then H0, then H-clean "before". H-clean "after" runs only after the content cleanup is merged.
+Run order: H4 (on T8v2), then H0, then H-clean and H-clean-devops "before". The "after" runs come only after
+the content cleanup is merged.
 
 **H4: the reviewer earns its place in the lean default.** Precondition: plan steps 0–2 are merged.
 
@@ -266,7 +299,17 @@ make bench BENCH_OUT=.agentic-blackbox/bench-r6 BENCH_ARGS="--hosts codex --task
 make bench BENCH_OUT=.agentic-blackbox/bench-r6 BENCH_ARGS="--hosts claude --tasks T8 --modes lean,lean-noreviewer --reps 3"  # 6 cells
 ```
 
-Total: 24 paid cells. Rule: the reviewer stays in the lean default only if, on Codex T8, `lean` accepted ≥
+Total: 24 paid cells.
+
+T8v1 did not separate the arms: Claude accepted 3/3 in both `lean` and `lean-noreviewer`, and no reviewer was
+spawned. Rerun H4 on T8v2 in a new folder, with the same rule and cell counts (T8v1 cells are not comparable):
+
+```bash
+make bench BENCH_OUT=.agentic-blackbox/bench-r6-t8v2 BENCH_ARGS="--hosts codex --tasks T8 --modes lean,lean-noreviewer --reps 9 --model codex=gpt-6.1-terra"  # 18 cells
+make bench BENCH_OUT=.agentic-blackbox/bench-r6-t8v2 BENCH_ARGS="--hosts claude --tasks T8 --modes lean,lean-noreviewer --reps 3"  # 6 cells
+```
+
+Rule: the reviewer stays in the lean default only if, on Codex T8, `lean` accepted ≥
 `lean-noreviewer` accepted + 2 (of 9), and the total cost of the 9 `lean` cells ≤ 1.3 × the total cost of the 9
 `lean-noreviewer` cells. Claude is a guard: `lean` accepted on T8 must not be below `lean-noreviewer`. If any
 part fails, the reviewer leaves the lean default, and plan step 2 continues for `explorer` only.
@@ -303,6 +346,23 @@ Total: 28 paid cells. Compare the `r1` cells of the same tasks on each host. Rul
 host, `lean` after accepted ≥ `lean` before accepted, and the sum of full tokens (uncached + cached) after ≤ 0.9 ×
 before. Otherwise the cleanup is revised before release. With one repetition, a one-task difference in accepted
 cells is noise; the token rule carries the decision.
+
+**H-clean-devops: the cleanup does not lower results on a devops selection and saves tokens there.** The
+benchmark above installs only `software.backend,software.general`, so it does not see the large cut for devops
+selections (Claude: `infrastructure` + `kubernetes` + `sre` always-on context 9.3k → 1.9k tokens). Task: T11
+only, Claude, 3 reps of `lean` and of `plain`. `plain` installs nothing, so its before/after difference shows
+run-to-run noise. Before each command, create the projects:
+`make bench-prepare BENCH_ARGS="--hosts claude --tasks T11 --modes plain,lean"`.
+
+```bash
+# before the cleanup: a build of this branch without feat/AGV2-content-cleanup
+make build && make bench BENCH_OUT=.agentic-blackbox/bench-r6-devops BENCH_ARGS="--hosts claude --tasks T11 --modes plain,lean --reps 3"  # 6 cells
+# after the cleanup: a build with the cleanup merged
+make build && make bench BENCH_OUT=.agentic-blackbox/bench-r6-devops-clean BENCH_ARGS="--hosts claude --tasks T11 --modes plain,lean --reps 3"  # 6 cells
+```
+
+Total: 12 paid Claude cells. Rule: the cleanup holds for devops if `lean` after accepted ≥ `lean` before
+accepted (of 3), and the sum of full tokens of the 3 `lean` cells after ≤ 0.9 × before. Otherwise the devops rules are revised before release.
 
 ## Results
 

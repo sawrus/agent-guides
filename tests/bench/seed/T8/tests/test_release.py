@@ -15,6 +15,12 @@ class ReleaseTest(unittest.TestCase):
         stock.reserve('a', 2)
         self.assertEqual(stock.release('a', 2), 5)
 
+    def test_release_many_lines(self):
+        stock = Stock({'a': 5, 'b': 4})
+        stock.reserve('a', 3)
+        stock.reserve('b', 2)
+        self.assertEqual(stock.release_many([('a', 1), ('b', 2)]), {'a': 3, 'b': 4})
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Opt-in paid SDLC benchmark: plain host, lean and team profiles, with and without JEV (docs/agentic-v2-lean/README.md).
 
-Every cell copies tests/bench/fixture into a fresh Git project outside any repository, installs the arm,
+Every cell copies tests/bench/fixture (or the task's `fixture`) into a fresh Git project outside any repository,
+installs the arm with the task's area and specialization selection,
 runs one native turn (plus at most one follow-up), and grades the result with deterministic checks:
 hidden tests, the existing suite, lint, CHANGELOG, allowed files, and exact answers. Never bypasses
 native trust or permissions. Cells run in a seeded random order and repeat `--reps` times.
@@ -35,7 +36,8 @@ TASKS = json.loads((BENCH / 'tasks.json').read_text())
 MODES = ('plain', 'v1', 'lean', 'lean-noreviewer', 'lean-jev', 'team', 'team-jev')
 DEFAULT_MODES = ('plain', 'lean', 'lean-jev', 'team-jev')
 HOSTS = ('claude', 'codex', 'opencode')
-SELECTION = ('software', 'software.backend,software.general')
+# Default install selection; a task may set its own `areas` and `specializations` (T11: devops).
+SELECTION = (('software',), ('software.backend', 'software.general'))
 # Outside any repository, so no parent AGENTS.md/CLAUDE.md leaks into a run; Codex trusts hooks per path.
 PROJECTS = Path('/tmp/agentic-bench')
 PRICES = BENCH / 'prices.json'
@@ -54,11 +56,25 @@ def binary(mode, args):
     return args.v1_binary if mode == 'v1' else ROOT / 'target/debug/agentic'
 
 
+def selection(task):
+    """(areas, specializations) the arm installs for a task."""
+    spec = TASKS[task]
+    return tuple(spec.get('areas') or SELECTION[0]), tuple(spec.get('specializations') or SELECTION[1])
+
+
+def selection_slug(task):
+    """'' for the default selection; else areas plus short specialization names, e.g. devops-kubernetes-sre."""
+    areas, specs = selection(task)
+    if (areas, specs) == SELECTION:
+        return ''
+    return '-'.join([*areas, *(s.split('.')[-1] for s in specs)])
+
+
 def copy_fixture(task, project):
-    """Fresh Git project from the shared fixture plus the task's optional seed overlay."""
+    """Fresh Git project from the task's fixture (default: the shared one) plus its optional seed overlay."""
     if project.exists():
         shutil.rmtree(project)
-    shutil.copytree(BENCH / 'fixture', project, ignore=shutil.ignore_patterns('__pycache__'))
+    shutil.copytree(BENCH / TASKS[task].get('fixture', 'fixture'), project, ignore=shutil.ignore_patterns('__pycache__'))
     if TASKS[task].get('seed'):
         shutil.copytree(BENCH / TASKS[task]['seed'], project, dirs_exist_ok=True,
                         ignore=shutil.ignore_patterns('__pycache__'))
@@ -67,9 +83,11 @@ def copy_fixture(task, project):
     git(project, *AUTHOR, 'commit', '-q', '-m', 'bench: fixture')
 
 
-def project_path(host, mode):
-    """One stable path per host and arm: Codex trusts hooks per absolute path, so every task and rep reuses it."""
-    return PROJECTS / f'{host}-{mode}'
+def project_path(host, mode, task=None):
+    """One stable path per host, arm, and install selection: Codex trusts hooks per absolute path, so every task
+    and rep with the same selection reuses it. A task with its own selection gets `<host>-<mode>-<slug>`."""
+    slug = selection_slug(task) if task else ''
+    return PROJECTS / f'{host}-{mode}' if not slug else PROJECTS / f'{host}-{mode}-{slug}'
 
 
 def install_flags(mode):
@@ -102,12 +120,13 @@ def forget_host_state(host, project):
 
 
 def prepare(host, task, mode, args):
-    project = project_path(host, mode)
+    project = project_path(host, mode, task)
     forget_host_state(host, project)
     copy_fixture(task, project)
     if mode != 'plain':
         result = subprocess.run([str(binary(mode, args)), 'install', '--project-dir', str(project), '--agent-os', host,
-                                 '--areas', SELECTION[0], '--specializations', SELECTION[1], '--no-doctor',
+                                 '--areas', ','.join(selection(task)[0]), '--specializations', ','.join(selection(task)[1]),
+                                 '--no-doctor',
                                  *install_flags(mode)],
                                 capture_output=True, text=True)
         if result.returncode:
@@ -163,6 +182,12 @@ def grade(task, project, final_text):
             checks[check] = all(word.split('/')[-1] in final_text for word in spec['answer'])
         elif check == 'no_changes':
             checks[check] = not scoped
+        elif check == 'hidden_check':
+            # A grader script outside the project (T11 manifest rules); it reads the project and never changes it.
+            result = subprocess.run([sys.executable, '-I', str(BENCH / spec['hidden_check']), str(project)],
+                                    capture_output=True, text=True, timeout=120)
+            checks[check] = result.returncode == 0
+            test_log += (result.stdout + result.stderr)[-600:]
     if 'hidden_tests' in spec['checks']:
         for test in (BENCH / spec['hidden']).glob('*.py'):
             shutil.copy2(test, project / 'tests' / test.name)
@@ -395,26 +420,30 @@ def regrade(out):
 
 
 def selftest():
-    """Offline grader check: the untouched fixture fails every task; the reference solutions pass."""
-    failures = []
+    """Offline grader check: the untouched fixture fails every task; the reference solutions pass; every
+    near-miss in tests/bench/negative/<task>/<case> (for example T8 `single-fix`: only `release` fixed) fails."""
+    failures, negatives = [], 0
     for task in TASKS:
-        for solved in (False, True):
-            project = PROJECTS / f'selftest-{task}-{int(solved)}'
+        cases = [('seed', None, False), ('reference', BENCH / 'reference' / task, True)]
+        cases += [(f'negative/{case.name}', case, False) for case in sorted((BENCH / 'negative' / task).glob('*'))
+                  if case.is_dir()]
+        negatives += len(cases) - 2
+        for name, overlay, solved in cases:
+            project = PROJECTS / f'selftest-{task}-{name.replace("/", "-")}'
             copy_fixture(task, project)
             answer = ''
-            if solved:
-                reference = BENCH / 'reference' / task
-                for source in reference.rglob('*'):
+            if overlay:
+                for source in overlay.rglob('*'):
                     if source.is_file() and source.name != 'answer.txt':
-                        target = project / source.relative_to(reference)
+                        target = project / source.relative_to(overlay)
                         target.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copy2(source, target)
-                answer = (reference / 'answer.txt').read_text() if (reference / 'answer.txt').is_file() else ''
+                answer = (overlay / 'answer.txt').read_text() if (overlay / 'answer.txt').is_file() else ''
             verdict = grade(task, project, answer)
             if verdict['accepted'] != solved:
-                failures.append(f'{task} solved={solved}: {verdict["checks"]}')
+                failures.append(f'{task} {name}: expected accepted={solved}, checks {verdict["checks"]}')
             shutil.rmtree(project)
-    print('\n'.join(failures) or f'bench selftest: ok ({len(TASKS)} tasks)')
+    print('\n'.join(failures) or f'bench selftest: ok ({len(TASKS)} tasks, {negatives} negatives)')
     return 1 if failures else 0
 
 
@@ -621,11 +650,14 @@ def main():
     if 'v1' in modes and not args.v1_binary.is_file():
         sys.exit(f'[bench] missing v1 binary {args.v1_binary}; run `make bench-v1`')
     if args.prepare_only:
+        # One project per install selection among the chosen tasks (T11 adds `<host>-<mode>-<slug>`).
+        firsts = list({selection(task): task for task in reversed(tasks)}.values())[::-1]
         for host in hosts:
             for mode in modes:
-                project = prepare(host, tasks[0], mode, args)
-                untrusted = codex_untrusted(project) if host == 'codex' else []
-                print(json.dumps({'project': str(project), 'untrusted_hooks': len(untrusted)}), flush=True)
+                for task in firsts:
+                    project = prepare(host, task, mode, args)
+                    untrusted = codex_untrusted(project) if host == 'codex' else []
+                    print(json.dumps({'project': str(project), 'untrusted_hooks': len(untrusted)}), flush=True)
         return 0
     cells = [(h, t, m, r) for h in hosts for t in tasks for m in modes for r in range(1, args.reps + 1)]
     # A fixed order lets later arms reuse an earlier arm's prompt cache; a seeded shuffle spreads that effect.
