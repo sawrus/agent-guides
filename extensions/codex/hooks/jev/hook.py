@@ -51,6 +51,9 @@ WORKFLOW_FALLBACKS = {'native': 'native_request', 'clarify': 'clarification_need
 SWITCH_PROMPT = re.compile(r'\s*/?jev\s+(on|off|status)\s*', re.I)
 SWITCH_MARKER = re.compile(r'Agentic JEV switch:\s*(on|off|status)\b', re.I)
 INCOMPLETE_KEYS = ('kind', 'hook_event_name', 'session_id', 'event_id', 'tool_use_id', 'tool_name', 'action')
+# OpenCode code mode reports one MCP call twice under one call id: as the `execute` wrapper and as `<server>_<tool>`.
+CODE_MODE_WRAPPER = 'execute'
+TOOL_ALIAS_KEYS = ('action', 'input')
 IDENTITY_KEYS = ('host', 'kind', 'session_id', 'event_id', 'input', 'action', 'resources', 'prompt', 'model',
                  'observed_model', 'agent', 'child_session_id', 'task_id', 'task_generation', 'metadata', 'cwd', 'preparation_only', 'prepared_decision')
 
@@ -289,13 +292,25 @@ def label_agent(project, event):
         event.update(agent=None, native_agent_type=agent)
 
 
+def opencode_tool_call(event):
+    return event.get('host') == 'opencode' and event.get('kind') == 'tool' and bool(event.get('event_id'))
+
+
+def wrapper_superseded(event, cached):
+    """A concrete tool name replaces a cached code-mode wrapper record for the same call id."""
+    return (opencode_tool_call(event) and event.get('action') != CODE_MODE_WRAPPER
+            and (cached.get('context') or {}).get('action') == CODE_MODE_WRAPPER)
+
+
 def record_once(turn):
-    identity = {k: turn.event.get(k) for k in IDENTITY_KEYS}
+    # One OpenCode call id is one tool record, whatever name the host reports for it.
+    keys = [k for k in IDENTITY_KEYS if not (opencode_tool_call(turn.event) and k in TOOL_ALIAS_KEYS)]
+    identity = {k: turn.event.get(k) for k in keys}
     identity['v'] = questions.VERSION
     digest = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
     record_path = turn.directory / ('event-' + digest + '.json')
     cached = read_json(record_path)
-    if cached:
+    if cached and not wrapper_superseded(turn.event, cached):
         if turn.event['kind'] in QUESTION and not task_current(turn):
             return fallback('stale_task')
         if turn.event['kind'] == 'permission' and cached['result'].get('decision') == 'allow' and not permission_boundaries(turn.project, turn.event):
@@ -374,6 +389,8 @@ def handle_spawn(turn):
         outcome = 'native' if prepared.accepted(result) else 'recommendation_discarded'
         return {'result': result, 'fields': {'model_source': result.get('model_source', 'none'), 'outcome': outcome}}
     event['models'] = models = spawn_models(turn)
+    # Lean caps helper tiers at the session model (routing.helper_cap).
+    event['profile'] = adapters.install_profile(turn.project)
     # Missing capability maps never infer tiers from prices.
     tier_data = read_json(turn.project / OPENCODE_TIERS_FILE, {}) if event.get('host') == 'opencode' else None
     plan = routing.plan_spawn(event, models, model_defaults(turn.project, event.get('host')), turn.settings, routing.load_tier_map(tier_data))
@@ -569,6 +586,14 @@ def claude_event(project, payload):
     return adapters.claude_event(sys.modules[__name__], project, payload)
 
 
+def opencode_event(project, event):
+    """OpenCode builds its own hints; a plan-mode prompt gets the shared read-only text from adapters."""
+    result = run_event(project, {**event, 'host': 'opencode'})
+    if event.get('kind') == 'prompt' and event.get('plan_mode') is True and adapters and isinstance(result, dict) and result.get('workflow'):
+        result = {**result, 'context': adapters.plan_context(result['workflow'])}
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', choices=('codex', 'opencode', 'claude'), required=True)
@@ -594,7 +619,7 @@ def main():
         elif args.host == 'claude':
             result = claude_event(project, event)
         else:
-            result = run_event(project, {**event, 'host': 'opencode'})
+            result = opencode_event(project, event)
     except (ImportError, OSError, ValueError, TypeError, KeyError, AttributeError):
         result = fallback('prepared_request_failed') if args.prepare_spawn else {} if args.host in ('codex', 'claude') else fallback('invalid_event')
     print(json.dumps(result, ensure_ascii=False))

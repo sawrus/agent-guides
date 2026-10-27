@@ -34,6 +34,10 @@ LEAN_CONTEXT = ('JEV suggests installed workflow {id}. Use {path} as a checklist
                 'its steps yourself in this main session; there are no role agents. Start a subagent only where the project '
                 'core rules call for one; {hooks} route its model, so omit guessed model overrides. Keep the scope of the '
                 'ORIGINAL request; do not add requirements.')
+# Plan mode is read-only on every profile: no edits and no delegated implementation, only diagnosis and a plan.
+PLAN_CONTEXT = ('JEV suggests installed workflow {id}; this session is in read-only plan mode, so use {path} as a checklist for '
+                'the ORIGINAL user request, perform only its diagnosis and analysis steps (read, search, reproduce without changes) '
+                'and present the remaining steps as a plan. Do not edit files, and keep the scope of the ORIGINAL request.')
 
 
 def install_profile(project):
@@ -104,8 +108,19 @@ def review_additional_context(packet):
     return review_context() + ' Explicitly read ' + packet + ' and its referenced decision records. These files are Git-ignored; do not rely on ordinary search to discover them.'
 
 
-def workflow_context(workflow, delegation, lean=False):
+def plan_mode(payload):
+    """Claude Code sends `permission_mode`; a host that sends no mode keeps the normal hint."""
+    return payload.get('permission_mode') == 'plan'
+
+
+def plan_context(workflow):
+    return PLAN_CONTEXT.format(id=workflow['id'], path=workflow['path'])
+
+
+def workflow_context(workflow, delegation, lean=False, plan=False):
     sentence, hooks = delegation
+    if plan:
+        return plan_context(workflow)
     if lean:
         return LEAN_CONTEXT.format(id=workflow['id'], path=workflow['path'], hooks=hooks)
     return ('JEV selected installed workflow ' + workflow['id'] + '. Load ' + workflow['path'] + ' and execute it for the ORIGINAL user request. '
@@ -127,9 +142,10 @@ def shared_output(core, project, name, event, result, delegation):
         return {'decision': 'block', 'reason': result['message']}
     if name == 'UserPromptSubmit' and result.get('workflow'):
         lean = install_profile(project) == 'lean'
-        context = workflow_context(result['workflow'], delegation, lean)
+        plan = event.get('plan_mode') is True
+        context = workflow_context(result['workflow'], delegation, lean, plan)
         # Prepared spawns serve role delegation; lean spawns are routed by the PreToolUse spawn hook alone.
-        if event.get('host') == 'codex' and not lean:
+        if event.get('host') == 'codex' and not lean and not plan:
             task = core.read_json(core.private_dir(project) / ('context-' + core.short_hash(event['session_id']) + '.json'), {})
             context += (' Before each Codex V2 spawn, call the local JSON interface: python3 .agent/jev/hook.py --host codex --prepare-spawn. '
                         'Send session_id=' + str(event['session_id']) + ', task_id=' + str(task.get('task_id')) +
@@ -174,11 +190,12 @@ def codex_event(core, project, payload):
     event = {'host': 'codex', 'session_id': payload.get('session_id'),
              'event_id': payload.get('tool_use_id') or payload.get('agent_id') or payload.get('turn_id'), 'input': data, 'action': payload.get('tool_name'), 'cwd': payload.get('cwd')}
     if name == 'UserPromptSubmit':
-        event.update(kind='prompt', prompt=payload.get('prompt', ''))
+        event.update(kind='prompt', prompt=payload.get('prompt', ''), plan_mode=plan_mode(payload))
     elif name == 'PreToolUse' and payload.get('tool_name') in CODEX_SPAWN_TOOLS:
         if isinstance(data.get('task_name'), str) and prepared_name(data['task_name']):
             return prepared_submission(core, project, payload, event)
         codex_spawn(project, event, data)
+        event['session_model'] = payload.get('model') if isinstance(payload.get('model'), str) else None
     elif name == 'PermissionRequest':
         event.update(kind='permission', agent=routing.canonical_role(payload.get('agent_type')) or None)
     elif name == 'SubagentStart':
@@ -296,9 +313,11 @@ def claude_event(core, project, payload):
              'event_id': payload.get('tool_use_id') or payload.get('agent_id') or payload.get('prompt_id'),
              'input': data, 'action': payload.get('tool_name'), 'cwd': payload.get('cwd')}
     if name == 'UserPromptSubmit':
-        event.update(kind='prompt', prompt=payload.get('prompt', ''))
+        event.update(kind='prompt', prompt=payload.get('prompt', ''), plan_mode=plan_mode(payload))
     elif name == 'PreToolUse' and payload.get('tool_name') in CLAUDE_AGENT_TOOLS:
         claude_spawn(project, event, data)
+        # Claude hook payloads carry no model; the main transcript names the model of the session's last turn.
+        event['session_model'] = observed_transcript_model(payload.get('transcript_path'))
     elif name == 'PermissionRequest':
         event.update(kind='permission', agent=routing.canonical_role(payload.get('agent_type')) or None)
     elif name in ('SubagentStart', 'SubagentStop'):

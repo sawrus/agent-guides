@@ -139,12 +139,17 @@ Sent before a subagent spawn, after these rules (no JEV call):
 
 1. `project_configuration_unavailable`, an explicit model or a role-file pin, or
    a continued child keeps native behavior (`model_source: pinned`).
-2. A single eligible model is routed (`single_eligible`).
-3. `instruction-reviewer` gets the cheapest priced or configured lightweight
+2. Under `lean`, the helpers `explorer` and `reviewer` never get a tier above the session model's tier. When
+   that tier is unknown, the cap is `balanced`. Models above the cap leave the candidates and the role default.
+   When no candidate is left, the result is `fallback/tier_above_session` with no model, and the host runs the
+   helper on the session model. The session model comes from the Codex payload `model`, the last assistant
+   model in the Claude transcript, or the OpenCode root session's last primary request.
+3. A single eligible model is routed (`single_eligible`).
+4. `instruction-reviewer` gets the cheapest priced or configured lightweight
    model. When neither exists, it gets the `fast` tier model with reason
    `tier_fast_price_unknown`. All three use `model_source: review_model`.
-4. Fewer than two resolved tiers give `fallback/no_tier_routing`.
-5. A Codex spawn (only Codex) with an encrypted assignment (`assignment_unavailable: true`)
+5. Fewer than two resolved tiers give `fallback/no_tier_routing`.
+6. A Codex spawn (only Codex) with an encrypted assignment (`assignment_unavailable: true`)
    without prepared metadata gives `fallback/assignment_unavailable`, and the role default applies.
    Use the [explicit preselection interface](#codex-preselection) before encryption when the exact assignment is available.
 
@@ -277,6 +282,7 @@ never auto-allow or auto-deny a request that `permission_boundaries` rejects.
 | `runtime_incomplete` | `api.py`, `questions.py`, `routing.py` or `adapters.py` missing or of another version; one identifier-only record is written |
 | `explicit_model_or_continuation` | Pinned model or continued child |
 | `single_eligible_model` | One candidate |
+| `tier_above_session` | Lean `explorer` or `reviewer`: every candidate is above the session tier (`balanced` when unknown); the helper runs on the session model |
 | `request_failed`, `missing_key`, `invalid_endpoint`, `request_too_large` | Client or API failure |
 
 `no_matching_workflow` is no longer produced.
@@ -315,7 +321,8 @@ without a profile counts as `team`, because JEV installed the role team before p
 | `native`, `clarify`, low confidence | no context; the session turns JEV off | no context; the session turns JEV off |
 | Workflow chosen | one sentence: use the workflow file as a checklist and perform its steps yourself; start a subagent only where the core rules ask | load the workflow, act as its initiator, delegate to its role agents; Codex prepared spawns; post-task review packet |
 | OpenCode | no switch to the workflow initiator | switch to the initiator when it is installed |
-| Spawn routing | models of `explorer`, `reviewer`, and native agents | models of the role agents |
+| Plan mode | one sentence: perform only the diagnosis and analysis steps, present the rest as a plan, do not edit files | same as `lean` |
+| Spawn routing | models of `explorer`, `reviewer` (never above the session tier), and native agents | models of the role agents |
 | Codex | thread default; helpers keep `model_reasoning_effort` | `agents.max_threads = 8`; role profiles lose `model` and `model_reasoning_effort` |
 | Quality gate | unchanged | unchanged |
 
@@ -327,6 +334,15 @@ Measured in round 4 (docs/agentic-v2-lean/results.md, 21 cells per host and arm)
 tasks as lean on Claude and Codex (21/21) and 2 fewer on OpenCode (17/21). Cost per accepted task was 1.02 ×
 lean on Claude, 1.12 × on OpenCode, and 1.43 × on Codex, where routing sent helper spawns to a frontier model.
 JEV picked a workflow in 3 of 21 sessions and answered `native` in the rest. Lean + JEV stays opt-in.
+
+Plan mode is read-only. Claude Code sends `permission_mode: plan`; in OpenCode the session agent is `plan`. Then
+the workflow hint asks the session to do only the workflow's diagnosis and analysis steps (read, search, reproduce
+without changes) and to present the remaining steps as a plan. Codex payloads have no plan mode, so the hint does
+not change there. The text lives in `adapters.py`; the OpenCode plugin sends `plan_mode` and appends the
+`context` that the hook returns.
+
+OpenCode code mode reports one MCP call twice under one call id: as the `execute` wrapper and as
+`<server>_<tool>`. The plugin and the hook keep one tool record per call id, with the concrete tool name.
 
 ## Claude Code adapter
 
