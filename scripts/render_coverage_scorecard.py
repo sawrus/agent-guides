@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 """Refresh reports/coverage-scorecard.jsx from measured data and render images/coverage_scorecard.png.
 
-Sources: the areas/ catalog, reports/area-quality.json (static checks) and the anonymized
-docs/jev-integration/epic/pilot-results.json (real runs). Nothing is estimated by hand.
+Sources: the areas/ catalog, reports/area-quality.json (scripts/assess_area_quality.py), the findings of
+scripts/check_artifacts.py, the always-on budget
+(scripts/context_budget.py --all-selections, needs `make build`) and reports/bench-round6.json (benchmark round 6,
+copied from docs/agentic-v2-lean/results.md). Nothing is estimated by hand.
+
+Rendering needs google-chrome or chromium (headless) with network access to unpkg.com, and Pillow.
 """
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import shutil
 import statistics
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -19,42 +25,42 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 JSX = ROOT / 'reports/coverage-scorecard.jsx'
 QUALITY = ROOT / 'reports/area-quality.json'
-PILOT = ROOT / 'docs/jev-integration/epic/pilot-results.json'
+BENCH = ROOT / 'reports/bench-round6.json'
 PNG = ROOT / 'images/coverage_scorecard.png'
 VERSION = ROOT / 'package.json'
-# Hosts whose configs ship with agentic; verified ones additionally appear in the pilot results.
+BUDGET_HOSTS = ('claude', 'codex', 'opencode')
+# Hosts whose configs ship with agentic; verified ones have benchmark evidence in BENCH.
 HOSTS = [('Codex', 'CX', 'codex'), ('Claude Code', 'CC', 'claude'), ('OpenCode', 'OC', 'opencode'),
          ('Antigravity', 'AG', None), ('Gemini', 'GM', None), ('Cursor', 'CU', None), ('Kilocode', 'KC', None)]
-MODE_TITLES = {'plain': 'Plain agent (no agentic)', 'fixed': 'Agentic, fixed workflow', 'jev': 'Agentic + JEV routing',
-               'workflow_only': 'JEV workflow only', 'models_only': 'JEV models only'}
-PILOT_FIELDS = ('host', 'host_version', 'task', 'mode', 'status', 'elapsed_s', 'turns', 'uncached', 'cached', 'cost_usd', 'jev_calls', 'jev_tokens')
 
 
-def export_pilot(runs, versions):
-    """Anonymized per-cell results: task labels only, no paths, prompts or outputs."""
-    cells = []
-    for path in sorted(Path(runs).glob('*/result.json')):
-        r = json.loads(path.read_text())
-        if 'tokens' not in r:
-            continue
-        jev = r.get('jev') or {}
-        usage = jev.get('usage') or {}
-        cells.append({'host': r['host'], 'host_version': versions.get(r['host']), 'task': r['task'], 'mode': r['mode'],
-                      'status': r['status'], 'elapsed_s': r.get('elapsed_s'), 'turns': r.get('turns'),
-                      'uncached': r['tokens']['uncached'], 'cached': r['tokens']['cached'],
-                      'cost_usd': round(r['cost_usd'], 4) if r.get('cost_usd') else None,
-                      'jev_calls': jev.get('calls', 0), 'jev_tokens': usage.get('input_tokens', 0) + usage.get('output_tokens', 0)})
-    PILOT.write_text(json.dumps({'date': time.strftime('%Y-%m-%d'), 'protocol': 'pilot_acceptance.md', 'cells': cells}, indent=2) + '\n')
+def specs():
+    return {area: sorted(p.name for p in (ROOT / 'areas' / area).iterdir() if p.is_dir() and p.name != 'template')
+            for area in ('software', 'devops')}
 
 
-def catalog(verified):
-    specs = {area: sorted(p.name for p in (ROOT / 'areas' / area).iterdir() if p.is_dir()) for area in ('software', 'devops')}
-    return {'specs': sum(map(len, specs.values())), 'software': len(specs['software']), 'devops': len(specs['devops']),
-            'roles': len(list((ROOT / 'extensions/claude/agents').glob('*.md'))),
-            'skills': len(list((ROOT / 'areas').rglob('SKILL.md'))),
-            'workflows': len([p for p in (ROOT / 'areas').rglob('*.md') if p.parent.name == 'workflows']),
-            'rules': len([p for p in (ROOT / 'areas').rglob('*.md') if p.parent.name == 'rules']),
-            'hosts_verified': len(verified), 'hosts_configured': len(HOSTS)}
+def catalog(budget, verified):
+    found = specs()
+    return {'specs': sum(map(len, found.values())), 'software': len(found['software']), 'devops': len(found['devops']),
+            'rules': len(list((ROOT / 'areas').glob('*/*/rules/*.md'))),
+            'skills': len(list((ROOT / 'areas').glob('*/*/skills/*/SKILL.md'))),
+            'workflows': len(list((ROOT / 'areas').glob('*/*/workflows/*.md'))),
+            'budget': budget, 'hosts_verified': verified, 'hosts_configured': len(HOSTS)}
+
+
+def always_on(path):
+    """Largest always-on estimate per host over every selection of context_budget.py --all-selections."""
+    if path is None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'budget.json'
+            subprocess.run([sys.executable, str(ROOT / 'scripts/context_budget.py'), '--all-selections', '--json', str(path)],
+                           check=True, stdout=subprocess.DEVNULL)
+            report = json.loads(path.read_text())
+    else:
+        report = json.loads(Path(path).read_text())
+    per_host = {host: max(sel[host]['total'] for sel in report.values()) for host in BUDGET_HOSTS}
+    host = max(per_host, key=per_host.get)
+    return {'max': per_host[host], 'host': host, 'per_host': per_host, 'selections': len(report)}
 
 
 def quality():
@@ -62,41 +68,35 @@ def quality():
     by_spec = {}
     for row in rows:
         by_spec.setdefault(row['specialization'], []).append(row['score'])
-    specs = []
+    out = []
     for spec, scores in sorted(by_spec.items()):
         area, name = spec.split('/')[1:3]
-        specs.append({'id': spec, 'area': area, 'name': name, 'score': round(statistics.mean(scores))})
-    return {'overall': round(statistics.mean(r['score'] for r in rows)), 'specs': specs}
+        out.append({'id': spec, 'area': area, 'name': name, 'score': round(statistics.mean(scores))})
+    environments = len({row['environment'] for row in rows})
+    check = subprocess.run([sys.executable, str(ROOT / 'scripts/check_artifacts.py'), '--no-baseline', '--no-budget', '--json'],
+                           capture_output=True, text=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})
+    findings = len(json.loads(check.stdout)['findings'])
+    return {'overall': round(statistics.mean(r['score'] for r in rows)), 'environments': environments,
+            'artifact_findings': findings, 'specs': out}
 
 
-def pilot(cells):
-    modes = []
-    for mode, title in MODE_TITLES.items():
-        rows = [c for c in cells if c['mode'] == mode]
-        if rows:
-            modes.append({'mode': mode, 'title': title, 'runs': len(rows), 'accepted': sum(c['status'] == 'accepted' for c in rows),
-                          'median_uncached': round(statistics.median(c['uncached'] for c in rows)),
-                          'median_seconds': round(statistics.median(c['elapsed_s'] for c in rows))})
-    by = {m['mode']: m for m in modes}
-    headline = 'No pilot runs yet.'
-    if 'plain' in by and 'fixed' in by:
-        ratio = by['fixed']['median_uncached'] / max(1, by['plain']['median_uncached'])
-        headline = (f"Small, bounded tasks: a plain agent was cheapest. The agentic team used {ratio:.1f}× its tokens — "
-                    "the price of shared process and guardrails, not yet a saving.")
-    hosts = sorted({c['host'] for c in cells})
-    return {'cells': len(cells), 'headline': headline, 'modes': modes,
-            'note': f"Hosts: {', '.join(hosts)} · tasks: infra feasibility, code review, calculator · cap 50k uncached tokens and 6 min per run."}
+def bench(data):
+    rows = []
+    for row in data['rows']:
+        per_run = row['cost_usd'] / row['runs'] if row['cost_basis'] == 'total' else row['cost_usd'] * row['accepted'] / row['runs']
+        rows.append({k: row[k] for k in ('task', 'host', 'mode', 'accepted', 'runs')} | {'cost_per_run': round(per_run, 3)})
+    return {'cells': sum(r['runs'] for r in rows), 'headline': data['headline'], 'models': data['models'],
+            'rows': rows, 'notes': data['notes'], 'source': data['source'].split('#')[0]}
 
 
-def hosts(cells):
+def hosts(evidence):
     out = []
     for name, short, key in HOSTS:
-        runs = [c for c in cells if c['host'] == key]
-        if runs:
-            out.append({'name': name, 'short': short, 'status': 'verified',
-                        'detail': f"v{runs[0]['host_version']} · {len(runs)} pilot runs · {sum(c['status'] == 'accepted' for c in runs)} accepted"})
+        if key in evidence:
+            item = evidence[key]
+            out.append({'name': name, 'short': short, 'status': 'verified', 'detail': f"v{item['version']} · {item['evidence']}"})
         else:
-            out.append({'name': name, 'short': short, 'status': 'configs', 'detail': 'agents, rules and workflows ship; no recorded run yet'})
+            out.append({'name': name, 'short': short, 'status': 'configs', 'detail': 'configs ship; no recorded run yet'})
     return out
 
 
@@ -117,6 +117,8 @@ def render():
 <script type="text/babel">{source}
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);</script></body></html>'''
     chrome = shutil.which('google-chrome') or shutil.which('chromium')
+    if not chrome:
+        raise SystemExit('google-chrome or chromium is required to render the PNG (use --no-render to update the JSX only)')
     with tempfile.TemporaryDirectory() as tmp:
         html, shot = Path(tmp) / 'scorecard.html', Path(tmp) / 'shot.png'
         html.write_text(page)
@@ -128,22 +130,21 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);</script></
         bottom = image.height
         while bottom > 200 and all(image.getpixel((x, bottom - 1)) == background for x in range(0, image.width, 7)):
             bottom -= 1
+        if bottom <= 200:
+            raise SystemExit('the rendered page is empty; check network access to unpkg.com')
         image.crop((0, 0, image.width, min(image.height, bottom + 26))).save(PNG, optimize=True)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--pilot-runs', type=Path, help='Pilot run directory to export anonymized results from')
-    parser.add_argument('--host-versions', default='{}', help='JSON {"codex": "0.163.0", ...} for the export')
+    parser.add_argument('--budget-json', type=Path, help='Saved context_budget.py --all-selections --json output')
+    parser.add_argument('--date', default=time.strftime('%Y-%m-%d'))
     parser.add_argument('--no-render', action='store_true')
     args = parser.parse_args()
-    if args.pilot_runs:
-        export_pilot(args.pilot_runs, json.loads(args.host_versions))
-    cells = json.loads(PILOT.read_text())['cells'] if PILOT.exists() else []
-    verified = {c['host'] for c in cells}
-    write_jsx({'date': json.loads(PILOT.read_text())['date'] if PILOT.exists() else time.strftime('%Y-%m-%d'),
-               'version': json.loads(VERSION.read_text())['version'], 'catalog': catalog(verified), 'hosts': hosts(cells),
-               'quality': quality(), 'pilot': pilot(cells)})
+    data = json.loads(BENCH.read_text())
+    write_jsx({'date': args.date, 'version': json.loads(VERSION.read_text())['version'],
+               'catalog': catalog(always_on(args.budget_json), len(data['hosts'])), 'hosts': hosts(data['hosts']),
+               'quality': quality(), 'bench': bench(data)})
     if not args.no_render:
         render()
     return 0

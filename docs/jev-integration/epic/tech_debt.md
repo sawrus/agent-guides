@@ -36,7 +36,7 @@ Each item has a source, an owner role and a done-when condition. Evidence: [pilo
 
 - `measurements/pilot-cells.json`: all 39 cells. Includes status, cap, turns and time; acceptance checks; uncached and cached tokens per agent and model; Claude cost; JEV calls, usage and decisions. No paths, prompts or outputs.
 - `measurements/native-checks.json`: Codex live checks (failed and proven), the invalidated quota cell, GIF host runs, OpenCode meter calibration and quota.
-- `pilot-results.json`: the compact per-cell table used by the scorecard.
+- `pilot-results.json`: the compact per-cell table that the scorecard used until v8.1.1 (it now shows benchmark round 6).
 - `native-smoke.json`: narrow native checks and earlier smoke runs.
 - `../../../reports/area-quality.json`: static guidance quality.
 - Raw traces and project copies stay local in the Git-ignored `.agentic-blackbox/pilot-20261020/` and `/tmp/agentic-pilot/`. They contain private target content and are not published.

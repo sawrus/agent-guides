@@ -86,6 +86,18 @@ agent-guides/
 └── src/                       # Rust CLI installer (self-contained binary)
 ```
 
+### README images
+
+- `images/coverage_scorecard.png`: `python3 scripts/render_coverage_scorecard.py` after `make build`. It reads the
+  `areas/` catalog, `reports/area-quality.json` (`make assess-areas`), the `scripts/check_artifacts.py` findings,
+  the always-on budget (`scripts/context_budget.py --all-selections`), and `reports/bench-round6.json`, a copy of
+  benchmark round 6 from [results.md](agentic-v2-lean/results.md). It renders with headless Chrome and Pillow;
+  `--no-render` updates only `reports/coverage-scorecard.jsx`.
+- `images/how_to_use_agentic.gif`: `scripts/generate_how_to_use_agentic_gif.py --work <dir outside the repo>`
+  (needs `pyte` and Pillow in a venv, and headless Chrome). It drives the real `agentic tui` (lean profile per
+  host, a demo company rule) and asks each host's main session one short question. It makes three paid host
+  calls; `--reuse` renders saved answers again.
+
 ---
 
 ## Install details
