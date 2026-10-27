@@ -142,7 +142,8 @@ matches.
   into a setup request; `native` for answers, explanations and analysis; `clarify`
   when a change is asked but its goal or target is unknown.
 - **Result:** a confident workflow id adds `result.workflow` with `id`, `path`,
-  `description`, `trigger`, `initiator` and `roles`. `native` gives
+  `description`, `trigger`, `initiator` and `roles` (empty for role-neutral
+  workflows without `roles` and `execution.initiator`). `native` gives
   `fallback/native_request`, `clarify` gives `fallback/clarification_needed`; both
   keep native host behavior.
 
@@ -332,7 +333,7 @@ without a profile counts as `team`, because JEV installed the role team before p
 | Agents | `explorer`, `reviewer`, native main session | nine SDLC roles, `product-owner` main session |
 | First prompt | one workflow call per session | one workflow call per session |
 | `native`, `clarify`, low confidence | no context; the session turns JEV off | no context; the session turns JEV off |
-| Workflow chosen | one sentence: use the workflow file as a checklist and perform its steps yourself; start a subagent only where the core rules ask | load the workflow, act as its initiator, delegate to its role agents; Codex prepared spawns; post-task review packet |
+| Workflow chosen | one sentence: use the workflow file as a checklist and perform its steps yourself; start a subagent only where the core rules ask | load the workflow, act as its initiator, delegate to its role agents; a role-neutral workflow runs in the main session and sends each step to the installed role agent that fits it, one subagent per step at most; Codex prepared spawns; post-task review packet |
 | OpenCode | no switch to the workflow initiator | switch to the initiator when it is installed |
 | Plan mode | one sentence: perform only the diagnosis and analysis steps, present the rest as a plan, do not edit files | same as `lean` |
 | Spawn routing | models of `explorer`, `reviewer` (never above the session tier), and native agents | models of the role agents |

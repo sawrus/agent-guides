@@ -7,29 +7,16 @@ use std::path::{Path, PathBuf};
 
 /// Destination directory for a bucket per agent OS ("-" means skip).
 pub fn get_dest_dir(agent_os: &str, bucket: &str) -> String {
-    let mapping: Option<[&str; 4]> = match agent_os {
-        "opencode" => Some([
-            ".opencode/rules",
-            ".opencode/skills",
-            ".opencode/commands",
-            "-",
-        ]),
-        "cursor" => Some([".cursor/rules", ".cursor/skills", "-", "-"]),
+    let mapping: Option<[&str; 3]> = match agent_os {
+        "opencode" => Some([".opencode/rules", ".opencode/skills", ".opencode/commands"]),
+        "cursor" => Some([".cursor/rules", ".cursor/skills", "-"]),
         // Codex discovers skills only in `.agents/skills`; rules stay in `.agent/rules`.
-        "codex" => Some([
-            ".agent/rules",
-            ".agents/skills",
-            ".agent/workflows",
-            ".agent/prompts",
-        ]),
+        "codex" => Some([".agent/rules", ".agents/skills", ".agent/workflows"]),
         // Workflows stay in .agent/workflows; .claude/commands holds thin wrappers.
-        "claude" => Some([".claude/rules", ".claude/skills", "-", "-"]),
-        "kilocode" | "antigravity" => Some([
-            ".kilocode/rules",
-            ".kilocode/skills",
-            ".kilocode/workflows",
-            "-",
-        ]),
+        "claude" => Some([".claude/rules", ".claude/skills", "-"]),
+        "kilocode" | "antigravity" => {
+            Some([".kilocode/rules", ".kilocode/skills", ".kilocode/workflows"])
+        }
         _ => None,
     };
     match mapping {
@@ -37,7 +24,6 @@ pub fn get_dest_dir(agent_os: &str, bucket: &str) -> String {
             "rules" => parts[0].to_string(),
             "skills" => parts[1].to_string(),
             "workflows" => parts[2].to_string(),
-            "prompts" => parts[3].to_string(),
             _ => format!(".agent/{bucket}"),
         },
         None => format!(".agent/{bucket}"),
@@ -144,18 +130,17 @@ mod tests {
     fn dest_dir_mappings() {
         assert_eq!(get_dest_dir("opencode", "rules"), ".opencode/rules");
         assert_eq!(get_dest_dir("opencode", "workflows"), ".opencode/commands");
-        assert_eq!(get_dest_dir("opencode", "prompts"), "-");
         assert_eq!(get_dest_dir("cursor", "skills"), ".cursor/skills");
         assert_eq!(get_dest_dir("cursor", "workflows"), "-");
         assert_eq!(get_dest_dir("kilocode", "workflows"), ".kilocode/workflows");
         assert_eq!(get_dest_dir("antigravity", "rules"), ".kilocode/rules");
         assert_eq!(get_dest_dir("default", "rules"), ".agent/rules");
-        assert_eq!(get_dest_dir("codex", "prompts"), ".agent/prompts");
         assert_eq!(get_dest_dir("codex", "skills"), ".agents/skills");
         assert_eq!(get_dest_dir("claude", "rules"), ".claude/rules");
         assert_eq!(get_dest_dir("claude", "skills"), ".claude/skills");
         assert_eq!(get_dest_dir("claude", "workflows"), "-");
         assert_eq!(get_dest_dir("agents", "skills"), ".agent/skills");
+        assert!(!crate::INSTALL_DIRS.contains(&"prompts"));
     }
 
     fn test_app(project: &Path) -> App {

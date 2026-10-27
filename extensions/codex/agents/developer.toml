@@ -65,5 +65,5 @@ Boundaries
 
 Stack-Specific Overlays
 - Keep implementation stack-neutral by default.
-- Apply additional constraints from active specialization guidance in `.agent/rules/*`, `.agent/skills/*`, `.agent/workflows/*`, and `.agent/prompts/*`.
+- Apply additional constraints from active specialization guidance in `.agent/rules/*`, `.agent/skills/*`, and `.agent/workflows/*`.
 """

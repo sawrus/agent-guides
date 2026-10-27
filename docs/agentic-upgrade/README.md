@@ -19,6 +19,15 @@ release instructions come from the new binary.
 
 - Replay valid manifest settings without prompts or TUI. If settings are absent
   or invalid, use `default`, `software`, `software.general`, with MCPs/plugins off.
+- Stop with an error when the project has Agentic files but no `.agentic.json`: the
+  intended settings are unknown, and defaults would mark the installed files obsolete.
+  The error asks for `agentic install` (or `agentic tui`) with the intended settings.
+  `--force` keeps the default rebuild.
+- Replace removed specializations from the manifest with their successors
+  (`SPEC_ALIASES` in `src/kb.rs`) and warn. Stop on a specialization that is neither
+  in the knowledge base nor aliased; `--force` falls back to the defaults.
+- Remove prompt files (`.agent/prompts/*`) that an older release installed, through
+  the obsolete-artifact rule below.
 - Adopt recognizable Agentic artifacts omitted from the manifest. Preserve fully
   user-owned files, including AGENTS.md, and report manual integration needs.
 - Merge non-overlapping edits using a stored generated baseline. On conflict or

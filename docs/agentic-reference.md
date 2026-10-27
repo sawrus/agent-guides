@@ -38,8 +38,10 @@ Each **area** (e.g., `devops/kubernetes`) provides:
 | `AGENTS.md`         | Navigation index, load order, constraints | First — always                     |
 | `rules/*.md`        | Hard constraints the agent must follow    | Always, for the active spec        |
 | `skills/*/SKILL.md` | Technical capabilities and patterns       | On demand, matching "When to load" |
-| `workflows/*.md`    | Orchestrated step-by-step processes       | On `/command` trigger              |
-| `prompts/*.md`      | Human copy-paste templates (EN + RU)      | Reference / paste                  |
+| `workflows/*.md`    | Step-by-step checklists, each with an `Example request:` line | On `/command` trigger |
+
+`agentic` does not install `prompts/*.md` files. An upgrade removes prompt files that an older release installed
+when they are unchanged; edited copies stay in place.
 
 ---
 
@@ -120,6 +122,23 @@ the new executable. Recognizable legacy artifacts are adopted; non-overlapping
 local edits are merged. Conflicts are replaced after backup, and fully user-owned
 instructions are preserved. `--force` rebuilds Agentic artifacts without prompts,
 using manifest settings or `default + software.general` when settings are unavailable.
+
+- **No `.agentic.json`.** When the project has Agentic files but no `.agentic.json`, `upgrade` stops with an
+  error: the install settings are unknown. Run `agentic install --project-dir <dir> --agent-os ... --areas ...
+  --specializations ...` (or `agentic tui`) with the intended settings. `--force` keeps the old behaviour and
+  rebuilds with `default + software.general`.
+- **Removed specializations.** `install` and `upgrade` replace a removed specialization with its successors and
+  print a warning. The alias table is `SPEC_ALIASES` in `src/kb.rs`:
+
+  | Removed | Installed instead |
+  |---|---|
+  | `software.full-stack` | `software.backend`, `software.frontend`, `software.general` |
+  | `software.platform` | `devops.kubernetes`, `devops.infrastructure`, `devops.ci-cd` (adds the `devops` area) |
+
+  An alias applies only when the knowledge base no longer has that specialization.
+- **Unknown specializations.** A specialization that does not exist and has no alias stops `install` and
+  `upgrade` with `unknown specialization(s): <ids>. Available: ...`. `upgrade --force` falls back to
+  `default + software.general`.
 Unrelated project files and global configuration are preserved. Backups live in
 `.agentic-backups/` and may contain credentials; exclude them from source control.
 See [smart upgrade behavior](agentic-upgrade/README.md) for details.
@@ -171,7 +190,8 @@ host's native hooks. It does not add an MCP server or a workflow runner.
 
 - **Workflow selection.** On the first prompt it picks one of the installed `.agent/workflows/*.md` (options use each
   workflow's `selection.use-when`), or `native` / `clarify`, and tells the host to execute the workflow as the declared
-  initiator.
+  initiator. A role-neutral workflow (no `roles`, no `execution.initiator`) runs in the main session; with `team`,
+  each step goes to the installed role agent that fits it, one subagent per step at most.
 - **Model routing.** Before a subagent starts, it picks the cheapest sufficient tier (`fast` / `balanced` /
   `frontier`). The hook maps the tier to a model: Claude `haiku`/`sonnet`/`opus`, Codex
   `extensions/codex/model-tiers.json`, OpenCode by catalog price, or by the shipped tier map
@@ -251,8 +271,7 @@ Details: [JEV verification](jev-integration/verification.md).
 project/.agent/
 ├── rules/       ← constraints active for every task in this project
 ├── skills/      ← capabilities loaded on demand
-├── workflows/   ← processes triggered by slash commands
-└── prompts/     ← human-paste templates
+└── workflows/   ← processes triggered by slash commands
 
 project/.claude/                 ← with --agent-os claude
 ├── CLAUDE.md    ← @AGENTS.md / @MEMORY.md imports

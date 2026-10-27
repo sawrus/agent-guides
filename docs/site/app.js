@@ -7,7 +7,6 @@ let activeTheme = 'light';
 const menuEl = document.getElementById('menu');
 const contentEl = document.getElementById('content');
 const searchEl = document.getElementById('search');
-const langEl = document.getElementById('language');
 const themeToggleEl = document.getElementById('theme-toggle');
 
 applyTheme(getStoredTheme());
@@ -33,7 +32,7 @@ function buildIndex() {
         trigger: wf.trigger,
         name: wf.name,
         description: wf.description,
-        examples: (wf.examples?.both || []).map((e) => `${e.en}\n${e.ru}`).join('\n'),
+        examples: (wf.examples || []).join('\n'),
         data: wf,
       });
     }
@@ -167,16 +166,10 @@ function renderWorkflow(id) {
   current = docs.find((d) => d.id === id);
   if (!current) return;
   const wf = current.data;
-  const lang = langEl.value;
 
-  const examples = (wf.examples?.both || []).map((ex) => {
-    const blocks = [];
-    if (lang === 'both' || lang === 'en') blocks.push(`**EN**\n\n\
-\`\`\`\n${escapeFence(ex.en)}\n\`\`\``);
-    if (lang === 'both' || lang === 'ru') blocks.push(`**RU**\n\n\
-\`\`\`\n${escapeFence(ex.ru)}\n\`\`\``);
-    return `### Example ${ex.number} — ${ex.title}\n\n${blocks.join('\n\n')}`;
-  }).join('\n\n');
+  const examples = (wf.examples || [])
+    .map((ex) => `\`\`\`\n${escapeFence(ex)}\n\`\`\``)
+    .join('\n\n');
 
   const md = `
 # ${wf.name}  
@@ -186,9 +179,7 @@ ${wf.description || ''}
 
 **Use when:** ${wf.use_when || '—'}
 
-## Roles
-${(wf.roles || []).map((r) => `<span class="chip">${r}</span>`).join(' ')}
-
+${(wf.roles || []).length ? `## Roles\n${wf.roles.map((r) => `<span class="chip">${r}</span>`).join(' ')}\n` : ''}
 ${wf.workflow_diagram ? `## Agent Interaction Diagram\n\n\`\`\`mermaid\n${escapeFence(wf.workflow_diagram)}\n\`\`\`` : ''}
 
 ## Quality gates
@@ -197,12 +188,12 @@ ${(wf.quality_gates || []).map((q) => `- ${q}`).join('\n') || '- —'}
 ## Skills
 ${(wf.skill_refs || []).map((s) => `- ${s.name} (${s.path || "missing"})`).join('\n') || '- —'}
 
-## Examples (${lang.toUpperCase()})
+## Example requests
 ${examples || '_No examples_'}
 
 ---
 
-<div class="meta">Workflow source: <code>${wf.workflow_path}</code><br/>Prompt source: <code>${wf.prompt_path || '—'}</code></div>
+<div class="meta">Workflow source: <code>${wf.workflow_path}</code></div>
 `;
 
   contentEl.innerHTML = marked.parse(md);
@@ -275,10 +266,6 @@ searchEl.addEventListener('input', () => {
   }
   const results = idx.search(`${q}*`);
   renderMenu(catalog.areas, new Set(results.map((r) => r.ref)));
-});
-
-langEl.addEventListener('change', () => {
-  if (current) renderWorkflow(current.id);
 });
 
 themeToggleEl.addEventListener('click', () => {

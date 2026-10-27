@@ -237,6 +237,18 @@ Project synchronization runs with the new executable. Ordinary upgrades merge lo
 instruction edits where possible and back up replacements. `--force` rebuilds only
 recognized Agentic artifacts without prompts. See [upgrade behavior](agentic-upgrade/README.md).
 
+`upgrade` needs `.agentic.json`. In a project with Agentic files but without that file, it stops and asks you
+to run `agentic install` (or `agentic tui`) with the intended settings; `agentic upgrade --force` rebuilds with
+`default + software.general` instead.
+
+Removed specializations still install: `software.full-stack` becomes `software.backend,software.frontend,software.general`,
+and `software.platform` becomes `devops.kubernetes,devops.infrastructure,devops.ci-cd`. `install` and `upgrade`
+print a warning and save the new list in `.agentic.json`. An unknown specialization stops the command and lists
+the available ones (`agentic list specs --area <name>`).
+
+`agentic` no longer installs `prompts/` files. Each workflow has an `Example request:` line instead; the docs
+site shows these lines.
+
 ## TUI
 
 The interactive wizard is implemented with ratatui and does not require an external `fzf` binary.

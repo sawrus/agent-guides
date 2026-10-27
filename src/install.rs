@@ -31,7 +31,71 @@ pub fn normalize_selected_agent_os(app: &mut App) {
     app.selected_agent_os = normalized;
 }
 
+/// Replace removed specializations (`kb::SPEC_ALIASES`) with their successors and add their areas.
+/// A spec that still exists in the knowledge base stays as it is. Returns one warning per alias.
+pub fn resolve_spec_aliases(app: &mut App) -> Vec<String> {
+    let mut warnings = Vec::new();
+    let mut specs: Vec<String> = Vec::new();
+    for spec_key in app.selected_specs.clone() {
+        let exists = spec_key
+            .split_once('.')
+            .is_some_and(|(area, spec)| app.kb.dir_exists(&format!("areas/{area}/{spec}")));
+        match crate::kb::spec_alias(&spec_key).filter(|_| !exists) {
+            Some(targets) => {
+                for target in targets {
+                    util::unique_append(&mut specs, target);
+                    if let Some((area, _)) = target.split_once('.') {
+                        util::unique_append(&mut app.selected_areas, area);
+                    }
+                }
+                warnings.push(format!(
+                    "specialization '{spec_key}' was removed; installing {} instead",
+                    targets.join(", ")
+                ));
+            }
+            None => util::unique_append(&mut specs, &spec_key),
+        }
+    }
+    app.selected_specs = specs;
+    for warning in &warnings {
+        ui::warn(app, warning);
+    }
+    warnings
+}
+
+/// Selected specializations that the knowledge base does not have (after alias resolution).
+pub fn unknown_specs(app: &App) -> Vec<String> {
+    app.selected_specs
+        .iter()
+        .filter(|key| {
+            !key.split_once('.')
+                .is_some_and(|(area, spec)| app.kb.dir_exists(&format!("areas/{area}/{spec}")))
+        })
+        .cloned()
+        .collect()
+}
+
+fn available_specs(app: &App) -> String {
+    let mut all = Vec::new();
+    for area in app.kb.list_areas() {
+        for spec in app.kb.list_specs(&area) {
+            all.push(format!("{area}.{spec}"));
+        }
+    }
+    all.join(", ")
+}
+
+/// Error text for specializations that neither exist nor have an alias.
+pub fn unknown_specs_message(app: &App, unknown: &[String]) -> String {
+    format!(
+        "unknown specialization(s): {}. Available: {}",
+        unknown.join(", "),
+        available_specs(app)
+    )
+}
+
 pub fn validate_inputs(app: &mut App) -> crate::Result<()> {
+    resolve_spec_aliases(app);
     let available_areas = app.kb.list_areas();
 
     if app.project_dir.is_empty() {
@@ -61,7 +125,10 @@ pub fn validate_inputs(app: &mut App) -> crate::Result<()> {
             return Err(crate::exit1());
         };
         if !app.kb.dir_exists(&format!("areas/{area_name}/{spec_name}")) {
-            ui::error(app, &format!("specialization not found: {spec_key}"));
+            ui::error(
+                app,
+                &unknown_specs_message(app, std::slice::from_ref(spec_key)),
+            );
             return Err(crate::exit1());
         }
         if !app.selected_areas.iter().any(|a| a == area_name) {
@@ -807,6 +874,27 @@ mod tests {
         app.selected_agent_os = vec!["opencode".to_string(), "opencode".to_string()];
         normalize_selected_agent_os(&mut app);
         assert_eq!(app.selected_agent_os, vec!["opencode"]);
+    }
+
+    #[test]
+    fn spec_aliases_apply_only_to_missing_specs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut app = test_app(tmp.path());
+        app.selected_specs = vec!["software.backend".into(), "software.ghost".into()];
+        assert!(resolve_spec_aliases(&mut app).is_empty());
+        assert_eq!(unknown_specs(&app), vec!["software.ghost"]);
+        assert!(unknown_specs_message(&app, &unknown_specs(&app)).contains("Available:"));
+        for (id, targets) in crate::kb::SPEC_ALIASES {
+            assert!(!targets.is_empty() && !targets.contains(id));
+            for target in *targets {
+                let (area, spec) = target.split_once('.').unwrap();
+                assert!(
+                    app.kb.dir_exists(&format!("areas/{area}/{spec}")),
+                    "{target}"
+                );
+            }
+        }
+        assert!(crate::kb::spec_alias("software.backend").is_none());
     }
 
     #[test]

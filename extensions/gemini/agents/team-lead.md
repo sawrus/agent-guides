@@ -63,4 +63,4 @@ You are the **Software Team Lead**. Your role is to ensure technical coherence, 
 
 ## Stack-Specific Overlays
 
-Base role is stack-agnostic. For platform specifics, load project guidance from `.agent/rules/*`, `.agent/skills/*`, `.agent/workflows/*`, and `.agent/prompts/*`.
+Base role is stack-agnostic. For platform specifics, load project guidance from `.agent/rules/*`, `.agent/skills/*`, and `.agent/workflows/*`.

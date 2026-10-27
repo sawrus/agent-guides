@@ -145,6 +145,7 @@ struct WorkflowMeta {
     description: String,
     inputs: Vec<String>,
     initiator: String,
+    roles: Vec<String>,
 }
 
 fn workflow_meta(text: &str) -> WorkflowMeta {
@@ -157,6 +158,7 @@ fn workflow_meta(text: &str) -> WorkflowMeta {
         description: String::new(),
         inputs: Vec::new(),
         initiator: String::new(),
+        roles: Vec::new(),
     };
     let mut section = "";
     for line in front.lines() {
@@ -174,9 +176,20 @@ fn workflow_meta(text: &str) -> WorkflowMeta {
                     meta.inputs.push(value.trim().to_string());
                 }
             }
+            "roles" => {
+                if let Some(value) = item.strip_prefix("- ") {
+                    let role = value
+                        .trim()
+                        .trim_matches(['"', '\''])
+                        .trim_start_matches('@');
+                    if !role.is_empty() {
+                        meta.roles.push(role.to_string());
+                    }
+                }
+            }
             "execution" => {
                 if let Some(value) = item.strip_prefix("initiator:") {
-                    meta.initiator = value.trim().to_string();
+                    meta.initiator = value.trim().trim_matches(['"', '\'']).to_string();
                 }
             }
             _ => {}
@@ -197,6 +210,21 @@ fn command_text(id: &str, meta: &WorkflowMeta, team: bool) -> String {
     } else {
         meta.description.clone()
     };
+    let header = format!(
+        "---\ndescription: {}\nargument-hint: {}\n---\n\nRun the `{id}` workflow from @.agent/workflows/{id}.md for this request:\n\n$ARGUMENTS\n\n",
+        serde_json::to_string(&description).unwrap_or_default(),
+        serde_json::to_string(&hint).unwrap_or_default(),
+    );
+    // Role-neutral workflows (no `roles`, no `execution.initiator`) are checklists for the main session.
+    if meta.initiator.is_empty() && meta.roles.is_empty() {
+        let body = if team {
+            "Run the steps in order in this main session. For each step, delegate to the installed role agent whose description fits the step (`developer` for code, `qa` for verification, `devops-engineer` for infrastructure) through the Agent tool, one subagent per step at most; when no installed agent fits, do the step yourself. A step is complete when its **Done when** condition holds."
+        } else {
+            "Run the steps yourself, in order, in this main session. A step is complete when its **Done when** condition holds. Use the `explorer` subagent only for unfamiliar code and the `reviewer` subagent once on the final diff."
+        };
+        return format!("{header}{body}\n");
+    }
+    // Older workflows name an initiator and roles; keep their wrapper text.
     let initiator = if meta.initiator.is_empty() {
         "the workflow initiator".to_string()
     } else {
@@ -207,11 +235,7 @@ fn command_text(id: &str, meta: &WorkflowMeta, team: bool) -> String {
     } else {
         "Perform the role steps yourself, in order, with their outputs and quality gates. Use the `explorer` subagent only for unfamiliar code and the `reviewer` subagent once on the final diff. Skip the Post-task review section unless its specialists are installed."
     };
-    format!(
-        "---\ndescription: {}\nargument-hint: {}\n---\n\nRun the `{id}` workflow from @.agent/workflows/{id}.md for this request:\n\n$ARGUMENTS\n\nAct as its initiator ({initiator}) in this main session. {delegation}\n",
-        serde_json::to_string(&description).unwrap_or_default(),
-        serde_json::to_string(&hint).unwrap_or_default(),
-    )
+    format!("{header}Act as its initiator ({initiator}) in this main session. {delegation}\n")
 }
 
 /// Thin `.claude/commands/<id>.md` wrappers: `.agent/workflows` stays the single source.
@@ -398,6 +422,32 @@ mod tests {
         assert!(!text.contains("trigger:"));
         let lean = command_text("x", &meta, false);
         assert!(lean.contains("Perform the role steps yourself"));
+    }
+
+    #[test]
+    fn command_wrapper_for_role_neutral_workflow() {
+        let meta = workflow_meta("---\nname: fix-bug\ntype: workflow\ntrigger: /fix-bug\ndescription: Fix a bug.\nselection:\n  general: false\n  use-when: \"A defect\"\nuses-skills: []\n---\n## 1. Reproduce\n**Do**: x\n**Done when**: y\n");
+        assert!(meta.initiator.is_empty() && meta.roles.is_empty());
+        let team = command_text("fix-bug", &meta, true);
+        assert!(team.starts_with("---\ndescription: \"Fix a bug.\"\nargument-hint: \"\"\n---\n"));
+        assert!(team.contains("@.agent/workflows/fix-bug.md"));
+        assert!(team.contains("installed role agent whose description fits the step"));
+        assert!(team.contains("one subagent per step at most"));
+        assert!(!team.contains("initiator"));
+        assert!(!team.contains("``"), "no empty role names: {team}");
+        let lean = command_text("fix-bug", &meta, false);
+        assert!(lean.contains("Run the steps yourself"));
+        assert!(!lean.contains("initiator") && !lean.contains("role agent"));
+    }
+
+    #[test]
+    fn command_wrapper_with_roles_but_no_initiator() {
+        let meta =
+            workflow_meta("---\ndescription: Do X.\nroles:\n  - \"@developer\"\n  - qa\n---\nbody");
+        assert_eq!(meta.roles, vec!["developer", "qa"]);
+        let text = command_text("x", &meta, true);
+        assert!(text.contains("the workflow initiator"));
+        assert!(text.contains("through the Agent tool"));
     }
 
     #[test]

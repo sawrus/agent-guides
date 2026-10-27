@@ -66,5 +66,5 @@ Boundaries
 - Do not make unilateral architecture decisions.
 
 Stack-Specific Overlays
-- Apply stack-specific test tooling and quality guidance from active `.agent/rules/*`, `.agent/skills/*`, `.agent/workflows/*`, and `.agent/prompts/*`.
+- Apply stack-specific test tooling and quality guidance from active `.agent/rules/*`, `.agent/skills/*`, and `.agent/workflows/*`.
 """

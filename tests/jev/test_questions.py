@@ -76,6 +76,23 @@ class Frontmatter(unittest.TestCase):
         for part in ('GENERAL. Build: a thing', 'task_description → Outputs: code, tests', 'Roles: developer, qa', 'Use when: Any ordinary', 'Avoid when: Pure'):
             self.assertIn(part, criterion)
 
+    def test_role_neutral_workflow_has_no_roles_or_initiator(self):
+        neutral = '\n'.join(line for line in WORKFLOW.splitlines()
+                             if not line.startswith(('roles:', '  - developer', '  - qa', 'execution:', '  initiator:', 'agent:',
+                                                     'inputs:', '  - task_description', 'outputs:', '  - code', '  - tests'))) + '\n'
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            folder = project / '.agent/workflows'
+            folder.mkdir(parents=True)
+            (folder / 'build-thing.md').write_text(neutral)
+            workflow = questions.workflow_catalog(project)[0]
+        self.assertEqual((workflow['initiator'], workflow['roles'], workflow['inputs'], workflow['outputs']), ('', [], [], []))
+        self.assertEqual(questions.workflow_summary(workflow)['roles'], [])
+        criterion = questions.workflow_criterion(workflow, 0)
+        self.assertNotIn('Roles:', criterion)
+        self.assertNotIn('Inputs:', criterion)
+        self.assertIn('Use when: Any ordinary', criterion)
+
 
 class Criteria(unittest.TestCase):
     def test_eighty_workflows_with_cyrillic_prompt_fit_the_request_limit(self):

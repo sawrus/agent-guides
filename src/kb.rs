@@ -22,6 +22,26 @@ pub const STATIC_AGENT_OS: [&str; 6] = [
     "kilocode",
 ];
 
+/// Specializations that a release removed, with the specializations that replace them.
+/// `agentic install` and `agentic upgrade` map an alias only when the knowledge base no longer has it.
+pub const SPEC_ALIASES: &[(&str, &[&str])] = &[
+    (
+        "software.full-stack",
+        &["software.backend", "software.frontend", "software.general"],
+    ),
+    (
+        "software.platform",
+        &["devops.kubernetes", "devops.infrastructure", "devops.ci-cd"],
+    ),
+];
+
+pub fn spec_alias(spec_key: &str) -> Option<&'static [&'static str]> {
+    SPEC_ALIASES
+        .iter()
+        .find(|(id, _)| *id == spec_key)
+        .map(|(_, targets)| *targets)
+}
+
 #[derive(Debug, Clone)]
 pub enum Kb {
     Embedded,

@@ -1726,3 +1726,275 @@ fn install_and_upgrade_warn_about_a_stale_checkout() {
         .success()
         .stdout(predicate::str::contains(expected));
 }
+
+fn copy_tree(src: &Path, dst: &Path, skip: &dyn Fn(&Path) -> bool) {
+    std::fs::create_dir_all(dst).unwrap();
+    for entry in std::fs::read_dir(src).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if skip(&path) {
+            continue;
+        }
+        let target = dst.join(entry.file_name());
+        if entry.file_type().unwrap().is_dir() {
+            copy_tree(&path, &target, skip);
+        } else {
+            std::fs::copy(&path, &target).unwrap();
+        }
+    }
+}
+
+/// A knowledge base like the repository, without `software.full-stack` and `software.platform`
+/// and without any `prompts/` directory (the content cleanup release).
+fn cleanup_kb() -> tempfile::TempDir {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let kb = tempfile::tempdir().unwrap();
+    for file in [
+        "AGENTS.md",
+        "MEMORY.md",
+        "REVIEW_PIPELINE.md",
+        "CHANGELOG.md",
+    ] {
+        std::fs::copy(repo.join(file), kb.path().join(file)).unwrap();
+    }
+    copy_tree(
+        &repo.join("extensions"),
+        &kb.path().join("extensions"),
+        &|p| p.ends_with("__pycache__") || p.ends_with("node_modules"),
+    );
+    let removed = [
+        repo.join("areas/software/full-stack"),
+        repo.join("areas/software/platform"),
+    ];
+    copy_tree(&repo.join("areas"), &kb.path().join("areas"), &|p| {
+        removed.iter().any(|r| r == p) || p.file_name().is_some_and(|n| n == "prompts")
+    });
+    kb
+}
+
+fn manifest_json(project: &Path) -> Value {
+    serde_json::from_slice(&std::fs::read(project.join(".agentic.json")).unwrap()).unwrap()
+}
+
+fn strings(value: &Value) -> Vec<String> {
+    value
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect()
+}
+
+#[test]
+fn install_does_not_copy_prompts() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    agentic(home.path())
+        .args(["install", "--project-dir"])
+        .arg(project.path())
+        .args([
+            "--agent-os",
+            "codex,opencode",
+            "--areas",
+            "software",
+            "--specializations",
+            "software.backend",
+            "--no-doctor",
+        ])
+        .assert()
+        .success();
+    assert!(project.path().join(".agent/workflows").is_dir());
+    assert!(!project.path().join(".agent/prompts").exists());
+    let manifest = manifest_json(project.path());
+    assert!(!manifest["managed_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|v| v["path"].as_str().unwrap().contains("/prompts/")));
+}
+
+#[test]
+fn upgrade_removes_previously_installed_prompts_as_obsolete() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let p = project.path();
+    install_upgrade_fixture(p, home.path(), "codex");
+    // An older release copied prompt files into `.agent/prompts` and recorded them in the manifest.
+    let prompts = p.join(".agent/prompts");
+    std::fs::create_dir_all(&prompts).unwrap();
+    let original = "---\nworkflow: develop\n---\n# Prompt: /develop\n";
+    let mut manifest = manifest_json(p);
+    for name in ["develop.md", "custom.md"] {
+        std::fs::write(prompts.join(name), original).unwrap();
+        manifest["managed_files"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({
+                "path": format!(".agent/prompts/{name}"),
+                "source": format!("areas/software/general/prompts/{name}"),
+                "content_hash": format!("{:x}", sha2_digest(original.as_bytes())),
+                "marker": "internal",
+            }));
+    }
+    std::fs::write(
+        p.join(".agentic.json"),
+        serde_json::to_vec(&manifest).unwrap(),
+    )
+    .unwrap();
+    // The user edited one prompt after install: upgrade keeps it.
+    std::fs::write(prompts.join("custom.md"), "my own prompt\n").unwrap();
+    sync_upgrade(p, home.path(), false)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Removed obsolete artifact: .agent/prompts/develop.md",
+        ))
+        .stdout(predicate::str::contains(
+            "Preserved customized obsolete artifact: .agent/prompts/custom.md",
+        ));
+    assert!(!prompts.join("develop.md").exists());
+    assert_eq!(
+        std::fs::read_to_string(prompts.join("custom.md")).unwrap(),
+        "my own prompt\n"
+    );
+    let paths: Vec<String> = manifest_json(p)["managed_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["path"].as_str().unwrap().to_string())
+        .collect();
+    assert!(!paths.contains(&".agent/prompts/develop.md".to_string()));
+}
+
+#[test]
+fn install_maps_removed_specs_and_rejects_unknown_ones() {
+    let kb = cleanup_kb();
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    agentic(home.path())
+        .env("AGENTIC_KB_DIR", kb.path())
+        .args(["install", "--project-dir"])
+        .arg(project.path())
+        .args([
+            "--areas",
+            "software",
+            "--specializations",
+            "software.full-stack,software.platform",
+            "--no-doctor",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "specialization 'software.full-stack' was removed; installing software.backend, software.frontend, software.general instead",
+        ))
+        .stdout(predicate::str::contains(
+            "specialization 'software.platform' was removed; installing devops.kubernetes, devops.infrastructure, devops.ci-cd instead",
+        ));
+    let settings = manifest_json(project.path())["settings"].clone();
+    assert_eq!(
+        strings(&settings["specializations"]),
+        [
+            "software.backend",
+            "software.frontend",
+            "software.general",
+            "devops.kubernetes",
+            "devops.infrastructure",
+            "devops.ci-cd"
+        ]
+    );
+    assert_eq!(strings(&settings["areas"]), ["software", "devops"]);
+    assert!(project.path().join(".agent/rules").is_dir());
+
+    let other = tempfile::tempdir().unwrap();
+    agentic(home.path())
+        .env("AGENTIC_KB_DIR", kb.path())
+        .args(["install", "--project-dir"])
+        .arg(other.path())
+        .args([
+            "--areas",
+            "software",
+            "--specializations",
+            "software.ghost",
+            "--no-doctor",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "unknown specialization(s): software.ghost. Available:",
+        ))
+        .stderr(predicate::str::contains("software.backend"));
+    assert!(!other.path().join(".agentic.json").exists());
+}
+
+#[test]
+fn upgrade_maps_removed_specs_from_manifest_and_rejects_unknown_ones() {
+    let kb = cleanup_kb();
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let p = project.path();
+    install_upgrade_fixture(p, home.path(), "default");
+    let mut manifest = manifest_json(p);
+    manifest["settings"]["specializations"] = json!(["software.full-stack"]);
+    std::fs::write(
+        p.join(".agentic.json"),
+        serde_json::to_vec(&manifest).unwrap(),
+    )
+    .unwrap();
+    sync_upgrade(p, home.path(), false)
+        .env("AGENTIC_KB_DIR", kb.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "specialization 'software.full-stack' was removed",
+        ));
+    assert_eq!(
+        strings(&manifest_json(p)["settings"]["specializations"]),
+        ["software.backend", "software.frontend", "software.general"]
+    );
+
+    let mut manifest = manifest_json(p);
+    manifest["settings"]["specializations"] = json!(["software.ghost"]);
+    let bytes = serde_json::to_vec(&manifest).unwrap();
+    std::fs::write(p.join(".agentic.json"), &bytes).unwrap();
+    let agents = std::fs::read(p.join("AGENTS.md")).unwrap();
+    sync_upgrade(p, home.path(), false)
+        .env("AGENTIC_KB_DIR", kb.path())
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "unknown specialization(s): software.ghost",
+        ));
+    assert_eq!(std::fs::read(p.join(".agentic.json")).unwrap(), bytes);
+    assert_eq!(std::fs::read(p.join("AGENTS.md")).unwrap(), agents);
+}
+
+#[test]
+fn upgrade_without_manifest_stops_unless_forced() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let p = project.path();
+    install_upgrade_fixture(p, home.path(), "codex");
+    std::fs::remove_file(p.join(".agentic.json")).unwrap();
+    let rules = std::fs::read_dir(p.join(".agent/rules")).unwrap().count();
+    assert!(rules > 0);
+    let agents = std::fs::read(p.join("AGENTS.md")).unwrap();
+    sync_upgrade(p, home.path(), false)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("no .agentic.json"))
+        .stderr(predicate::str::contains("agentic install"))
+        .stderr(predicate::str::contains("--force"));
+    assert!(!p.join(".agentic.json").exists());
+    assert_eq!(std::fs::read(p.join("AGENTS.md")).unwrap(), agents);
+    assert_eq!(
+        std::fs::read_dir(p.join(".agent/rules")).unwrap().count(),
+        rules
+    );
+    assert!(!p.join(".agentic-backups").exists());
+    // `--force` keeps the old behaviour: rebuild with default settings.
+    sync_upgrade(p, home.path(), true).assert().success();
+    assert_eq!(
+        strings(&manifest_json(p)["settings"]["specializations"]),
+        ["software.general"]
+    );
+}
