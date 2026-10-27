@@ -32,7 +32,10 @@ DEFAULTS = {
     'ci': ['.github/**', '.gitlab-ci.yml', '.gitlab/**', '.circleci/**', 'Jenkinsfile', '.travis.yml',
            'azure-pipelines.yml', '.buildkite/**'],
     'exclude': [],
+    # Manifests whose change is only the version line (the release policy bumps it in every PR) are not code.
+    'version_files': [],
 }
+VERSION_LINE = re.compile(r'^\s*"?version"?\s*[=:]')
 BROAD = {'**', '**/*', '*', '/**', './**'}
 
 
@@ -161,6 +164,17 @@ def exempt_files(repo: Path, base: str, head: str, trailer: str) -> set[str]:
     return {name for name, flags in touched.items() if flags and all(flags)}
 
 
+def version_only(repo: Path, base: str, head: str, paths: list[str]) -> set[str]:
+    """Paths among `paths` whose diff from base to head changes only `version` lines."""
+    out = set()
+    for path in paths:
+        diff = git(repo, 'diff', '-U0', base, head, '--', path).splitlines()
+        lines = [l[1:] for l in diff if l[:1] in '+-' and not l.startswith(('+++', '---'))]
+        if lines and all(VERSION_LINE.match(l) for l in lines):
+            out.add(path)
+    return out
+
+
 def check_change(repo: Path, base: str, head: str, config: dict) -> list[Violation]:
     docs_dir = config['docs_dir'].rstrip('/')
     merge_base = git(repo, 'merge-base', base, head).strip()
@@ -181,6 +195,7 @@ def check_change(repo: Path, base: str, head: str, config: dict) -> list[Violati
     base_pages = pages_at(repo, merge_base, docs_dir)
     covering += [g for p in changed if p in base_pages for g in base_pages[p] or [] if g.strip() not in BROAD]
     exempt = exempt_files(repo, merge_base, head, config['trailer'])
+    exempt |= version_only(repo, merge_base, head, [p for p in changed if matches(p, config['version_files'])])
     for path in changed:
         if not is_code(path, config) or matches(path, covering) or path in exempt:
             continue
