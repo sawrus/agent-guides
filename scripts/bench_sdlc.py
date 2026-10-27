@@ -31,7 +31,8 @@ from pilot_jev import Meter, claude_cost, command, git, host_env, opencode_child
 
 BENCH = ROOT / 'tests/bench'
 TASKS = json.loads((BENCH / 'tasks.json').read_text())
-# `<profile>-jev` arms install the profile with JEV hooks; `lean-noreviewer` is lean without the reviewer agent;
+# `<profile>-jev` arms install the profile with JEV hooks; `lean-noreviewer` is lean without the reviewer agent (since
+# round 6 lean installs no reviewer, so the arm equals `lean`; it stays for older binaries and saved results);
 # `v1` is the frozen v1.6 binary (`make bench-v1`).
 MODES = ('plain', 'v1', 'lean', 'lean-noreviewer', 'lean-jev', 'team', 'team-jev')
 DEFAULT_MODES = ('plain', 'lean', 'lean-jev', 'team-jev')

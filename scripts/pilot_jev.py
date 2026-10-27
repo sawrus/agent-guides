@@ -31,7 +31,8 @@ WORKFLOWS = {'A': 'iac-change', 'B': 'code-review-workflow', 'C': 'develop-featu
 MODES = ('plain', 'fixed', 'jev')
 ABLATIONS = ('workflow_only', 'models_only')
 ABLATION_TASKS = ('A', 'C')
-COORDINATOR = {'codex': 'gpt-6.1-sol', 'claude': 'sonnet', 'opencode': 'openai/gpt-6-luna'}
+# Codex `gpt-6.1-terra` needs codex-cli >= 0.164 (0.153.2 returns model_not_found on a ChatGPT account).
+COORDINATOR = {'codex': 'gpt-6.1-terra', 'claude': 'sonnet', 'opencode': 'openai/gpt-6-luna'}
 # Optional Codex reasoning effort of the coordinator session (helper agents keep their own TOML effort).
 EFFORT = {}
 # Codex trusts hooks per absolute path; runs reuse the paths the user reviewed in /hooks.

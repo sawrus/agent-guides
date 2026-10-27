@@ -1,8 +1,48 @@
-# agentic v2 lean: benchmark results (2026-10-21 to 2026-10-24)
+# agentic v2 lean: benchmark results (2026-10-21 to 2026-10-27)
 
 Protocol: [README.md](README.md). Total: 36 paid cells, 1 run each (A0 plain, A1 v1.6 with JEV off, A2 v2 lean,
 × 3 hosts × 4 tasks). Models: Claude `sonnet`, Codex `gpt-6.1-sol`, OpenCode `openai/gpt-6-luna`. Every cell
 was graded again with the final `tasks.json` (`make bench-regrade`). Codex lean ran with the gate hooks trusted.
+
+## Round 6: rules H0, H4, H-clean, H-clean-devops (2026-10-27)
+
+Rules: [README.md](README.md#round-6-decision-rules-fixed-before-the-run), fixed before the run. Models: Claude
+`sonnet`; Codex `gpt-6.1-terra` (codex-cli 0.164; 0.153.2 returns `model_not_found` for this model on a ChatGPT
+account). Cells: `.agentic-blackbox/bench-r6`, `bench-r6-t8v2`, `bench-r6-devops` (before the content cleanup)
+and `bench-r6-clean`, `bench-r6-devops-clean` (after it), Git-ignored. Codex cost is an API-equivalent estimate;
+the `gpt-6.1-terra` price in `tests/bench/prices.json` is an estimate equal to `gpt-5.6-terra`. Full tokens =
+uncached + cached input. One Claude cell (T6 `lean-jev` r3) is `harness_error` (`git status` exit 128 in the cell
+directory) and is not counted.
+
+| Rule | Host | Measured | Verdict |
+|---|---|---|---|
+| H4: reviewer in the lean default | Codex T8v2 | `lean` 9/9 vs `lean-noreviewer` 9/9; median full 134.6k vs 108.1k; cost per success $0.083 vs $0.081 | not met (needs +2 accepted) |
+| | Claude T8v2 | 3/3 vs 3/3; median full 109.0k vs 138.2k; cost per success $0.098 vs $0.114 | guard holds |
+| H0: no lean helper above the session tier | Codex T6–T8 | `lean` 9/9, `lean-jev` 9/9; 6 helper spawns (T7, 3 per arm), all on `gpt-6.1-terra`, none on a frontier model; cost per success $0.096 vs $0.088 (× 1.09) | met |
+| | Claude T6–T8 | `lean` 9/9, `lean-jev` 8/8 valid; 0 helper spawns | inconclusive |
+| H-clean: cleanup on the core selection, T1–T7 + T10, r1 | Claude | accepted 8/8 before and after; full 1,211k → 1,122k (× 0.93); uncached 128k → 135k (× 1.05); cost $0.755 → $0.770 (× 1.02) | quality kept; full ≤ 0.9 × not met |
+| H-clean-devops: cleanup on T11, 3 reps | Claude `lean` | accepted 3/3 before and after; full 458k → 441k (× 0.96); uncached 83k → 60k (× 0.72); cost $0.434 → $0.369 (× 0.85) | quality kept; full ≤ 0.9 × not met |
+| | Claude `plain` (noise control) | accepted 0/3 before and after; full 444k → 366k (× 0.83); cost $0.253 → $0.229 | — |
+
+What the cells show:
+- No T8v2 cell started a subagent on either host, so the reviewer never ran on the task built to need it. Lean
+  without the reviewer accepted every T8v2 cell, including the hidden `release_many` defect. Decision: the
+  `reviewer` helper leaves the lean default (lean installs only `explorer`); a custom profile can still add it.
+- Codex T7 (multi-module feature) started one `reviewer` helper per cell in both `lean` and `lean-jev`; these are
+  the 6 helper spawns of H0. JEV recorded the spawn as `reviewer` and observed `gpt-6.1-terra`, the session model.
+  The tier cap from round 4 (tech debt item 21) holds: Codex lean + JEV is at × 1.09 of lean, down from × 1.43.
+- Every plain T11 cell fails `hidden_check` on the Kubernetes rule items (`readOnlyRootFilesystem`,
+  `capabilities.drop`, `seccompProfile`, a dedicated ServiceAccount). Every lean T11 cell meets them. The rules
+  carry the result on this task, before and after the cleanup.
+- The cleanup cuts the always-on context, but the full-token sum is dominated by the cached session history, so
+  the 0.9 × threshold on full tokens is not met on either selection. On the devops selection the uncached tokens
+  (× 0.72) and the cost (× 0.85) fall clearly; on the core selection they stay within noise.
+- The T10 grader was fixed before the run: `make dev` became a conditional item, so every rule version can pass.
+- Codex H-clean cells were not run; H-clean has Claude evidence only.
+
+**Decisions.** H4 applied: `reviewer` leaves the lean default. H0 met on Codex, inconclusive on Claude. H-clean
+partly met: quality kept on both selections and cost down on the devops selection, but the full-token threshold is
+not met. Future rounds use cost and uncached tokens as the primary token metric (see README).
 
 ## Round 4: Lean + JEV, 3 repetitions (2026-10-23 and 2026-10-24)
 

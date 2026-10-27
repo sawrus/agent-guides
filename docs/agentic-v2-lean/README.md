@@ -39,7 +39,7 @@ deterministic checks.
 |---|---|---|
 | Root `AGENTS.md` | ~6.5 KB: practices, mandatory exploration | ~3 KB core: load on demand, scale by task size, definition of done, git |
 | Rules | All always-on | Path-scoped (`trigger: glob` + `paths:`) or `trigger: manual`. `.claude/rules/` gets only always-on and scoped rules |
-| Subagents | 9 SDLC roles; main session is `product-owner` | `lean` profile (default): `explorer` and `reviewer`. Native main session |
+| Subagents | 9 SDLC roles; main session is `product-owner` | `lean` profile (default): `explorer` (`reviewer` until round 6). Native main session |
 | Workflows | Spawn one subagent per role | `lean`: the main session performs role steps. `team`: v1 delegation |
 | Quality gate | Prose only | Stop hook runs `make test`/`make lint` when files changed and asks once for a CHANGELOG entry. PreToolUse guard denies secrets, force push, and `rm -rf` outside the project, asks before production access, and blocks write SQL on non-local databases |
 | Codex skills | `.agent/skills` (Codex does not read it) | `.agents/skills` |
@@ -47,7 +47,8 @@ deterministic checks.
 
 ### Profiles
 
-- `agentic install --profile lean` (default): two helper subagents and the native main session.
+- `agentic install --profile lean` (default): the `explorer` helper and the native main session. Since round 6
+  (rule H4) `reviewer` is not in the default; a custom profile can add it.
 - `agentic install --profile team`: the v1 role team, `product-owner` as main session, Codex override.
 - JEV works with both profiles. Under `lean` it suggests a workflow as a checklist and routes subagent models;
   it does not start role agents. Under `team` it also delegates to the role agents.
@@ -229,7 +230,9 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
   endpoint. `lean-noreviewer` installs `lean` and then deletes the reviewer agent (`.claude/agents/reviewer.md`,
   `.codex/agents/reviewer.toml`, `.opencode/agents/reviewer.md`, the `reviewer` entry in `.opencode/opencode.json`,
   and an `[agents.reviewer]` table in `.codex/config.toml` if one exists) before the install commit. The core
-  text in `AGENTS.md` stays the same, so the agent can still start a native subagent for a review.
+  text in `AGENTS.md` stays the same, so the agent can still start a native subagent for a review. Since round 6
+  (rule H4 applied) `lean` installs no reviewer, so with a current binary `lean-noreviewer` equals `lean`. The arm
+  stays as an alias, so old results and older binaries still run and report under the same name.
 - Repetitions: `--reps N` runs every host × task × arm N times. The cell order is shuffled with `--seed`
   (default 0), so no arm always runs right after another and reuses its prompt cache.
 - Projects: one stable path per host, arm, and install selection, because Codex trusts hooks per absolute path:
@@ -262,7 +265,9 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
 - Gate columns: when `.agentic/gate/last.json` records `accepted` and `reason_code`, the report shows
   `Accepted by gate` and `Released` (`reason_code = max_blocks`) per cell and as `k/n` per host and mode. A gate
   without these fields shows `n/a`.
-- Models: `--model host=model` and `--effort codex=<level>`. OpenCode JEV routing stays on the provider of the
+- Models: `--model host=model` and `--effort codex=<level>`. The Codex default is `gpt-6.1-terra`
+  (`pilot_jev.COORDINATOR`); it needs codex-cli ≥ 0.164, because 0.153.2 returns `model_not_found` for it on a
+  ChatGPT account. Check with `codex --version` before a paid run. OpenCode JEV routing stays on the provider of the
   coordinator model (`AGENTIC_JEV_MODEL_PROVIDER` overrides it). A routed model without a price in `prices.json`
   leaves the cell cost empty.
 - Codex runs project hooks only after `/hooks` trust per absolute path. Run
@@ -277,8 +282,8 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
 
 Source: [plan](../agentic-orchestration-research/plan.md) steps 0 and 4, experiment E1 in
 [experiments](../agentic-orchestration-research/experiments.md). Hosts: Codex with `--model codex=gpt-6.1-terra`
-(the Codex session model of round 6; `pilot_jev.COORDINATOR` keeps its default, so pass the flag on every Codex
-command) and Claude (`sonnet`). One output folder for the round: `BENCH_OUT=.agentic-blackbox/bench-r6`. A cell
+(the Codex session model of round 6 and, since then, the `pilot_jev.COORDINATOR` default; the flag stays in the
+commands to make the model explicit; codex-cli ≥ 0.164) and Claude (`sonnet`). One output folder for the round: `BENCH_OUT=.agentic-blackbox/bench-r6`. A cell
 that already has a valid result is not run again, so later commands reuse earlier cells. The cell counts below
 are paid cells; each hypothesis spends at most 30. `harness_error` and `quota_exhausted` cells run again and do
 not count.
@@ -363,6 +368,23 @@ make build && make bench BENCH_OUT=.agentic-blackbox/bench-r6-devops-clean BENCH
 
 Total: 12 paid Claude cells. Rule: the cleanup holds for devops if `lean` after accepted ≥ `lean` before
 accepted (of 3), and the sum of full tokens of the 3 `lean` cells after ≤ 0.9 × before. Otherwise the devops rules are revised before release.
+
+### Round 6 outcome
+
+Numbers: [results.md, round 6](results.md#round-6-rules-h0-h4-h-clean-h-clean-devops-2026-10-27).
+
+- **H4: applied.** T8v2: Codex `lean` 9/9 vs `lean-noreviewer` 9/9, Claude 3/3 vs 3/3; no T8v2 cell started a
+  subagent. The rule needs + 2 accepted cells, so the reviewer left the lean default. `lean` installs only
+  `explorer`; the `reviewer` agent files stay for custom profiles.
+- **H0: met on Codex.** 6 helper spawns (Codex T7), all on the session model `gpt-6.1-terra`, none on a frontier
+  model. Codex `lean-jev` cost per success is 1.09 × `lean` (≤ 1.1) at 9/9 in both arms. Claude started no
+  helper, so H0 is inconclusive there.
+- **H-clean and H-clean-devops: partly met.** Quality is kept (Claude core selection 8/8 before and after; T11
+  `lean` 3/3 before and after). Cost falls on the devops selection (× 0.85; uncached × 0.72). The full-token
+  threshold (≤ 0.9 ×) is not met on either selection (× 0.93 and × 0.96). Codex H-clean cells were not run.
+- **Proposal for later rounds.** Full tokens are dominated by cached session history, which the always-on
+  context changes only a little, and cached tokens cost about a tenth of uncached ones. Use cost per success and
+  uncached tokens as the primary token metric, and report full tokens as secondary. Fix this before the next run.
 
 ## Results
 
