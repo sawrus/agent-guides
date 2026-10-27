@@ -1,5 +1,20 @@
 # Changelog
 
+## v8.1.1
+
+- README: describes the current product. Rules are the base, the quality gate checks and records acceptance, and
+  lean (main session + `explorer`) is the default; `--profile team` is optional. New sections on guardrails,
+  company rules, the artifact standard and the review regulation. "Honest numbers" shows benchmark round 6.
+  Catalog numbers come from the tree: 16 specializations, 64 rules, 14 skills, 10 workflows.
+- `images/coverage_scorecard.png`: rendered again from the current catalog, `reports/area-quality.json`, the
+  always-on budget and benchmark round 6 (`reports/bench-round6.json`). `scripts/render_coverage_scorecard.py`
+  reads these sources and no longer counts the specialization template.
+- `images/how_to_use_agentic.gif`: recorded again with the current TUI (lean profile per host, "Company rules"
+  step). `scripts/generate_how_to_use_agentic_gif.py` follows the new TUI steps and asks the native main session
+  of each host instead of the `product-owner` role.
+- `docs/agentic-reference.md` explains how to regenerate both README images. `reports/area-quality.*` is
+  refreshed for the 16 current specializations.
+
 ## v8.1.0
 
 - Docs site: the menu groups each specialization into Rules, Workflows and Skills. Workflow pages show use when /

@@ -1,19 +1,28 @@
 import React from "react";
 
 // Generated data: run `python3 scripts/render_coverage_scorecard.py` to refresh from the catalog,
-// reports/area-quality.json and docs/jev-integration/epic/pilot-results.json.
+// reports/area-quality.json, scripts/context_budget.py and reports/bench-round6.json.
 // DATA:BEGIN
 const DATA = {
-  "date": "2026-10-20",
-  "version": "1.6.0",
+  "date": "2026-10-27",
+  "version": "8.1.1",
   "catalog": {
-    "specs": 18,
-    "software": 10,
+    "specs": 16,
+    "software": 8,
     "devops": 8,
-    "roles": 9,
-    "skills": 98,
-    "workflows": 73,
-    "rules": 85,
+    "rules": 64,
+    "skills": 14,
+    "workflows": 10,
+    "budget": {
+      "max": 2110,
+      "host": "claude",
+      "per_host": {
+        "claude": 2110,
+        "codex": 1780,
+        "opencode": 1939
+      },
+      "selections": 23
+    },
     "hosts_verified": 3,
     "hosts_configured": 7
   },
@@ -22,83 +31,85 @@ const DATA = {
       "name": "Codex",
       "short": "CX",
       "status": "verified",
-      "detail": "v0.163.0 · 13 pilot runs · 4 accepted"
+      "detail": "v0.164.0 · benchmark round 6, 2026-10-27"
     },
     {
       "name": "Claude Code",
       "short": "CC",
       "status": "verified",
-      "detail": "v2.1.304 · 13 pilot runs · 5 accepted"
+      "detail": "v2.1.311 · benchmark round 6, 2026-10-27"
     },
     {
       "name": "OpenCode",
       "short": "OC",
       "status": "verified",
-      "detail": "v2.0.29 · 13 pilot runs · 6 accepted"
+      "detail": "v2.0.29 · benchmark round 4, 2026-10-24"
     },
     {
       "name": "Antigravity",
       "short": "AG",
       "status": "configs",
-      "detail": "agents, rules and workflows ship; no recorded run yet"
+      "detail": "configs ship; no recorded run yet"
     },
     {
       "name": "Gemini",
       "short": "GM",
       "status": "configs",
-      "detail": "agents, rules and workflows ship; no recorded run yet"
+      "detail": "configs ship; no recorded run yet"
     },
     {
       "name": "Cursor",
       "short": "CU",
       "status": "configs",
-      "detail": "agents, rules and workflows ship; no recorded run yet"
+      "detail": "configs ship; no recorded run yet"
     },
     {
       "name": "Kilocode",
       "short": "KC",
       "status": "configs",
-      "detail": "agents, rules and workflows ship; no recorded run yet"
+      "detail": "configs ship; no recorded run yet"
     }
   ],
   "quality": {
     "overall": 98,
+    "environments": 6,
+    "artifact_findings": 0,
     "specs": [
       {
         "id": "areas/devops/ci-cd",
         "area": "devops",
         "name": "ci-cd",
-        "score": 99
+        "score": 100
       },
       {
         "id": "areas/devops/database-ops",
         "area": "devops",
         "name": "database-ops",
-        "score": 99
+        "score": 98
       },
       {
         "id": "areas/devops/devsecops",
         "area": "devops",
         "name": "devsecops",
-        "score": 99
+        "score": 100
       },
       {
         "id": "areas/devops/infrastructure",
         "area": "devops",
         "name": "infrastructure",
-        "score": 98
+        "score": 100
       },
       {
         "id": "areas/devops/kubernetes",
         "area": "devops",
         "name": "kubernetes",
-        "score": 99
+        "score": 100
       },
       {
         "id": "areas/devops/networking",
         "area": "devops",
         "name": "networking",
-        "score": 99
+        "score": 96
       },
       {
         "id": "areas/devops/observability",
@@ -110,116 +121,126 @@ const DATA = {
         "id": "areas/devops/sre",
         "area": "devops",
         "name": "sre",
-        "score": 99
+        "score": 100
       },
       {
         "id": "areas/software/backend",
         "area": "software",
         "name": "backend",
-        "score": 99
+        "score": 100
       },
       {
         "id": "areas/software/data-engineering",
         "area": "software",
         "name": "data-engineering",
-        "score": 98
+        "score": 96
       },
       {
         "id": "areas/software/frontend",
         "area": "software",
         "name": "frontend",
-        "score": 97
-      },
-      {
-        "id": "areas/software/full-stack",
-        "area": "software",
-        "name": "full-stack",
-        "score": 98
+        "score": 96
       },
       {
         "id": "areas/software/general",
         "area": "software",
         "name": "general",
-        "score": 99
+        "score": 98
       },
       {
         "id": "areas/software/mlops",
         "area": "software",
         "name": "mlops",
-        "score": 99
+        "score": 96
       },
       {
         "id": "areas/software/mobile",
         "area": "software",
         "name": "mobile",
-        "score": 98
-      },
-      {
-        "id": "areas/software/platform",
-        "area": "software",
-        "name": "platform",
         "score": 96
       },
       {
         "id": "areas/software/qa",
         "area": "software",
         "name": "qa",
-        "score": 99
+        "score": 96
       },
       {
         "id": "areas/software/security",
         "area": "software",
         "name": "security",
-        "score": 99
+        "score": 98
       }
     ]
   },
-  "pilot": {
-    "cells": 39,
-    "headline": "Small, bounded tasks: a plain agent was cheapest. The agentic team used 2.7× its tokens — the price of shared process and guardrails, not yet a saving.",
-    "modes": [
+  "bench": {
+    "cells": 50,
+    "headline": "Rules carry the result: on the devops task T11 a plain agent passed 0 of 3 runs, lean passed 3 of 3.",
+    "models": "Claude sonnet · Codex gpt-6.1-terra (codex-cli 0.164)",
+    "rows": [
       {
+        "task": "T11 devops, after cleanup",
+        "host": "Claude",
         "mode": "plain",
-        "title": "Plain agent (no agentic)",
-        "runs": 9,
-        "accepted": 8,
-        "median_uncached": 19803,
-        "median_seconds": 34
+        "accepted": 0,
+        "runs": 3,
+        "cost_per_run": 0.076
       },
       {
-        "mode": "fixed",
-        "title": "Agentic, fixed workflow",
-        "runs": 9,
-        "accepted": 1,
-        "median_uncached": 53880,
-        "median_seconds": 64
-      },
-      {
-        "mode": "jev",
-        "title": "Agentic + JEV routing",
-        "runs": 9,
+        "task": "T11 devops, after cleanup",
+        "host": "Claude",
+        "mode": "lean",
         "accepted": 3,
-        "median_uncached": 49717,
-        "median_seconds": 55
+        "runs": 3,
+        "cost_per_run": 0.123
       },
       {
-        "mode": "workflow_only",
-        "title": "JEV workflow only",
-        "runs": 6,
-        "accepted": 2,
-        "median_uncached": 46944,
-        "median_seconds": 51
+        "task": "T1–T7, T10, after cleanup",
+        "host": "Claude",
+        "mode": "lean",
+        "accepted": 8,
+        "runs": 8,
+        "cost_per_run": 0.096
       },
       {
-        "mode": "models_only",
-        "title": "JEV models only",
-        "runs": 6,
-        "accepted": 1,
-        "median_uncached": 55679,
-        "median_seconds": 69
+        "task": "T6–T8",
+        "host": "Codex",
+        "mode": "lean",
+        "accepted": 9,
+        "runs": 9,
+        "cost_per_run": 0.088
+      },
+      {
+        "task": "T6–T8",
+        "host": "Codex",
+        "mode": "lean + JEV",
+        "accepted": 9,
+        "runs": 9,
+        "cost_per_run": 0.096
+      },
+      {
+        "task": "T8v2",
+        "host": "Codex",
+        "mode": "lean",
+        "accepted": 9,
+        "runs": 9,
+        "cost_per_run": 0.083
+      },
+      {
+        "task": "T8v2",
+        "host": "Codex",
+        "mode": "lean, no reviewer",
+        "accepted": 9,
+        "runs": 9,
+        "cost_per_run": 0.081
       }
     ],
-    "note": "Hosts: claude, codex, opencode · tasks: infra feasibility, code review, calculator · cap 50k uncached tokens and 6 min per run."
+    "notes": [
+      "After the content cleanup, T11 lean: uncached tokens × 0.72, cost × 0.85; core tasks 8/8 before and after.",
+      "Lean + JEV costs × 1.09 of lean; every lean helper ran on the session model.",
+      "T8v2: no cell started the reviewer, so it left the lean default."
+    ],
+    "source": "docs/agentic-v2-lean/results.md"
   }
 };
 // DATA:END
@@ -228,7 +249,7 @@ const C = { bg: "#0b1020", card: "#121a2e", line: "#24304d", text: "#e6ebf5", di
 const scoreColor = v => (v >= 97 ? C.ok : v >= 93 ? C.info : v >= 85 ? C.warn : C.bad);
 const card = { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 18 };
 const label = { color: C.dim, fontSize: 12, letterSpacing: 0.6, textTransform: "uppercase" };
-const fmtK = n => (n == null ? "—" : n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n));
+const hostName = { claude: "Claude Code", codex: "Codex", opencode: "OpenCode" };
 
 function Stat({ value, title, note }) {
   return (
@@ -255,29 +276,33 @@ function Host({ host }) {
   );
 }
 
-function Pilot({ pilot }) {
+function Bench({ bench }) {
   return (
-    <div style={{ ...card, flex: 1.25 }}>
-      <div style={label}>Reality check · {pilot.cells} measured runs</div>
-      <div style={{ color: C.text, fontSize: 15, margin: "8px 0 12px" }}>{pilot.headline}</div>
+    <div style={{ ...card, flex: 1.35 }}>
+      <div style={label}>Reality check · benchmark round 6 · {bench.cells} runs in this table</div>
+      <div style={{ color: C.text, fontSize: 15, margin: "8px 0 12px" }}>{bench.headline}</div>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
           <tr style={{ color: C.dim, textAlign: "left" }}>
-            <th style={{ padding: "6px 4px" }}>Mode</th><th>Accepted</th><th>Median uncached tokens</th><th>Median time</th>
+            <th style={{ padding: "6px 4px" }}>Task</th><th>Agent</th><th>Mode</th><th>Accepted</th><th>Cost per run</th>
           </tr>
         </thead>
         <tbody>
-          {pilot.modes.map(m => (
-            <tr key={m.mode} style={{ borderTop: `1px solid ${C.line}`, color: C.text }}>
-              <td style={{ padding: "7px 4px" }}>{m.title}</td>
-              <td style={{ color: m.accepted / m.runs >= 0.6 ? C.ok : m.accepted / m.runs >= 0.35 ? C.warn : C.bad, fontWeight: 700 }}>{m.accepted}/{m.runs}</td>
-              <td>{fmtK(m.median_uncached)}</td>
-              <td>{m.median_seconds}s</td>
+          {bench.rows.map(r => (
+            <tr key={r.task + r.host + r.mode} style={{ borderTop: `1px solid ${C.line}`, color: C.text }}>
+              <td style={{ padding: "7px 4px" }}>{r.task}</td>
+              <td>{r.host}</td>
+              <td>{r.mode}</td>
+              <td style={{ color: r.accepted === r.runs ? C.ok : r.accepted === 0 ? C.bad : C.warn, fontWeight: 700 }}>{r.accepted}/{r.runs}</td>
+              <td>${r.cost_per_run.toFixed(3)}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div style={{ color: C.dim, fontSize: 12, marginTop: 10 }}>{pilot.note}</div>
+      <div style={{ color: C.dim, fontSize: 12, marginTop: 10 }}>
+        {bench.notes.map(n => <div key={n}>· {n}</div>)}
+        <div style={{ marginTop: 4 }}>{bench.models} · Codex cost is an API-equivalent estimate.</div>
+      </div>
     </div>
   );
 }
@@ -286,10 +311,10 @@ function Quality({ quality }) {
   return (
     <div style={card}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <div style={label}>Guidance quality per specialization (static checks, 6 environments)</div>
+        <div style={label}>Guidance quality per specialization (static checks, {quality.environments} environments) · check-artifacts: {quality.artifact_findings} findings</div>
         <div style={{ color: scoreColor(quality.overall), fontWeight: 800, fontSize: 20 }}>{quality.overall}/100</div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: 8, marginTop: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 8, marginTop: 12 }}>
         {quality.specs.map(s => (
           <div key={s.id} style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: "8px 8px", background: "#0f1628" }}>
             <div style={{ color: C.dim, fontSize: 11 }}>{s.area}</div>
@@ -308,17 +333,17 @@ export default function App() {
     <div style={{ background: C.bg, color: C.text, fontFamily: "Inter, system-ui, sans-serif", padding: 26, width: 1400, boxSizing: "border-box" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 18 }}>
         <div>
-          <div style={{ fontSize: 26, fontWeight: 800 }}>agentic · one AI engineering team for every coding agent</div>
-          <div style={{ color: C.dim, fontSize: 14, marginTop: 4 }}>Same roles, rules and quality gates in Codex, Claude Code and OpenCode — installed with one command.</div>
+          <div style={{ fontSize: 26, fontWeight: 800 }}>agentic · shared rules and a quality gate for every coding agent</div>
+          <div style={{ color: C.dim, fontSize: 14, marginTop: 4 }}>Rules are the base. The gate runs the checks and records acceptance. Lean (main session + explorer) is the default; the role team is optional.</div>
         </div>
-        <div style={{ color: C.dim, fontSize: 13, textAlign: "right" }}>Coverage & real-run report<br />v{DATA.version} · {DATA.date}</div>
+        <div style={{ color: C.dim, fontSize: 13, textAlign: "right" }}>Coverage & benchmark report<br />v{DATA.version} · {DATA.date}</div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 14 }}>
         <Stat value={c.specs} title="specializations" note={`${c.software} software · ${c.devops} devops`} />
-        <Stat value={c.roles} title="agent roles" note="7 SDLC + 2 reviewers" />
+        <Stat value={c.rules} title="rules" note="path-scoped, checkable items" />
         <Stat value={c.skills} title="skills" note="loaded on demand" />
-        <Stat value={c.workflows} title="workflows" note="feature, review, incident…" />
-        <Stat value={c.rules} title="rules" note="hard guardrails" />
+        <Stat value={c.workflows} title="workflows" note="feature, debug, incident…" />
+        <Stat value={c.budget.max.toLocaleString("en-US")} title="always-on tokens (max)" note={`${hostName[c.budget.host]}, worst of ${c.budget.selections} selections`} />
         <Stat value={c.hosts_verified} title="hosts verified" note={`${c.hosts_configured} with shipped configs`} />
       </div>
       <div style={{ display: "flex", gap: 14, marginBottom: 14 }}>
@@ -326,11 +351,11 @@ export default function App() {
           <div style={label}>Where it runs</div>
           <div style={{ marginTop: 6 }}>{DATA.hosts.map(h => <Host key={h.name} host={h} />)}</div>
         </div>
-        <Pilot pilot={DATA.pilot} />
+        <Bench bench={DATA.bench} />
       </div>
       <Quality quality={DATA.quality} />
       <div style={{ color: C.dim, fontSize: 12, marginTop: 12 }}>
-        Static quality: scripts/assess_area_quality.py · Real runs: scripts/pilot_jev.py (single exploratory runs per cell, not a statistical benchmark).
+        Sources: areas/ catalog · scripts/assess_area_quality.py · scripts/context_budget.py --all-selections · make check-artifacts · {DATA.bench.source} (round 6).
       </div>
     </div>
   );

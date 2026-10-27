@@ -1,0 +1,25 @@
+{
+  "source": "docs/agentic-v2-lean/results.md#round-6-rules-h0-h4-h-clean-h-clean-devops-2026-10-27",
+  "date": "2026-10-27",
+  "models": "Claude sonnet · Codex gpt-6.1-terra (codex-cli 0.164)",
+  "headline": "Rules carry the result: on the devops task T11 a plain agent passed 0 of 3 runs, lean passed 3 of 3.",
+  "rows": [
+    {"task": "T11 devops, after cleanup", "host": "Claude", "mode": "plain", "accepted": 0, "runs": 3, "cost_usd": 0.229, "cost_basis": "total"},
+    {"task": "T11 devops, after cleanup", "host": "Claude", "mode": "lean", "accepted": 3, "runs": 3, "cost_usd": 0.369, "cost_basis": "total"},
+    {"task": "T1–T7, T10, after cleanup", "host": "Claude", "mode": "lean", "accepted": 8, "runs": 8, "cost_usd": 0.770, "cost_basis": "total"},
+    {"task": "T6–T8", "host": "Codex", "mode": "lean", "accepted": 9, "runs": 9, "cost_usd": 0.088, "cost_basis": "per_success"},
+    {"task": "T6–T8", "host": "Codex", "mode": "lean + JEV", "accepted": 9, "runs": 9, "cost_usd": 0.096, "cost_basis": "per_success"},
+    {"task": "T8v2", "host": "Codex", "mode": "lean", "accepted": 9, "runs": 9, "cost_usd": 0.083, "cost_basis": "per_success"},
+    {"task": "T8v2", "host": "Codex", "mode": "lean, no reviewer", "accepted": 9, "runs": 9, "cost_usd": 0.081, "cost_basis": "per_success"}
+  ],
+  "notes": [
+    "After the content cleanup, T11 lean: uncached tokens × 0.72, cost × 0.85; core tasks 8/8 before and after.",
+    "Lean + JEV costs × 1.09 of lean; every lean helper ran on the session model.",
+    "T8v2: no cell started the reviewer, so it left the lean default."
+  ],
+  "hosts": {
+    "codex": {"version": "0.164.0", "evidence": "benchmark round 6, 2026-10-27"},
+    "claude": {"version": "2.1.311", "evidence": "benchmark round 6, 2026-10-27"},
+    "opencode": {"version": "2.0.29", "evidence": "benchmark round 4, 2026-10-24"}
+  }
+}

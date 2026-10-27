@@ -2,8 +2,9 @@
 """Generate images/how_to_use_agentic.gif from real runs only.
 
 Part 1 drives the real `agentic tui` in a pseudo-terminal with real key presses and renders the emulated screen
-after every key (requires `pyte`). Part 2 shows the same product-owner prompt answered by Codex, Claude Code and
-OpenCode in the installed project. Paid: three short host runs. `--reuse` re-renders saved outputs without calls.
+after every key (requires `pyte`). It installs the default lean profile and a demo company rule. Part 2 shows the
+same prompt answered by the native main session of Codex, Claude Code and OpenCode in the installed project.
+Paid: three short host runs. `--reuse` re-renders saved outputs without calls.
 
 Usage (pyte lives in a venv outside the repository):
     python3 -m venv /tmp/agentic-tui-venv && /tmp/agentic-tui-venv/bin/pip install pyte pillow
@@ -40,19 +41,35 @@ COLORS = {"bg": "#0d1117", "bar": "#161b22", "border": "#30363d", "normal": "#d6
 
 
 DOWN, ENTER, SPACE, PROJECT = "\x1b[B", "\r", " ", "<project path>"
+MODELS = {"codex": "gpt-6.1-terra", "claude": "sonnet", "opencode": "openai/gpt-6.1-terra"}
+# A demo company rule, typed into the "Company rules" step as a path relative to the project.
+COMPANY_DIR = "../company-rules"
+COMPANY_RULE = """---
+description: Release notes for every user-visible change.
+paths:
+  - "CHANGELOG.md"
+---
+
+# Release notes
+
+- Add one line under the new version in `CHANGELOG.md` for every user-visible change.
+- Name the ticket id in the line.
+"""
 # The real installer flow as screens: (keys pressed on this screen, label). Every key press becomes one frame.
 TUI_SCREENS = [
     ([DOWN, ENTER], "theme: dark"),
     ([PROJECT, ENTER], "target project"),
     ([SPACE, DOWN, SPACE, DOWN, SPACE, ENTER], "agents: opencode, codex, claude"),
-    ([DOWN] * 6 + [SPACE, DOWN, SPACE, ENTER], "integrations: context7, jev"),
+    ([ENTER], "claude: lean profile (default)"),
+    ([ENTER], "codex: lean profile (default)"),
+    ([ENTER], "opencode: lean profile (default)"),
+    ([DOWN] * 6 + [SPACE, ENTER], "integrations: context7"),
     ([SPACE, DOWN, SPACE, ENTER], "areas: devops, software"),
     ([DOWN] * 3 + [SPACE, ENTER], "devops: infrastructure"),
-    ([SPACE] + [DOWN] * 4 + [SPACE, ENTER], "software: backend, general"),
-    ([ENTER], "JEV key from environment"),
-    ([SPACE, DOWN, DOWN, SPACE, ENTER], "OpenCode: Telegram, OpenAI profile"),
-    (list("123456789:DEMO") + [ENTER], "Telegram bot token (demo value)"),
-    (list("100200300") + [ENTER], "Telegram chat id (demo value)"),
+    ([SPACE] + [DOWN] * 3 + [SPACE, ENTER], "software: backend, general"),
+    (list(COMPANY_DIR) + [ENTER], "company rules: directory"),
+    ([ENTER], "company rules: no repository"),
+    ([ENTER], "OpenCode plugins: none"),
     ([ENTER], "Claude model profile"),
     ([ENTER], "Context7 without key"),
 ]
@@ -69,6 +86,9 @@ def record_tui(agentic: str, work: Path, project: Path) -> list[tuple[Image.Imag
     home = work / "tui-home"
     shutil.rmtree(home, ignore_errors=True)
     home.mkdir(parents=True)
+    company = (project / COMPANY_DIR / "software").resolve()
+    company.mkdir(parents=True, exist_ok=True)
+    (company / "release-notes.md").write_text(COMPANY_RULE, encoding="utf-8")
     screen = pyte.Screen(COLS, ROWS)
     stream = pyte.ByteStream(screen)
     raw = bytearray()
@@ -161,19 +181,19 @@ def scrub(text: str, project: Path) -> str:
 
 
 def host_run(host: str, project: Path, out: Path) -> None:
-    """One short real product-owner answer per host; the raw machine output is kept for re-rendering."""
+    """One short real answer of the native main session per host (lean profile); raw output is kept for re-rendering."""
     # OpenCode resolves the project from PWD, which Popen(cwd=...) does not update.
     env = {**os.environ, "AGENTIC_TELEGRAM": "off", "PWD": str(project)}
     for name in ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID",
                  "CLAUDE_CODE_SESSION_ACCESS_TOKEN", "CODEX_THREAD_ID", "CODEX_SESSION_ID"):
         env.pop(name, None)
     if host == "codex":
-        command = ["codex", "exec", "--json", "--skip-git-repo-check", "--sandbox", "read-only", "-C", str(project),
-                   "Spawn the product-owner agent (agent_type product-owner) with this task and return its answer verbatim: " + PROMPT]
+        command = ["codex", "exec", "--json", "--skip-git-repo-check", "--sandbox", "read-only", "-m", MODELS[host],
+                   "-C", str(project), PROMPT]
     elif host == "claude":
-        command = ["claude", "-p", "--agent", "product-owner", "--output-format", "json", PROMPT]
+        command = ["claude", "-p", "--model", MODELS[host], "--output-format", "json", PROMPT]
     else:
-        command = ["opencode", "run", "--standalone", "--agent", "product-owner", "--model", "openai/gpt-6-luna", "--format", "json", PROMPT]
+        command = ["opencode", "run", "--standalone", "--model", MODELS[host], "--format", "json", PROMPT]
     process = subprocess.Popen(command, cwd=project, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT, text=True, start_new_session=True)
     try:
@@ -199,10 +219,8 @@ def answer(host: str, raw: str) -> tuple[str, str]:
             model = next(iter(event.get("modelUsage") or {}), "")
         if host == "opencode" and (event.get("part") or {}).get("type") == "text":
             text = event["part"].get("text", "")
-    if host == "codex":
-        model = "gpt-6.1-sol coordinator → product-owner"
-    if host == "opencode":
-        model = "openai/gpt-6-luna"
+    if host != "claude" or not model:
+        model = MODELS[host]
     return model, text.strip()
 
 
@@ -241,19 +259,23 @@ def slides(work: Path, project: Path, report: str) -> list[tuple[float, str, lis
     out_report = [(5.0, "agentic tui · installation report", [("section" if "===" in l else "ok", l) for l in shown])]
     tree = []
     for folder, label in ((".codex/agents", "Codex"), (".claude/agents", "Claude Code"), (".opencode/agents", "OpenCode")):
-        roles = sorted(p.stem for p in (project / folder).iterdir()) if (project / folder).is_dir() else []
-        tree += [("agent", f"{folder}/  ({label})"), ("normal", "   " + "  ".join(roles[:5])), ("dim", "   " + "  ".join(roles[5:]))]
+        helpers = sorted(p.stem for p in (project / folder).iterdir()) if (project / folder).is_dir() else []
+        tree += [("agent", f"{folder}/  ({label}, lean)"), ("normal", "   " + ("  ".join(helpers) or "(none)"))]
+    rules = sorted(p.stem for p in (project / ".agent/rules").rglob("*.md"))
+    company = sorted(str(p.relative_to(project)) for p in (project / ".agent/company").rglob("*.md"))
     workflows = sorted(p.stem for p in (project / ".agent/workflows").glob("*.md"))
-    out = [(4.5, "the same team in every agent", [("section", "Installed by the TUI above"), ("normal", "")] + tree + [
-        ("normal", ""), ("section", f"{len(workflows)} shared workflows in .agent/workflows"),
-        *wrap("dim", "  ".join(workflows), 96)[:4]])]
+    out = [(5.0, "the same rules in every agent", [("section", "Installed by the TUI above"), ("normal", "")] + tree + [
+        ("normal", ""), ("section", f"{len(rules)} rules in .agent/rules"), *wrap("dim", "  ".join(rules), 96)[:3],
+        ("section", "Company rules"), *[("ok", "   " + path) for path in company[:3]],
+        ("section", f"{len(workflows)} workflows in .agent/workflows"), *wrap("dim", "  ".join(workflows), 96)[:2],
+        ("section", "Quality gate"), ("dim", "   make test + make lint on stop · acceptance in .agentic/gate/last.json")])]
     for key, name, _ in HOSTS:
         model, text = answer(key, (work / f"{key}.out").read_text(encoding="utf-8"))
-        rows = [("cmd", f"$ {key} … product-owner \"{PROMPT[:60]}…\""), ("normal", ""), ("agent", f"> product-owner · {name} · {model}")]
+        rows = [("cmd", f"$ {key} … \"{PROMPT[:60]}…\""), ("normal", ""), ("agent", f"> main session · {name} · {model}")]
         rows += wrap("normal", scrub(text, project) or "(no answer captured)", 96)[:18]
-        out.append((5.0, f"{name} · product-owner", rows))
-    final = [("section", "Same instructions, real runs"), ("normal", "")]
-    final += [("ok", f"  ✓ {name}  - product-owner answered") for _, name, _ in HOSTS]
+        out.append((5.0, f"{name} · lean main session", rows))
+    final = [("section", "Same rules, real runs"), ("normal", "")]
+    final += [("ok", f"  ✓ {name}  - main session answered") for _, name, _ in HOSTS]
     final += [("normal", ""), ("warn", "  ○ " + " · ".join(CONFIG_ONLY) + "  - configs ship, not run here"),
               ("normal", ""), ("dim", "  npx @jetrabbits/agentic   ·   github.com/sawrus/agent-guides")]
     out.append((4.5, "agentic", final))
@@ -297,7 +319,7 @@ def main() -> int:
         project_for_tree = project
         for key, name, _ in HOSTS:
             if key in args.hosts.split(","):
-                print(f"[gif] {name}: product-owner run", flush=True)
+                print(f"[gif] {name}: main session run", flush=True)
                 host_run(key, project, work / f"{key}.out")
     for key, name, _ in HOSTS:
         if not (work / f"{key}.out").exists() or not answer(key, (work / f"{key}.out").read_text(encoding="utf-8"))[1]:
