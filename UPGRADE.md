@@ -103,7 +103,7 @@ v2.0.0 changes the default install. Run `agentic upgrade` in each project, then 
 5. Tools that read `.agentic/gate/last.json` get new fields (`accepted`, `reason_code`, `head`, `pack_version`,
    `profile`); the old fields stay.
 
-## Upgrading to the content cleanup release
+## Migrating to v6.0.0
 
 This release removes prompt files and two specializations, and makes workflows role-neutral. Run
 `agentic upgrade` in each project, then check these points:
