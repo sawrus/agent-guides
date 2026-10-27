@@ -1,5 +1,12 @@
 # Changelog
 
+## v8.2.0
+
+- `agentic upgrade` no longer fails with `Symlink project path` when the current directory holds a host directory
+  with internal symlinks, for example `~/.codex/packages/app-server-daemon/current` in the home directory. The
+  project inventory now skips nested symlinks. A symlinked top-level agentic path, such as `.agent`, is still
+  rejected.
+
 ## v8.1.2
 
 - A pushed `vX.Y.Z` tag now also publishes the npm package: `release.yml` calls `publish-npm.yml` after it creates

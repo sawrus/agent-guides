@@ -85,6 +85,10 @@ fn collect(root: &Path, rel: &str, files: &mut BTreeMap<String, Vec<u8>>) -> cra
             if entry.file_name() == "node_modules" {
                 continue;
             }
+            // Host-owned links (e.g. ~/.codex/packages/*/current) are never agentic files.
+            if entry.file_type()?.is_symlink() {
+                continue;
+            }
             collect(
                 root,
                 &format!("{rel}/{}", entry.file_name().to_string_lossy()),
