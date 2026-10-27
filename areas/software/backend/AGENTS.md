@@ -1,14 +1,8 @@
 # Backend
 
-Server-side services: APIs, domain logic, data access, async processing.
+Server-side services in Python, Go, and Java: APIs, domain logic, data access, and background jobs.
 
-## Backend constraints
-
-- Every endpoint has an authorization check, input validation, and a structured error response.
-- A schema change ships with a migration file. Never rely on ORM auto-sync in production.
-- A new module has structured logs and a latency metric.
-
-## Workflows
-
-`/develop-feature`, `/develop-epic`, `/create-endpoint`, `/add-migration`, `/refactor-module`, `/debug-issue`,
-`/test-feature`.
+- Rules: `api-contracts.md`, `configuration.md`, `data_access.md`, `security.md`, `service-architecture.md`,
+  `service-telemetry.md`, `testing.md`.
+- Skills: `api-design` — add or change an HTTP or gRPC contract.
+- Workflows: `/add-migration` — add a backward-compatible schema migration.

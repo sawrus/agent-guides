@@ -12,17 +12,15 @@ This guide explains how to use the templates in this directory. Every rule, skil
 ├── AGENTS.md      # Navigation index for the spec
 ├── rules/         # Checkable constraints, scoped by `paths:` or loaded by hand (`trigger: manual`)
 ├── skills/        # On-demand procedures
-├── workflows/     # Ordered checklists, triggered by /command
-└── prompts/       # Human copy-paste templates (EN + RU); removal planned
+└── workflows/     # Ordered checklists, triggered by /command
 ```
 
 | Layer | Purpose | Load behaviour |
 |:---|:---|:---|
-| `AGENTS.md` | Maps the spec's files | Read on demand |
+| `AGENTS.md` | Lists the spec's files in a few lines | Installed into the project `AGENTS.md` (always-on) |
 | `rules/` | Constraints a reviewer can check in a diff | When a changed file matches `paths:`; `trigger: manual` rules when a skill or workflow links them. `trigger: always_on` only for rules that apply to every change in every project of the segment |
 | `skills/` | Procedures the agent would not get right without them | When the task matches the skill `description` or a workflow lists it in `uses-skills` |
 | `workflows/` | One ordered checklist per kind of task | On the `/command` trigger |
-| `prompts/` | Copy-paste inputs for humans (bilingual) | Human reference |
 
 Every artifact costs context tokens. Add one only when it changes what the agent does in a real project and a
 reviewer can check that change. Do not add roles or report files to any artifact.
@@ -66,16 +64,13 @@ topic. File names must be unique across all specs of an area that can be install
 - `selection.use-when` is a quoted sentence of at most 300 characters; `general: true` only for the single
   catch-all workflow of a top-level area.
 - At most 120 lines and 1,800 tokens.
+- Add one `Example request:` line with a realistic request; there are no separate prompt files.
 
-### 6. Author prompts using `prompt.tmpl.md`
+### 6. Update the spec and area `AGENTS.md`
 
-Prompts link a workflow through frontmatter and have 2–3 bilingual examples with realistic values.
+List new files in the spec `AGENTS.md` and register each workflow trigger in the area trigger registry.
 
-### 7. Update the spec and area `AGENTS.md`
-
-Add new files to the spec map and register each workflow trigger in the area trigger registry.
-
-### 8. Check before you submit
+### 7. Check before you submit
 
 Run `make check-artifacts` and `make lint-content`. A new artifact states in the PR which real task it changes and
 why an existing artifact cannot take it.

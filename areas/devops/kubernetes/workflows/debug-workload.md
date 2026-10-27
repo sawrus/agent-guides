@@ -2,142 +2,62 @@
 name: debug-workload
 type: workflow
 trigger: /debug-workload
-description: Systematic diagnosis of Kubernetes workload failures — from symptom to root cause and fix.
+description: Diagnose a failing Kubernetes workload and fix it in the manifests or Helm values.
 inputs:
-  - workload_name
+  - workload
   - namespace
-  - symptom_description
+  - symptom
 outputs:
-  - root_cause_summary
-  - remediation_applied
-roles:
-  - developer
-  - devops-engineer
-execution:
-  initiator: developer
-agent: developer
+  - root_cause
+  - manifest_fix
 selection:
   general: false
-  use-when: "A Kubernetes workload crashes, stays pending or misbehaves and the request asks for the root cause and a fix."
-related-rules:
-  - workload-security.md
-  - resource-governance.md
+  use-when: "The request reports a pod in CrashLoopBackOff, Pending, ImagePullBackOff, OOMKilled, failing probes, or a Service with no endpoints in Kubernetes."
+  avoid-when: "The application code has a bug that reproduces outside the cluster; use the debug workflow."
 uses-skills:
   - pod-troubleshooting
-  - cluster-operations
-quality-gates:
-  - symptom reproduced before fix applied
-  - fix verified in target environment
-  - root cause documented
+  - helm-charts
+related-rules:
+  - resource-governance.md
+  - workload-security.md
+  - cluster-standards.md
+checks:
+  - helm lint <chart>
+artifacts:
+  - charts/<chart>/values*.yaml
 ---
+
+# Debug a workload
+
+Example request: `/debug-workload "payment-service in CrashLoopBackOff every 30s since the v2.3.1 deploy"`
 
 ## Steps
 
-### 1. Classify Symptom — `@devops-engineer`
-- **Input:** workload name, namespace, symptom description
-- **Actions:**
-  - `kubectl get pods -n <ns> -l app=<name> -o wide` — check pod statuses
-  - Classify into: Scheduling issue / Runtime crash / OOM / ImagePull / Service unreachable
-  - Check recent events: `kubectl get events -n <ns> --sort-by='.lastTimestamp' | tail -20`
-- **Output:** symptom classification (one of the above categories)
-- **Done when:** root failure mode identified at pod level
+### 1. Read the state
 
-### 2. Deep Diagnosis — `@devops-engineer`
-- **Input:** symptom classification
-- **Actions by category:**
+- **Do:** confirm the kube context with the user. Run read-only commands: `kubectl get pods -o wide`,
+  `kubectl describe pod <pod>`, `kubectl get events --sort-by=.lastTimestamp`, and
+  `kubectl logs <pod> --previous`. Note the exit code, the reason, and the last good revision
+  (`helm history <release>`).
+- **Done when:** you can state the pod phase, the container reason, and the time it started.
 
-  **CrashLoopBackOff:**
-  ```bash
-  kubectl logs <pod> -n <ns> --previous --tail=200
-  kubectl describe pod <pod> -n <ns> | grep -A3 "Last State:"
-  # Exit 137 = OOMKilled → raise memory limit
-  # Exit 1 = app error → read logs
-  # Exit 143 = SIGTERM → fix graceful shutdown
-  ```
+### 2. Find the cause
 
-  **Pending:**
-  ```bash
-  kubectl describe pod <pod> -n <ns> | grep -A20 "Events:"
-  kubectl describe nodes | grep -A5 "Allocated resources:"
-  kubectl get nodes --show-labels | grep -v NotReady
-  ```
+- **Do:** follow the `pod-troubleshooting` skill for the reason you found. Compare the failing revision with the
+  last good one: image digest, values, ConfigMap, Secret keys, resources, probes
+  (`helm diff revision <release> <good> <bad>` or `git diff`).
+- **Done when:** one change or limit explains the failure, backed by an event, a log line, or a metric.
 
-  **ImagePullBackOff:**
-  ```bash
-  kubectl describe pod <pod> -n <ns> | grep -A5 "Failed to pull"
-  kubectl get secret regcred -n <ns> -o yaml  # verify imagePullSecret
-  ```
+### 3. Fix in source
 
-  **Service unreachable:**
-  ```bash
-  kubectl get endpoints <svc> -n <ns>   # empty = label selector mismatch
-  kubectl describe svc <svc> -n <ns>    # check selector labels
-  # Test DNS: kubectl run test --image=busybox -it --rm -- nslookup <svc>.<ns>
-  ```
+- **Do:** change the chart values, manifest, or application config in the repository, not with `kubectl edit`.
+  Render and lint it (`helm template`, `helm lint`, `kubectl apply --dry-run=server` against a non-production
+  cluster). Ask the user first before any command that writes to a cluster.
+- **Done when:** the rendered manifest contains the fix and `helm lint` passes.
 
-- **Output:** root cause identified with evidence
-- **Done when:** can explain exactly why the workload failed
+### 4. Roll out and verify
 
-### 3. Apply Fix — `@developer` + `@devops-engineer`
-- **Input:** root cause
-- **Actions:**
-  - Fix via Helm values / manifest change (never `kubectl edit` directly in production)
-  - Commit change to Git; deploy via ArgoCD or CI pipeline
-  - For P0/P1 only: `kubectl patch` as emergency measure + follow-up Git change within 1 hour
-- **Output:** fixed manifest merged to Git + applied to cluster
-- **Done when:** pods enter `Running` state; readiness probe passing
-
-### 4. Verify & Monitor — `@devops-engineer`
-- **Input:** deployed fix
-- **Actions:**
-  ```bash
-  kubectl rollout status deployment/<name> -n <ns>
-  kubectl get pods -n <ns> -l app=<name> -w   # watch for 2 minutes
-  kubectl logs -n <ns> -l app=<name> --tail=50 # confirm no new errors
-  ```
-  - Check relevant Grafana dashboard for error rate and latency
-- **Output:** workload healthy confirmation
-- **Done when:** all pods `Running`, metrics normal, no log errors for 5 minutes
-
-### 5. Document — `@devops-engineer`
-- **Input:** root cause + fix applied
-- **Actions:** write brief `root_cause_summary.md`:
-  - What failed, why, which resource/manifest was at fault
-  - Fix applied (link to commit)
-  - Prevention: add to runbook? Add Prometheus alert? Change default values?
-- **Output:** `docs/incidents/<date>-<workload>-root-cause.md`
-- **Done when:** document committed; alert/runbook created if pattern is recurring
-
-## Agent Interaction Diagram
-
-<!-- agent-diagram:start -->
-```mermaid
-flowchart TD
-  start(["Start /debug-workload"])
-  role_1["devops-engineer"]
-  role_2["developer"]
-  step_1["1. Classify Symptom"]
-  step_2["2. Deep Diagnosis"]
-  step_3["3. Apply Fix"]
-  step_4["4. Verify & Monitor"]
-  step_5["5. Document"]
-  exit(["Pod Running + metrics stable + root cause documented = workload debug compl..."])
-  start --> step_1
-  step_1 --> step_2
-  step_2 --> step_3
-  step_3 --> step_4
-  step_4 --> step_5
-  step_5 --> exit
-  role_1 -. owns .-> step_1
-  role_1 -. owns .-> step_2
-  role_2 -. owns .-> step_3
-  role_1 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
-```
-<!-- agent-diagram:end -->
-
-## Exit
-Pod Running + metrics stable + root cause documented = workload debug complete.
-
-**Next:** terminal — root-cause doc filed in `docs/incidents/`; no follow-up workflow.
+- **Do:** ask the user first before `helm upgrade`, `kubectl rollout restart`, or a rollback. After the user
+  runs or approves it, watch `kubectl rollout status` and the restarts count.
+- **Done when:** all replicas are `Ready`, restarts stay at 0 for 10 minutes, and the docs page of the service
+  notes the cause.

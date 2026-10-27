@@ -32,6 +32,10 @@ AGENT INSTRUCTIONS (docs/artifact-standard.md, ART-C*, ART-W*):
 8. Run `make check-artifacts` and delete these AGENT INSTRUCTIONS before you finish.
 -->
 
+# {{Workflow title}}
+
+Example request: `/{{kebab-case-workflow-name}} "{{ONE REALISTIC REQUEST, no placeholders in the final file}}"`
+
 ## Steps
 
 ### 1. Reproduce

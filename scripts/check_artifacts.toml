@@ -17,7 +17,7 @@ core_patterns = [
 ]
 # ART-C3: word shingles + Jaccard over the body (frontmatter removed).
 shingle_size = 5
-duplicate_similarity = 0.2    # current near-duplicates: generic vs spec delivery workflows (0.21-0.22)
+duplicate_similarity = 0.2
 duplicate_min_shingles = 20
 
 [deny]
@@ -111,11 +111,11 @@ hosts = ["claude", "codex", "opencode"]
 common_selections = [
   "software.backend,software.general",
   "software.frontend,software.general",
-  "software.full-stack,software.general",
   "software.backend,software.frontend,software.general",
   "software.backend,software.general,devops.ci-cd,devops.kubernetes",
   "devops.kubernetes,devops.ci-cd,devops.observability",
   "devops.infrastructure,devops.kubernetes,devops.sre",
+  "devops.infrastructure,devops.observability,software.backend,software.general",
 ]
 
 [company]

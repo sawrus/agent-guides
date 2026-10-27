@@ -1,7 +1,8 @@
 # Software — general
 
-Shared baseline for every software spec. Spec workflows replace the general workflows for their domain.
+Shared baseline for every software spec: code style, tooling, docs layout, and the general task workflows.
 
-## Workflows
-
-`/development-cycle-workflow`, `/code-review-workflow`, `/project-setup-workflow`.
+- Rules: `code-style-guide.md`, `docker-compose-guide.md`, `docs-layout.md`, `git-workflow-guide.md`,
+  `lint-format-guide.md`, `makefile-guide.md`, `readme-sync-guide.md`.
+- Workflows: `/develop-feature` — build or change behaviour; `/debug-issue` — find and fix a bug;
+  `/refactor-module` — restructure without behaviour change; `/code-review-workflow` — review a diff.
