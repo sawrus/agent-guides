@@ -170,6 +170,10 @@ Each specialization follows this consistent layout:
 
 Versions and releases follow [docs/release-policy.md](docs/release-policy.md).
 
+Every rule, skill, and workflow must meet [docs/artifact-standard.md](docs/artifact-standard.md). Code changes
+and their docs follow [docs/regulation.md](docs/regulation.md) (Definition of Done for code and design review,
+docs layout and coverage).
+
 ### PR title format
 
 ```
