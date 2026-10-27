@@ -6,239 +6,43 @@
       "area": "devops/ci-cd",
       "workflows": [
         {
-          "trigger": "/onboard-repo",
-          "name": "onboard-repo",
-          "description": "Set up CI/CD pipeline for a new repository — from zero to production-grade pipeline with quality gates and deployment automation.",
-          "workflow_path": "areas/devops/ci-cd/workflows/onboard-repo.md",
-          "use_when": "The request asks to create a CI/CD pipeline for a repository that has none, with quality gates and deployment automation.",
+          "trigger": "/release-pipeline",
+          "name": "release-pipeline",
+          "description": "Build or fix a CI/CD pipeline that tests, builds, and releases a service through gated environments.",
+          "workflow_path": "areas/devops/ci-cd/workflows/release-pipeline.md",
+          "use_when": "The request asks to create, fix, speed up or harden a GitLab CI or GitHub Actions pipeline, or to set up build, release and deploy jobs for a service.",
           "inputs": [
-            "repo_name",
-            "language/framework",
-            "ci_platform (github-actions|gitlab-ci)",
-            "deploy_target (kubernetes|vm)"
+            "service",
+            "pipeline_goal"
           ],
           "outputs": [
             "pipeline_config",
-            "first_successful_run"
+            "docs_page"
           ],
-          "roles": [
-            "devops-engineer",
-            "developer"
-          ],
+          "roles": [],
           "related_rules": [
             "pipeline-standards.md",
-            "quality-gates.md",
             "supply-chain-security.md"
           ],
           "uses_skills": [
-            "github-actions-patterns",
             "gitlab-ci-patterns",
-            "pipeline-security"
+            "github-actions-patterns"
           ],
           "skill_refs": [
-            {
-              "name": "github-actions-patterns",
-              "path": "areas/devops/ci-cd/skills/github-actions-patterns/SKILL.md"
-            },
             {
               "name": "gitlab-ci-patterns",
               "path": "areas/devops/ci-cd/skills/gitlab-ci-patterns/SKILL.md"
             },
             {
-              "name": "pipeline-security",
-              "path": "areas/devops/ci-cd/skills/pipeline-security/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "pipeline runs green on first PR",
-            "all mandatory stages present"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /onboard-repo\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Assess & Plan\"]\n  step_2[\"2. Secrets & Environments Setup\"]\n  step_3[\"3. Write Pipeline Config\"]\n  step_4[\"4. First Run & Debug\"]\n  step_5[\"5. Document\"]\n  exit([\"Green pipeline + staging deploy + documentation = repo onboarded.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/pipeline-debug",
-          "name": "pipeline-debug",
-          "description": "Diagnose and fix a failing CI/CD pipeline — from error classification to root cause and verified fix.",
-          "workflow_path": "areas/devops/ci-cd/workflows/pipeline-debug.md",
-          "use_when": "A CI/CD pipeline or job is failing and the request asks to find the cause and fix it.",
-          "inputs": [
-            "pipeline_url_or_job_id",
-            "error_description"
-          ],
-          "outputs": [
-            "root_cause_summary",
-            "pipeline_fix"
-          ],
-          "roles": [
-            "devops-engineer"
-          ],
-          "related_rules": [
-            "pipeline-standards.md"
-          ],
-          "uses_skills": [
-            "github-actions-patterns",
-            "gitlab-ci-patterns"
-          ],
-          "skill_refs": [
-            {
               "name": "github-actions-patterns",
               "path": "areas/devops/ci-cd/skills/github-actions-patterns/SKILL.md"
-            },
-            {
-              "name": "gitlab-ci-patterns",
-              "path": "areas/devops/ci-cd/skills/gitlab-ci-patterns/SKILL.md"
             }
           ],
           "quality_gates": [],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /pipeline-debug\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Classify Failure\"]\n  step_2[\"2. Diagnose by Category\"]\n  step_3[\"3. Fix & Verify\"]\n  step_4[\"4. Merge & Monitor\"]\n  exit([\"Pipeline green + root cause documented in ticket = debug complete. Recurrin...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4",
-          "examples": []
-        },
-        {
-          "trigger": "/release-pipeline",
-          "name": "release-pipeline",
-          "description": "Run a production release with supply-chain verification, database compatibility controls, progressive delivery, and measurable rollback criteria.",
-          "workflow_path": "areas/devops/ci-cd/workflows/release-pipeline.md",
-          "use_when": "The request asks to ship a versioned production release with supply-chain checks, progressive delivery and rollback criteria.",
-          "inputs": [
-            "version (semver: v1.2.3)",
-            "release_notes (optional)",
-            "risk_level (low|medium|high)"
-          ],
-          "outputs": [
-            "published_release",
-            "deployed_version",
-            "deployment_report"
-          ],
-          "roles": [
-            "devops-engineer",
-            "developer",
-            "team-lead",
-            "pm",
-            "qa"
-          ],
-          "related_rules": [
-            "pipeline-standards.md",
-            "quality-gates.md",
-            "supply-chain-security.md"
-          ],
-          "uses_skills": [
-            "github-actions-patterns",
-            "artifact-management",
-            "pipeline-security"
-          ],
-          "skill_refs": [
-            {
-              "name": "github-actions-patterns",
-              "path": "areas/devops/ci-cd/skills/github-actions-patterns/SKILL.md"
-            },
-            {
-              "name": "artifact-management",
-              "path": "areas/devops/ci-cd/skills/artifact-management/SKILL.md"
-            },
-            {
-              "name": "pipeline-security",
-              "path": "areas/devops/ci-cd/skills/pipeline-security/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "all CI gates pass on release commit",
-            "image signed, provenance generated, and SBOM attached before deploy",
-            "staging deploy healthy >= 15 min before production gate",
-            "manual approval from team-lead for production"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /release-pipeline\"])\n  role_1[\"team-lead\"]\n  role_2[\"pm\"]\n  role_3[\"developer\"]\n  role_4[\"devops-engineer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Release Readiness and Freeze Check\"]\n  step_2[\"2. Database Compatibility Gate\"]\n  step_3[\"3. Tag Release\"]\n  step_4[\"4. CI Release Pipeline (automated)\"]\n  step_5[\"5. Deploy Staging\"]\n  step_6[\"6. Production Gate\"]\n  step_7[\"7. Canary Deployment\"]\n  step_8[\"8. Feature Flag Progression\"]\n  step_9[\"9. Post-Deploy Validation\"]\n  exit([\"Release is complete when 100% traffic is healthy, post-deploy checks pass,...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> step_9\n  step_9 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_1 -. owns .-> step_6\n  role_5 -. owns .-> step_6\n  role_4 -. owns .-> step_7\n  role_3 -. owns .-> step_8\n  role_5 -. owns .-> step_8\n  role_5 -. owns .-> step_9\n  role_2 -. owns .-> step_9\n  step_9 -. iterate if blocked .-> step_1",
-          "examples": []
-        }
-      ]
-    },
-    {
-      "area": "devops/database-ops",
-      "workflows": [
-        {
-          "trigger": "/backup-verify",
-          "name": "backup-verify",
-          "description": "Verify database backup integrity — automated restore test, row count validation, alert if backup fails.",
-          "workflow_path": "areas/devops/database-ops/workflows/backup-verify.md",
-          "use_when": "The request asks to prove that database backups restore correctly, or to automate restore tests and backup alerts.",
-          "inputs": [
-            "database_name",
-            "backup_tool (pgbackrest|barman|custom)"
-          ],
-          "outputs": [
-            "verification_report",
-            "restore_test_passed (bool)"
-          ],
-          "roles": [
-            "devops-engineer"
-          ],
-          "related_rules": [
-            "backup-policy.md"
-          ],
-          "uses_skills": [
-            "backup-restore",
-            "postgres-operations"
-          ],
-          "skill_refs": [
-            {
-              "name": "backup-restore",
-              "path": "areas/devops/database-ops/skills/backup-restore/SKILL.md"
-            },
-            {
-              "name": "postgres-operations",
-              "path": "areas/devops/database-ops/skills/postgres-operations/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "restore test completes without error",
-            "row counts match production within 1%",
-            "backup age < 26 hours"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /backup-verify\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Pre-Check: Backup Catalog\"]\n  step_2[\"2. Provision Test Environment\"]\n  step_3[\"3. Restore Latest Backup\"]\n  step_4[\"4. Row Count Validation\"]\n  step_5[\"5. Report + Cleanup\"]\n  exit([\"Restore successful + row counts validated + test env destroyed + report pos...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/db-incident",
-          "name": "db-incident",
-          "description": "Respond to a database incident — connection exhaustion, lock contention, replication lag, performance degradation.",
-          "workflow_path": "areas/devops/database-ops/workflows/db-incident.md",
-          "use_when": "A live database shows connection exhaustion, lock contention, replication lag or slow queries that need diagnosis and remediation.",
-          "inputs": [
-            "database_name",
-            "symptom",
-            "severity"
-          ],
-          "outputs": [
-            "root_cause_summary",
-            "remediation_applied"
-          ],
-          "roles": [
-            "devops-engineer",
-            "developer"
-          ],
-          "related_rules": [
-            "backup-policy.md",
-            "access-control.md"
-          ],
-          "uses_skills": [
-            "postgres-operations",
-            "db-performance"
-          ],
-          "skill_refs": [
-            {
-              "name": "postgres-operations",
-              "path": "areas/devops/database-ops/skills/postgres-operations/SKILL.md"
-            },
-            {
-              "name": "db-performance",
-              "path": "areas/devops/database-ops/skills/db-performance/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "backup verified before any destructive action — if backup verification itself failed, do not re-trigger /backup-verify; escalate the restore decision to a human (`@team-lead`)"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /db-incident\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Triage\"]\n  step_2[\"2. Immediate Mitigation by Type\"]\n  step_3[\"3. Root Cause\"]\n  step_4[\"4. Fix & Verify\"]\n  step_5[\"5. Document\"]\n  exit([\"Metrics normal + root cause documented = db incident resolved.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
+          "workflow_diagram": "",
+          "examples": [
+            "Add a gated production deploy with a migration job and automatic rollback to the payments-api pipeline for v3.8.0."
+          ]
         }
       ]
     },
@@ -246,79 +50,29 @@
       "area": "devops/devsecops",
       "workflows": [
         {
-          "trigger": "/policy-onboard",
-          "name": "policy-onboard",
-          "description": "Deploy OPA/Gatekeeper or Kyverno admission policies to a cluster or namespace — design, test, dry-run, enforce.",
-          "workflow_path": "areas/devops/devsecops/workflows/policy-onboard.md",
-          "use_when": "The request asks to add or enforce Kubernetes admission policies with OPA Gatekeeper or Kyverno.",
+          "trigger": "/security-scan",
+          "name": "security-scan",
+          "description": "Scan code, dependencies, images, and IaC, triage the findings, and add the scans as pipeline gates.",
+          "workflow_path": "areas/devops/devsecops/workflows/security-scan.md",
+          "use_when": "The request asks to run or add SAST, secret, dependency, container image or IaC scans, to triage scanner findings, or to produce an SBOM or signed image.",
           "inputs": [
-            "policy_name",
-            "engine (gatekeeper|kyverno)",
-            "target_namespaces",
-            "enforcement_action (deny|warn|dryrun)"
+            "repository_or_image",
+            "scan_scope"
           ],
           "outputs": [
-            "deployed_policies",
-            "test_results"
+            "fixes",
+            "pipeline_gate",
+            "accepted_risks"
           ],
-          "roles": [
-            "devops-engineer",
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "policy-as-code.md",
-            "container-security.md"
-          ],
-          "uses_skills": [
-            "opa-policies",
-            "container-hardening"
-          ],
-          "skill_refs": [
-            {
-              "name": "opa-policies",
-              "path": "areas/devops/devsecops/skills/opa-policies/SKILL.md"
-            },
-            {
-              "name": "container-hardening",
-              "path": "areas/devops/devsecops/skills/container-hardening/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "each policy tested with passing AND failing manifest before deploy",
-            "dryrun in staging before enforce in production"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /policy-onboard\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Design Policy\"]\n  step_2[\"2. Unit Test\"]\n  step_3[\"3. Dryrun in Staging\"]\n  step_4[\"4. Fix Existing Violations\"]\n  step_5[\"5. Switch to Enforce\"]\n  step_6[\"6. Monitor Policy Health\"]\n  exit([\"Policy tested + existing violations resolved + enforce mode active + monito...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
-          "examples": []
-        },
-        {
-          "trigger": "/security-scan-pipeline",
-          "name": "security-scan-pipeline",
-          "description": "Run a full security scan pipeline — SAST, dependency CVE, secrets, container image, IaC, and SBOM generation.",
-          "workflow_path": "areas/devops/devsecops/workflows/security-scan-pipeline.md",
-          "use_when": "The request asks to run or set up SAST, dependency, secret, image and IaC scanning with an SBOM for a service build.",
-          "inputs": [
-            "service_name",
-            "version_or_sha",
-            "scan_scope (code|image|iac|all)"
-          ],
-          "outputs": [
-            "scan_report",
-            "findings_by_severity",
-            "sbom"
-          ],
-          "roles": [
-            "devops-engineer"
-          ],
+          "roles": [],
           "related_rules": [
             "shift-left-policy.md",
-            "container-security.md"
+            "container-security.md",
+            "policy-as-code.md"
           ],
           "uses_skills": [
             "secret-detection",
-            "container-hardening",
-            "sbom-supply-chain",
-            "sigstore-signing"
+            "sbom-supply-chain"
           ],
           "skill_refs": [
             {
@@ -326,24 +80,15 @@
               "path": "areas/devops/devsecops/skills/secret-detection/SKILL.md"
             },
             {
-              "name": "container-hardening",
-              "path": "areas/devops/devsecops/skills/container-hardening/SKILL.md"
-            },
-            {
               "name": "sbom-supply-chain",
               "path": "areas/devops/devsecops/skills/sbom-supply-chain/SKILL.md"
-            },
-            {
-              "name": "sigstore-signing",
-              "path": "areas/devops/devsecops/skills/sigstore-signing/SKILL.md"
             }
           ],
-          "quality_gates": [
-            "zero Critical/High unresolved before release",
-            "SBOM generated and attached to image"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /security-scan-pipeline\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Secrets Scan\"]\n  step_2[\"2. SAST (Static Analysis)\"]\n  step_3[\"3. Dependency CVE Scan\"]\n  step_4[\"4. Container Image Scan\"]\n  step_5[\"5. IaC Security Scan\"]\n  step_6[\"6. Generate SBOM\"]\n  step_7[\"7. Collate Report\"]\n  exit([\"Zero unresolved Critical/High + SBOM attached + scan report filed = securit...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_1 -. owns .-> step_6\n  role_1 -. owns .-> step_7",
-          "examples": []
+          "quality_gates": [],
+          "workflow_diagram": "",
+          "examples": [
+            "Add a pre-release security gate for payment-service v2.5.0: semgrep, trivy for the repo and the image, gitleaks, and checkov."
+          ]
         }
       ]
     },
@@ -351,113 +96,27 @@
       "area": "devops/infrastructure",
       "workflows": [
         {
-          "trigger": "/destroy-environment",
-          "name": "destroy-environment",
-          "description": "Safely destroy a Terraform-managed environment — pre-checks, approval gate, ordered teardown, and state cleanup.",
-          "workflow_path": "areas/devops/infrastructure/workflows/destroy-environment.md",
-          "use_when": "The request asks to tear down a Terraform-managed environment and clean up its state.",
-          "inputs": [
-            "environment_name",
-            "reason (decommission|cost-saving|reset)"
-          ],
-          "outputs": [
-            "environment_destroyed",
-            "state_cleaned"
-          ],
-          "roles": [
-            "devops-engineer",
-            "team-lead",
-            "product-owner"
-          ],
-          "related_rules": [
-            "state-management.md",
-            "immutability.md"
-          ],
-          "uses_skills": [
-            "terraform-modules",
-            "state-management"
-          ],
-          "skill_refs": [
-            {
-              "name": "terraform-modules",
-              "path": "areas/devops/infrastructure/skills/terraform-modules/SKILL.md"
-            },
-            {
-              "name": "state-management",
-              "path": "areas/devops/infrastructure/skills/state-management/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "explicit team-lead approval required before any destroy",
-            "backup of state file taken before destroy"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /destroy-environment\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  role_3[\"product-owner\"]\n  step_1[\"1. Confirm Scope\"]\n  step_2[\"2. Approval\"]\n  step_3[\"3. Pre-Destroy Backup\"]\n  step_4[\"4. Ordered Teardown\"]\n  step_5[\"5. Verify & Cleanup\"]\n  step_6[\"6. Document\"]\n  exit([\"Terraform state empty + cloud console clean + documentation filed = environ...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
-          "examples": []
-        },
-        {
-          "trigger": "/drift-remediation",
-          "name": "drift-remediation",
-          "description": "Detect, classify, and remediate infrastructure drift between Terraform state and actual cloud state.",
-          "workflow_path": "areas/devops/infrastructure/workflows/drift-remediation.md",
-          "use_when": "Terraform state and real cloud resources differ and the request asks to classify and fix the drift.",
+          "trigger": "/iac-change",
+          "name": "iac-change",
+          "description": "Provision, change, fix drift in, or destroy infrastructure through Terraform or Ansible with a reviewed plan.",
+          "workflow_path": "areas/devops/infrastructure/workflows/iac-change.md",
+          "use_when": "The request asks to provision, change, import, fix drift in, or destroy cloud or server infrastructure defined in Terraform, OpenTofu or Ansible.",
           "inputs": [
             "environment",
-            "component (optional — specific module to check)"
+            "requested_change"
           ],
           "outputs": [
-            "drift_report",
-            "remediation_applied or deferred"
+            "iac_change",
+            "reviewed_plan",
+            "docs_page"
           ],
-          "roles": [
-            "devops-engineer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "immutability.md",
-            "iac-standards.md"
-          ],
-          "uses_skills": [
-            "drift-detection",
-            "terraform-modules"
-          ],
-          "skill_refs": [
-            {
-              "name": "drift-detection",
-              "path": "areas/devops/infrastructure/skills/drift-detection/SKILL.md"
-            },
-            {
-              "name": "terraform-modules",
-              "path": "areas/devops/infrastructure/skills/terraform-modules/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "drift classified before any apply"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /drift-remediation\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Detect Drift\"]\n  step_2[\"2. Classify Findings\"]\n  step_3[\"3. Remediate (if REMEDIATE class)\"]\n  step_4[\"4. Investigate (if INVESTIGATE class)\"]\n  step_5[\"5. Report\"]\n  exit([\"All drift classified + REMEDIATE resolved + INVESTIGATE escalated = drift c...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/module-development",
-          "name": "module-development",
-          "description": "Develop, test, and publish a new reusable Terraform module — design, implementation, examples, tests, and versioned release.",
-          "workflow_path": "areas/devops/infrastructure/workflows/module-development.md",
-          "use_when": "The request asks to build and publish a new reusable Terraform module with examples, tests and a versioned release.",
-          "inputs": [
-            "module_name",
-            "module_purpose",
-            "cloud_targets"
-          ],
-          "outputs": [
-            "published_module",
-            "module_documentation"
-          ],
-          "roles": [
-            "devops-engineer",
-            "team-lead"
-          ],
+          "roles": [],
           "related_rules": [
             "iac-standards.md",
-            "state-management.md"
+            "state-management.md",
+            "immutability.md",
+            "secret-hygiene.md",
+            "ansible-standards.md"
           ],
           "uses_skills": [
             "terraform-modules",
@@ -473,59 +132,11 @@
               "path": "areas/devops/infrastructure/skills/drift-detection/SKILL.md"
             }
           ],
-          "quality_gates": [
-            "all examples produce clean plan (no-op on re-apply)",
-            "terraform validate passes",
-            "no provider config inside module"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /module-development\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Design Interface\"]\n  step_2[\"2. Implement Module\"]\n  step_3[\"3. Write Examples\"]\n  step_4[\"4. Test\"]\n  step_5[\"5. Code Review\"]\n  step_6[\"6. Release\"]\n  exit([\"Module published + examples tested + documentation complete = module released.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
-          "examples": []
-        },
-        {
-          "trigger": "/provision-environment",
-          "name": "provision-environment",
-          "description": "Provision a complete infrastructure environment using Terraform + Ansible — from VPC to configured K8s-ready nodes.",
-          "workflow_path": "areas/devops/infrastructure/workflows/provision-environment.md",
-          "use_when": "The request asks to create a new infrastructure environment with Terraform and Ansible, from the network to configured nodes.",
-          "inputs": [
-            "environment_name (staging|production)",
-            "cloud_provider (aws|gcp|hetzner|bare-metal)",
-            "component_scope (network|compute|all)"
-          ],
-          "outputs": [
-            "provisioned_environment",
-            "provision_report"
-          ],
-          "roles": [
-            "devops-engineer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "iac-standards.md",
-            "state-management.md",
-            "secret-hygiene.md",
-            "immutability.md"
-          ],
-          "uses_skills": [
-            "terraform-modules",
-            "ansible-playbooks"
-          ],
-          "skill_refs": [
-            {
-              "name": "terraform-modules",
-              "path": "areas/devops/infrastructure/skills/terraform-modules/SKILL.md"
-            },
-            {
-              "name": "ansible-playbooks",
-              "path": "areas/devops/infrastructure/skills/ansible-playbooks/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "terraform plan reviewed and approved before apply",
-            "no secrets in plan output"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /provision-environment\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Plan & Review\"]\n  step_2[\"2. Apply Infrastructure\"]\n  step_3[\"3. Configure Nodes (Ansible)\"]\n  step_4[\"4. Smoke Tests\"]\n  step_5[\"5. Document & Store Outputs\"]\n  exit([\"Terraform apply clean + Ansible 0 failures + smoke tests pass = environment...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
+          "quality_gates": [],
+          "workflow_diagram": "",
+          "examples": [
+            "Provision a staging environment with Terraform: private network 10.20.0.0/16, three worker VMs, and one load balancer."
+          ]
         }
       ]
     },
@@ -533,77 +144,29 @@
       "area": "devops/kubernetes",
       "workflows": [
         {
-          "trigger": "/cluster-bootstrap",
-          "name": "cluster-bootstrap",
-          "description": "Bootstrap a production-grade self-hosted Kubernetes cluster from bare-metal using kubeadm, with Cilium CNI, MetalLB, ArgoCD, and cert-manager.",
-          "workflow_path": "areas/devops/kubernetes/workflows/cluster-bootstrap.md",
-          "use_when": "The request asks to build a new self-hosted Kubernetes cluster on bare-metal or virtual machines with kubeadm.",
-          "inputs": [
-            "node_inventory (list of IPs/hostnames)",
-            "cluster_name",
-            "pod_cidr",
-            "service_cidr"
-          ],
-          "outputs": [
-            "running_cluster",
-            "kubeconfig",
-            "bootstrap_report"
-          ],
-          "roles": [
-            "devops-engineer"
-          ],
-          "related_rules": [
-            "cluster-standards.md",
-            "workload-security.md"
-          ],
-          "uses_skills": [
-            "cluster-operations",
-            "helm-charts"
-          ],
-          "skill_refs": [
-            {
-              "name": "cluster-operations",
-              "path": "areas/devops/kubernetes/skills/cluster-operations/SKILL.md"
-            },
-            {
-              "name": "helm-charts",
-              "path": "areas/devops/kubernetes/skills/helm-charts/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "all nodes pass pre-flight checks",
-            "control plane HA (3 nodes) before adding workers",
-            "etcd encrypted at rest"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /cluster-bootstrap\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Node Pre-Flight\"]\n  step_2[\"2. Bootstrap First Control Plane\"]\n  step_3[\"3. Install CNI (Cilium)\"]\n  step_4[\"4. Join Remaining Control Plane Nodes\"]\n  step_5[\"5. Join Worker Nodes\"]\n  step_6[\"6. etcd Encryption at Rest\"]\n  step_7[\"7. Core Platform Components\"]\n  step_8[\"8. Apply Security Baselines\"]\n  exit([\"All nodes Ready + core components Running + etcd encrypted + monitoring liv...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_1 -. owns .-> step_6\n  role_1 -. owns .-> step_7\n  role_1 -. owns .-> step_8",
-          "examples": []
-        },
-        {
           "trigger": "/debug-workload",
           "name": "debug-workload",
-          "description": "Systematic diagnosis of Kubernetes workload failures — from symptom to root cause and fix.",
+          "description": "Diagnose a failing Kubernetes workload and fix it in the manifests or Helm values.",
           "workflow_path": "areas/devops/kubernetes/workflows/debug-workload.md",
-          "use_when": "A Kubernetes workload crashes, stays pending or misbehaves and the request asks for the root cause and a fix.",
+          "use_when": "The request reports a pod in CrashLoopBackOff, Pending, ImagePullBackOff, OOMKilled, failing probes, or a Service with no endpoints in Kubernetes.",
           "inputs": [
-            "workload_name",
+            "workload",
             "namespace",
-            "symptom_description"
+            "symptom"
           ],
           "outputs": [
-            "root_cause_summary",
-            "remediation_applied"
+            "root_cause",
+            "manifest_fix"
           ],
-          "roles": [
-            "developer",
-            "devops-engineer"
-          ],
+          "roles": [],
           "related_rules": [
+            "resource-governance.md",
             "workload-security.md",
-            "resource-governance.md"
+            "cluster-standards.md"
           ],
           "uses_skills": [
             "pod-troubleshooting",
-            "cluster-operations"
+            "helm-charts"
           ],
           "skill_refs": [
             {
@@ -611,381 +174,15 @@
               "path": "areas/devops/kubernetes/skills/pod-troubleshooting/SKILL.md"
             },
             {
-              "name": "cluster-operations",
-              "path": "areas/devops/kubernetes/skills/cluster-operations/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "symptom reproduced before fix applied",
-            "fix verified in target environment"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /debug-workload\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Classify Symptom\"]\n  step_2[\"2. Deep Diagnosis\"]\n  step_3[\"3. Apply Fix\"]\n  step_4[\"4. Verify & Monitor\"]\n  step_5[\"5. Document\"]\n  exit([\"Pod Running + metrics stable + root cause documented = workload debug compl...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/onboard-service",
-          "name": "onboard-service",
-          "description": "Onboard a new application to Kubernetes — namespace, RBAC, NetworkPolicy, Helm chart, ArgoCD app, HPA, and monitoring.",
-          "workflow_path": "areas/devops/kubernetes/workflows/onboard-service.md",
-          "use_when": "The request asks to run an existing application on Kubernetes for the first time: namespace, RBAC, Helm chart, ArgoCD and autoscaling.",
-          "inputs": [
-            "service_name",
-            "team_name",
-            "environment",
-            "resource_profile (small|medium|large)"
-          ],
-          "outputs": [
-            "running_service",
-            "argocd_app",
-            "monitoring_onboarded"
-          ],
-          "roles": [
-            "devops-engineer",
-            "developer"
-          ],
-          "related_rules": [
-            "cluster-standards.md",
-            "workload-security.md",
-            "resource-governance.md"
-          ],
-          "uses_skills": [
-            "helm-charts",
-            "rbac-design",
-            "network-policies",
-            "resource-tuning"
-          ],
-          "skill_refs": [
-            {
               "name": "helm-charts",
               "path": "areas/devops/kubernetes/skills/helm-charts/SKILL.md"
-            },
-            {
-              "name": "rbac-design",
-              "path": "areas/devops/kubernetes/skills/rbac-design/SKILL.md"
-            },
-            {
-              "name": "network-policies",
-              "path": "areas/devops/kubernetes/skills/network-policies/SKILL.md"
-            },
-            {
-              "name": "resource-tuning",
-              "path": "areas/devops/kubernetes/skills/resource-tuning/SKILL.md"
             }
           ],
-          "quality_gates": [
-            "all manifests pass `kubectl apply --dry-run=server`",
-            "helm lint passes with no warnings"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /onboard-service\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Namespace Setup\"]\n  step_2[\"2. RBAC Setup\"]\n  step_3[\"3. Network Policies\"]\n  step_4[\"4. Helm Chart\"]\n  step_5[\"5. ArgoCD Application\"]\n  step_6[\"6. Validate & Smoke Test\"]\n  step_7[\"7. Monitoring\"]\n  exit([\"Pod Running + health check passing + ArgoCD Healthy + metrics visible = ser...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_2 -. owns .-> step_6\n  role_1 -. owns .-> step_7",
-          "examples": []
-        },
-        {
-          "trigger": "/upgrade-cluster",
-          "name": "upgrade-cluster",
-          "description": "Zero-downtime Kubernetes cluster upgrade — control plane first, then workers, with rollback plan.",
-          "workflow_path": "areas/devops/kubernetes/workflows/upgrade-cluster.md",
-          "use_when": "The request asks to upgrade the Kubernetes version of a cluster without downtime.",
-          "inputs": [
-            "current_version",
-            "target_version",
-            "cluster_name"
-          ],
-          "outputs": [
-            "upgraded_cluster",
-            "upgrade_report"
-          ],
-          "roles": [
-            "devops-engineer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "upgrade-policy.md",
-            "cluster-standards.md"
-          ],
-          "uses_skills": [
-            "cluster-operations"
-          ],
-          "skill_refs": [
-            {
-              "name": "cluster-operations",
-              "path": "areas/devops/kubernetes/skills/cluster-operations/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "etcd backup verified before upgrade starts",
-            "no active P0/P1 incidents",
-            "deprecated API audit shows zero blocking deprecations"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /upgrade-cluster\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. etcd Backup\"]\n  step_2[\"2. Upgrade Control Plane (kubeadm)\"]\n  step_3[\"3. Validate Control Plane\"]\n  step_4[\"4. Upgrade Worker Nodes (rolling)\"]\n  step_5[\"5. Post-Upgrade Validation\"]\n  exit([\"All nodes on target version + Tier 1 services healthy + upgrade report comm...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_2 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
-          "examples": []
-        }
-      ]
-    },
-    {
-      "area": "devops/networking",
-      "workflows": [
-        {
-          "trigger": "/onboard-ingress",
-          "name": "onboard-ingress",
-          "description": "Expose a Kubernetes service externally — Ingress, TLS, rate limiting, MetalLB (bare-metal).",
-          "workflow_path": "areas/devops/networking/workflows/onboard-ingress.md",
-          "use_when": "The request asks to expose a Kubernetes service outside the cluster with Ingress, TLS or rate limiting.",
-          "inputs": [
-            "service_name",
-            "hostname",
-            "tls_source (letsencrypt|internal-ca|manual)"
-          ],
-          "outputs": [
-            "ingress_resource",
-            "tls_certificate_issued",
-            "service_accessible"
-          ],
-          "roles": [
-            "devops-engineer"
-          ],
-          "related_rules": [
-            "ingress-standards.md",
-            "tls-policy.md"
-          ],
-          "uses_skills": [
-            "ingress-patterns",
-            "tls-termination"
-          ],
-          "skill_refs": [
-            {
-              "name": "ingress-patterns",
-              "path": "areas/devops/networking/skills/ingress-patterns/SKILL.md"
-            },
-            {
-              "name": "tls-termination",
-              "path": "areas/devops/networking/skills/tls-termination/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "TLS certificate issued (not just pending)",
-            "HTTPS accessible; HTTP redirects"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /onboard-ingress\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Write Ingress Manifest\"]\n  step_2[\"2. Apply & Wait for Certificate\"]\n  step_3[\"3. Verify HTTPS\"]\n  step_4[\"4. Verify Rate Limiting\"]\n  step_5[\"5. DNS (if needed)\"]\n  exit([\"HTTPS accessible + cert issued + security headers present + rate limit veri...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/service-mesh-onboard",
-          "name": "service-mesh-onboard",
-          "description": "Onboard a service to Linkerd or Istio service mesh — inject sidecar, validate mTLS, configure retry/timeout policies.",
-          "workflow_path": "areas/devops/networking/workflows/service-mesh-onboard.md",
-          "use_when": "The request asks to add a service to a Linkerd or Istio mesh, verify mTLS or set retry and timeout policies.",
-          "inputs": [
-            "service_name",
-            "namespace",
-            "mesh (linkerd|istio)"
-          ],
-          "outputs": [
-            "service_meshed",
-            "mtls_verified",
-            "policies_applied"
-          ],
-          "roles": [
-            "devops-engineer"
-          ],
-          "related_rules": [
-            "network-segmentation.md",
-            "tls-policy.md"
-          ],
-          "uses_skills": [
-            "service-mesh",
-            "ingress-patterns"
-          ],
-          "skill_refs": [
-            {
-              "name": "service-mesh",
-              "path": "areas/devops/networking/skills/service-mesh/SKILL.md"
-            },
-            {
-              "name": "ingress-patterns",
-              "path": "areas/devops/networking/skills/ingress-patterns/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "mTLS verified between service and at least one upstream/downstream",
-            "no plaintext traffic visible in mesh telemetry"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /service-mesh-onboard\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Pre-Check Mesh Health\"]\n  step_2[\"2. Enable Injection\"]\n  step_3[\"3. Verify mTLS\"]\n  step_4[\"4. Apply Traffic Policies\"]\n  step_5[\"5. Validate in Mesh Dashboard\"]\n  exit([\"Sidecar injected + mTLS verified + policies applied + dashboard shows servi...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
-        }
-      ]
-    },
-    {
-      "area": "devops/observability",
-      "workflows": [
-        {
-          "trigger": "/alert-investigation",
-          "name": "alert-investigation",
-          "description": "Structured alert investigation — classify, correlate metrics/logs/traces, identify root cause, mitigate, and improve alert quality.",
-          "workflow_path": "areas/devops/observability/workflows/alert-investigation.md",
-          "use_when": "A monitoring alert is firing and the request asks to find its cause, mitigate it or improve the alert.",
-          "inputs": [
-            "alert_name",
-            "alert_labels",
-            "firing_since"
-          ],
-          "outputs": [
-            "root_cause_summary",
-            "mitigation_applied_or_deferred",
-            "alert_quality_notes"
-          ],
-          "roles": [
-            "devops-engineer",
-            "developer"
-          ],
-          "related_rules": [
-            "golden-signals.md",
-            "alerting-standards.md"
-          ],
-          "uses_skills": [
-            "prometheus-alertmanager",
-            "grafana-dashboards",
-            "log-aggregation",
-            "distributed-tracing"
-          ],
-          "skill_refs": [
-            {
-              "name": "prometheus-alertmanager",
-              "path": "areas/devops/observability/skills/prometheus-alertmanager/SKILL.md"
-            },
-            {
-              "name": "grafana-dashboards",
-              "path": "areas/devops/observability/skills/grafana-dashboards/SKILL.md"
-            },
-            {
-              "name": "log-aggregation",
-              "path": "areas/devops/observability/skills/log-aggregation/SKILL.md"
-            },
-            {
-              "name": "distributed-tracing",
-              "path": "areas/devops/observability/skills/distributed-tracing/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "root cause identified before alert is silenced"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /alert-investigation\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  step_1[\"1. Acknowledge & Classify\"]\n  step_2[\"2. Correlate Signals\"]\n  step_3[\"3. Identify Root Cause\"]\n  step_4[\"4. Mitigate\"]\n  step_5[\"5. Post-Investigation Notes\"]\n  exit([\"Alert resolved or escalated + root cause noted + runbook quality assessed =...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/observability-stack-setup",
-          "name": "observability-stack-setup",
-          "description": "Deploy the full observability stack (Prometheus + Loki + Tempo + Grafana) to a Kubernetes cluster from scratch.",
-          "workflow_path": "areas/devops/observability/workflows/observability-stack-setup.md",
-          "use_when": "The request asks to install Prometheus, Loki, Tempo and Grafana on a cluster that has no observability stack.",
-          "inputs": [
-            "cluster_name",
-            "storage_class",
-            "retention_days_metrics",
-            "retention_days_logs"
-          ],
-          "outputs": [
-            "running_observability_stack",
-            "grafana_url",
-            "setup_report"
-          ],
-          "roles": [
-            "devops-engineer"
-          ],
-          "related_rules": [
-            "golden-signals.md",
-            "alerting-standards.md",
-            "data-retention.md"
-          ],
-          "uses_skills": [
-            "prometheus-alertmanager",
-            "grafana-dashboards",
-            "log-aggregation",
-            "distributed-tracing",
-            "slo-implementation"
-          ],
-          "skill_refs": [
-            {
-              "name": "prometheus-alertmanager",
-              "path": "areas/devops/observability/skills/prometheus-alertmanager/SKILL.md"
-            },
-            {
-              "name": "grafana-dashboards",
-              "path": "areas/devops/observability/skills/grafana-dashboards/SKILL.md"
-            },
-            {
-              "name": "log-aggregation",
-              "path": "areas/devops/observability/skills/log-aggregation/SKILL.md"
-            },
-            {
-              "name": "distributed-tracing",
-              "path": "areas/devops/observability/skills/distributed-tracing/SKILL.md"
-            },
-            {
-              "name": "slo-implementation",
-              "path": "areas/devops/observability/skills/slo-implementation/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "all components healthy (Prometheus targets UP)",
-            "sample alert fires and reaches Alertmanager"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /observability-stack-setup\"])\n  role_1[\"devops-engineer\"]\n  step_1[\"1. Namespace & Prerequisites\"]\n  step_2[\"2. kube-prometheus-stack (Prometheus + Grafana + Alertmanager)\"]\n  step_3[\"3. Loki + Promtail (Logs)\"]\n  step_4[\"4. Tempo (Traces)\"]\n  step_5[\"5. OpenTelemetry Collector (DaemonSet)\"]\n  step_6[\"6. Validate Stack\"]\n  step_7[\"7. Import Dashboards\"]\n  exit([\"All 4 components healthy + test alert fired + dashboards showing data = sta...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_1 -. owns .-> step_6\n  role_1 -. owns .-> step_7",
-          "examples": []
-        },
-        {
-          "trigger": "/onboard-service-monitoring",
-          "name": "onboard-service-monitoring",
-          "description": "Add full observability (metrics, logs, traces, alerts, dashboard) to an existing service.",
-          "workflow_path": "areas/devops/observability/workflows/onboard-service-monitoring.md",
-          "use_when": "The request asks to add metrics, logs, traces, alerts or a dashboard to one existing service.",
-          "inputs": [
-            "service_name",
-            "namespace",
-            "language/framework"
-          ],
-          "outputs": [
-            "running_metrics_scrape",
-            "grafana_dashboard",
-            "alert_rules_deployed"
-          ],
-          "roles": [
-            "devops-engineer",
-            "developer"
-          ],
-          "related_rules": [
-            "golden-signals.md",
-            "alerting-standards.md"
-          ],
-          "uses_skills": [
-            "prometheus-alertmanager",
-            "grafana-dashboards",
-            "distributed-tracing",
-            "log-aggregation"
-          ],
-          "skill_refs": [
-            {
-              "name": "prometheus-alertmanager",
-              "path": "areas/devops/observability/skills/prometheus-alertmanager/SKILL.md"
-            },
-            {
-              "name": "grafana-dashboards",
-              "path": "areas/devops/observability/skills/grafana-dashboards/SKILL.md"
-            },
-            {
-              "name": "distributed-tracing",
-              "path": "areas/devops/observability/skills/distributed-tracing/SKILL.md"
-            },
-            {
-              "name": "log-aggregation",
-              "path": "areas/devops/observability/skills/log-aggregation/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "all four golden signals visible in Prometheus",
-            "at least one critical alert deployed with runbook"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /onboard-service-monitoring\"])\n  role_1[\"developer\"]\n  role_2[\"devops-engineer\"]\n  step_1[\"1. Metrics Instrumentation\"]\n  step_2[\"2. ServiceMonitor\"]\n  step_3[\"3. Tracing Instrumentation\"]\n  step_4[\"4. Log Labels\"]\n  step_5[\"5. Alert Rules\"]\n  step_6[\"6. Grafana Dashboard\"]\n  exit([\"Golden signals in Prometheus + logs in Loki + traces in Tempo + alerts depl...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_2 -. owns .-> step_6",
-          "examples": []
+          "quality_gates": [],
+          "workflow_diagram": "",
+          "examples": [
+            "payment-service is in CrashLoopBackOff every 30 seconds since the v2.3.1 deploy; find the cause and fix it."
+          ]
         }
       ]
     },
@@ -995,138 +192,37 @@
         {
           "trigger": "/incident-response",
           "name": "incident-response",
-          "description": "Structured P0/P1 incident response — acknowledge, scope, mitigate, communicate, resolve, document.",
+          "description": "Investigate an alert or production incident, mitigate it, fix the cause, and write the incident page.",
           "workflow_path": "areas/devops/sre/workflows/incident-response.md",
-          "use_when": "A P0 or P1 production incident is in progress and needs coordinated mitigation and communication.",
+          "use_when": "The request reports a firing alert, an outage, elevated errors or latency, a database incident, or asks for a postmortem of a production event.",
           "inputs": [
-            "incident_summary",
-            "severity (P0|P1)",
+            "alert_or_symptom",
             "affected_service"
           ],
           "outputs": [
-            "incident_resolved",
-            "preliminary_postmortem"
+            "mitigation",
+            "fix",
+            "incident_page"
           ],
-          "roles": [
-            "devops-engineer",
-            "developer",
-            "pm",
-            "team-lead"
-          ],
+          "roles": [],
           "related_rules": [
             "on-call-standards.md",
-            "error-budget-policy.md"
+            "slo-policy.md"
           ],
           "uses_skills": [
-            "incident-command",
-            "postmortem-analysis"
-          ],
-          "skill_refs": [
-            {
-              "name": "incident-command",
-              "path": "areas/devops/sre/skills/incident-command/SKILL.md"
-            },
-            {
-              "name": "postmortem-analysis",
-              "path": "areas/devops/sre/skills/postmortem-analysis/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "status page updated within 10 min of P0 declaration",
-            "a mitigation from the runbook was attempted and its result recorded before deep root-cause work began"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /incident-response\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  role_3[\"pm\"]\n  role_4[\"team-lead\"]\n  step_1[\"T+0–5: Acknowledge & Scope\"]\n  step_2[\"T+5–15: Mitigate\"]\n  step_3[\"T+10: Communicate\"]\n  step_4[\"T+15–30: Stabilize\"]\n  step_5[\"T+30: Resolve or Escalate\"]\n  step_6[\"T+60: Preliminary Postmortem\"]\n  step_7[\"T+24h: Full Postmortem\"]\n  exit([\"Service healthy + stakeholders informed + preliminary postmortem filed = in...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_4 -. owns .-> step_6\n  role_4 -. owns .-> step_7",
-          "examples": []
-        },
-        {
-          "trigger": "/postmortem",
-          "name": "postmortem",
-          "description": "Facilitate and write a blameless postmortem after a P0/P1 incident — 5-whys RCA, action items, and publication.",
-          "workflow_path": "areas/devops/sre/workflows/postmortem.md",
-          "use_when": "An incident is resolved and the request asks for a blameless postmortem with root cause and action items.",
-          "inputs": [
-            "incident_id",
-            "severity",
-            "timeline_raw (scribe notes)"
-          ],
-          "outputs": [
-            "published_postmortem",
-            "action_items_in_tracker"
-          ],
-          "roles": [
-            "devops-engineer",
-            "team-lead",
-            "developer"
-          ],
-          "related_rules": [
-            "on-call-standards.md",
-            "error-budget-policy.md"
-          ],
-          "uses_skills": [
-            "postmortem-analysis",
             "incident-command"
           ],
           "skill_refs": [
             {
-              "name": "postmortem-analysis",
-              "path": "areas/devops/sre/skills/postmortem-analysis/SKILL.md"
-            },
-            {
               "name": "incident-command",
               "path": "areas/devops/sre/skills/incident-command/SKILL.md"
             }
           ],
-          "quality_gates": [
-            "postmortem published within 48h of incident resolution",
-            "every action item has an owner and a due date"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /postmortem\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Collect Data (within 2h of resolution)\"]\n  step_2[\"2. Draft Postmortem\"]\n  step_3[\"3. 5-Whys Facilitation Meeting (within 48h)\"]\n  step_4[\"4. Finalize Document\"]\n  step_5[\"5. Publish & Track\"]\n  step_6[\"6. Follow-Up (2 weeks later)\"]\n  exit([\"Postmortem published + all action items in tracker + team notified = postmo...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_3 -. owns .-> step_6",
-          "examples": []
-        },
-        {
-          "trigger": "/slo-review",
-          "name": "slo-review",
-          "description": "Conduct quarterly SLO review — evaluate current SLOs against reliability data, adjust targets, and plan error budget policy changes.",
-          "workflow_path": "areas/devops/sre/workflows/slo-review.md",
-          "use_when": "The request asks to review SLO targets against reliability data or to change the error budget policy.",
-          "inputs": [
-            "quarter (e.g. Q4-2024)",
-            "services_to_review"
-          ],
-          "outputs": [
-            "slo_review_report",
-            "updated_slo_definitions",
-            "error_budget_policy_changes"
-          ],
-          "roles": [
-            "devops-engineer",
-            "team-lead",
-            "product-owner"
-          ],
-          "related_rules": [
-            "slo-policy.md",
-            "error-budget-policy.md"
-          ],
-          "uses_skills": [
-            "slo-sli-design",
-            "capacity-planning"
-          ],
-          "skill_refs": [
-            {
-              "name": "slo-sli-design",
-              "path": "areas/devops/sre/skills/slo-sli-design/SKILL.md"
-            },
-            {
-              "name": "capacity-planning",
-              "path": "areas/devops/sre/skills/capacity-planning/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "every proposed SLO target cites ≥ 30 days of measured SLI data",
-            "every changed SLO has product-owner sign-off"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /slo-review\"])\n  role_1[\"devops-engineer\"]\n  role_2[\"team-lead\"]\n  role_3[\"product-owner\"]\n  step_1[\"1. Pull Reliability Data\"]\n  step_2[\"2. Classify Services\"]\n  step_3[\"3. SLO Adjustment Workshop\"]\n  step_4[\"4. Update SLO Definitions\"]\n  step_5[\"5. Error Budget Policy Review\"]\n  step_6[\"6. Publish SLO Review Report\"]\n  exit([\"Report published + SLO changes applied + action items in tracker = review c...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
-          "examples": []
+          "quality_gates": [],
+          "workflow_diagram": "",
+          "examples": [
+            "order-service returns 100% 5xx since 15:42 UTC and checkout is down; help me mitigate and find the cause."
+          ]
         }
       ]
     },
@@ -1136,1059 +232,29 @@
         {
           "trigger": "/add-migration",
           "name": "add-migration",
-          "description": "Plan, implement, and validate safe schema migrations using expand/contract principles.",
+          "description": "Add a backward-compatible database schema migration with rollback and tests.",
           "workflow_path": "areas/software/backend/workflows/add-migration.md",
-          "use_when": "The request explicitly needs a database schema change in a backend service, delivered with expand and contract steps.",
+          "use_when": "The request asks to add, rename, drop or change a table, column, index or constraint in a service database through a migration.",
           "inputs": [
-            "schema_change_request",
-            "affected_services"
+            "schema_change"
           ],
           "outputs": [
-            "migration_artifacts",
-            "validation_report"
+            "migration_file",
+            "tests",
+            "docs_page"
           ],
-          "roles": [
-            "pm",
-            "team-lead",
-            "developer",
-            "qa"
-          ],
+          "roles": [],
           "related_rules": [
             "data_access.md",
-            "architecture.md",
             "testing.md"
           ],
-          "uses_skills": [
-            "database-modeling",
-            "troubleshooting"
-          ],
-          "skill_refs": [
-            {
-              "name": "database-modeling",
-              "path": "areas/software/backend/skills/database-modeling/SKILL.md"
-            },
-            {
-              "name": "troubleshooting",
-              "path": "areas/software/backend/skills/troubleshooting/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "forward migration validated on test DB",
-            "rollback or mitigation strategy documented"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /add-migration\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  role_4[\"pm\"]\n  step_1[\"1. Risk & Compatibility Analysis\"]\n  step_2[\"2. Migration Implementation\"]\n  step_3[\"3. Test DB Validation & Data Checks\"]\n  step_4[\"4. Review & Remediation Loop\"]\n  step_5[\"5. Readiness Report\"]\n  exit([\"Validated migration + readiness report + @team-lead approval = ready to dep...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
-          "examples": []
-        },
-        {
-          "trigger": "/create-endpoint",
-          "name": "create-endpoint",
-          "description": "Implement a new API endpoint with contract, security, and test coverage.",
-          "workflow_path": "areas/software/backend/workflows/create-endpoint.md",
-          "use_when": "The request asks for one new HTTP or RPC API endpoint with its contract, authorization, validation and tests.",
-          "inputs": [
-            "endpoint_scope",
-            "api_contract",
-            "non_functional_requirements"
-          ],
-          "outputs": [
-            "production_ready_endpoint",
-            "tests_and_review_evidence"
-          ],
-          "roles": [
-            "product-owner",
-            "pm",
-            "team-lead",
-            "developer",
-            "qa"
-          ],
-          "related_rules": [
-            "architecture.md",
-            "data_access.md",
-            "security.md",
-            "testing.md"
-          ],
-          "uses_skills": [
-            "api-design",
-            "database-modeling",
-            "troubleshooting"
-          ],
-          "skill_refs": [
-            {
-              "name": "api-design",
-              "path": "areas/software/backend/skills/api-design/SKILL.md"
-            },
-            {
-              "name": "database-modeling",
-              "path": "areas/software/backend/skills/database-modeling/SKILL.md"
-            },
-            {
-              "name": "troubleshooting",
-              "path": "areas/software/backend/skills/troubleshooting/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "API contract approved before implementation",
-            "security checks passed (auth, input validation, rate limiting)"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /create-endpoint\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Scope & Contract\"]\n  step_2[\"2. Architecture Review\"]\n  step_3[\"3. Implementation\"]\n  step_4[\"4. Test Design & Execution\"]\n  step_5[\"5. Code Review & Sign-off\"]\n  step_6[\"6. Fix / Retest Loop\"]\n  step_7[\"7. Acceptance\"]\n  exit([\"Accepted endpoint + passing tests + @team-lead sign-off = ready to merge.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_5 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_4 -. owns .-> step_6\n  role_5 -. owns .-> step_6\n  role_1 -. owns .-> step_7\n  role_2 -. owns .-> step_7",
-          "examples": []
-        },
-        {
-          "trigger": "/debug-issue",
-          "name": "debug-issue",
-          "description": "Resolve backend defects with reproducible diagnosis, verified fix, and root cause documentation.",
-          "workflow_path": "areas/software/backend/workflows/debug-issue.md",
-          "use_when": "A backend service has a reported defect, error or incident and the request asks for a diagnosed and verified fix.",
-          "inputs": [
-            "incident_or_bug_report",
-            "logs_metrics_traces"
-          ],
-          "outputs": [
-            "verified_fix",
-            "root_cause_summary"
-          ],
-          "roles": [
-            "pm",
-            "team-lead",
-            "developer",
-            "qa"
-          ],
-          "related_rules": [
-            "architecture.md",
-            "security.md",
-            "testing.md"
-          ],
-          "uses_skills": [
-            "observability",
-            "troubleshooting"
-          ],
-          "skill_refs": [
-            {
-              "name": "observability",
-              "path": "areas/software/backend/skills/observability/SKILL.md"
-            },
-            {
-              "name": "troubleshooting",
-              "path": "areas/software/backend/skills/troubleshooting/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "issue reproducible before fix is written",
-            "fix verified by automated checks and regression test"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /debug-issue\"])\n  role_1[\"pm\"]\n  role_2[\"team-lead\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  step_1[\"1. Triage & Impact Classification\"]\n  step_2[\"2. Reproduce & Isolate\"]\n  step_3[\"3. Fix Implementation\"]\n  step_4[\"4. Verification & Regression Checks\"]\n  step_5[\"5. Technical Review & Closure\"]\n  exit([\"Merged fix + verified resolution + root cause documented = incident closed.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_2 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/develop-epic",
-          "name": "develop-epic",
-          "description": "Deliver a large multi-increment backend epic with controlled milestones and replanning.",
-          "workflow_path": "areas/software/backend/workflows/develop-epic.md",
-          "use_when": "The request is a large backend initiative that needs several planned increments, milestones and replanning.",
-          "inputs": [
-            "epic_goals",
-            "prioritized_backlog"
-          ],
-          "outputs": [
-            "incrementally_delivered_epic",
-            "decision_and_risk_log"
-          ],
-          "roles": [
-            "product-owner",
-            "pm",
-            "team-lead",
-            "developer",
-            "qa",
-            "devops-engineer"
-          ],
-          "related_rules": [
-            "architecture.md",
-            "data_access.md",
-            "security.md",
-            "testing.md"
-          ],
-          "uses_skills": [
-            "api-design",
-            "async-processing",
-            "observability",
-            "troubleshooting"
-          ],
-          "skill_refs": [
-            {
-              "name": "api-design",
-              "path": "areas/software/backend/skills/api-design/SKILL.md"
-            },
-            {
-              "name": "async-processing",
-              "path": "areas/software/backend/skills/async-processing/SKILL.md"
-            },
-            {
-              "name": "observability",
-              "path": "areas/software/backend/skills/observability/SKILL.md"
-            },
-            {
-              "name": "troubleshooting",
-              "path": "areas/software/backend/skills/troubleshooting/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "each increment is independently testable and deployable",
-            "integration and regression checks pass after each increment"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-epic\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  role_6[\"devops-engineer\"]\n  step_1[\"1. Epic Decomposition & Milestone Planning\"]\n  step_2[\"2. Architecture Runway Definition\"]\n  step_3[\"3. Increment Implementation\"]\n  step_4[\"4. Increment Verification\"]\n  step_5[\"5. Milestone Review & Replanning\"]\n  step_6[\"6. Deployment (optional)\"]\n  step_7[\"7. Final Acceptance\"]\n  exit([\"All increments accepted by @product-owner + clean regression suite = epic d...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_5 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_6 -. owns .-> step_6\n  role_1 -. owns .-> step_7\n  step_7 -. iterate if blocked .-> step_1",
-          "examples": []
-        },
-        {
-          "trigger": "/develop-feature",
-          "name": "develop-feature",
-          "description": "End-to-end backend feature delivery from requirements to accepted increment.",
-          "workflow_path": "areas/software/backend/workflows/develop-feature.md",
-          "use_when": "The request explicitly asks for a server-side feature in a backend service, such as business logic, persistence or an API change with acceptance criteria.",
-          "inputs": [
-            "feature_request",
-            "acceptance_criteria"
-          ],
-          "outputs": [
-            "delivered_feature",
-            "release_readiness_report"
-          ],
-          "roles": [
-            "product-owner",
-            "pm",
-            "team-lead",
-            "developer",
-            "qa",
-            "analyst",
-            "devops-engineer"
-          ],
-          "related_rules": [
-            "architecture.md",
-            "data_access.md",
-            "security.md",
-            "testing.md"
-          ],
-          "uses_skills": [
-            "api-design",
-            "async-processing",
-            "observability"
-          ],
-          "skill_refs": [
-            {
-              "name": "api-design",
-              "path": "areas/software/backend/skills/api-design/SKILL.md"
-            },
-            {
-              "name": "async-processing",
-              "path": "areas/software/backend/skills/async-processing/SKILL.md"
-            },
-            {
-              "name": "observability",
-              "path": "areas/software/backend/skills/observability/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "scope and acceptance criteria approved before implementation",
-            "all automated checks pass (lint / test / build)"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-feature\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"analyst\"]\n  role_5[\"developer\"]\n  role_6[\"qa\"]\n  role_7[\"devops-engineer\"]\n  step_1[\"1. Requirements & Value Framing\"]\n  step_2[\"2. Solution Design & Risk Plan\"]\n  step_3[\"3. Implementation\"]\n  step_4[\"4. Risk-Based Verification\"]\n  step_5[\"5. Code Review & Architecture Sign-off\"]\n  step_6[\"6. Fix / Retest Loop\"]\n  step_7[\"7. Deployment (optional)\"]\n  step_8[\"8. Acceptance & Final Report\"]\n  exit([\"@product-owner acceptance + no unresolved blockers = feature complete and r...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_2\n  role_5 -. owns .-> step_3\n  role_6 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_5 -. owns .-> step_6\n  role_6 -. owns .-> step_6\n  role_2 -. owns .-> step_6\n  role_7 -. owns .-> step_7\n  role_1 -. owns .-> step_8\n  role_2 -. owns .-> step_8\n  step_8 -. iterate if blocked .-> step_1",
-          "examples": []
-        },
-        {
-          "trigger": "/refactor-module",
-          "name": "refactor-module",
-          "description": "Safely refactor backend modules with behavior parity guarantee and no functional regressions.",
-          "workflow_path": "areas/software/backend/workflows/refactor-module.md",
-          "use_when": "The request asks to restructure existing backend code without changing its behaviour.",
-          "inputs": [
-            "refactor_goal",
-            "baseline_behavior"
-          ],
-          "outputs": [
-            "refactored_module",
-            "behavior_parity_evidence"
-          ],
-          "roles": [
-            "team-lead",
-            "developer",
-            "qa"
-          ],
-          "related_rules": [
-            "architecture.md",
-            "testing.md"
-          ],
-          "uses_skills": [
-            "troubleshooting",
-            "observability"
-          ],
-          "skill_refs": [
-            {
-              "name": "troubleshooting",
-              "path": "areas/software/backend/skills/troubleshooting/SKILL.md"
-            },
-            {
-              "name": "observability",
-              "path": "areas/software/backend/skills/observability/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "behavior baseline captured before refactor begins",
-            "no regressions on critical flows"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /refactor-module\"])\n  role_1[\"team-lead\"]\n  role_2[\"qa\"]\n  role_3[\"developer\"]\n  step_1[\"1. Refactor Plan & Boundaries\"]\n  step_2[\"2. Baseline Test Coverage\"]\n  step_3[\"3. Incremental Refactor Implementation\"]\n  step_4[\"4. Regression Validation\"]\n  step_5[\"5. Review / Fix Loop\"]\n  step_6[\"6. Closure with Parity Report\"]\n  exit([\"Merged refactor + behavior parity confirmed + improvement goal achieved = r...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_2 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
-          "examples": []
-        },
-        {
-          "trigger": "/test-feature",
-          "name": "test-feature",
-          "description": "Expand backend test coverage with risk-based scenario design and stable CI integration.",
-          "workflow_path": "areas/software/backend/workflows/test-feature.md",
-          "use_when": "The request asks only to add or improve automated tests for existing backend behaviour.",
-          "inputs": [
-            "feature_scope",
-            "acceptance_criteria"
-          ],
-          "outputs": [
-            "comprehensive_test_suite",
-            "quality_report"
-          ],
-          "roles": [
-            "qa",
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "testing.md",
-            "architecture.md"
-          ],
-          "uses_skills": [
-            "troubleshooting",
-            "database-modeling"
-          ],
-          "skill_refs": [
-            {
-              "name": "troubleshooting",
-              "path": "areas/software/backend/skills/troubleshooting/SKILL.md"
-            },
-            {
-              "name": "database-modeling",
-              "path": "areas/software/backend/skills/database-modeling/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "critical paths and failure paths covered",
-            "all tests stable across 3+ consecutive CI runs"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /test-feature\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Coverage Gap Analysis\"]\n  step_2[\"2. Testability Adjustments\"]\n  step_3[\"3. Automated Test Implementation\"]\n  step_4[\"4. Review of Scenarios & Assertions\"]\n  step_5[\"5. Stability Run & Reporting\"]\n  exit([\"Stable test suite + coverage threshold met + @team-lead approval = tests re...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
-        }
-      ]
-    },
-    {
-      "area": "software/data-engineering",
-      "workflows": [
-        {
-          "trigger": "/backfill-data",
-          "name": "backfill-data",
-          "description": "Safely reprocess historical data without disrupting live pipelines or downstream consumers.",
-          "workflow_path": "areas/software/data-engineering/workflows/backfill-data.md",
-          "use_when": "The request asks to reprocess historical data for a model or date range without disrupting live pipelines.",
-          "inputs": [
-            "model_name",
-            "date_range"
-          ],
-          "outputs": [
-            "backfilled_model",
-            "validation_report"
-          ],
-          "roles": [
-            "developer",
-            "qa",
-            "team-lead"
-          ],
-          "related_rules": [
-            "pipeline-integrity.md",
-            "data-governance.md"
-          ],
-          "uses_skills": [
-            "orchestration",
-            "quality-checks"
-          ],
-          "skill_refs": [
-            {
-              "name": "orchestration",
-              "path": "areas/software/data-engineering/skills/orchestration/SKILL.md"
-            },
-            {
-              "name": "quality-checks",
-              "path": "areas/software/data-engineering/skills/quality-checks/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "single-partition validated before full run",
-            "no duplicates on unique key post-backfill"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /backfill-data\"])\n  role_1[\"developer\"]\n  role_2[\"team-lead\"]\n  role_3[\"qa\"]\n  step_1[\"1. Impact Assessment\"]\n  step_2[\"2. Dry Run\"]\n  step_3[\"3. Execute Backfill\"]\n  step_4[\"4. Post-Backfill Validation\"]\n  exit([\"Validated backfill + notified consumers + @team-lead sign-off = backfill co...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_3 -. owns .-> step_4",
-          "examples": []
-        },
-        {
-          "trigger": "/data-quality-incident",
-          "name": "data-quality-incident",
-          "description": "Triage and resolve a data quality issue with quarantine, root cause analysis, and prevention.",
-          "workflow_path": "areas/software/data-engineering/workflows/data-quality-incident.md",
-          "use_when": "Wrong, missing or duplicated data was found in a model and the request asks to quarantine, fix and prevent it.",
-          "inputs": [
-            "model_name",
-            "incident_type"
-          ],
-          "outputs": [
-            "remediated_model",
-            "postmortem"
-          ],
-          "roles": [
-            "qa",
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "pipeline-integrity.md",
-            "data-governance.md",
-            "pii-handling.md"
-          ],
-          "uses_skills": [
-            "quality-checks",
-            "lineage-governance"
-          ],
-          "skill_refs": [
-            {
-              "name": "quality-checks",
-              "path": "areas/software/data-engineering/skills/quality-checks/SKILL.md"
-            },
-            {
-              "name": "lineage-governance",
-              "path": "areas/software/data-engineering/skills/lineage-governance/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "affected partitions quarantined before fix",
-            "root cause identified and documented"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /data-quality-incident\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Scope & Triage\"]\n  step_2[\"2. Quarantine\"]\n  step_3[\"3. Root Cause Isolation\"]\n  step_4[\"4. Remediation\"]\n  step_5[\"5. Post-Incident\"]\n  exit([\"Clean model + postmortem published + prevention measures added = incident c...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_1 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/lineage-trace",
-          "name": "lineage-trace",
-          "description": "Visualize full data lineage and assess blast radius of a column or table change before executing it.",
-          "workflow_path": "areas/software/data-engineering/workflows/lineage-trace.md",
-          "use_when": "The request asks which downstream models, dashboards or consumers depend on a column or table before it changes.",
-          "inputs": [
-            "target_column_or_table",
-            "direction"
-          ],
-          "outputs": [
-            "lineage_diagram",
-            "impact_report"
-          ],
-          "roles": [
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "data-governance.md",
-            "schema-management.md"
-          ],
-          "uses_skills": [
-            "lineage-governance",
-            "data-modeling"
-          ],
-          "skill_refs": [
-            {
-              "name": "lineage-governance",
-              "path": "areas/software/data-engineering/skills/lineage-governance/SKILL.md"
-            },
-            {
-              "name": "data-modeling",
-              "path": "areas/software/data-engineering/skills/data-modeling/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "all downstream models and dashboards identified",
-            "SLA-critical models in blast radius explicitly flagged"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /lineage-trace\"])\n  role_1[\"developer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Parse Target\"]\n  step_2[\"2. Trace Lineage\"]\n  step_3[\"3. Impact Assessment\"]\n  step_4[\"4. Generate Report\"]\n  exit([\"Published lineage report + migration checklist = ready to plan the change s...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4",
-          "examples": []
-        },
-        {
-          "trigger": "/new-model",
-          "name": "new-model",
-          "description": "Scaffold a complete dbt model with SQL, documentation, tests, and lineage from requirements to validated output.",
-          "workflow_path": "areas/software/data-engineering/workflows/new-model.md",
-          "use_when": "The request asks for a new dbt model with SQL, documentation, tests and lineage.",
-          "inputs": [
-            "model_name",
-            "layer",
-            "source_table"
-          ],
-          "outputs": [
-            "dbt_model_sql",
-            "yaml_documentation",
-            "validated_model"
-          ],
-          "roles": [
-            "pm",
-            "team-lead",
-            "developer",
-            "qa"
-          ],
-          "related_rules": [
-            "schema-management.md",
-            "pipeline-integrity.md",
-            "data-governance.md"
-          ],
-          "uses_skills": [
-            "data-modeling",
-            "dbt-patterns",
-            "quality-checks"
-          ],
-          "skill_refs": [
-            {
-              "name": "data-modeling",
-              "path": "areas/software/data-engineering/skills/data-modeling/SKILL.md"
-            },
-            {
-              "name": "dbt-patterns",
-              "path": "areas/software/data-engineering/skills/dbt-patterns/SKILL.md"
-            },
-            {
-              "name": "quality-checks",
-              "path": "areas/software/data-engineering/skills/quality-checks/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "dbt compile passes with no errors",
-            "standard tests pass (unique/not_null on PK, relationships on FKs)"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /new-model\"])\n  role_1[\"pm\"]\n  role_2[\"team-lead\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  step_1[\"1. Requirements Gathering\"]\n  step_2[\"2. Model Design\"]\n  step_3[\"3. SQL & YAML Implementation\"]\n  step_4[\"4. Validation\"]\n  step_5[\"5. Review & Merge\"]\n  exit([\"Passing dbt tests + complete YAML docs + @team-lead approval = model produc...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_2 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/schema-migration",
-          "name": "schema-migration",
-          "description": "Execute a data warehouse schema migration safely with downstream impact management and expand/contract when needed.",
-          "workflow_path": "areas/software/data-engineering/workflows/schema-migration.md",
-          "use_when": "The request asks to change a data warehouse table schema and manage the impact on downstream consumers.",
-          "inputs": [
-            "table_name",
-            "change_type"
-          ],
-          "outputs": [
-            "migrated_schema",
-            "downstream_notification"
-          ],
-          "roles": [
-            "developer",
-            "team-lead",
-            "qa"
-          ],
-          "related_rules": [
-            "schema-management.md",
-            "pipeline-integrity.md",
-            "data-governance.md"
-          ],
-          "uses_skills": [
-            "data-modeling",
-            "lineage-governance"
-          ],
-          "skill_refs": [
-            {
-              "name": "data-modeling",
-              "path": "areas/software/data-engineering/skills/data-modeling/SKILL.md"
-            },
-            {
-              "name": "lineage-governance",
-              "path": "areas/software/data-engineering/skills/lineage-governance/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "non-breaking changes confirmed or expand/contract plan approved",
-            "all dbt tests pass post-migration"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /schema-migration\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  step_1[\"1. Change Classification\"]\n  step_2[\"2. Impact Assessment\"]\n  step_3[\"3. Migration Strategy\"]\n  step_4[\"4. Execute Migration\"]\n  step_5[\"5. Verify & Document\"]\n  exit([\"Post-migration tests green + catalog updated + owners notified = migration...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5",
-          "examples": []
-        }
-      ]
-    },
-    {
-      "area": "software/frontend",
-      "workflows": [
-        {
-          "trigger": "/a11y-fix",
-          "name": "a11y-fix",
-          "description": "Detect, fix, and validate accessibility issues for UI routes or components with WCAG compliance evidence.",
-          "workflow_path": "areas/software/frontend/workflows/a11y-fix.md",
-          "use_when": "The request asks to find or fix accessibility problems in UI routes or components against WCAG.",
-          "inputs": [
-            "target_route_or_component"
-          ],
-          "outputs": [
-            "remediated_accessibility_issues",
-            "a11y_report"
-          ],
-          "roles": [
-            "qa",
-            "analyst",
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "accessibility.md",
-            "quality.md"
-          ],
-          "uses_skills": [
-            "a11y-audit",
-            "testing-patterns"
-          ],
-          "skill_refs": [
-            {
-              "name": "a11y-audit",
-              "path": "areas/software/frontend/skills/a11y-audit/SKILL.md"
-            },
-            {
-              "name": "testing-patterns",
-              "path": "areas/software/frontend/skills/testing-patterns/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "no blocking WCAG A issues remaining",
-            "keyboard and screen-reader critical paths validated"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /a11y-fix\"])\n  role_1[\"qa\"]\n  role_2[\"analyst\"]\n  role_3[\"developer\"]\n  role_4[\"team-lead\"]\n  step_1[\"1. Audit & Severity Classification\"]\n  step_2[\"2. UX Decision for Ambiguous Fixes\"]\n  step_3[\"3. Implement Fixes\"]\n  step_4[\"4. Re-test & Regression Checks\"]\n  step_5[\"5. Final Review & Acceptance\"]\n  exit([\"Zero WCAG A issues + screen reader path validated + @team-lead approval = a...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_4 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/bundle-analyze",
-          "name": "bundle-analyze",
-          "description": "Analyze frontend bundle size impact and produce a prioritized optimization backlog.",
-          "workflow_path": "areas/software/frontend/workflows/bundle-analyze.md",
-          "use_when": "The request asks why a frontend bundle grew or how to reduce its size.",
-          "inputs": [
-            "build_artifacts",
-            "baseline_metrics"
-          ],
-          "outputs": [
-            "bundle_diff_report",
-            "optimization_backlog"
-          ],
-          "roles": [
-            "developer",
-            "qa",
-            "team-lead",
-            "pm"
-          ],
-          "related_rules": [
-            "performance.md",
-            "architecture.md"
-          ],
-          "uses_skills": [
-            "performance-tuning"
-          ],
-          "skill_refs": [
-            {
-              "name": "performance-tuning",
-              "path": "areas/software/frontend/skills/performance-tuning/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "budget regressions triaged with root cause"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /bundle-analyze\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  role_4[\"pm\"]\n  step_1[\"1. Generate & Compare Bundle Metrics\"]\n  step_2[\"2. Validate Measurement Reliability\"]\n  step_3[\"3. Prioritize Optimization Candidates\"]\n  step_4[\"4. Publish Report & Next Actions\"]\n  exit([\"Report published + backlog items created = bundle analysis complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_3\n  role_4 -. owns .-> step_4",
-          "examples": []
-        },
-        {
-          "trigger": "/release-prep",
-          "name": "release-prep",
-          "description": "Prepare a frontend release through coordinated quality, performance, accessibility, and product checks.",
-          "workflow_path": "areas/software/frontend/workflows/release-prep.md",
-          "use_when": "The request asks whether a frontend release is ready, with quality, performance and accessibility checks and release notes.",
-          "inputs": [
-            "release_scope",
-            "target_version"
-          ],
-          "outputs": [
-            "release_readiness_decision",
-            "release_notes"
-          ],
-          "roles": [
-            "product-owner",
-            "pm",
-            "developer",
-            "qa",
-            "team-lead"
-          ],
-          "related_rules": [
-            "quality.md",
-            "performance.md",
-            "accessibility.md"
-          ],
-          "uses_skills": [
-            "performance-tuning",
-            "testing-patterns"
-          ],
-          "skill_refs": [
-            {
-              "name": "performance-tuning",
-              "path": "areas/software/frontend/skills/performance-tuning/SKILL.md"
-            },
-            {
-              "name": "testing-patterns",
-              "path": "areas/software/frontend/skills/testing-patterns/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "all automated checks pass (lint / test / build / a11y / bundle)",
-            "regression smoke test passes"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /release-prep\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  role_5[\"team-lead\"]\n  step_1[\"1. Confirm Release Scope & Success Criteria\"]\n  step_2[\"2. Execute Build/Lint/Test/Perf Checks\"]\n  step_3[\"3. Regression + Smoke Verification\"]\n  step_4[\"4. Review Go/No-Go Risks\"]\n  step_5[\"5. Publish Release Notes & Decision\"]\n  exit([\"Go decision + approved release notes + all checks passed = release ready to...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_5 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_1 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/scaffold-component",
-          "name": "scaffold-component",
-          "description": "Create a reusable UI component with design alignment, implementation, tests, and accessibility checks.",
-          "workflow_path": "areas/software/frontend/workflows/scaffold-component.md",
-          "use_when": "The request asks for a new reusable UI component that follows a design system, with tests and accessibility checks.",
-          "inputs": [
-            "component_request",
-            "design_system_context"
-          ],
-          "outputs": [
-            "scaffolded_component",
-            "validation_evidence"
-          ],
-          "roles": [
-            "product-owner",
-            "analyst",
-            "developer",
-            "qa",
-            "team-lead"
-          ],
-          "related_rules": [
-            "architecture.md",
-            "quality.md",
-            "accessibility.md"
-          ],
-          "uses_skills": [
-            "component-design",
-            "css-architecture",
-            "testing-patterns"
-          ],
-          "skill_refs": [
-            {
-              "name": "component-design",
-              "path": "areas/software/frontend/skills/component-design/SKILL.md"
-            },
-            {
-              "name": "css-architecture",
-              "path": "areas/software/frontend/skills/css-architecture/SKILL.md"
-            },
-            {
-              "name": "testing-patterns",
-              "path": "areas/software/frontend/skills/testing-patterns/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "component API documented (props, events, slots)",
-            "all component states implemented (loading, empty, error, success)"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /scaffold-component\"])\n  role_1[\"product-owner\"]\n  role_2[\"analyst\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  role_5[\"team-lead\"]\n  step_1[\"1. Component Intent & Acceptance Criteria\"]\n  step_2[\"2. Design System Alignment\"]\n  step_3[\"3. Component Implementation\"]\n  step_4[\"4. Functional & Accessibility Verification\"]\n  step_5[\"5. Code Review & Merge Readiness\"]\n  exit([\"Accepted component + passing tests + a11y clear = ready to merge and publis...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/visual-regression",
-          "name": "visual-regression",
-          "description": "Detect, triage, and resolve unintended UI visual diffs before release using snapshot comparison.",
-          "workflow_path": "areas/software/frontend/workflows/visual-regression.md",
-          "use_when": "The request asks to find or approve unintended visual changes in UI snapshots before a release.",
-          "inputs": [
-            "changed_ui_scope",
-            "baseline_snapshots"
-          ],
-          "outputs": [
-            "visual_diff_report",
-            "approved_or_rejected_baseline_update"
-          ],
-          "roles": [
-            "developer",
-            "qa",
-            "analyst",
-            "team-lead"
-          ],
-          "related_rules": [
-            "quality.md",
-            "accessibility.md",
-            "performance.md"
-          ],
-          "uses_skills": [
-            "testing-patterns",
-            "component-design"
-          ],
-          "skill_refs": [
-            {
-              "name": "testing-patterns",
-              "path": "areas/software/frontend/skills/testing-patterns/SKILL.md"
-            },
-            {
-              "name": "component-design",
-              "path": "areas/software/frontend/skills/component-design/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "critical diffs reviewed by analyst before baseline update",
-            "accepted diffs documented with rationale"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /visual-regression\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"analyst\"]\n  role_4[\"team-lead\"]\n  step_1[\"1. Determine Visual Test Scope\"]\n  step_2[\"2. Run Capture & Comparison Suite\"]\n  step_3[\"3. Classify Diffs\"]\n  step_4[\"4. Fix or Approve Baseline Updates\"]\n  step_5[\"5. Final Gate Decision\"]\n  exit([\"Zero unexpected diffs + all baseline updates analyst-approved + @team-lead...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_3 -. owns .-> step_4\n  role_4 -. owns .-> step_5",
-          "examples": []
-        }
-      ]
-    },
-    {
-      "area": "software/full-stack",
-      "workflows": [
-        {
-          "trigger": "/backend-project-full-cycle",
-          "name": "backend-project-full-cycle",
-          "description": "Full backend project lifecycle — planning → implementation → blackbox validation — for a greenfield service.",
-          "workflow_path": "areas/software/full-stack/workflows/backend-project-full-cycle.md",
-          "use_when": "The request explicitly asks for a new production backend service, such as an HTTP API server, built from an empty project through planning, implementation and blackbox validation.",
-          "inputs": [
-            "project_name",
-            "project_dir",
-            "tech_stack",
-            "business_logic_description"
-          ],
-          "outputs": [
-            "production_ready_service"
-          ],
-          "roles": [
-            "pm",
-            "team-lead",
-            "developer",
-            "qa",
-            "devops-engineer"
-          ],
-          "related_rules": [
-            "project-guide.md",
-            "backend-architecture-rule.md",
-            "code-quality-guide.md",
-            "env-settings-guide.md",
-            "testing-ci-guide.md",
-            "e2e-test-guide.md"
-          ],
-          "uses_skills": [
-            "prompt-project-planner",
-            "app-builder",
-            "blackbox-test"
-          ],
-          "skill_refs": [
-            {
-              "name": "prompt-project-planner",
-              "path": "areas/software/full-stack/skills/prompt-project-planner/SKILL.md"
-            },
-            {
-              "name": "app-builder",
-              "path": "areas/software/full-stack/skills/app-builder/SKILL.md"
-            },
-            {
-              "name": "blackbox-test",
-              "path": "areas/software/full-stack/skills/blackbox-test/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "plan explicitly approved by user before any code is written",
-            "unit tests pass with coverage ≥ 70%"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /backend-project-full-cycle\"])\n  role_1[\"team-lead\"]\n  role_2[\"pm\"]\n  role_3[\"developer\"]\n  role_4[\"qa\"]\n  role_5[\"devops-engineer\"]\n  step_1[\"1.1 — Define Tech Stack\"]\n  step_2[\"1.2 — Requirements Clarification\"]\n  step_3[\"1.3 — Architecture Plan\"]\n  step_4[\"1.4 — Plan Approval\"]\n  step_5[\"2.1 — Backend Logic\"]\n  step_6[\"2.2 — Unit Tests & Quality\"]\n  step_7[\"2.3 — Code Review\"]\n  step_8[\"3.1 — E2E Validation\"]\n  step_9[\"3.2 — Results Review & Report\"]\n  step_10[\"3.3 — Deployment (optional)\"]\n  exit([\"Green E2E tests + @team-lead sign-off + delivery report = production-ready...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> step_9\n  step_9 --> step_10\n  step_10 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_4 -. owns .-> step_6\n  role_1 -. owns .-> step_7\n  role_4 -. owns .-> step_8\n  role_1 -. owns .-> step_9\n  role_2 -. owns .-> step_9\n  role_5 -. owns .-> step_10\n  step_10 -. iterate if blocked .-> step_1",
-          "examples": []
-        },
-        {
-          "trigger": "/debug-issue-fullstack",
-          "name": "debug-issue-fullstack",
-          "description": "Systematically diagnose and fix a bug in a full-stack Python/FastAPI + Next.js application.",
-          "workflow_path": "areas/software/full-stack/workflows/debug-issue-fullstack.md",
-          "use_when": "A bug spans the FastAPI backend and the Next.js frontend of a full-stack application and needs a fix with a regression test.",
-          "inputs": [
-            "issue_description",
-            "error_logs",
-            "reproduction_steps"
-          ],
-          "outputs": [
-            "root_cause_identified",
-            "fix_implemented",
-            "regression_test_added"
-          ],
-          "roles": [
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "backend-architecture-rule.md",
-            "testing-ci-guide.md",
-            "logging-observability-guide.md"
-          ],
-          "uses_skills": [
-            "backend-developer",
-            "blackbox-test"
-          ],
-          "skill_refs": [
-            {
-              "name": "backend-developer",
-              "path": "areas/software/full-stack/skills/backend-developer/SKILL.md"
-            },
-            {
-              "name": "blackbox-test",
-              "path": "areas/software/full-stack/skills/blackbox-test/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "bug reproducible before fix",
-            "regression test fails before fix, passes after",
-            "no mypy/ruff errors introduced"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /debug-issue-fullstack\"])\n  role_1[\"developer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Triage\"]\n  step_2[\"2. Reproduce\"]\n  step_3[\"3. Root Cause Analysis\"]\n  step_4[\"4. Fix\"]\n  step_5[\"5. Review & Document\"]\n  exit([\"Merged fix + regression test + root cause documented in ticket (and docs/in...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
-          "examples": []
-        },
-        {
-          "trigger": "/develop-feature-fullstack",
-          "name": "develop-feature-fullstack",
-          "description": "Implement a feature end-to-end in a full-stack Python/FastAPI project following the layered architecture.",
-          "workflow_path": "areas/software/full-stack/workflows/develop-feature-fullstack.md",
-          "use_when": "The request asks for a feature in a full-stack Python FastAPI project that touches the backend layers and possibly the UI.",
-          "inputs": [
-            "feature_description",
-            "acceptance_criteria",
-            "tech_stack"
-          ],
-          "outputs": [
-            "working_feature_branch",
-            "tests_passing",
-            "pr_ready"
-          ],
-          "roles": [
-            "team-lead",
-            "developer",
-            "qa",
-            "devops-engineer"
-          ],
-          "related_rules": [
-            "backend-architecture-rule.md",
-            "api-design-guide.md",
-            "domain-models-guide.md",
-            "database-migrations-guide.md",
-            "testing-ci-guide.md"
-          ],
-          "uses_skills": [
-            "backend-developer",
-            "api-design-principles"
-          ],
-          "skill_refs": [
-            {
-              "name": "backend-developer",
-              "path": "areas/software/full-stack/skills/backend-developer/SKILL.md"
-            },
-            {
-              "name": "api-design-principles",
-              "path": "areas/software/full-stack/skills/api-design-principles/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "all tests pass (unit + integration + e2e)",
-            "no mypy/ruff errors",
-            "architecture layer boundaries respected (no cross-layer imports)"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /develop-feature-fullstack\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  role_4[\"devops-engineer\"]\n  step_1[\"1. Design\"]\n  step_2[\"2. DB Model & Migration\"]\n  step_3[\"3. Repository Layer\"]\n  step_4[\"4. Service Layer\"]\n  step_5[\"5. API Endpoint\"]\n  step_6[\"6. Frontend / UI\"]\n  step_7[\"7. QA & PR\"]\n  step_8[\"8. Deployment (optional)\"]\n  step_9[\"9. Document & Version\"]\n  exit([\"Merged PR with passing CI, docs and CHANGELOG updated, version bumped. Feat...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> step_8\n  step_8 --> step_9\n  step_9 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_2 -. owns .-> step_6\n  role_3 -. owns .-> step_7\n  role_1 -. owns .-> step_7\n  role_4 -. owns .-> step_8\n  role_2 -. owns .-> step_9\n  step_9 -. iterate if blocked .-> step_1",
-          "examples": []
-        },
-        {
-          "trigger": "/feature-implementation-flow",
-          "name": "feature-implementation-flow",
-          "description": "Implement a single feature into an existing full-stack service with strict layered architecture. Use for stack-agnostic feature increments; use /develop-feature-fullstack for the FastAPI-specific end-to-end feature workflow.",
-          "workflow_path": "areas/software/full-stack/workflows/feature-implementation-flow.md",
-          "use_when": "The request asks to add one feature to an existing full-stack service with a layered architecture, in any stack.",
-          "inputs": [
-            "feature_request",
-            "existing_codebase"
-          ],
-          "outputs": [
-            "implemented_feature",
-            "passing_tests"
-          ],
-          "roles": [
-            "pm",
-            "team-lead",
-            "analyst",
-            "developer",
-            "qa",
-            "devops-engineer"
-          ],
-          "related_rules": [
-            "backend-architecture-rule.md",
-            "code-quality-guide.md",
-            "testing-ci-guide.md"
-          ],
-          "uses_skills": [
-            "backend-developer"
-          ],
-          "skill_refs": [
-            {
-              "name": "backend-developer",
-              "path": "areas/software/full-stack/skills/backend-developer/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "layered architecture rules respected (no business logic in API layer)",
-            "unit and integration tests pass"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /feature-implementation-flow\"])\n  role_1[\"pm\"]\n  role_2[\"team-lead\"]\n  role_3[\"analyst\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  role_6[\"devops-engineer\"]\n  step_1[\"1. Requirement Analysis & Models\"]\n  step_2[\"2. Design & Planning\"]\n  step_3[\"3. Implementation — Inner to Outer\"]\n  step_4[\"4. Verification\"]\n  step_5[\"5. Review\"]\n  step_6[\"6. Fix / Retest Loop\"]\n  step_7[\"7. Deployment (optional)\"]\n  exit([\"@team-lead approval + passing checks = feature ready to merge.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_4 -. owns .-> step_6\n  role_5 -. owns .-> step_6\n  role_6 -. owns .-> step_7",
-          "examples": []
-        },
-        {
-          "trigger": "/testing-ci-pipeline",
-          "name": "testing-ci-pipeline",
-          "description": "Run the full CI and testing pipeline for backend or frontend projects and produce a verified quality signal.",
-          "workflow_path": "areas/software/full-stack/workflows/testing-ci-pipeline.md",
-          "use_when": "The request asks to run the complete test and CI pipeline of a project and report a quality verdict.",
-          "inputs": [
-            "project_type",
-            "test_scope"
-          ],
-          "outputs": [
-            "test_report",
-            "pipeline_status"
-          ],
-          "roles": [
-            "developer",
-            "qa",
-            "team-lead"
-          ],
-          "related_rules": [
-            "testing-ci-guide.md",
-            "code-quality-guide.md"
-          ],
-          "uses_skills": [
-            "blackbox-test"
-          ],
-          "skill_refs": [
-            {
-              "name": "blackbox-test",
-              "path": "areas/software/full-stack/skills/blackbox-test/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "lint and format clean",
-            "all tests in selected scope pass"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /testing-ci-pipeline\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Code Quality Check\"]\n  step_2[\"2. Unit Tests\"]\n  step_3[\"3. Build / Prepare\"]\n  step_4[\"4. E2E / Integration Tests\"]\n  step_5[\"5. Results Review & Report\"]\n  exit([\"All steps green + test_report.md produced = pipeline passed. This pipeline...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  role_2 -. owns .-> step_5",
-          "examples": []
+          "uses_skills": [],
+          "skill_refs": [],
+          "quality_gates": [],
+          "workflow_diagram": "",
+          "examples": [
+            "Rename users.full_name to users.display_name without downtime."
+          ]
         }
       ]
     },
@@ -2198,1261 +264,121 @@
         {
           "trigger": "/code-review-workflow",
           "name": "code-review-workflow",
-          "description": "Conduct a structured, constructive code review of a pull or merge request.",
+          "description": "Review a merge request or diff against its requirements and the review regulation, with evidence per finding.",
           "workflow_path": "areas/software/general/workflows/code-review-workflow.md",
           "use_when": "The request asks to review an existing pull request, merge request or diff and give review comments.",
           "inputs": [
-            "pull_request_or_merge_request",
-            "codebase_context"
+            "merge_request_or_diff",
+            "requirements"
           ],
           "outputs": [
-            "review_comments",
-            "approval_or_change_requests"
+            "review_findings",
+            "verdict"
           ],
-          "roles": [
-            "team-lead",
-            "developer",
-            "qa"
-          ],
+          "roles": [],
           "related_rules": [
             "code-style-guide.md",
-            "git-workflow-guide.md",
-            "sdlc-methodology-guide.md"
+            "docs-layout.md",
+            "git-workflow-guide.md"
           ],
-          "uses_skills": [
-            "general-dev-tools"
-          ],
-          "skill_refs": [
-            {
-              "name": "general-dev-tools",
-              "path": "areas/software/general/skills/general-dev-tools/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "CI pipeline passes before manual review begins",
-            "all blocking comments resolved before approval"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /code-review-workflow\"])\n  role_1[\"developer\"]\n  role_2[\"team-lead\"]\n  role_3[\"qa\"]\n  step_1[\"1. Automated Pre-check\"]\n  step_2[\"2. Context Understanding\"]\n  step_3[\"3. Code Review\"]\n  step_4[\"4. Feedback Resolution\"]\n  step_5[\"5. Approval & Merge\"]\n  exit([\"Approved and merged PR = review complete. This workflow is the reusable rev...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
-          "examples": []
+          "uses_skills": [],
+          "skill_refs": [],
+          "quality_gates": [],
+          "workflow_diagram": "",
+          "examples": [
+            "Review MR !87 \"Add rate limiting to the public API\"."
+          ]
         },
         {
-          "trigger": "/development-cycle-workflow",
-          "name": "development-cycle-workflow",
-          "description": "Implement any development task from ticket to merged code.",
-          "workflow_path": "areas/software/general/workflows/development-cycle-workflow.md",
-          "use_when": "Any ordinary request to build, change or fix software, such as a new program, feature, script or bug fix, in an empty or existing repository, when no specialized workflow is explicitly needed.",
+          "trigger": "/debug-issue",
+          "name": "debug-issue",
+          "description": "Find the root cause of a bug, fix it with a regression test, and record the cause.",
+          "workflow_path": "areas/software/general/workflows/debug-issue.md",
+          "use_when": "The request reports wrong behaviour, an error, a crash, a failing test or a regression in application code and asks to find the cause and fix it.",
           "inputs": [
-            "task_or_issue_description",
-            "existing_codebase"
+            "bug_report",
+            "logs_or_stack_trace"
           ],
           "outputs": [
-            "implemented_changes",
-            "passing_tests",
-            "merged_pull_request"
+            "fix",
+            "regression_test",
+            "docs_page"
           ],
-          "roles": [
-            "product-owner",
-            "pm",
-            "team-lead",
-            "developer",
-            "qa",
-            "devops-engineer"
-          ],
+          "roles": [],
           "related_rules": [
-            "git-workflow-guide.md",
-            "sdlc-methodology-guide.md",
             "code-style-guide.md",
-            "sdlc-role-responsibilities.md",
+            "docs-layout.md"
+          ],
+          "uses_skills": [],
+          "skill_refs": [],
+          "quality_gates": [],
+          "workflow_diagram": "",
+          "examples": [
+            "POST /orders returns 500 when the cart holds a discounted item; find the cause and fix it."
+          ]
+        },
+        {
+          "trigger": "/develop-feature",
+          "name": "develop-feature",
+          "description": "Turn a feature request into working code with tests and an up-to-date feature docs page.",
+          "workflow_path": "areas/software/general/workflows/develop-feature.md",
+          "use_when": "The request asks to build, add or change behaviour in code: a feature, an endpoint, a small program or script, or any coding task that no narrower workflow fits.",
+          "inputs": [
+            "feature_request",
+            "acceptance_criteria"
+          ],
+          "outputs": [
+            "code",
+            "tests",
+            "docs_page"
+          ],
+          "roles": [],
+          "related_rules": [
+            "code-style-guide.md",
+            "docs-layout.md",
+            "readme-sync-guide.md"
+          ],
+          "uses_skills": [],
+          "skill_refs": [],
+          "quality_gates": [],
+          "workflow_diagram": "",
+          "examples": [
+            "Add subscription cancellation: DELETE /subscriptions/{id} records a reason and keeps access until the period ends."
+          ]
+        },
+        {
+          "trigger": "/refactor-module",
+          "name": "refactor-module",
+          "description": "Restructure a module without changing its observable behaviour, guarded by tests.",
+          "workflow_path": "areas/software/general/workflows/refactor-module.md",
+          "use_when": "The request asks to restructure, extract, rename, split or clean up existing code while keeping its behaviour the same.",
+          "inputs": [
+            "module_path",
+            "refactoring_goal"
+          ],
+          "outputs": [
+            "refactored_code",
+            "characterization_tests"
+          ],
+          "roles": [],
+          "related_rules": [
+            "code-style-guide.md",
             "lint-format-guide.md"
           ],
-          "uses_skills": [
-            "general-dev-tools"
-          ],
-          "skill_refs": [
-            {
-              "name": "general-dev-tools",
-              "path": "areas/software/general/skills/general-dev-tools/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "acceptance criteria confirmed before implementation starts",
-            "all checks pass (lint / test / build)"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /development-cycle-workflow\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  role_6[\"devops-engineer\"]\n  step_1[\"1. Requirements Framing\"]\n  step_2[\"2. Technical Design\"]\n  step_3[\"3. Implementation\"]\n  step_4[\"4. Verification\"]\n  step_5[\"5. Pull Request\"]\n  step_6[\"6. Review & Merge\"]\n  step_7[\"7. Deployment (optional)\"]\n  exit([\"Merged PR + acceptance criteria validated in staging = task complete. Spec-...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_5 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_2 -. owns .-> step_6\n  role_6 -. owns .-> step_7\n  step_7 -. iterate if blocked .-> step_1",
-          "examples": []
-        },
-        {
-          "trigger": "/project-setup-workflow",
-          "name": "project-setup-workflow",
-          "description": "Bootstrap a new software project with tooling, CI, and documentation from day one.",
-          "workflow_path": "areas/software/general/workflows/project-setup-workflow.md",
-          "use_when": "The request explicitly asks to initialize tooling, CI and documentation for a new repository, without building product features.",
-          "inputs": [
-            "project_name",
-            "language_or_framework",
-            "target_platform"
-          ],
-          "outputs": [
-            "initialized_repository",
-            "ci_pipeline_configured",
-            "readme_and_docs"
-          ],
-          "roles": [
-            "product-owner",
-            "pm",
-            "team-lead",
-            "developer",
-            "qa"
-          ],
-          "related_rules": [
-            "git-workflow-guide.md",
-            "makefile-guide.md",
-            "docker-compose-guide.md",
-            "lint-format-guide.md"
-          ],
-          "uses_skills": [
-            "general-dev-tools"
-          ],
-          "skill_refs": [
-            {
-              "name": "general-dev-tools",
-              "path": "areas/software/general/skills/general-dev-tools/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "CI pipeline passes on first commit",
-            "make install && make dev works on a clean machine"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /project-setup-workflow\"])\n  role_1[\"product-owner\"]\n  role_2[\"pm\"]\n  role_3[\"team-lead\"]\n  role_4[\"developer\"]\n  role_5[\"qa\"]\n  step_1[\"1. Scope & Decisions\"]\n  step_2[\"2. Repository Setup\"]\n  step_3[\"3. Development Environment\"]\n  step_4[\"4. Code Quality Tooling\"]\n  step_5[\"5. CI Pipeline\"]\n  step_6[\"6. First Commit & Validation\"]\n  exit([\"Green CI + QA sign-off = project is ready for first feature development.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_1\n  role_3 -. owns .-> step_2\n  role_4 -. owns .-> step_2\n  role_4 -. owns .-> step_3\n  role_4 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_3 -. owns .-> step_5\n  role_4 -. owns .-> step_6\n  role_5 -. owns .-> step_6",
-          "examples": []
-        }
-      ]
-    },
-    {
-      "area": "software/mlops",
-      "workflows": [
-        {
-          "trigger": "/champion-challenger",
-          "name": "champion-challenger",
-          "description": "Run a statistically valid A/B experiment between champion and challenger models with guardrail-based auto-rollback.",
-          "workflow_path": "areas/software/mlops/workflows/champion-challenger.md",
-          "use_when": "The request asks to compare a challenger model against the production champion in a live A/B experiment.",
-          "inputs": [
-            "champion_model",
-            "challenger_model",
-            "experiment_duration"
-          ],
-          "outputs": [
-            "experiment_report",
-            "promotion_decision"
-          ],
-          "roles": [
-            "developer",
-            "qa",
-            "team-lead"
-          ],
-          "related_rules": [
-            "production-safety.md",
-            "model-governance.md",
-            "reproducibility.md"
-          ],
-          "uses_skills": [
-            "model-evaluation",
-            "model-monitoring"
-          ],
-          "skill_refs": [
-            {
-              "name": "model-evaluation",
-              "path": "areas/software/mlops/skills/model-evaluation/SKILL.md"
-            },
-            {
-              "name": "model-monitoring",
-              "path": "areas/software/mlops/skills/model-monitoring/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "sample size calculated before experiment starts",
-            "guardrail metrics monitored daily with auto-rollback"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /champion-challenger\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Experiment Design\"]\n  step_2[\"2. Configure Traffic Split\"]\n  step_3[\"3. Run & Monitor\"]\n  step_4[\"4. Analyze Results\"]\n  step_5[\"5. Promotion Decision\"]\n  exit([\"Decision recorded in registry + winner at 100% traffic + report published =...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/deploy-endpoint",
-          "name": "deploy-endpoint",
-          "description": "Deploy a model endpoint using shadow → canary → full rollout with automatic rollback on SLO breach.",
-          "workflow_path": "areas/software/mlops/workflows/deploy-endpoint.md",
-          "use_when": "The request asks to deploy a trained model as a serving endpoint with shadow, canary and full rollout.",
-          "inputs": [
-            "model_name",
-            "run_id",
-            "deployment_strategy"
-          ],
-          "outputs": [
-            "live_endpoint",
-            "deployment_report"
-          ],
-          "roles": [
-            "team-lead",
-            "developer",
-            "qa"
-          ],
-          "related_rules": [
-            "production-safety.md",
-            "model-governance.md"
-          ],
-          "uses_skills": [
-            "inference-serving",
-            "model-monitoring"
-          ],
-          "skill_refs": [
-            {
-              "name": "inference-serving",
-              "path": "areas/software/mlops/skills/inference-serving/SKILL.md"
-            },
-            {
-              "name": "model-monitoring",
-              "path": "areas/software/mlops/skills/model-monitoring/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "PROMOTE recommendation confirmed in model registry",
-            "canary passes latency and error rate SLOs"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /deploy-endpoint\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  step_1[\"1. Pre-flight\"]\n  step_2[\"2. Shadow Deployment\"]\n  step_3[\"3. Canary Rollout\"]\n  step_4[\"4. Promote Champion\"]\n  step_5[\"5. Post-Deploy Monitoring\"]\n  exit([\"100% traffic on new champion + stable monitoring + deployment report = endp...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5\n  step_5 -. iterate if blocked .-> step_1",
-          "examples": []
-        },
-        {
-          "trigger": "/evaluate-model",
-          "name": "evaluate-model",
-          "description": "Compute metrics, fairness analysis, and business impact scorecard to produce a promotion recommendation.",
-          "workflow_path": "areas/software/mlops/workflows/evaluate-model.md",
-          "use_when": "The request asks to evaluate a trained model run with metrics, fairness and business impact for a promotion decision.",
-          "inputs": [
-            "run_id",
-            "champion_reference"
-          ],
-          "outputs": [
-            "evaluation_scorecard",
-            "promotion_recommendation"
-          ],
-          "roles": [
-            "qa",
-            "team-lead"
-          ],
-          "related_rules": [
-            "model-governance.md",
-            "data-integrity.md",
-            "reproducibility.md"
-          ],
-          "uses_skills": [
-            "model-evaluation",
-            "experiment-tracking"
-          ],
-          "skill_refs": [
-            {
-              "name": "model-evaluation",
-              "path": "areas/software/mlops/skills/model-evaluation/SKILL.md"
-            },
-            {
-              "name": "experiment-tracking",
-              "path": "areas/software/mlops/skills/experiment-tracking/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "test set was not used during any training iteration",
-            "fairness disparity checked for people-affecting models"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /evaluate-model\"])\n  role_1[\"qa\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Load Model & Test Data\"]\n  step_2[\"2. Compute Core Metrics\"]\n  step_3[\"3. Business Impact Translation\"]\n  step_4[\"4. Fairness Analysis\"]\n  step_5[\"5. Champion Comparison\"]\n  exit([\"Signed scorecard + promotion recommendation = evaluation complete; feed int...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/model-incident",
-          "name": "model-incident",
-          "description": "Respond to a model degradation, drift, bias, or outage incident with structured triage, rollback, and postmortem.",
-          "workflow_path": "areas/software/mlops/workflows/model-incident.md",
-          "use_when": "A deployed model shows degradation, drift, bias or an outage and needs triage, rollback or a postmortem.",
-          "inputs": [
-            "model_name",
-            "incident_type"
-          ],
-          "outputs": [
-            "resolved_incident",
-            "postmortem"
-          ],
-          "roles": [
-            "qa",
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "production-safety.md",
-            "model-governance.md",
-            "data-integrity.md"
-          ],
-          "uses_skills": [
-            "model-monitoring",
-            "model-evaluation"
-          ],
-          "skill_refs": [
-            {
-              "name": "model-monitoring",
-              "path": "areas/software/mlops/skills/model-monitoring/SKILL.md"
-            },
-            {
-              "name": "model-evaluation",
-              "path": "areas/software/mlops/skills/model-evaluation/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "rollback executed within 5 minutes for critical incidents",
-            "affected prediction window scoped and logged"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /model-incident\"])\n  role_1[\"team-lead\"]\n  role_2[\"qa\"]\n  role_3[\"developer\"]\n  step_1[\"1. Immediate Response\"]\n  step_2[\"2. Diagnose\"]\n  step_3[\"3. Scope Affected Predictions\"]\n  step_4[\"4. Root Cause & Remediation\"]\n  step_5[\"5. Post-Incident\"]\n  exit([\"System restored + postmortem published + monitoring improved = incident clo...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/train-experiment",
-          "name": "train-experiment",
-          "description": "Run a reproducible model training experiment with full environment snapshot and automatic evaluation.",
-          "workflow_path": "areas/software/mlops/workflows/train-experiment.md",
-          "use_when": "The request asks to train a model in a reproducible experiment with a recorded environment and evaluation.",
-          "inputs": [
-            "model_name",
-            "training_config"
-          ],
-          "outputs": [
-            "trained_model_artifact",
-            "evaluation_scorecard"
-          ],
-          "roles": [
-            "developer",
-            "qa"
-          ],
-          "related_rules": [
-            "reproducibility.md",
-            "data-integrity.md"
-          ],
-          "uses_skills": [
-            "experiment-tracking",
-            "feature-engineering"
-          ],
-          "skill_refs": [
-            {
-              "name": "experiment-tracking",
-              "path": "areas/software/mlops/skills/experiment-tracking/SKILL.md"
-            },
-            {
-              "name": "feature-engineering",
-              "path": "areas/software/mlops/skills/feature-engineering/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "environment fully snapshotted before training starts",
-            "training loss decreased monotonically"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /train-experiment\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  step_1[\"1. Prerequisites Validation\"]\n  step_2[\"2. Environment Snapshot\"]\n  step_3[\"3. Training Run\"]\n  step_4[\"4. Validation\"]\n  exit([\"Logged artifact + evaluation scorecard + champion comparison = experiment c...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4",
-          "examples": []
-        }
-      ]
-    },
-    {
-      "area": "software/mobile",
-      "workflows": [
-        {
-          "trigger": "/crash-triage",
-          "name": "crash-triage",
-          "description": "Diagnose, reproduce, and fix a mobile crash with symbolication and regression test coverage.",
-          "workflow_path": "areas/software/mobile/workflows/crash-triage.md",
-          "use_when": "A mobile app crashes and the request asks to symbolicate, reproduce and fix it with a regression test.",
-          "inputs": [
-            "platform",
-            "app_version"
-          ],
-          "outputs": [
-            "verified_fix",
-            "regression_test"
-          ],
-          "roles": [
-            "developer",
-            "qa",
-            "team-lead"
-          ],
-          "related_rules": [
-            "platform-compliance.md",
-            "security-mobile.md"
-          ],
-          "uses_skills": [
-            "mobile-testing",
-            "native-modules"
-          ],
-          "skill_refs": [
-            {
-              "name": "mobile-testing",
-              "path": "areas/software/mobile/skills/mobile-testing/SKILL.md"
-            },
-            {
-              "name": "native-modules",
-              "path": "areas/software/mobile/skills/native-modules/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "crash reproduced before fix is written",
-            "fix verified on physical device"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /crash-triage\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Gather & Symbolicate\"]\n  step_2[\"2. Reproduce\"]\n  step_3[\"3. Root Cause\"]\n  step_4[\"4. Fix & Regression Test\"]\n  step_5[\"5. Verification\"]\n  step_6[\"6. Document Root Cause\"]\n  exit([\"Device-verified fix + passing regression test + crash-free rate restored +...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_6",
-          "examples": []
-        },
-        {
-          "trigger": "/device-testing",
-          "name": "device-testing",
-          "description": "Execute tests on a real device farm matrix before release to catch device-specific failures.",
-          "workflow_path": "areas/software/mobile/workflows/device-testing.md",
-          "use_when": "The request asks to run a test suite on a real device farm matrix before a mobile release.",
-          "inputs": [
-            "test_suite",
-            "platform"
-          ],
-          "outputs": [
-            "device_test_matrix_report",
-            "release_recommendation"
-          ],
-          "roles": [
-            "qa",
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "platform-compliance.md",
-            "performance-budget.md"
-          ],
-          "uses_skills": [
-            "mobile-testing"
-          ],
-          "skill_refs": [
-            {
-              "name": "mobile-testing",
-              "path": "areas/software/mobile/skills/mobile-testing/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "device matrix covers latest 2 OS versions per platform"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /device-testing\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Select Device Matrix\"]\n  step_2[\"2. Upload Build\"]\n  step_3[\"3. Execute Test Suite\"]\n  step_4[\"4. Analyze Results\"]\n  exit([\"Device matrix report + explicit go/no-go = device testing complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_3 -. owns .-> step_4",
-          "examples": []
-        },
-        {
-          "trigger": "/ota-update",
-          "name": "ota-update",
-          "description": "Deploy a JS-only over-the-air update with staged rollout and crash-rate monitoring.",
-          "workflow_path": "areas/software/mobile/workflows/ota-update.md",
-          "use_when": "The request asks to ship a JavaScript-only over-the-air update to a mobile app with a staged rollout.",
-          "inputs": [
-            "bundle_scope",
-            "rollout_target"
-          ],
-          "outputs": [
-            "deployed_ota_bundle",
-            "adoption_report"
-          ],
-          "roles": [
-            "developer",
-            "qa"
-          ],
-          "related_rules": [
-            "platform-compliance.md",
-            "offline-first.md"
-          ],
-          "uses_skills": [
-            "native-modules"
-          ],
-          "skill_refs": [
-            {
-              "name": "native-modules",
-              "path": "areas/software/mobile/skills/native-modules/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "OTA eligibility confirmed (JS-only, no native modules changed)"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /ota-update\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  step_1[\"1. Validate OTA Eligibility\"]\n  step_2[\"2. Build Bundle\"]\n  step_3[\"3. Staged Rollout\"]\n  step_4[\"4. Monitor Adoption\"]\n  exit([\"100% adoption + stable error rate = OTA update complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4",
-          "examples": []
-        },
-        {
-          "trigger": "/release-build",
-          "name": "release-build",
-          "description": "Build, sign, validate, and upload a production-ready mobile release artifact for iOS and/or Android.",
-          "workflow_path": "areas/software/mobile/workflows/release-build.md",
-          "use_when": "The request asks to build, sign and validate a production iOS or Android release artifact.",
-          "inputs": [
-            "platform",
-            "environment",
-            "version"
-          ],
-          "outputs": [
-            "signed_release_artifact",
-            "smoke_test_evidence"
-          ],
-          "roles": [
-            "developer",
-            "qa",
-            "team-lead"
-          ],
-          "related_rules": [
-            "platform-compliance.md",
-            "security-mobile.md",
-            "performance-budget.md"
-          ],
-          "uses_skills": [
-            "app-store-prep",
-            "mobile-testing"
-          ],
-          "skill_refs": [
-            {
-              "name": "app-store-prep",
-              "path": "areas/software/mobile/skills/app-store-prep/SKILL.md"
-            },
-            {
-              "name": "mobile-testing",
-              "path": "areas/software/mobile/skills/mobile-testing/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "no debug flags or dev endpoints in release build",
-            "Detox smoke tests pass on physical device"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /release-build\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Version Validation\"]\n  step_2[\"2. Environment Check\"]\n  step_3[\"3. Build\"]\n  step_4[\"4. Validate Build\"]\n  step_5[\"5. Upload & Report\"]\n  exit([\"Signed artifact uploaded + smoke tests passed + @team-lead approval = relea...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_3 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/store-submission",
-          "name": "store-submission",
-          "description": "Submit a validated mobile release to App Store or Google Play with compliance check and post-release monitoring.",
-          "workflow_path": "areas/software/mobile/workflows/store-submission.md",
-          "use_when": "The request asks to submit a validated mobile build to the App Store or Google Play.",
-          "inputs": [
-            "platform",
-            "build_path"
-          ],
-          "outputs": [
-            "store_submission",
-            "post_release_monitoring_plan"
-          ],
-          "roles": [
-            "developer",
-            "qa",
-            "team-lead"
-          ],
-          "related_rules": [
-            "platform-compliance.md",
-            "security-mobile.md"
-          ],
-          "uses_skills": [
-            "app-store-prep",
-            "mobile-testing"
-          ],
-          "skill_refs": [
-            {
-              "name": "app-store-prep",
-              "path": "areas/software/mobile/skills/app-store-prep/SKILL.md"
-            },
-            {
-              "name": "mobile-testing",
-              "path": "areas/software/mobile/skills/mobile-testing/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "crash-free rate ≥ 99.5% in pre-release track",
-            "privacy labels match actual data collection"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /store-submission\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Validate Build\"]\n  step_2[\"2. Prepare Metadata\"]\n  step_3[\"3. Compliance Check\"]\n  step_4[\"4. Submit\"]\n  step_5[\"5. Monitor Post-Release\"]\n  exit([\"Submission live + stable 48h monitoring = release complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
-        }
-      ]
-    },
-    {
-      "area": "software/platform",
-      "workflows": [
-        {
-          "trigger": "/cost-audit",
-          "name": "cost-audit",
-          "description": "Analyze cloud spend, identify waste, and generate actionable optimization recommendations with Terraform snippets.",
-          "workflow_path": "areas/software/platform/workflows/cost-audit.md",
-          "use_when": "The request asks to analyze cloud spending and recommend savings.",
-          "inputs": [
-            "audit_period",
-            "account_scope"
-          ],
-          "outputs": [
-            "cost_report",
-            "optimization_recommendations"
-          ],
-          "roles": [
-            "qa",
-            "team-lead"
-          ],
-          "related_rules": [
-            "cost-governance.md",
-            "immutability.md"
-          ],
-          "uses_skills": [
-            "terraform-patterns",
-            "observability-setup"
-          ],
-          "skill_refs": [
-            {
-              "name": "terraform-patterns",
-              "path": "areas/software/platform/skills/terraform-patterns/SKILL.md"
-            },
-            {
-              "name": "observability-setup",
-              "path": "areas/software/platform/skills/observability-setup/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "all waste categories checked (EBS, EC2, ELB, S3, RDS)"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /cost-audit\"])\n  role_1[\"qa\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Fetch Billing Data\"]\n  step_2[\"2. Analyze Spend Patterns\"]\n  step_3[\"3. Detect Waste\"]\n  step_4[\"4. Generate Recommendations\"]\n  step_5[\"5. Report\"]\n  exit([\"Published report + owners assigned for top recommendations = audit complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_2 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/deploy-production",
-          "name": "deploy-production",
-          "description": "Execute a gated, observable production deployment with progressive rollout and automatic rollback on SLO breach.",
-          "workflow_path": "areas/software/platform/workflows/deploy-production.md",
-          "use_when": "The request asks to deploy a released version to production with progressive rollout and automatic rollback.",
-          "inputs": [
-            "version",
-            "deployment_strategy"
-          ],
-          "outputs": [
-            "deployed_version",
-            "deployment_report"
-          ],
-          "roles": [
-            "team-lead",
-            "developer",
-            "qa",
-            "pm"
-          ],
-          "related_rules": [
-            "reliability.md",
-            "security-posture.md",
-            "immutability.md"
-          ],
-          "uses_skills": [
-            "ci-cd-pipelines",
-            "observability-setup"
-          ],
-          "skill_refs": [
-            {
-              "name": "ci-cd-pipelines",
-              "path": "areas/software/platform/skills/ci-cd-pipelines/SKILL.md"
-            },
-            {
-              "name": "observability-setup",
-              "path": "areas/software/platform/skills/observability-setup/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "no active P0/P1 incidents before deploy starts",
-            "canary passes error rate and latency SLOs"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /deploy-production\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  role_4[\"pm\"]\n  step_1[\"1. Pre-flight\"]\n  step_2[\"2. Canary (10% traffic)\"]\n  step_3[\"3. Progressive Rollout\"]\n  step_4[\"4. Post-Deploy Validation\"]\n  step_5[\"5. Complete\"]\n  exit([\"Green smoke tests + stable metrics + deployment report = release complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_4 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/drift-check",
-          "name": "drift-check",
-          "description": "Detect and report differences between IaC definitions and actual cloud state, with optional auto-remediation.",
-          "workflow_path": "areas/software/platform/workflows/drift-check.md",
-          "use_when": "The request asks to compare IaC definitions with the real cloud state and report the differences.",
-          "inputs": [
-            "target_environment",
-            "auto_fix"
-          ],
-          "outputs": [
-            "drift_report",
-            "remediation_issues"
-          ],
-          "roles": [
-            "qa",
-            "team-lead",
-            "developer"
-          ],
-          "related_rules": [
-            "immutability.md",
-            "security-posture.md"
-          ],
-          "uses_skills": [
-            "terraform-patterns"
-          ],
-          "skill_refs": [
-            {
-              "name": "terraform-patterns",
-              "path": "areas/software/platform/skills/terraform-patterns/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "Category D drift (unexpected destroy) pages on-call immediately"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /drift-check\"])\n  role_1[\"qa\"]\n  role_2[\"team-lead\"]\n  role_3[\"developer\"]\n  step_1[\"1. Fetch Live State\"]\n  step_2[\"2. Compute Diff\"]\n  step_3[\"3. Classify Drift\"]\n  step_4[\"4. Report\"]\n  step_5[\"5. Remediate\"]\n  exit([\"Drift report published + Category A resolved (if --fix) + B/C/D tracked = d...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_3 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/provision-env",
-          "name": "provision-env",
-          "description": "Spin up a complete, isolated environment for a branch or initialize a standing environment using Terraform.",
-          "workflow_path": "areas/software/platform/workflows/provision-env.md",
-          "use_when": "The request asks to create an isolated preview environment for a branch, or a standing environment, with Terraform.",
-          "inputs": [
-            "target_environment",
-            "branch"
-          ],
-          "outputs": [
-            "provisioned_environment",
-            "environment_url"
-          ],
-          "roles": [
-            "team-lead",
-            "developer",
-            "qa",
-            "pm"
-          ],
-          "related_rules": [
-            "immutability.md",
-            "cost-governance.md",
-            "reliability.md"
-          ],
-          "uses_skills": [
-            "terraform-patterns",
-            "k8s-manifests",
-            "networking"
-          ],
-          "skill_refs": [
-            {
-              "name": "terraform-patterns",
-              "path": "areas/software/platform/skills/terraform-patterns/SKILL.md"
-            },
-            {
-              "name": "k8s-manifests",
-              "path": "areas/software/platform/skills/k8s-manifests/SKILL.md"
-            },
-            {
-              "name": "networking",
-              "path": "areas/software/platform/skills/networking/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "no unexpected destroy operations in plan for non-preview envs",
-            "cost delta within budget before apply"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /provision-env\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  role_4[\"pm\"]\n  step_1[\"1. Validate Prerequisites\"]\n  step_2[\"2. Plan Infrastructure\"]\n  step_3[\"3. Estimate Cost\"]\n  step_4[\"4. Apply Infrastructure\"]\n  step_5[\"5. Configure DNS & Ingress\"]\n  step_6[\"6. Seed & Smoke Test\"]\n  step_7[\"7. Report\"]\n  exit([\"Smoke tests green + URL published = environment ready for use.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> step_7\n  step_7 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_2 -. owns .-> step_5\n  role_3 -. owns .-> step_6\n  role_4 -. owns .-> step_7",
-          "examples": []
-        },
-        {
-          "trigger": "/service-incident",
-          "name": "service-incident",
-          "description": "Guide on-call engineer through structured application incident response — triage, mitigation, and postmortem.",
-          "workflow_path": "areas/software/platform/workflows/service-incident.md",
-          "use_when": "A production application service is failing and the on-call engineer needs triage, mitigation and a postmortem draft.",
-          "inputs": [
-            "severity",
-            "service"
-          ],
-          "outputs": [
-            "resolved_incident",
-            "postmortem_draft"
-          ],
-          "roles": [
-            "team-lead",
-            "developer",
-            "pm"
-          ],
-          "related_rules": [
-            "reliability.md",
-            "security-posture.md"
-          ],
-          "uses_skills": [
-            "incident-response",
-            "observability-setup"
-          ],
-          "skill_refs": [
-            {
-              "name": "incident-response",
-              "path": "areas/software/platform/skills/incident-response/SKILL.md"
-            },
-            {
-              "name": "observability-setup",
-              "path": "areas/software/platform/skills/observability-setup/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "incident channel created within 5 minutes of P0/P1 alert",
-            "mitigation attempted per runbook before ad-hoc debugging"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /service-incident\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"pm\"]\n  step_1[\"1. Triage\"]\n  step_2[\"2. Establish Incident Channel\"]\n  step_3[\"3. Generate Hypothesis List\"]\n  step_4[\"4. Execute Mitigation\"]\n  step_5[\"5. Draft Postmortem\"]\n  step_6[\"6. Communicate Resolution\"]\n  exit([\"Services healthy + postmortem scheduled + stakeholders notified = incident...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_3 -. owns .-> step_6",
-          "examples": []
-        }
-      ]
-    },
-    {
-      "area": "software/qa",
-      "workflows": [
-        {
-          "trigger": "/flakiness-investigation",
-          "name": "flakiness-investigation",
-          "description": "Diagnose and eliminate flaky tests with reproducible evidence and root cause documentation.",
-          "workflow_path": "areas/software/qa/workflows/flakiness-investigation.md",
-          "use_when": "Tests pass and fail intermittently and the request asks to find the cause and stabilize them.",
-          "inputs": [
-            "flaky_test_target",
-            "ci_history"
-          ],
-          "outputs": [
-            "flakiness_root_cause_report",
-            "stabilized_test_suite"
-          ],
-          "roles": [
-            "qa",
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "flakiness-policy.md",
-            "test-strategy.md"
-          ],
-          "uses_skills": [
-            "e2e-patterns",
-            "test-data-management"
-          ],
-          "skill_refs": [
-            {
-              "name": "e2e-patterns",
-              "path": "areas/software/qa/skills/e2e-patterns/SKILL.md"
-            },
-            {
-              "name": "test-data-management",
-              "path": "areas/software/qa/skills/test-data-management/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "root cause identified (not just test quarantined)",
-            "stabilization confirmed by 5+ consecutive green CI runs"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /flakiness-investigation\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Collect Failure Signals & Patterns\"]\n  step_2[\"2. Reproduce & Classify Root Cause\"]\n  step_3[\"3. Stabilization Fix\"]\n  step_4[\"4. Stress Re-run & Quarantine Decision\"]\n  step_5[\"5. Policy Review & Closure\"]\n  exit([\"Stable test in CI + root cause documented + log updated = investigation clo...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_3 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/performance-audit",
-          "name": "performance-audit",
-          "description": "Execute performance testing and turn findings into prioritized, actionable engineering work.",
-          "workflow_path": "areas/software/qa/workflows/performance-audit.md",
-          "use_when": "The request asks for load, stress or latency testing of an endpoint or flow against SLOs.",
-          "inputs": [
-            "target_endpoint_or_flow",
-            "test_type",
-            "slo_baseline"
-          ],
-          "outputs": [
-            "performance_report",
-            "prioritized_remediation_plan"
-          ],
-          "roles": [
-            "qa",
-            "developer",
-            "team-lead",
-            "pm"
-          ],
-          "related_rules": [
-            "quality-gates.md",
-            "test-strategy.md"
-          ],
-          "uses_skills": [
-            "performance-testing",
-            "api-testing"
-          ],
-          "skill_refs": [
-            {
-              "name": "performance-testing",
-              "path": "areas/software/qa/skills/performance-testing/SKILL.md"
-            },
-            {
-              "name": "api-testing",
-              "path": "areas/software/qa/skills/api-testing/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "SLO regressions explicitly identified vs. baseline",
-            "bottleneck root cause identified (not just symptom)"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /performance-audit\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  role_4[\"pm\"]\n  step_1[\"1. Scenario Definition & Baseline Alignment\"]\n  step_2[\"2. Load/Stress Execution & Monitoring Capture\"]\n  step_3[\"3. Bottleneck Analysis & Fix Proposal\"]\n  step_4[\"4. Prioritization & Delivery Planning\"]\n  exit([\"Published report + prioritized remediation plan + backlog items created = a...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_4 -. owns .-> step_4",
-          "examples": []
-        },
-        {
-          "trigger": "/regression-suite",
-          "name": "regression-suite",
-          "description": "Execute and analyze regression suites to produce a confident, evidence-backed release recommendation.",
-          "workflow_path": "areas/software/qa/workflows/regression-suite.md",
-          "use_when": "The request asks to run regression tests for a release and give a go or no-go recommendation.",
-          "inputs": [
-            "environment",
-            "regression_scope"
-          ],
-          "outputs": [
-            "regression_report",
-            "blocker_list"
-          ],
-          "roles": [
-            "qa",
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "quality-gates.md",
-            "test-strategy.md",
-            "flakiness-policy.md"
-          ],
-          "uses_skills": [
-            "e2e-patterns",
-            "test-pyramid",
-            "test-data-management"
-          ],
-          "skill_refs": [
-            {
-              "name": "e2e-patterns",
-              "path": "areas/software/qa/skills/e2e-patterns/SKILL.md"
-            },
-            {
-              "name": "test-pyramid",
-              "path": "areas/software/qa/skills/test-pyramid/SKILL.md"
-            },
-            {
-              "name": "test-data-management",
-              "path": "areas/software/qa/skills/test-data-management/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "no unresolved critical failures in selected scope",
-            "flaky test handling policy applied (quarantine, not suppress)"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /regression-suite\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. Scope Selection & Environment Readiness\"]\n  step_2[\"2. Suite Execution & Evidence Capture\"]\n  step_3[\"3. Failure Triage & Fixes\"]\n  step_4[\"4. Risk Review & Release Recommendation\"]\n  exit([\"Go recommendation + regression report = release confidence confirmed.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_1 -. owns .-> step_4",
-          "examples": []
-        },
-        {
-          "trigger": "/smoke-test",
-          "name": "smoke-test",
-          "description": "Rapid post-change validation of critical user and system paths after a deployment.",
-          "workflow_path": "areas/software/qa/workflows/smoke-test.md",
-          "use_when": "A deployment just finished and the request asks to check the critical paths quickly.",
-          "inputs": [
-            "target_environment",
-            "deployment_context"
-          ],
-          "outputs": [
-            "smoke_result_summary",
-            "rollback_recommendation"
-          ],
-          "roles": [
-            "qa",
-            "developer",
-            "team-lead",
-            "pm"
-          ],
-          "related_rules": [
-            "quality-gates.md",
-            "test-strategy.md",
-            "test-data.md"
-          ],
-          "uses_skills": [
-            "e2e-patterns",
-            "api-testing"
-          ],
-          "skill_refs": [
-            {
-              "name": "e2e-patterns",
-              "path": "areas/software/qa/skills/e2e-patterns/SKILL.md"
-            },
-            {
-              "name": "api-testing",
-              "path": "areas/software/qa/skills/api-testing/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "critical path checks complete within 15 minutes of deployment"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /smoke-test\"])\n  role_1[\"qa\"]\n  role_2[\"developer\"]\n  role_3[\"team-lead\"]\n  role_4[\"pm\"]\n  step_1[\"1. Prepare Environment & Test Data\"]\n  step_2[\"2. Run Critical Smoke Scenarios\"]\n  step_3[\"3. Defect Triage & Fix\"]\n  step_4[\"4. Operational Risk Assessment\"]\n  step_5[\"5. Communicate Go/No-Go\"]\n  exit([\"Go status + summary published = deployment validated. No-go + rollback trig...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_3 -. owns .-> step_4\n  role_4 -. owns .-> step_5\n  role_1 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/test-coverage-report",
-          "name": "test-coverage-report",
-          "description": "Measure, analyze, and improve test coverage based on business risk to drive targeted test investment.",
-          "workflow_path": "areas/software/qa/workflows/test-coverage-report.md",
-          "use_when": "The request asks to measure test coverage and plan where to add tests by business risk.",
-          "inputs": [
-            "coverage_artifacts",
-            "threshold"
-          ],
-          "outputs": [
-            "coverage_analysis_report",
-            "targeted_test_improvement_plan"
-          ],
-          "roles": [
-            "qa",
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "quality-gates.md",
-            "test-strategy.md"
-          ],
-          "uses_skills": [
-            "test-pyramid",
-            "test-data-management"
-          ],
-          "skill_refs": [
-            {
-              "name": "test-pyramid",
-              "path": "areas/software/qa/skills/test-pyramid/SKILL.md"
-            },
-            {
-              "name": "test-data-management",
-              "path": "areas/software/qa/skills/test-data-management/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "critical business paths meet coverage threshold",
-            "top uncovered risks have assigned owners"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /test-coverage-report\"])\n  role_1[\"qa\"]\n  role_2[\"team-lead\"]\n  role_3[\"developer\"]\n  step_1[\"1. Collect & Compare Metrics\"]\n  step_2[\"2. Identify High-Risk Gaps\"]\n  step_3[\"3. Implement Targeted Tests & Fixes\"]\n  step_4[\"4. Publish Trend & Action Plan\"]\n  exit([\"Critical paths at threshold + trend published + gaps assigned = coverage cy...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4",
-          "examples": []
-        }
-      ]
-    },
-    {
-      "area": "software/security",
-      "workflows": [
-        {
-          "trigger": "/compliance-report",
-          "name": "compliance-report",
-          "description": "Generate a compliance artifact with control evidence for self-assessment against SOC2, ISO27001, GDPR, or PCI.",
-          "workflow_path": "areas/software/security/workflows/compliance-report.md",
-          "use_when": "The request asks for SOC2, ISO 27001, GDPR or PCI control evidence and a gap analysis.",
-          "inputs": [
-            "compliance_standard",
-            "reporting_period"
-          ],
-          "outputs": [
-            "compliance_report",
-            "gap_analysis"
-          ],
-          "roles": [
-            "team-lead",
-            "developer",
-            "qa"
-          ],
-          "related_rules": [
-            "compliance-baseline.md",
-            "secrets-policy.md"
-          ],
-          "uses_skills": [
-            "threat-modeling",
-            "dependency-audit"
-          ],
-          "skill_refs": [
-            {
-              "name": "threat-modeling",
-              "path": "areas/software/security/skills/threat-modeling/SKILL.md"
-            },
-            {
-              "name": "dependency-audit",
-              "path": "areas/software/security/skills/dependency-audit/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "all controls evaluated (Compliant / Partial / Non-Compliant / N/A)",
-            "remediation plan exists for all Non-Compliant controls"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /compliance-report\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  step_1[\"1. Map Controls\"]\n  step_2[\"2. Collect Evidence\"]\n  step_3[\"3. Evaluate Compliance\"]\n  step_4[\"4. Generate Report\"]\n  exit([\"Complete control matrix + gap analysis + human review flag = report ready f...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_3 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_1 -. owns .-> step_4",
-          "examples": []
-        },
-        {
-          "trigger": "/pen-test-sim",
-          "name": "pen-test-sim",
-          "description": "Run automated OWASP Top-10 penetration test simulation against a staging environment.",
-          "workflow_path": "areas/software/security/workflows/pen-test-sim.md",
-          "use_when": "The request asks to run an OWASP Top 10 penetration test simulation against a staging target.",
-          "inputs": [
-            "target_url",
-            "scope"
-          ],
-          "outputs": [
-            "pentest_report",
-            "remediation_list"
-          ],
-          "roles": [
-            "qa",
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "secure-coding.md",
-            "compliance-baseline.md"
-          ],
-          "uses_skills": [
-            "sast-dast-interpretation",
-            "security-headers"
-          ],
-          "skill_refs": [
-            {
-              "name": "sast-dast-interpretation",
-              "path": "areas/software/security/skills/sast-dast-interpretation/SKILL.md"
-            },
-            {
-              "name": "security-headers",
-              "path": "areas/software/security/skills/security-headers/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "target confirmed as staging (never production)",
-            "all OWASP Top-10 categories evaluated"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /pen-test-sim\"])\n  role_1[\"team-lead\"]\n  role_2[\"qa\"]\n  step_1[\"1. Scope Confirmation\"]\n  step_2[\"2. Passive Recon\"]\n  step_3[\"3. Active Scanning\"]\n  step_4[\"4. Manual Checks\"]\n  step_5[\"5. Report\"]\n  exit([\"Published report + Critical/High findings assigned = pen-test complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/secret-rotation",
-          "name": "secret-rotation",
-          "description": "Safely rotate a production secret with zero downtime using dual-read window.",
-          "workflow_path": "areas/software/security/workflows/secret-rotation.md",
-          "use_when": "The request asks to rotate a production secret, credential or key, including an emergency rotation.",
-          "inputs": [
-            "secret_name",
-            "is_emergency"
-          ],
-          "outputs": [
-            "rotated_secret",
-            "audit_record"
-          ],
-          "roles": [
-            "developer",
-            "team-lead"
-          ],
-          "related_rules": [
-            "secrets-policy.md",
-            "secure-coding.md"
-          ],
-          "uses_skills": [
-            "crypto-standards"
-          ],
-          "skill_refs": [
-            {
-              "name": "crypto-standards",
-              "path": "areas/software/security/skills/crypto-standards/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "old credential revoked only after zero auth errors confirmed",
-            "audit log entry created with rotation metadata"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /secret-rotation\"])\n  role_1[\"developer\"]\n  role_2[\"team-lead\"]\n  step_1[\"1. Prepare New Secret\"]\n  step_2[\"2. Dual-Read Window\"]\n  step_3[\"3. Deploy New Secret\"]\n  step_4[\"4. Validate\"]\n  step_5[\"5. Revoke Old Secret\"]\n  step_6[\"6. Document\"]\n  exit([\"Old secret revoked + audit record updated = rotation complete.\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> step_6\n  step_6 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_2 -. owns .-> step_4\n  role_1 -. owns .-> step_5\n  role_1 -. owns .-> step_6",
-          "examples": []
-        },
-        {
-          "trigger": "/security-scan",
-          "name": "security-scan",
-          "description": "Run a comprehensive security scan (SAST, deps, secrets, IaC) and produce a prioritized finding report.",
-          "workflow_path": "areas/software/security/workflows/security-scan.md",
-          "use_when": "The request asks to scan code, dependencies, secrets or IaC for vulnerabilities and report the findings.",
-          "inputs": [
-            "scan_scope",
-            "scan_mode"
-          ],
-          "outputs": [
-            "finding_report",
-            "pr_review_comments"
-          ],
-          "roles": [
-            "developer",
-            "team-lead",
-            "qa"
-          ],
-          "related_rules": [
-            "secure-coding.md",
-            "dependency-policy.md",
-            "secrets-policy.md"
-          ],
-          "uses_skills": [
-            "sast-dast-interpretation",
-            "dependency-audit"
-          ],
-          "skill_refs": [
-            {
-              "name": "sast-dast-interpretation",
-              "path": "areas/software/security/skills/sast-dast-interpretation/SKILL.md"
-            },
-            {
-              "name": "dependency-audit",
-              "path": "areas/software/security/skills/dependency-audit/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "no critical findings unaddressed before merge",
-            "high findings have 72-hour SLA assigned"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /security-scan\"])\n  role_1[\"developer\"]\n  role_2[\"qa\"]\n  role_3[\"team-lead\"]\n  step_1[\"1. SAST Scan\"]\n  step_2[\"2. Dependency Audit\"]\n  step_3[\"3. Secret Scanning\"]\n  step_4[\"4. Infrastructure Scan\"]\n  step_5[\"5. Synthesize & Report\"]\n  exit([\"No unaddressed Critical findings + report saved = scan complete. The pr_rev...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_1 -. owns .-> step_2\n  role_2 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_3 -. owns .-> step_5",
-          "examples": []
-        },
-        {
-          "trigger": "/threat-model-review",
-          "name": "threat-model-review",
-          "description": "Perform a STRIDE threat modeling session for a new feature or system component and produce a mitigation plan.",
-          "workflow_path": "areas/software/security/workflows/threat-model-review.md",
-          "use_when": "The request asks for a STRIDE threat model of a new feature or component with the required mitigations.",
-          "inputs": [
-            "feature_name"
-          ],
-          "outputs": [
-            "threat_model_document",
-            "required_mitigations"
-          ],
-          "roles": [
-            "team-lead",
-            "developer",
-            "qa"
-          ],
-          "related_rules": [
-            "secure-coding.md",
-            "compliance-baseline.md"
-          ],
-          "uses_skills": [
-            "threat-modeling",
-            "auth-patterns"
-          ],
-          "skill_refs": [
-            {
-              "name": "threat-modeling",
-              "path": "areas/software/security/skills/threat-modeling/SKILL.md"
-            },
-            {
-              "name": "auth-patterns",
-              "path": "areas/software/security/skills/auth-patterns/SKILL.md"
-            }
-          ],
-          "quality_gates": [
-            "all trust boundary crossings evaluated for all 6 STRIDE categories",
-            "required mitigations mapped to controls before implementation"
-          ],
-          "workflow_diagram": "flowchart TD\n  start([\"Start /threat-model-review\"])\n  role_1[\"team-lead\"]\n  role_2[\"developer\"]\n  role_3[\"qa\"]\n  step_1[\"1. Parse Feature\"]\n  step_2[\"2. Data Flow Diagram\"]\n  step_3[\"3. STRIDE Analysis\"]\n  step_4[\"4. Prioritize\"]\n  step_5[\"5. Generate Mitigations\"]\n  exit([\"Published threat model + Required mitigations assigned = secure implementat...\"])\n  start --> step_1\n  step_1 --> step_2\n  step_2 --> step_3\n  step_3 --> step_4\n  step_4 --> step_5\n  step_5 --> exit\n  role_1 -. owns .-> step_1\n  role_2 -. owns .-> step_2\n  role_1 -. owns .-> step_3\n  role_3 -. owns .-> step_3\n  role_1 -. owns .-> step_4\n  role_2 -. owns .-> step_5",
-          "examples": []
+          "uses_skills": [],
+          "skill_refs": [],
+          "quality_gates": [],
+          "workflow_diagram": "",
+          "examples": [
+            "Move the business logic from OrderController into OrderService."
+          ]
         }
       ]
     }
   ],
   "stats": {
-    "workflows": 73,
-    "examples": 0,
+    "workflows": 10,
+    "examples": 10,
     "problems": 0
   }
 }

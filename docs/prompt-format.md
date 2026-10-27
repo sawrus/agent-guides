@@ -2,7 +2,6 @@
 covers:
   - scripts/lint_prompts.py
   - scripts/build_docs_catalog.py
-  - scripts/sync_workflow_diagrams.py
 ---
 
 # Workflow example requests
