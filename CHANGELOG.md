@@ -1,5 +1,20 @@
 # Changelog
 
+## v8.0.0
+
+- Company rules: `agentic install --company-rules-path <dir>` and `--company-rules-git <url>[#ref][:subdir]`
+  (repeatable; TUI step "Company rules") install rule files into `.agent/company/` for every host and
+  `.claude/rules/company-*.md` for Claude Code. `.agentic.json` `settings.company_rules` stores the sources and
+  `agentic upgrade` replays them (`docs/company-rules.md`).
+- `--company-rules-exclude <area>/<spec>/<rule>` and `replaces:` in a company rule drop the pack rule; a later
+  install or upgrade removes the copy it wrote if you did not edit it.
+- Git sources are fetched shallowly into `~/.cache/agentic/company/` without credential prompts. Offline, agentic
+  uses the cached copy, or keeps the installed files, with a warning. Credentials in URLs are hidden in output.
+- With company rules, `AGENTS.md` gets one line: company rules in `.agent/company/` override agent-guides rules on
+  conflict.
+- After install and upgrade, agentic prints the pack rules that company rules duplicate (ART-K1/K2, needs
+  `python3` 3.11+) with a `--company-rules-exclude` suggestion. It never fails the install.
+
 ## v7.0.0
 
 - Breaking: the `lean` profile installs only the `explorer` helper. Benchmark round 6 rule H4: without `reviewer`
