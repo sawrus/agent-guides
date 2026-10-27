@@ -1,32 +1,22 @@
-# Rule: TLS Policy
+---
+description: Protocol versions, certificate sources, renewal, and HSTS for TLS endpoints.
+paths:
+  - "**/certificate*.yaml"
+  - "**/cluster-issuer*.yaml"
+  - "**/issuer*.yaml"
+  - "**/ingress*.yaml"
+  - "**/nginx*.conf"
+  - "**/*lb*.tf"
+---
 
-**Priority**: P0 — Plaintext in production is a critical violation.
+# TLS policy
 
-## TLS Requirements
-
-1. **TLS 1.2 minimum** everywhere. TLS 1.0 and 1.1 disabled.
-2. **TLS 1.3 preferred** — configure cipher suites for TLS 1.3 first.
-3. **Certificate rotation** — certificates renewed at 60 days remaining (before 90-day cert expiry).
-4. **cert-manager handles rotation automatically** — no manual certificate management.
-5. **HSTS** — HTTP Strict Transport Security header on all public-facing services (max-age ≥ 1 year).
-6. **Internal mTLS** — service-to-service traffic uses mutual TLS when service mesh is present.
-
-## Ingress TLS (cert-manager)
-
-```yaml
-# TLS with Let's Encrypt (public)
-annotations:
-  cert-manager.io/cluster-issuer: "letsencrypt-prod"
-spec:
-  tls:
-    - hosts: [api.example.com]
-      secretName: api-example-com-tls
-```
-
-## Certificate Sources
-
-| Use case | Source |
-|:---|:---|
-| Public-facing services | Let's Encrypt (cert-manager ACME) |
-| Internal services | Internal CA (cert-manager with Vault PKI) |
-| Wildcard certs | Let's Encrypt DNS-01 challenge |
+- Set the minimum protocol to TLS 1.2 on every listener and disable TLS 1.0 and 1.1.
+- Enable TLS 1.3 on every listener that supports it.
+- Issue certificates with cert-manager `Certificate` or Ingress annotations; do not commit certificate or key files.
+- Use an ACME `ClusterIssuer` (Let's Encrypt) for public hosts and a Vault PKI or internal CA issuer for internal hosts.
+- Use the DNS-01 solver for wildcard certificates.
+- Set `renewBefore` so certificates renew with at least 30 days left.
+- Add an alert on `certmanager_certificate_expiration_timestamp_seconds` for certificates that expire in less than 14 days.
+- Add the `Strict-Transport-Security` header with `max-age` of at least `31536000` on every public HTTPS host.
+- Terminate TLS at the ingress or load balancer and re-encrypt to the pod when the traffic crosses an untrusted network.

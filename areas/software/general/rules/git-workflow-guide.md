@@ -1,27 +1,14 @@
 ---
+description: Git hygiene beyond the core branch and commit format — ignores, hooks, history, and release tags.
 trigger: manual
-glob: git-workflow-guide
-description: enforce clean git branching, commit, and pull request practices
 ---
 
-# Git Workflow Rule
+# Git hygiene
 
-**Rules:**
-
-- Use one branch per task; branch name format: `<type>/<task-id>-<slug>` (matches the root AGENTS.md core).
-- Branch types: `feat/`, `fix/`, `hotfix/`, `chore/`, `docs/`, `refactor/`, `release/`.
-- Direct commits to `main`/`master` are forbidden; all changes merged via Pull/Merge Request.
-- Commit messages follow Conventional Commits format: `<type>(<scope>): <subject>`.
-  - Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`.
-- Keep commits atomic — one logical change per commit.
-- Squash or rebase before merging to keep linear history.
-- Tag releases with semantic versions: `v<major>.<minor>.<patch>`.
-- Maintain `.gitignore` — never commit secrets, build artifacts, or IDE configs.
-- Use `.pre-commit-config.yaml` to run lint/format/tests before every commit.
-
-**Violations:**
-
-- Committing directly to protected branches.
-- Vague commit messages like "fix", "wip", "update".
-- Missing task/issue reference in branch name or commit body.
-- Committed secrets or environment files.
+- Keep one logical change per commit; do not mix a refactoring and a behaviour change in one commit.
+- Add build output, virtual environments, IDE folders, and `.env` files to `.gitignore`.
+- Run the hooks of `.pre-commit-config.yaml` when the repository has one; never commit with `--no-verify`.
+- Rebase a feature branch on the target branch before merge; never force-push a shared or protected branch.
+- Tag releases as `v<major>.<minor>.<patch>` on the release commit.
+- Do not rewrite history that is already pushed to `main` or a release branch.
+- Remove a committed secret by rotating it first; deleting the commit alone does not make the secret safe.

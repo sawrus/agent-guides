@@ -1,64 +1,27 @@
-# Rule: Workload Security
+---
+description: Pod security, service accounts, RBAC, network policies, and secrets for Kubernetes workloads.
+paths:
+  - "**/k8s/**"
+  - "**/kubernetes/**"
+  - "**/manifests/**"
+  - "**/charts/**"
+  - "**/kustomization.yaml"
+  - "**/rbac/**"
+---
 
-**Priority**: P0 — Security violations block deployment to production namespaces.
+# Workload security
 
-## Pod Security Admission (PSA)
-
-1. **Namespace-level enforcement**
-   - `production` namespaces: `pod-security.kubernetes.io/enforce: restricted`
-   - `staging` namespaces: `pod-security.kubernetes.io/enforce: baseline`
-   - `dev` / `system` namespaces: `pod-security.kubernetes.io/warn: baseline`
-   - Never use `privileged` profile in production without explicit exemption + runbook.
-
-2. **Restricted profile requirements (enforced)**
-   ```yaml
-   securityContext:
-     runAsNonRoot: true
-     runAsUser: 1000          # non-zero UID
-     readOnlyRootFilesystem: true
-     allowPrivilegeEscalation: false
-     capabilities:
-       drop: ["ALL"]
-     seccompProfile:
-       type: RuntimeDefault
-   ```
-
-## RBAC
-
-3. **Service account principle of least privilege**
-   - Every workload gets a dedicated `ServiceAccount` — never use `default`.
-   - `automountServiceAccountToken: false` unless the pod explicitly needs API access.
-   - `ClusterRole` only when cross-namespace access is architecturally justified.
-
-4. **Forbidden bindings**
-   - `cluster-admin` ClusterRoleBinding for non-system service accounts: **BLOCKED**.
-   - Binding `system:masters` group to application identities: **BLOCKED**.
-   - Wildcard verbs (`*`) in production Role/ClusterRole without documented exception.
-
-## Network Policy
-
-5. **Default-deny posture**
-   - Every namespace must have a default-deny-all NetworkPolicy at creation.
-   - Ingress and egress explicitly whitelisted per workload.
-
-   ```yaml
-   # Default deny-all (apply to every new namespace)
-   apiVersion: networking.k8s.io/v1
-   kind: NetworkPolicy
-   metadata:
-     name: default-deny-all
-   spec:
-     podSelector: {}
-     policyTypes: [Ingress, Egress]
-   ```
-
-6. **Inter-namespace traffic**
-   - Namespaces are isolated by default; cross-namespace communication requires explicit policy.
-   - System namespaces (`kube-system`, `monitoring`) may egress to all; ingress restricted to operators.
-
-## Secrets
-
-7. **Secret hygiene**
-   - Secrets never stored in ConfigMaps or environment variable literals in pod spec.
-   - Use External Secrets Operator (ESO) to sync from Vault / AWS Secrets Manager / etc.
-   - `etcd` encryption at rest mandatory (`EncryptionConfiguration` with `aescbc` or KMS provider).
+- Label production namespaces `pod-security.kubernetes.io/enforce: restricted` and staging namespaces `enforce: baseline`.
+- Set `runAsNonRoot: true`, a non-zero `runAsUser`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, `capabilities.drop: ["ALL"]`, and `seccompProfile.type: RuntimeDefault` on every container.
+- Mount an `emptyDir` volume for paths the application writes, such as `/tmp`.
+- Never set `privileged: true`, `hostNetwork`, `hostPID`, or `hostIPC` in a workload namespace.
+- Create a dedicated `ServiceAccount` per workload; never use the `default` service account.
+- Set `automountServiceAccountToken: false` unless the pod calls the Kubernetes API.
+- Use a namespaced `Role` and `RoleBinding`; use a `ClusterRole` only for cross-namespace access and document the reason in an annotation.
+- Never bind `cluster-admin` or the `system:masters` group to an application identity.
+- Do not use wildcard `*` in `verbs`, `resources`, or `apiGroups` of a Role or ClusterRole.
+- Check every new Role with `kubectl auth can-i --list --as=system:serviceaccount:<ns>:<sa>`.
+- Add a `default-deny-all` NetworkPolicy (`podSelector: {}`, `policyTypes: [Ingress, Egress]`) to every namespace.
+- Allow egress to DNS (UDP and TCP port 53 to `kube-dns`) explicitly in namespaces with default deny.
+- Allow ingress per workload with `podSelector` and `namespaceSelector` on labels; do not allow `0.0.0.0/0` ingress to pods.
+- Never put secrets in a `ConfigMap` or as literal `env` values; sync them with External Secrets Operator from a secret manager.

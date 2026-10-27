@@ -1,37 +1,20 @@
-# Rule: Policy as Code
+---
+description: Admission policies (Kyverno or OPA Gatekeeper) that every cluster enforces, and how to test them.
+paths:
+  - "**/policies/**"
+  - "**/kyverno/**"
+  - "**/gatekeeper/**"
+  - "**/*.rego"
+---
 
-**Priority**: P1 — Security policies enforced as admission controllers, not documentation.
+# Policy as code
 
-## OPA/Gatekeeper vs Kyverno
-
-| | OPA/Gatekeeper | Kyverno |
-|:---|:---|:---|
-| Language | Rego | YAML/JMESPath |
-| Learning curve | Higher | Lower |
-| Best for | Complex logic, cross-resource | Simple K8s guardrails |
-| Mutation | Limited | Built-in |
-
-## Policy Categories
-
-1. **Validation** — reject non-compliant resources (privilege escalation, missing labels)
-2. **Mutation** — auto-add default values (labels, security context defaults)
-3. **Generation** — auto-create companion resources (default NetworkPolicy per namespace)
-
-## Policy Testing (required before deploy)
-
-```bash
-# OPA/Gatekeeper: unit test policies
-opa test policies/ -v
-
-# Kyverno: test policies against example manifests
-kyverno test . --test-case-selector "policy=disallow-privileged"
-```
-
-## Mandatory Policies (deploy to all clusters)
-
-- `disallow-privileged-containers`
-- `require-non-root-user`
-- `require-resource-limits`
-- `require-readonly-root-filesystem` (warn in staging, enforce in production)
-- `require-image-digest` (no `:latest` tags)
-- `disallow-host-namespaces` (no hostNetwork, hostPID, hostIPC)
+- Keep admission policies in the repository under `policies/`; do not create policies by hand in a cluster.
+- Enforce these policies in every cluster: `disallow-privileged-containers`, `require-non-root-user`, `require-resource-limits`, `require-image-digest`, `disallow-host-namespaces`.
+- Set `require-readonly-root-filesystem` to `Audit` in staging and `Enforce` in production.
+- Require verified image signatures (`verifyImages` in Kyverno or an equivalent constraint) in production namespaces.
+- Use Kyverno YAML policies for single-resource checks; use OPA Rego only when a policy needs cross-resource data.
+- Add a test case for each policy: `kyverno test .` with pass and fail resources, or `opa test policies/ -v` for Rego.
+- Run the policy tests in CI and fail the pipeline on any failed test case.
+- Roll out a new policy with `validationFailureAction: Audit` first and switch to `Enforce` after the audit report shows no violations.
+- Limit a `PolicyException` to named resources and set an expiry date annotation on it.

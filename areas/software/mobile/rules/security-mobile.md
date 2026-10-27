@@ -1,9 +1,17 @@
-# Rule: Mobile Security
+---
+description: On-device storage, logging, screenshots, and deep link security for mobile apps.
+paths:
+  - "**/*.swift"
+  - "**/*.kt"
+  - "**/*.tsx"
+  - "ios/**"
+  - "android/**"
+---
 
-**Priority**: P0 — Mobile security vulnerabilities expose user data directly on device.
+# Mobile security
 
-1. **No sensitive data in AsyncStorage**: Use `react-native-keychain` (Keychain/Keystore) for tokens, passwords, PII.
-2. **Certificate pinning**: Apps handling financial or health data must implement SSL certificate pinning.
-3. **No sensitive data in logs**: PII scrubbing enabled in logging. Staging-only log levels in production builds.
-4. **Screenshot prevention**: Payment and auth screens must set `FLAG_SECURE` (Android) / `allowScreenshots = false` (iOS).
-5. **Deep link validation**: All deep link handlers must validate URL scheme and path patterns before processing parameters.
+- Store tokens, passwords, and personal data only in the Keychain or Android Keystore, never in `AsyncStorage` or `SharedPreferences`.
+- Enable certificate pinning in apps that handle payment or health data.
+- Do not log tokens or personal data; disable debug log levels in release builds.
+- Set `FLAG_SECURE` on Android and hide content on iOS for payment and authentication screens.
+- Validate the scheme, host, and path of every deep link before the app reads its query parameters.

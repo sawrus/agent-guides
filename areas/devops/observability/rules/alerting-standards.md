@@ -1,42 +1,27 @@
-# Rule: Alerting Standards
+---
+description: Required labels, severities, burn-rate alerts, and routing for Prometheus alert rules and Alertmanager config.
+paths:
+  - "**/alerts/**"
+  - "**/*rules*.yml"
+  - "**/*rules*.yaml"
+  - "**/prometheus/**"
+  - "**/alertmanager*.yml"
+  - "**/alertmanager*.yaml"
+  - "**/*prometheusrule*.yaml"
+---
 
-**Priority**: P1 — Alerts must be actionable, SLO-aligned, and mapped to ownership.
+# Alerting standards
 
-## Alert Quality Rules
-
-1. **Runbook required** — every alert includes `runbook_url` and service owner.
-2. **Actionability required** — alerts without a defined human or automated action are downgraded to dashboard signals.
-3. **Symptom-first** — page on user impact, not raw infrastructure noise.
-
-## Severity Model
-
-| Severity | Meaning | Response |
-|:---|:---|:---|
-| `critical` | Active user-impacting incident / fast error-budget burn | Page on-call immediately |
-| `warning` | Degradation trending toward SLO breach | Notify team channel, triage in business hours or sooner |
-| `info` | Context signal only | Dashboard or ticket, no paging |
-
-## Multi-Window Burn-Rate Standard
-
-4. Define at least:
-   - **fast burn** alert (e.g., ~1h window),
-   - **slow burn** alert (e.g., ~6h window).
-5. Fast burn pages on-call; slow burn creates prioritized reliability action.
-6. Burn-rate thresholds must map to error-budget policy and release gating.
-
-## Anti-Fatigue and Signal Hygiene
-
-7. Configure `for:` durations to reduce noise.
-8. If an alert fires repeatedly without action, either improve runbook/automation or retire the alert.
-9. Track alert precision/recall metrics during reliability reviews.
-
-## Routing and Escalation
-
-10. Route by service ownership and environment (prod vs non-prod).
-11. Define escalation path and timeout for unacknowledged critical alerts.
-12. Support maintenance windows and silence policies with audit logging.
-
-## Auto-Remediation
-
-13. For known-safe remediations (e.g., restart stateless worker), allow guarded auto-remediation.
-14. Auto-remediation actions must emit events and be reversible.
+- Add `severity`, `service`, and `team` labels and a `runbook_url` annotation to every alert rule.
+- Use only the severities `critical` (pages on-call), `warning` (team channel), and `info` (no notification).
+- Page only on symptoms that users see (error rate, latency, availability); route cause alerts such as CPU or disk to `warning` or `info`.
+- Define a fast-burn alert (1 h and 5 min windows, burn rate 14.4) and a slow-burn alert (6 h and 30 min windows, burn rate 6) for every SLO.
+- Route fast-burn alerts as `critical` and slow-burn alerts as `warning`.
+- Set a `for:` duration of at least `2m` on every alert that is not a burn-rate alert.
+- Delete or rewrite an alert that fired 5 times in 30 days without a human action.
+- Route alerts in Alertmanager by the `team` and `environment` labels; never page on-call for non-production alerts.
+- Set `repeat_interval` and an escalation receiver for unacknowledged `critical` alerts.
+- Add `inhibit_rules` so a cluster-wide or upstream alert suppresses the dependent service alerts.
+- Create silences with an author, a comment, and an end time; never create a silence without an end time.
+- Test every alert rule file with `promtool check rules` and `promtool test rules` in CI.
+- Limit auto-remediation to reversible actions (restart a stateless pod) and emit an event for every automatic action.

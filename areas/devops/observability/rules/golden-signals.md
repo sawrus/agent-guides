@@ -1,37 +1,23 @@
-# Rule: Golden Signals & SLO-First Observability Baseline
+---
+description: Golden-signal metrics, SLO coverage, and correlation that every production service exposes and dashboards show.
+paths:
+  - "**/dashboards/**"
+  - "**/grafana/**"
+  - "**/servicemonitor*.yaml"
+  - "**/podmonitor*.yaml"
+  - "**/slo*.yaml"
+  - "**/sloth/**"
+---
 
-**Priority**: P1 — Services without measurable user-impact SLIs and enforceable SLO alerts cannot be promoted to production.
+# Golden signals
 
-## Required Coverage
-
-1. **Golden signals are mandatory**: latency, traffic, errors, saturation.
-2. **User-journey SLIs are mandatory** for critical flows (e.g., checkout success, login success, payment confirmation latency).
-3. **Instrumentation is vendor-neutral**: do not hardcode stack-specific ports/endpoints in policy; enforce metric contract and discoverability.
-
-## Signal Baseline
-
-| Signal | Minimum metric coverage | Alerting baseline |
-|:---|:---|:---|
-| Latency | p50/p95/p99 by endpoint/operation | p99 SLO burn alert |
-| Traffic | request rate + success volume | anomaly vs rolling baseline |
-| Errors | error rate by class (4xx/5xx/domain) | user-impacting error budget burn |
-| Saturation | CPU, memory, queue/concurrency, DB saturation | sustained saturation with user impact |
-
-## SLO and Alerting Requirements
-
-4. Define at least one availability and one latency SLO per critical service.
-5. Use multi-window multi-burn-rate alerting (fast + slow burn).
-6. Link alert severity to error-budget policy actions.
-7. Every alert must include runbook URL and primary owner.
-
-## Cardinality and Cost Governance
-
-8. Define metric label cardinality budget per service.
-9. For high-cardinality telemetry, apply sampling, aggregation, or drop policy with documented rationale.
-10. Retention tiers must be explicit and mapped to compliance + incident forensics needs.
-
-## Trace and Log Correlation
-
-11. Propagate trace context across service boundaries.
-12. Ensure logs, metrics, and traces can be correlated via request/trace IDs.
-13. Sensitive data must be redacted before ingestion.
+- Expose request rate, error rate, and latency histogram metrics for every endpoint or operation (for example `http_server_request_duration_seconds`).
+- Expose saturation metrics: CPU, memory, connection pool use, and queue depth or worker concurrency.
+- Label error metrics by class (`4xx`, `5xx`, or domain error code) and keep the label set bounded.
+- Use histograms, not summaries, for latency so p50, p95, and p99 can be aggregated across pods.
+- Add a `ServiceMonitor` or `PodMonitor` (or a scrape config) for every production service.
+- Define at least one availability SLO and one latency SLO for every critical service and its main user journeys.
+- Put one dashboard per service in the repository with panels for rate, errors, p99 latency, saturation, and SLO burn.
+- Store dashboards as JSON or code (Grafonnet, Terraform) in the repository; do not edit production dashboards only in the UI.
+- Propagate W3C `traceparent` across every service call and message.
+- Write the `trace_id` into every log line so logs, metrics exemplars, and traces correlate.

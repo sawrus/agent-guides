@@ -1,9 +1,15 @@
-# Rule: Data Integrity for ML
+---
+description: Dataset split, leakage, and feature parity constraints for ML training code.
+paths:
+  - "**/training/**"
+  - "**/features/**"
+  - "**/*.ipynb"
+---
 
-**Priority**: P0 — Data leakage produces models that appear excellent but fail in production.
+# ML data integrity
 
-1. **Strict train/val/test split**: Test set touched exactly once — for final candidate evaluation. Using test set for hyperparameter decisions is data leakage.
-2. **Temporal splits for time-series**: Splits must respect temporal ordering. No random shuffling that puts future data in training set.
-3. **Training-serving feature parity**: Features computed during training must be identical in definition to features available at inference time. Any divergence is training-serving skew.
-4. **No target leakage**: Features must be available at prediction time. Features derived from the target variable are forbidden.
-5. **Feature provenance documented**: Every feature traceable to data source and computation logic. Undocumented features cannot be promoted to production.
+- Use the test split once, for the final candidate evaluation; never tune hyperparameters on it.
+- Split time-series data by a time `column`; do not shuffle future rows into the training set.
+- Define each feature once in shared code that both the training job and the inference service import.
+- Remove any feature `column` that is derived from the target or is not available at prediction time.
+- Document the source table and computation of every feature in the feature definition file.

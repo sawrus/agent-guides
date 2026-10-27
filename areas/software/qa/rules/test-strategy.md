@@ -1,11 +1,18 @@
-# Rule: Test Strategy
+---
+description: Test suite shape, coverage ratchet, and test naming for automated test suites.
+paths:
+  - "**/tests/**"
+  - "**/test/**"
+  - "**/*_test.*"
+  - "**/*.spec.*"
+  - "**/*.test.*"
+---
 
-**Priority**: P0 — Untested code cannot be promoted to production.
+# Test strategy
 
-1. **Test pyramid proportions**: For every 1 E2E test → ~5 integration tests → ~20 unit tests.
-2. **Tests ship with code**: New features and bug fixes include tests in the same PR.
-3. **Coverage baselines**: Coverage may not decrease on merge. New code meets minimum threshold (default: 80% for business logic).
-4. **No production hotfixes without tests**: Emergency fixes must include a regression test before the fix is considered complete.
-5. **Test naming convention**: `[component] [scenario] [expected outcome]`
-   - ✅ `"checkout with expired card shows error message"`
-   - ❌ `"test_checkout_2"`
+- Keep roughly 20 unit tests and 5 integration tests for every end-to-end test.
+- Add the tests for a feature or bug fix in the same change as the code.
+- Add a regression test to every hotfix before the fix counts as complete.
+- Keep coverage at or above the target branch value; do not lower the coverage threshold in config.
+- Name a test as `<unit> <scenario> <expected result>`, for example `checkout with expired card shows error`.
+- Do not name tests with numbers only, such as `test_checkout_2`.

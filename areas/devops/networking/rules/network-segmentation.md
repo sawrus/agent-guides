@@ -1,24 +1,21 @@
-# Rule: Network Segmentation
+---
+description: Network zones, subnet placement, and access paths for cloud and bare-metal networks defined as code.
+paths:
+  - "**/network/**"
+  - "**/vpc/**"
+  - "**/firewall*.tf"
+  - "**/security_group*.tf"
+  - "**/*network*.tf"
+---
 
-**Priority**: P0 — Flat networks are forbidden in production.
+# Network segmentation
 
-## Kubernetes Network Segmentation
-
-1. **Default-deny-all NetworkPolicy** on every production namespace — see kubernetes/rules/workload-security.md.
-2. **Namespace = trust boundary** — inter-namespace communication explicitly allowed only.
-3. **Node network isolation** — control plane nodes in separate subnet; workers in private subnet; no public IPs on nodes.
-
-## Bare-Metal / Cloud Network Zones
-
-| Zone | Contents | Inbound | Outbound |
-|:---|:---|:---|:---|
-| Public | Load balancers, ingress controllers | Internet | Internal only |
-| Application | K8s worker nodes, app servers | From public zone | Internet via NAT |
-| Data | Databases, object storage, message queues | From application zone | None |
-| Management | Jump hosts, CI runners, monitoring | VPN/MFA only | All zones |
-
-4. **Data zone has no outbound internet** — no NAT gateway for DB subnets.
-5. **Jump host or VPN for SSH** — direct SSH from internet to worker nodes is forbidden.
-
-## Service Mesh (when applicable)
-6. **mTLS between all services** when service mesh (Istio/Linkerd) is deployed — no plaintext service-to-service.
+- Define four zones in the network module: public (load balancers), application (nodes and app servers), data (databases, queues, object storage), management (CI runners, bastion, monitoring).
+- Put Kubernetes nodes and application servers in private subnets; never set `associate_public_ip_address = true` on a node.
+- Do not add a NAT gateway or any `0.0.0.0/0` egress route to data subnets.
+- Allow inbound traffic to the data zone only from application zone security groups on the database or queue port.
+- Allow SSH to servers only through a bastion host or VPN with MFA; never open port 22 to `0.0.0.0/0`.
+- Use security group IDs (`source_security_group_id`) in rules instead of wide CIDR blocks.
+- Limit egress of CI runners and nodes to the registries and APIs they need with an egress `policy` or firewall rule.
+- Enable flow logs on every VPC or subnet in production.
+- Use mTLS between services when a service mesh (Istio, Linkerd) runs in the cluster; set `PeerAuthentication` to `STRICT`.

@@ -1,38 +1,19 @@
 ---
-trigger: glob
+description: Makefile targets and conventions that give every project the same developer commands.
 paths:
   - "Makefile"
   - "**/Makefile"
   - "**/*.mk"
-glob: makefile-guide
-description: Makefile conventions for consistent developer experience across projects
 ---
 
-# Makefile Conventions Rule
+# Makefile
 
-**Rules:**
-
-- Every project must have a `Makefile` at the root for common developer tasks.
-- Declare all non-file targets as `.PHONY` to avoid conflicts with files of the same name.
-- Standard targets that must be present:
-  - `make install` — install dependencies
-  - `make dev` — start local development server/environment
-  - `make test` — run test suite
-  - `make lint` — run linter
-  - `make fmt` — auto-format code
-  - `make clean` — remove build artifacts and caches
-  - `make help` — list all targets with descriptions
-- Use `## comment` after target definition for auto-generated help:
-  ```makefile
-  test: ## Run test suite
-      pytest
-  ```
-- Compose complex commands from simpler targets: `make ci: lint test build`.
-- Use variables for configurable values (paths, image names, versions).
-- Keep Makefile portable — prefer POSIX shell commands over bash-specific syntax.
-
-**Violations:**
-
-- Undocumented targets with no `help` output.
-- Hardcoded paths that break on different developer machines.
-- Duplicated commands across targets instead of composing them.
+- Keep a `Makefile` at the repository root with the targets `help`, `install`, `test`, `lint`, `fmt`, and `clean`.
+- Add `run` or `dev` when the project starts a local service.
+- Declare every target that does not create a file in `.PHONY`.
+- Add a `## description` comment to every public target and make `help` print them.
+- Put tool names, image names, and versions in variables (`PYTHON ?= python3`) so a caller can override them.
+- Compose larger targets from smaller ones (`ci: lint test`); do not copy the same command into two targets.
+- Use POSIX shell syntax in recipes, or set `SHELL := bash` at the top when a recipe needs bash.
+- Do not hardcode absolute paths from one machine; use `$(CURDIR)` or relative paths.
+- Make `make test` and `make lint` exit non-zero on failure; never append `|| true` to a check.

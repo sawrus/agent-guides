@@ -1,53 +1,20 @@
-# Rule: Secret Hygiene in IaC
+---
+description: Keep secrets out of Terraform and Ansible code, variables, and state.
+paths:
+  - "**/*.tf"
+  - "**/*.tfvars"
+  - "**/group_vars/**"
+  - "**/host_vars/**"
+  - "**/inventory/**"
+---
 
-**Priority**: P0 — Secrets in IaC code or state are treated as compromised immediately.
+# Secret hygiene in IaC
 
-## Forbidden Patterns
-
-1. **No secrets in `.tf` files or `tfvars`**
-   ```hcl
-   # ❌ NEVER
-   resource "aws_db_instance" "this" {
-     password = "mypassword123"
-   }
-
-   # ✅ Read from Secrets Manager at plan/apply time
-   data "aws_secretsmanager_secret_value" "db_password" {
-     secret_id = "/${var.environment}/postgres/password"
-   }
-   resource "aws_db_instance" "this" {
-     password = data.aws_secretsmanager_secret_value.db_password.secret_string
-   }
-   ```
-
-2. **No secrets in Ansible vars, inventory, or group_vars without vault encryption**
-   ```yaml
-   # ❌ NEVER in plain-text
-   db_password: supersecret
-
-   # ✅ Ansible Vault encrypted
-   db_password: !vault |
-     $ANSIBLE_VAULT;1.1;AES256
-     ...
-   ```
-
-3. **No `sensitive = false` overrides** — sensitive Terraform outputs stay sensitive.
-
-## Required Patterns
-
-4. **Secret injection at runtime, not provision time**
-   - Preferred: External Secrets Operator pulls from Vault/SM into K8s Secrets at pod start.
-   - Acceptable: `terraform apply` reads from SM/Vault, writes to K8s secret as part of bootstrap.
-   - Never: secrets in container environment variables set from Terraform string literals.
-
-5. **State file protection** — state may contain sensitive values; always encrypt (see state-management.md).
-
-6. **Pre-commit secret scanning** — `git-secrets` or `trufflehog` pre-commit hook required on infra repos.
-
-## Incident Response
-
-If a secret is found in Git history:
-1. Rotate the secret immediately (before anything else).
-2. Remove from history: `git filter-repo` + force push.
-3. Audit access logs for the exposed secret.
-4. File security incident report.
+- Never write a password, token, or private key as a literal in a `.tf`, `.tfvars`, or Ansible vars file.
+- Read secrets at apply time from a secret manager data source (`aws_secretsmanager_secret_version`, `vault_kv_secret_v2`, `google_secret_manager_secret_version`).
+- Prefer generated secrets (`random_password`) written straight to the secret manager over values passed in variables.
+- Set `sensitive = true` on every variable and output that holds a secret; never override it to `false`.
+- Encrypt Ansible secrets with `ansible-vault` or look them up from Vault; never commit plain-text secrets in `group_vars/` or `host_vars/`.
+- Inject runtime secrets into Kubernetes with External Secrets Operator or a CSI secret driver; do not set them as Terraform string literals in pod env.
+- Add a `gitleaks` or `trufflehog` pre-commit hook and CI job to every infrastructure repository.
+- Rotate a leaked secret first, then remove it from Git history with `git filter-repo`, then check the access logs for its use.

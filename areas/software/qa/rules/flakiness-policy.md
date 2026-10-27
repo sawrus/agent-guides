@@ -1,12 +1,18 @@
-# Rule: Flakiness Policy
+---
+description: Handling of flaky tests, covering quarantine, root cause, and the fix deadline.
+paths:
+  - "**/tests/**"
+  - "**/test/**"
+  - "**/*_test.*"
+  - "**/*.spec.*"
+  - "**/*.test.*"
+---
 
-**Priority**: P1 — Flaky tests destroy team trust in CI.
+# Flaky tests
 
-1. **Flakiness SLA**: Flaky tests fixed within 5 business days or permanently removed.
-2. **Root cause classification**: Before fixing, classify:
-   - Race condition: test doesn't wait for async operation
-   - State pollution: depends on another test's side effects
-   - Environment dependency: depends on external service
-   - Time dependency: hardcodes dates or depends on `Date.now()`
-3. **No `sleep()` to fix flakiness**: Use proper await conditions. Never arbitrary `wait(2000)`.
-4. **Flakiness tracking**: GitHub issue created for every quarantined test.
+- Quarantine a test that fails in more than 2% of runs on the main branch, and open a tracking issue for it.
+- Fix or delete a quarantined test within 5 business days.
+- Name the cause in the fix commit: race condition, shared state, external service, or time dependency.
+- Do not add `sleep()` or a fixed wait to fix a flaky test; wait on an explicit condition instead.
+- Use an injected or frozen clock in tests instead of `Date.now()` or `time.time()`.
+- Use a fake or a local container instead of external services in unit and integration tests.

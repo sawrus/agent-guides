@@ -1,11 +1,15 @@
-# Rule: Data Governance
+---
+description: Documentation, ownership, classification, and freshness requirements for warehouse tables and dbt models.
+paths:
+  - "**/models/**/*.yml"
+  - "**/models/**/*.sql"
+  - "dbt_project.yml"
+---
 
-**Priority**: P1 — Required before data is consumed by dashboards or downstream services.
+# Data governance
 
-## Constraints
-
-1. **Table documentation**: Every warehouse table must have `description` and owner annotation.
-2. **Column documentation**: All columns with non-obvious meaning must be documented.
-3. **SLA declaration**: Every pipeline must declare its freshness SLA. Breach of SLA by > 2x must page data on-call.
-4. **Data classification**: Every table classified as: `PUBLIC` / `INTERNAL` / `CONFIDENTIAL` / `RESTRICTED`.
-5. **Deprecation policy**: Unused tables (no queries in 90 days) flagged; archived after 30-day notice.
+- Add a `description` and an `owner` to every model or table in its schema file.
+- Document every column whose meaning is not obvious from its name.
+- Tag every table with one classification: `public`, `internal`, `confidential`, or `restricted`.
+- Declare a freshness limit for every source and pipeline (for example dbt `freshness`), and alert when it is exceeded by 2x.
+- Tag tables with no queries in 90 days as deprecated, and delete them only after a 30-day notice.

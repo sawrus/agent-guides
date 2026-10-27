@@ -1,17 +1,18 @@
-# Rule: Platform Compliance
+---
+description: App Store and Play Store requirements for permissions, SDK versions, and privacy declarations.
+paths:
+  - "ios/**/Info.plist"
+  - "**/Info.plist"
+  - "android/**/build.gradle*"
+  - "**/AndroidManifest.xml"
+---
 
-**Priority**: P0 — Violations cause App Store / Play Store rejection or delisting.
+# Platform compliance
 
-## iOS (App Store)
-
-1. **Privacy nutrition labels**: All data collected declared in App Store Connect privacy section.
-2. **Required capabilities declared**: Every capability (camera, location, microphone) declared in `Info.plist` with usage description.
-3. **In-app purchase compliance**: Digital goods must use Apple IAP. No workarounds for App Store builds.
-4. **Minimum iOS version**: Support iOS 16+ minimum.
-
-## Android (Play Store)
-
-1. **Permissions at runtime**: Request dangerous permissions at point of use, not at app launch.
-2. **Target SDK current**: `targetSdkVersion` within 1 year of latest Android API level.
-3. **64-bit requirement**: All native libraries must provide 64-bit versions.
-4. **Data safety section**: Play Console data safety form must accurately reflect all data collected.
+- Add a usage description key in `Info.plist` for every capability the app uses (camera, location, microphone).
+- Update the App Store privacy labels and the Play Console data safety form in the same change that collects a new data type.
+- Use Apple in-app purchase (`StoreKit`) for digital goods in App Store builds.
+- Set the minimum iOS version to 16 or later unless the project documents another value.
+- Request Android dangerous permissions at the point of use, not at app launch.
+- Keep `targetSdkVersion` within 1 year of the latest Android API level.
+- Include 64-bit builds of every native library.

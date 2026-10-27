@@ -1,9 +1,16 @@
-# Rule: Reproducibility
+---
+description: Run tracking, seeds, pinned environments, and data snapshots for reproducible ML training.
+paths:
+  - "**/training/**"
+  - "**/*.ipynb"
+  - "**/conda*.yaml"
+  - "**/requirements*.txt"
+---
 
-**Priority**: P0 — A model that cannot be reproduced cannot be trusted in production.
+# ML reproducibility
 
-1. **Every training run versioned**: Training code (git commit), data snapshot, hyperparameters, and environment (Docker digest) logged in MLflow before training starts.
-2. **Random seeds fixed**: All randomness seeded — `random.seed()`, `numpy.random.seed()`, `torch.manual_seed()`. Seed is a versioned hyperparameter.
-3. **Environment pinned**: Training and inference environments fully specified via pinned `requirements.txt` or `conda.yaml`. No `>=` constraints in production specs.
-4. **Data version immutable**: Training datasets are snapshots, not live views. After evaluation begins, training data cannot be modified.
-5. **Re-trainable from scratch**: Same code + data + hyperparameters must produce a model within acceptable variance of the original.
+- Log the code commit, data snapshot id, hyperparameters, and image digest of every training run before training starts.
+- Set seeds for `random`, `numpy`, and the ML framework, and log the seed as a hyperparameter.
+- Pin every package version in `requirements.txt` or `conda.yaml` for training and inference; do not use `>=`.
+- Train only on immutable dataset snapshots, not on live tables.
+- Keep a retrain command that rebuilds the model from code, data snapshot, and hyperparameters.

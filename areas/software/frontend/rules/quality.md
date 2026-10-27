@@ -1,12 +1,18 @@
-# Rule: Code Quality
+---
+description: TypeScript, i18n, DOM access, and test requirements for frontend code.
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.vue"
+  - "tsconfig*.json"
+---
 
-**Priority**: P1 — Violations block merge via automated lint gates.
+# Frontend code quality
 
-## Constraints
-
-1. **TypeScript strict mode** is non-negotiable (`strict: true` in `tsconfig.json`). No `any` without an explicit `// eslint-disable` comment explaining why.
-2. **No hardcoded user-facing strings**: All copy must use i18n keys (`t('key.path')`).
-3. **No direct DOM manipulation**: Never use `document.getElementById` or `querySelector` from within React components. Use `useRef`.
-4. **State immutability**: Never mutate state objects directly.
-5. **Test coverage**: New components must ship with ≥ 1 rendering test and ≥ 1 interaction test.
-6. **No `console.log` in committed code**: Use the project's structured logger (`lib/logger.ts`).
+- Set `"strict": true` in `tsconfig.json`.
+- Do not use `any` without an `eslint-disable` comment that states the reason.
+- Use i18n keys (`t('key.path')`) for every user-facing string.
+- Do not call `document.getElementById` or `querySelector` inside components; use `useRef` or a template ref.
+- Never mutate state objects in place; return a new object from every reducer or `setState` call.
+- Add at least 1 rendering test and 1 interaction test for every new component.
+- Remove `console.log` calls; use the project logger module.
