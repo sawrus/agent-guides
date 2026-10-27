@@ -240,6 +240,60 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
 Estimate: UTF-8 bytes / 4 over instruction files and imports, unscoped rules, the main agent prompt, and
 skill, agent, and command descriptions.
 
+### Content cleanup measurement (offline)
+
+The content cleanup (docs/artifact-standard.md) deleted `software.platform`, `software.full-stack`, every prompt,
+63 of 73 workflows, 84 of 98 skills, and 23 of 86 rules (merged into survivors), and cut every remaining rule to scoped, checkable items. Before = base branch
+`feat/AGV2-check-artifacts`; after = `feat/AGV2-content-cleanup`; same debug binary. Commands:
+`python3 scripts/context_budget.py --all-selections` (always-on tokens per host, ART-B1 limit 4,000) and a sum of
+UTF-8 bytes / 4 over the `rules/`, `skills/`, `workflows/`, and `prompts/` files of a selection.
+
+Installed content for `devops.infrastructure,devops.observability,software.backend,software.general`:
+
+| Bucket | Before: files · tokens | After: files · tokens |
+|---|---|---|
+| Rules | 22 · 8,918 | 22 · 7,374 |
+| Skills (all files) | 16 · 21,128 | 5 · 3,567 |
+| Workflows | 17 · 23,317 | 6 · 3,546 |
+| Prompts | 17 · 15,876 | 0 · 0 |
+| **Total** | **72 · 69,239** | **33 · 14,487 (−79%)** |
+
+Always-on tokens of the same selection: Claude 6,782 → 2,118, Codex 2,769 → 1,794, OpenCode 3,250 → 1,947.
+
+Always-on tokens per selection (`total` column of `context_budget.py`):
+
+| Selection | Claude before | Claude after | Codex before | Codex after | OpenCode before | OpenCode after |
+|---|---:|---:|---:|---:|---:|---:|
+| `devops.ci-cd` | 3361 | 1407 | 1672 | 1215 | 1772 | 1237 |
+| `devops.database-ops` | 2919 | 1289 | 1633 | 1126 | 1688 | 1118 |
+| `devops.devsecops` | 2854 | 1421 | 1628 | 1231 | 1686 | 1251 |
+| `devops.infrastructure` | 4078 | 1440 | 1689 | 1247 | 1817 | 1270 |
+| `devops.kubernetes` | 4622 | 1420 | 1786 | 1232 | 1910 | 1249 |
+| `devops.networking` | 2801 | 1212 | 1639 | 1050 | 1695 | 1041 |
+| `devops.observability` | 3235 | 1382 | 1699 | 1220 | 1793 | 1212 |
+| `devops.sre` | 2897 | 1338 | 1634 | 1144 | 1724 | 1167 |
+| `software.backend` | 1618 | 1371 | 1278 | 1185 | 1448 | 1201 |
+| `software.data-engineering` | 3283 | 1240 | 1980 | 1077 | 2123 | 1069 |
+| `software.frontend` | 3566 | 1226 | 2036 | 1063 | 2171 | 1055 |
+| `software.full-stack` | 6792 | removed | 2049 | removed | 2235 | removed |
+| `software.general` | 1337 | 1411 | 1101 | 1140 | 1167 | 1241 |
+| `software.mlops` | 3208 | 1229 | 1824 | 1067 | 1973 | 1058 |
+| `software.mobile` | 3172 | 1231 | 1868 | 1068 | 2000 | 1060 |
+| `software.platform` | 3493 | removed | 2093 | removed | 2244 | removed |
+| `software.qa` | 2906 | 1222 | 1728 | 1060 | 1862 | 1051 |
+| `software.security` | 3772 | 1316 | 1940 | 1154 | 2075 | 1145 |
+| `software.backend,software.general` | 1793 | 1618 | 1379 | 1325 | 1622 | 1448 |
+| `software.frontend,software.general` | 3740 | 1473 | 2137 | 1202 | 2346 | 1303 |
+| `software.full-stack,software.general` | 6967 | removed | 2150 | removed | 2410 | removed |
+| `software.backend,software.frontend,software.general` | 4196 | 1680 | 2415 | 1387 | 2801 | 1510 |
+| `software.backend,software.general,devops.ci-cd,devops.kubernetes` | 7452 | 2122 | 2839 | 1773 | 3321 | 1952 |
+| `devops.kubernetes,devops.ci-cd,devops.observability` | 8892 | 1884 | 3156 | 1667 | 3490 | 1714 |
+| `devops.infrastructure,devops.kubernetes,devops.sre` | 9273 | 1872 | 3109 | 1624 | 3467 | 1702 |
+| `devops.infrastructure,devops.observability,software.backend,software.general` | 6782 | 2118 | 2769 | 1794 | 3250 | 1947 |
+
+Every selection is now under the 4,000-token ART-B1 limit on every host; before, 8 selections were over it on
+Claude. `software.general` grows by 74 tokens on Claude because it now holds the four general workflows.
+
 ### Baseline (2026-10-21, Claude `sonnet`, Codex `gpt-6.1-sol`, OpenCode `openai/gpt-6-luna`)
 
 | Host | A0 plain: accepted · median uncached · median cost | A1 v1.6: accepted · median uncached · median cost |
