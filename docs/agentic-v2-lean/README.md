@@ -27,7 +27,7 @@ deterministic checks.
 | Rules | All always-on | Path-scoped (`trigger: glob` + `paths:`) or `trigger: manual`. `.claude/rules/` gets only always-on and scoped rules |
 | Subagents | 9 SDLC roles; main session is `product-owner` | `lean` profile (default): `explorer` and `reviewer`. Native main session |
 | Workflows | Spawn one subagent per role | `lean`: the main session performs role steps. `team`: v1 delegation |
-| Quality gate | Prose only | Stop hook runs `make test`/`make lint` when files changed and asks once for a CHANGELOG entry. PreToolUse guard denies secrets, force push, and `rm -rf` outside the project, and asks before production access |
+| Quality gate | Prose only | Stop hook runs `make test`/`make lint` when files changed and asks once for a CHANGELOG entry. PreToolUse guard denies secrets, force push, and `rm -rf` outside the project, asks before production access, and blocks write SQL on non-local databases |
 | Codex skills | `.agent/skills` (Codex does not read it) | `.agents/skills` |
 | Installed workflows | Include the mermaid diagram | Diagram removed (still in the source and docs site) |
 
@@ -75,6 +75,48 @@ deterministic checks.
   support `ask` (Codex 0.153 rejects it as `unsupported permissionDecision:ask`), so on Codex, and when
   the host is unknown, the rule denies the command and tells the agent to ask the user to run it themselves.
   The hooks pass `--host claude|codex|opencode`; without it, `CLAUDE_PROJECT_DIR` marks Claude Code.
+- Database guard (`guard.db` in `.agent/gate.json`, default `{"mode": "ask", "write": "deny"}`): checks every
+  Bash command. It reads the command, its heredoc bodies, and the first 256 KB of up to 8 script files that the
+  command runs (`python*`, `node`, `bash`, `sh`, `ruby`, `psql -f`, followed by an existing `.py`, `.js`, `.sh`,
+  `.sql`, or `.rb` path; relative paths resolve from the project directory or a preceding `cd <dir>`).
+  - Connection: `psycopg`/`psycopg2` `connect`, `asyncpg.connect`/`create_pool`, `create_engine(`,
+    `pymysql.connect`, `mysql.connector.connect`, `redis.Redis(`/`redis.from_url`, `pymongo.MongoClient`,
+    `clickhouse_connect`, or a CLI client (`psql`, `pg_dump`, `pg_restore`, `mysql`, `mysqldump`, `redis-cli`,
+    `mongosh`, `clickhouse-client`).
+  - Credentials from the environment: `load_dotenv`, `dotenv_values`, `find_dotenv`, `dotenv ... config`,
+    `source <x>.env`, `. ./.env`, `--env-file`, `$(cat .env)`, `os.environ[...]`/`os.getenv(...)`/`process.env`
+    or `$VAR` with a name that contains `DSN`, `DATABASE_URL`, `DB_`, `PG`, `PSQL`, `MYSQL`, `REDIS`, or `MONGO`.
+  - Local target: every host found (`-h`, `--host`, `host=`, the host in a `postgresql://`, `mysql://`,
+    `redis://`, `mongodb://`, or `clickhouse://` URL) is `localhost`, `127.*`, `::1`, `0.0.0.0`,
+    `host.docker.internal`, or a unix socket path; or `sqlite` is the only target; or a CLI client has no host
+    flag and no `$VAR` argument (it uses the local default, or `PGHOST`/`MYSQL_HOST` from the gate's environment).
+    Credentials from the environment make the target unknown, because the gate does not read `.env`.
+  - Write or maintenance statement (case-insensitive): `VACUUM`, `ANALYZE` (not `EXPLAIN ANALYZE` or
+    `EXPLAIN (ANALYZE ...)`), `REINDEX`, `CLUSTER`, `REFRESH MATERIALIZED VIEW`, `DROP <object>`, `TRUNCATE`,
+    `DELETE FROM`, `UPDATE <t> SET`, `INSERT INTO`, `MERGE INTO`, `ALTER TABLE|INDEX|SYSTEM|DATABASE|ROLE|...`,
+    `CREATE [UNIQUE] INDEX`, `CREATE TABLE|EXTENSION|ROLE|USER|SCHEMA|DATABASE`, `GRANT`/`REVOKE <privilege>`,
+    `COPY <t> FROM`, `pg_terminate_backend`, `pg_cancel_backend`, `default_transaction_read_only = off`,
+    `TRANSACTION READ WRITE`; Redis `FLUSHALL`, `FLUSHDB`, `DEL`; Mongo `.drop()`, `deleteMany`, `updateMany`.
+
+  | Case | Decision |
+  |---|---|
+  | Local target | No decision |
+  | Non-local or unknown target + write or maintenance statement | `deny` on every host (`guard.db.write: "ask"` asks instead) |
+  | Host in plan (read-only) mode + non-local or unknown target | `deny` |
+  | Credentials from the environment + read-only statements | `ask` (`guard.db.mode: "deny"` denies) |
+  | Unknown target, no credentials from the environment, read-only | No decision |
+
+  `guard.db.mode: "off"` turns the database guard off. `guard.defaults: false` does not turn it off. A `deny`
+  tells the agent to show the statement to the user and let them run it. An `ask` behaves as the production
+  guard: Codex denies and tells the agent to ask the user to run the command. Plan mode: Claude Code
+  `permission_mode: "plan"` in the PreToolUse payload; OpenCode, the built-in `plan` agent (the plugin passes the
+  agent id). Codex hooks do not show a mode.
+- OpenCode enforcement: the plugin runs the guard in the `permission.evaluate` hook. OpenCode (checked in 2.0.29)
+  runs that hook for every permission check that no rule denies, also when the effect is `allow`, and the shell
+  tool checks the `shell` permission for every command except a plain `cd`. So the guard runs for every shell
+  call, also under the build agent that auto-allows shell. A `deny` sets the effect to `deny` (OpenCode blocks
+  the call and returns the reason to the agent). An `ask` turns `allow` into `ask` (OpenCode shows its permission
+  prompt with the reason) and never relaxes a `deny`. Calls that an OpenCode rule already denies skip the hook.
 - Evidence: `.agentic/gate/last.json`, written on every Stop:
 
   | Field | Meaning |

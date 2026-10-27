@@ -7,9 +7,12 @@ with the output (Stop `{"decision": "block", "reason": ...}`). It also asks once
 source files changed. Every Stop writes `.agentic/gate/last.json` with `accepted` and `reason_code`.
 `--event guard`: deny secret reads, force pushes, and recursive deletes outside the project (PreToolUse
 `permissionDecision: deny`); ask the user before commands that touch production (`guard.confirm`). Codex hooks
-cannot ask, so on Codex a confirm rule denies. Settings: optional `.agent/gate.json` {"commands": ["make test"],
-"changelog": true, "max_blocks": 3, "guard": {"defaults": true, "confirm": [...],
-"prod_context_pattern": "prod", "prod_hosts": []}}. Standard library only.
+cannot ask, so on Codex a confirm rule denies. The database guard reads the Bash command, its heredocs, and the
+script files it runs: write or maintenance SQL against a non-local database is denied, a connection with
+credentials from the environment (.env) asks, and plan mode denies any non-local connection (`guard.db`).
+Settings: optional `.agent/gate.json` {"commands": ["make test"], "changelog": true, "max_blocks": 3,
+"guard": {"defaults": true, "confirm": [...], "prod_context_pattern": "prod", "prod_hosts": [],
+"db": {"mode": "ask", "write": "deny"}}}. Standard library only.
 """
 import argparse
 import hashlib
@@ -37,6 +40,54 @@ DB_URI = re.compile(r'^(?:postgres(?:ql)?|mysql)://(?:[^@/]*@)?(\[[^\]]+\]|[^:/?
 SEPARATORS = {';', '&', '&&', '|', '||', '(', ')', ';;', '|&'}
 WRAPPERS = ('sudo', 'env', 'time', 'command', 'exec', 'nohup', 'watch', 'xargs', 'timeout')
 ASK_HOSTS = ('claude', 'opencode')
+
+# Database guard: signals in the Bash command, its heredocs, and the script files it runs.
+DB_CLIENTS = ('psql', 'pg_dump', 'pg_restore', 'mysql', 'mysqldump', 'redis-cli', 'mongosh', 'clickhouse-client')
+DB_CLIENT_WORD = re.compile(r'(?<![\w.-])(?:' + '|'.join(map(re.escape, DB_CLIENTS)) + r')(?![\w.-])')
+DB_CONNECT = re.compile(
+    r'\bpsycopg2?\s*\.\s*(?:connect|(?:Async)?Connection\s*\.\s*connect)\b'
+    r'|\bfrom\s+(?:psycopg2?|asyncpg|pymysql)\s+import\b[^\n]*\bconnect\b'
+    r'|\basyncpg\s*\.\s*(?:connect|create_pool)\b|\bcreate_(?:async_)?engine\s*\('
+    r'|\bpymysql\s*\.\s*connect\b|\bmysql\s*\.\s*connector\s*\.\s*connect\b'
+    r'|\bredis\s*\.\s*(?:Strict)?Redis\s*\(|\bredis\s*\.\s*from_url\b'
+    r'|\bpymongo\s*\.\s*MongoClient\b|\bMongoClient\s*\(|\bclickhouse_connect\b')
+DB_ENV_NAME = r'\w*(?:DSN|DATABASE_URL|DB_|PG|PSQL|MYSQL|REDIS|MONGO)\w*'
+ENV_CREDS = re.compile(
+    r'\b(?:load_dotenv|dotenv_values|find_dotenv)\b|\bdotenv\b[^\n]{0,40}\bconfig\b'
+    r'|(?:^|[\s;&|(])(?:source|\.)\s+[\'"]?[^\s;&|\'"]*\.env\b|--env-file\b|\$\(\s*cat\s+[^\s)]*\.env\b'
+    rf'|\bos\s*\.\s*(?:environ\s*(?:\.\s*get\s*\(|\[)|getenv\s*\()\s*[\'"]{DB_ENV_NAME}[\'"]'
+    rf'|\bprocess\s*\.\s*env\s*(?:\.|\[\s*[\'"]){DB_ENV_NAME}|\$\{{?{DB_ENV_NAME}', re.M)
+DB_URL = re.compile(r'\b(?:postgres(?:ql)?|mysql|mariadb|rediss?|mongodb(?:\+srv)?|clickhouse)(?:\+\w+)?://'
+                    r'(?:[^@/\s\'"]*@)?(\[[^\]\s]*\]|[^:/?,\s\'"]*)', re.I)
+HOST_KEY = re.compile(r'\bhost\s*=\s*[\'"]?([^\s\'",;)]+)', re.I)
+SQLITE = re.compile(r'\bsqlite', re.I)
+LOCAL_HOSTS = ('', 'localhost', '::1', '0.0.0.0', 'host.docker.internal')
+WRITE_SQL = re.compile(r'''(?:
+    \bVACUUM\b | \bREINDEX\b | \bREFRESH\s+MATERIALIZED\s+VIEW\b
+  | \bCLUSTER(?:\s+VERBOSE)?(?:\s+[\w."]+(?:\s+USING\s+[\w."]+)?)?\s*[;"']
+  | \bDROP\s+(?:TABLE|INDEX|VIEW|MATERIALIZED\s+VIEW|SCHEMA|DATABASE|ROLE|USER|EXTENSION|FUNCTION|TRIGGER
+              |SEQUENCE|TYPE|OWNED|COLUMN|CONSTRAINT)\b
+  | \bTRUNCATE\s+(?:TABLE\s+)?(?:ONLY\s+)?[\w."] | \bDELETE\s+FROM\b | \bINSERT\s+INTO\b | \bMERGE\s+INTO\b
+  | \bUPDATE\s+(?:ONLY\s+)?[\w."]+\s+SET\b
+  | \bALTER\s+(?:TABLE|INDEX|SYSTEM|DATABASE|ROLE|USER|SCHEMA|SEQUENCE|VIEW|MATERIALIZED\s+VIEW)\b
+  | \bCREATE\s+(?:UNIQUE\s+)?INDEX\b | \bCREATE\s+(?:TABLE|EXTENSION|ROLE|USER|SCHEMA|DATABASE)\b
+  | \b(?:GRANT|REVOKE)\s+(?:ALL|SELECT|INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER|USAGE|EXECUTE|CONNECT
+                         |CREATE|TEMP|TEMPORARY)\b[\w\s,()]{0,200}?\b(?:ON|TO|FROM)\b
+  | \bCOPY\s+[\w."]+(?:\s*\([^)]{0,500}\))?\s+FROM\b
+  | \bpg_(?:terminate|cancel)_backend\b
+  | \bdefault_transaction_read_only\s*(?:=|TO)\s*'?off\b
+  | \bTRANSACTION\s+READ\s+WRITE\b
+)''', re.I | re.X)
+WRITE_NOSQL = re.compile(r'\bFLUSH(?:ALL|DB)\b|\.flush(?:all|db)\s*\(|\bDEL\s+\S|\.drop\(\s*\)'
+                         r'|\.drop_(?:collection|database)\s*\(|\.dropDatabase\s*\('
+                         r'|\.(?:deleteMany|updateMany|delete_many|update_many)\s*\(')
+ANALYZE = re.compile(r'\bANALY[SZ]E(?:\s+VERBOSE)?(?:\s+[\w."]+(?:\s*\([^)]{0,500}\))?)?\s*[;"\']', re.I)
+HEREDOC = re.compile(r'<<-?[ \t]*([\'"]?)([A-Za-z_]\w*)\1[^\n]*\n.*?(?:^[ \t]*\2[ \t]*$|\Z)', re.S | re.M)
+EXPLAIN_BEFORE = re.compile(r'EXPLAIN\s*(?:\([^)]*)?$', re.I)
+INTERPRETERS = re.compile(r'^(?:python[\d.]*|pypy3?|node|bash|sh|zsh|ruby|psql)$')
+SCRIPT_SUFFIXES = ('.py', '.js', '.mjs', '.cjs', '.sh', '.sql', '.rb')
+SCRIPT_BYTES = 256 * 1024
+MAX_SCRIPTS = 8
 
 
 def settings(project):
@@ -238,6 +289,11 @@ def outside(project, command):
     return False
 
 
+def shell_part(command):
+    """The command without heredoc bodies: they are input data, not shell syntax."""
+    return HEREDOC.sub(lambda m: m.group(0).split('\n', 1)[0] + '\n', command) if '<<' in command else command
+
+
 def segments(command):
     """Split a shell command into simple commands on `;`, `&&`, `|`, and similar operators."""
     try:
@@ -344,6 +400,125 @@ def db_reason(tokens, patterns):
     return None
 
 
+class NameMatch:
+    """A `names` argument for `program()` that matches a basename with a regex."""
+    def __init__(self, pattern):
+        self.pattern = pattern
+
+    def __contains__(self, name):
+        return bool(self.pattern.match(name))
+
+
+def script_texts(project, command):
+    """(suffix, first 256 KB) of the script files the command runs with an interpreter; follows `cd <dir>`."""
+    base, texts, seen = project, [], set()
+    for tokens in segments(shell_part(command)):
+        if tokens[:1] == ['cd'] and len(tokens) > 1:
+            target = Path(tokens[1]).expanduser()
+            base = target if target.is_absolute() else base / target
+            continue
+        found = program(tokens, NameMatch(INTERPRETERS))
+        for arg in found[1] if found else []:
+            arg = arg[len('--file='):] if arg.startswith('--file=') else arg
+            if not arg.endswith(SCRIPT_SUFFIXES) or len(texts) >= MAX_SCRIPTS:
+                continue
+            path = Path(arg).expanduser()
+            path = path if path.is_absolute() else base / path
+            if path in seen:
+                continue
+            seen.add(path)
+            try:
+                with open(path, 'rb') as handle:
+                    texts.append((path.suffix, handle.read(SCRIPT_BYTES).decode('utf-8', 'replace')))
+            except OSError:
+                continue
+    return texts
+
+
+def client_target(tokens):
+    """(client, hosts, unknown) when the simple command runs a database CLI; host '' is the local default."""
+    found = program(tokens, DB_CLIENTS)
+    if not found:
+        return None
+    tool, args, env = found
+    hosts = db_hosts(args, env) + [m.group(1) for arg in args for m in DB_URL.finditer(arg)]
+    if hosts:
+        return tool, hosts, False
+    if any('$' in arg for arg in args):
+        return tool, [], True  # the target comes from a shell variable
+    variable = {'psql': 'PGHOST', 'pg_dump': 'PGHOST', 'pg_restore': 'PGHOST',
+                'mysql': 'MYSQL_HOST', 'mysqldump': 'MYSQL_HOST'}.get(tool)
+    return tool, [os.environ.get(variable, '') if variable else ''], False
+
+
+def is_local(host):
+    host = host.strip('[]\'"').lower()
+    return host in LOCAL_HOSTS or host.startswith(('127.', '/', '%2f'))
+
+
+def write_statement(text):
+    """The first write or maintenance statement in the text, shortened; None for read-only text."""
+    match = WRITE_SQL.search(text) or WRITE_NOSQL.search(text)
+    if not match:
+        match = next((m for m in ANALYZE.finditer(text)
+                      if not EXPLAIN_BEFORE.search(text[max(0, m.start() - 200):m.start()])), None)
+    return ' '.join(match.group(0).split())[:60].strip(';"\' ') if match else None
+
+
+def db_config(project):
+    guard_config = settings(project).get('guard')
+    config = guard_config.get('db') if isinstance(guard_config, dict) else None
+    config = config if isinstance(config, dict) else {}
+    mode = config.get('mode') if config.get('mode') in ('ask', 'deny', 'off') else 'ask'
+    write = config.get('write') if config.get('write') in ('ask', 'deny') else 'deny'
+    return mode, write
+
+
+def db_decision(project, payload, command):
+    """('deny' | 'ask', reason) for a command that reaches a non-local database; None otherwise."""
+    mode, write_mode = db_config(project)
+    if mode == 'off':
+        return None
+    scripts = script_texts(project, command)
+    text = '\n'.join([command] + [content for _, content in scripts])
+    shell_lines = [line for suffix, content in scripts if suffix == '.sh'
+                   for line in content.splitlines() if DB_CLIENT_WORD.search(line)][:50]
+    hosts, unknown, clients = [], False, 0
+    for tokens in segments(shell_part(command)) + [tokens for line in shell_lines for tokens in segments(line)]:
+        found = client_target(tokens)
+        if found:
+            clients += 1
+            hosts += found[1]
+            unknown = unknown or found[2]
+    if not clients and not DB_CONNECT.search(text):
+        return None
+    hosts += [m.group(1) for m in DB_URL.finditer(text)] + HOST_KEY.findall(text)
+    creds = bool(ENV_CREDS.search(text))
+    if creds or unknown:
+        local = False  # the gate cannot see the target that the environment or .env supplies
+    elif hosts:
+        local = all(map(is_local, hosts))
+    else:
+        local = bool(SQLITE.search(text))  # a library connection with no visible target is not local
+    if local:
+        return None
+    statement = write_statement(text)
+    plan = payload.get('permission_mode') == 'plan' or payload.get('agent') == 'plan'
+    if statement and write_mode == 'deny':
+        return 'deny', (f'write or maintenance SQL (`{statement}`) against a non-local database is blocked; '
+                        'show the statement to the user and let them run it')
+    if plan:
+        return 'deny', ('the host is in plan (read-only) mode and the command connects to a non-local database; '
+                        'show the command to the user and let them run it')
+    if statement:
+        return 'ask', f'the command runs write or maintenance SQL (`{statement}`) against a non-local database'
+    if creds:
+        reason = 'the command connects to a database configured in the environment (.env), which may be production'
+        return ('deny', f'{reason}; show the command to the user and let them run it') if mode == 'deny' \
+            else ('ask', reason)
+    return None
+
+
 def compile_pattern(text):
     try:
         return re.compile(str(text), re.I)
@@ -362,7 +537,7 @@ def confirm_reason(project, command):
         if rule == 'default':
             prod = compile_pattern(guard_config.get('prod_context_pattern') or 'prod')
             hosts = [p for p in map(compile_pattern, guard_config.get('prod_hosts') or []) if p]
-            for tokens in segments(command):
+            for tokens in segments(shell_part(command)):
                 reason = (prod and kube_reason(tokens, prod)) or db_reason(tokens, hosts)
                 if reason:
                     return reason
@@ -373,23 +548,35 @@ def confirm_reason(project, command):
     return None
 
 
+def decision(kind, reason):
+    return {'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': kind,
+                                   'permissionDecisionReason': reason}}
+
+
+def ask(found, host, suffix):
+    """Ask on Claude Code and OpenCode; Codex hooks cannot ask, so deny and send the agent to the user."""
+    if host in ASK_HOSTS:
+        return decision('ask', f'Agentic guard: {found}{suffix}')
+    return decision('deny', f'Agentic guard: {found}. This host cannot ask for confirmation, so the command is '
+                            'blocked. Show the command to the user and ask them to run it themselves.')
+
+
 def guard(project, payload, host=None):
     reason = guard_reason(project, payload)
-    decision = 'deny'
-    if not reason:
-        data = payload.get('tool_input') or payload.get('args') or {}
-        command = str(data.get('command') or data.get('cmd') or '') if isinstance(data, dict) else ''
-        found = confirm_reason(project, command) if command else None
-        if not found:
-            return {}
-        if host in ASK_HOSTS:
-            decision = 'ask'
-            reason = f'Agentic guard: {found}. Confirm that this production access is intended.'
-        else:
-            reason = (f'Agentic guard: {found}. This host cannot ask for confirmation, so the command is blocked. '
-                      'Show the command to the user and ask them to run it themselves.')
-    return {'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': decision,
-                                   'permissionDecisionReason': reason}}
+    if reason:
+        return decision('deny', reason)
+    data = payload.get('tool_input') or payload.get('args') or {}
+    command = str(data.get('command') or data.get('cmd') or '') if isinstance(data, dict) else ''
+    if not command:
+        return {}
+    found = db_decision(project, payload, command)
+    if found:
+        kind, text = found
+        return decision('deny', f'Agentic guard: {text}.') if kind == 'deny' else ask(text, host, '; confirm.')
+    found = confirm_reason(project, command)
+    if not found:
+        return {}
+    return ask(found, host, '. Confirm that this production access is intended.')
 
 
 def detect_host(value):

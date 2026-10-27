@@ -18,7 +18,7 @@ if not package.is_file() or json.loads(package.read_text())['version'] != '2.0.2
 with tempfile.TemporaryDirectory(prefix='agentic-sdk-check-', dir=sdk) as directory:
     directory = Path(directory)
     sources = []
-    for source in [ROOT / 'extensions/opencode/hooks/agentic-jev.ts']:
+    for source in [ROOT / 'extensions/opencode/hooks/agentic-jev.ts', ROOT / 'extensions/opencode/plugins/agentic-gate.ts']:
         target = directory / source.name
         shutil.copyfile(source, target)
         sources.append(str(target))

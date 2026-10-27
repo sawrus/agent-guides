@@ -31,6 +31,7 @@ workflows.
   name the CHANGELOG section as the project's release policy says (for example `docs/release-policy.md`). Without
   a policy, write under `Unreleased`, and only a completed feature updates the project version.
 - Add a new file at the repository root only after the user approves its name and purpose.
+- Never run write or maintenance SQL on a non-local database. Ask before using database credentials from `.env`.
 
 ## Git
 

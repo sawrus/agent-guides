@@ -7,7 +7,10 @@ import { join } from "node:path";
 // Forwards to the shared gate runtime (.agent/gate/gate.py), the same one Claude Code and Codex call
 // from native Stop and PreToolUse hooks. Stop: after a root turn succeeds, a failed check comes back as a
 // new prompt in the same session. Guard: permission evaluation turns a risky tool call into a denial, or into
-// a question to the user for production access (`guard.confirm` in .agent/gate.json).
+// a question to the user for production or database access (`guard.confirm`, `guard.db` in .agent/gate.json).
+// OpenCode runs the `permission.evaluate` hook for every permission check that no rule denies, also when the
+// effect is "allow"; the shell tool checks the `shell` permission for every command except plain `cd`. So the
+// guard sees every shell call, also under an agent that auto-allows shell (build).
 export default Plugin.define({
   id: "agentic-gate",
   async setup(ctx) {
@@ -16,7 +19,7 @@ export default Plugin.define({
     const python = process.platform === "win32" ? "python" : "python3";
     const controller = new AbortController();
     const parents = new Set<string>();
-    const toolInputs = new Map<string, { tool: string; input: unknown }>();
+    const toolInputs = new Map<string, { tool: string; agent: string; input: unknown }>();
     const disposables: Array<{ dispose(): Promise<void> }> = [];
 
     function gate(event: "stop" | "guard", payload: Record<string, unknown>): Promise<any> {
@@ -37,7 +40,7 @@ export default Plugin.define({
     }
 
     disposables.push(await ctx.tool.hook("execute.before", async (event) => {
-      toolInputs.set(`${event.sessionID}:${event.id}`, { tool: event.tool, input: event.input });
+      toolInputs.set(`${event.sessionID}:${event.id}`, { tool: event.tool, agent: String(event.agent), input: event.input });
     }));
     disposables.push(await ctx.tool.hook("execute.after", async (event) => {
       toolInputs.delete(`${event.sessionID}:${event.id}`);
@@ -45,7 +48,10 @@ export default Plugin.define({
     disposables.push(await ctx.permission.hook("evaluate", async (event) => {
       const tool = event.source?.type === "tool" ? toolInputs.get(`${event.sessionID}:${event.source.id}`) : undefined;
       const input = (tool?.input ?? {}) as Record<string, unknown>;
-      const result = await gate("guard", { tool_name: tool?.tool ?? event.action,
+      const agent = String(event.agent ?? tool?.agent ?? "");
+      // The built-in plan agent is read-only; the runtime denies non-local database access there.
+      const result = await gate("guard", { tool_name: tool?.tool ?? event.action, agent,
+        permission_mode: agent === "plan" ? "plan" : undefined,
         tool_input: { ...input, path: input.filePath ?? input.path ?? event.resources?.[0] } });
       const output = result?.hookSpecificOutput;
       const reason = output?.permissionDecisionReason;
