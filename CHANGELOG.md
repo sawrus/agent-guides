@@ -1,5 +1,21 @@
 # Changelog
 
+## v5.0.0
+
+- `make check-artifacts` (`scripts/check_artifacts.py`) checks rules, skills and workflows against every
+  automatic requirement of `docs/artifact-standard.md`. It runs in `make lint-content` and CI with a committed
+  baseline: only new findings fail (`--write-baseline`, `--strict-baseline`). Company terms for the leak check
+  come from outside the repository (`AGENTIC_DENY_TERMS_FILE`). `--project <dir>` checks an installed project
+  with its company rules (`--json`).
+- `make check-docs-coverage BASE=<ref>` (`scripts/check_docs_coverage.py`) and a CI job on pull requests: changed
+  code must be covered by a changed docs page (`covers:`), or every commit that touches it carries
+  `Docs-Not-Needed: <reason>`. `--report-uncovered` lists code without a docs page.
+- `scripts/context_budget.py --all-selections` measures the always-on budget for every specialization and the
+  common multi-spec selections.
+- Docs pages declare `covers:`. The authoring templates, `CONTRIBUTING.md` and `assess_area_quality.py` no longer
+  require roles, quality gates or report files.
+- The backend `database-safety` rule now lists only checkable items and no longer repeats the core line.
+
 ## v4.0.0
 
 - `agentic install` and `agentic upgrade` warn when the checkout is older than origin's default branch: a branch
