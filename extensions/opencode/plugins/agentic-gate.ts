@@ -6,7 +6,11 @@ import { join } from "node:path";
 
 // Forwards to the shared gate runtime (.agent/gate/gate.py), the same one Claude Code and Codex call
 // from native Stop and PreToolUse hooks. Stop: after a root turn succeeds, a failed check comes back as a
-// new prompt in the same session. Guard: permission evaluation turns a risky tool call into a denial.
+// new prompt in the same session. Guard: permission evaluation turns a risky tool call into a denial, or into
+// a question to the user for production or database access (`guard.confirm`, `guard.db` in .agent/gate.json).
+// OpenCode runs the `permission.evaluate` hook for every permission check that no rule denies, also when the
+// effect is "allow"; the shell tool checks the `shell` permission for every command except plain `cd`. So the
+// guard sees every shell call, also under an agent that auto-allows shell (build).
 export default Plugin.define({
   id: "agentic-gate",
   async setup(ctx) {
@@ -15,14 +19,14 @@ export default Plugin.define({
     const python = process.platform === "win32" ? "python" : "python3";
     const controller = new AbortController();
     const parents = new Set<string>();
-    const toolInputs = new Map<string, { tool: string; input: unknown }>();
+    const toolInputs = new Map<string, { tool: string; agent: string; input: unknown }>();
     const disposables: Array<{ dispose(): Promise<void> }> = [];
 
     function gate(event: "stop" | "guard", payload: Record<string, unknown>): Promise<any> {
       if (!existsSync(script)) return Promise.resolve({});
       return new Promise((resolve) => {
         try {
-          const child = spawn(python, [script, "--event", event, "--project-dir", project], { stdio: ["pipe", "pipe", "ignore"] });
+          const child = spawn(python, [script, "--host", "opencode", "--event", event, "--project-dir", project], { stdio: ["pipe", "pipe", "ignore"] });
           let out = "";
           child.stdout?.on("data", (chunk) => (out += chunk));
           child.on("error", () => resolve({}));
@@ -36,7 +40,7 @@ export default Plugin.define({
     }
 
     disposables.push(await ctx.tool.hook("execute.before", async (event) => {
-      toolInputs.set(`${event.sessionID}:${event.id}`, { tool: event.tool, input: event.input });
+      toolInputs.set(`${event.sessionID}:${event.id}`, { tool: event.tool, agent: String(event.agent), input: event.input });
     }));
     disposables.push(await ctx.tool.hook("execute.after", async (event) => {
       toolInputs.delete(`${event.sessionID}:${event.id}`);
@@ -44,12 +48,22 @@ export default Plugin.define({
     disposables.push(await ctx.permission.hook("evaluate", async (event) => {
       const tool = event.source?.type === "tool" ? toolInputs.get(`${event.sessionID}:${event.source.id}`) : undefined;
       const input = (tool?.input ?? {}) as Record<string, unknown>;
-      const result = await gate("guard", { tool_name: tool?.tool ?? event.action,
+      const agent = String(event.agent ?? tool?.agent ?? "");
+      // The built-in plan agent is read-only; the runtime denies non-local database access there.
+      const result = await gate("guard", { tool_name: tool?.tool ?? event.action, agent,
+        permission_mode: agent === "plan" ? "plan" : undefined,
         tool_input: { ...input, path: input.filePath ?? input.path ?? event.resources?.[0] } });
-      const reason = result?.hookSpecificOutput?.permissionDecisionReason;
+      const output = result?.hookSpecificOutput;
+      const reason = output?.permissionDecisionReason;
       if (reason) {
-        event.effect = "deny";
-        event.message = reason;
+        // "ask" never relaxes a stricter decision already made by OpenCode or another plugin.
+        if (output?.permissionDecision !== "ask") {
+          event.effect = "deny";
+          event.message = reason;
+        } else if (event.effect !== "deny") {
+          event.effect = "ask";
+          event.message = reason;
+        }
       }
     }));
 

@@ -1,5 +1,29 @@
 # Changelog
 
+## v3.0.0
+
+- Quality gate: `.agentic/gate/last.json` records acceptance: `accepted`, `reason_code` (`checks_passed`,
+  `checks_failed`, `max_blocks`, `no_changes`, `changelog_missing`), `head`, `pack_version`, `profile`. Old fields
+  stay. A `max_blocks` release writes `last_release` to `state.json`; on Claude Code it shows
+  `Agentic gate: NOT ACCEPTED (max_blocks)`.
+- Production guard: before `kubectl`, `helm` or `oc` on a context that matches `guard.prod_context_pattern`
+  (default `prod`, by flag or the current kubectl context), and before database clients on hosts in
+  `guard.prod_hosts`, the gate asks the user. Custom `guard.confirm` rules (`{pattern, reason}`) add to the
+  defaults; `guard.defaults: false` turns the defaults off. Claude Code and OpenCode ask; Codex hooks cannot ask,
+  so on Codex the command is denied and the agent asks the user to run it.
+- Database guard: the gate reads the Bash command, its heredocs, and the script files it runs. Write or
+  maintenance SQL (`VACUUM`, standalone `ANALYZE`, DDL, DML, `GRANT`, `pg_terminate_backend`, …) against a
+  non-local database is denied on every host; a connection that takes credentials from `.env` or the environment
+  asks first; host plan mode denies any non-local database connection. Configure with `guard.db`
+  (`mode: ask|deny|off`, `write: deny|ask`).
+- The OpenCode gate plugin passes the agent, so the `plan` agent is treated as read-only.
+- Breaking: gate hooks pass `--host`, so their commands change. After `agentic upgrade`, review and trust the
+  changed Codex hooks in `/hooks`; until then Codex does not run them.
+- Breaking: the production and database guards can ask for or block Bash commands that ran before (see
+  `UPGRADE.md`).
+- New backend rule `database-safety.md`; the core `AGENTS.md` adds one line: never run write or maintenance SQL
+  on a non-local database, and ask before using database credentials from `.env`.
+
 ## v2.4.0
 
 - JEV: in host plan mode (Claude Code `permission_mode: plan`, the OpenCode `plan` agent) the workflow hint is

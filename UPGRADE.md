@@ -88,3 +88,17 @@ v2.0.0 changes the default install. Run `agentic upgrade` in each project, then 
 4. **Codex skills.** Skills now also install to `.agents/skills/`.
 5. **Verify.** `make context-budget` in this repository shows the always-on estimate per host. In the
    project, `.agentic/gate/last.json` shows the last gate run.
+
+## Migrating to v3.0.0
+
+1. Run `agentic upgrade` in each project. The gate hook commands now pass `--host claude|codex|opencode`.
+2. Codex: open the project in Codex and trust the changed hooks in `/hooks`. Untrusted hooks do not run.
+3. The gate guard now asks before production access (`kubectl`/`helm`/`oc` on a context that matches `prod`,
+   database clients on `guard.prod_hosts`) and before database connections that read credentials from `.env`.
+   It blocks write or maintenance SQL against a non-local database and any non-local database connection in host
+   plan mode. On Codex an "ask" is a block with a request to run the command yourself.
+4. To adjust, edit `.agent/gate.json`: `guard.prod_context_pattern`, `guard.prod_hosts`, `guard.confirm` (custom
+   rules, added to the defaults), `guard.defaults: false` (turn the production defaults off), and `guard.db`
+   (`{"mode": "ask|deny|off", "write": "deny|ask"}`).
+5. Tools that read `.agentic/gate/last.json` get new fields (`accepted`, `reason_code`, `head`, `pack_version`,
+   `profile`); the old fields stay.
