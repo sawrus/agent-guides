@@ -35,7 +35,8 @@ release instructions come from the new binary.
 - Remove obsolete unchanged instructions. Preserve obsolete customized instructions
   during normal upgrades; force removes all recognized Agentic instructions.
 - Preserve unrelated keys in shared configurations and all global configuration.
-- Reject escaping paths and symlink targets before any project mutation.
+- Reject escaping paths and symlink targets before any project mutation. The inventory skips nested
+  symlinks inside agent directories; hosts own them, and agentic never writes through them.
 - Prepare the complete update in isolation, back up changes, and restore project
   files if applying them fails. Doctor and MemPalace maintenance run after commit.
 - Dry runs perform no release downloads or project writes and show the same file

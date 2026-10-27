@@ -1003,6 +1003,20 @@ fn upgrade_rejects_escaping_manifest_before_writes() {
 
 #[cfg(unix)]
 #[test]
+fn upgrade_skips_nested_host_symlinks() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let daemon = project.path().join(".codex/packages/app-server-daemon");
+    std::fs::create_dir_all(daemon.join("releases/1.0")).unwrap();
+    std::os::unix::fs::symlink(daemon.join("releases/1.0"), daemon.join("current")).unwrap();
+    sync_upgrade(project.path(), home.path(), false)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No .agentic.json"));
+}
+
+#[cfg(unix)]
+#[test]
 fn upgrade_rejects_symlink_targets() {
     let project = tempfile::tempdir().unwrap();
     let home = tempfile::tempdir().unwrap();
