@@ -1,19 +1,24 @@
-# Rule: Observability Data Retention
+---
+description: Retention, sampling, and cardinality limits for metrics, logs, and traces in the observability stack.
+paths:
+  - "**/prometheus*.yml"
+  - "**/prometheus*.yaml"
+  - "**/loki*.yaml"
+  - "**/tempo*.yaml"
+  - "**/otel*.yaml"
+  - "**/otel*.yml"
+  - "**/values-*observability*.yaml"
+---
 
-**Priority**: P2 — Retention settings affect compliance and cost.
+# Observability data retention
 
-## Retention Policy
-
-| Data type | Hot storage | Cold/archive | Delete |
-|:---|:---|:---|:---|
-| Metrics (Prometheus) | 15 days | 1 year (VictoriaMetrics/Thanos) | > 1 year |
-| Logs | 30 days (Loki/ES hot) | 90 days (cold) | > 90 days |
-| Traces | 7 days | Not archived (high volume) | > 7 days |
-| Alerting history | 90 days | — | > 90 days |
-
-## Cost Controls
-
-1. **High-cardinality labels are forbidden** — no `user_id`, `session_id`, `request_id` as Prometheus labels (use trace context instead).
-2. **Log sampling** — DEBUG logs sampled at 1% in production; INFO at 100%; ERROR/WARN at 100%.
-3. **Trace sampling** — head-based: 10% of requests; always-sample for errors and slow requests (> p99).
-4. **Prometheus recording rules** — pre-aggregate expensive queries; don't query raw metrics in dashboards.
+- Keep raw Prometheus metrics for 15 days and downsampled metrics in long-term storage (Thanos, Mimir, VictoriaMetrics) for 1 year.
+- Keep logs hot for 30 days and in cold storage for 90 days, then delete them.
+- Keep traces for 7 days and do not archive them.
+- Never use `user_id`, `session_id`, `request_id`, or `trace_id` as a metric label.
+- Limit each service to the series budget set in its scrape config with `sample_limit`.
+- Drop unused high-cardinality series with `metric_relabel_configs` before ingestion.
+- Sample `DEBUG` logs at 1 % in production and keep all `INFO`, `WARN`, and `ERROR` logs.
+- Sample 10 % of traces at the head and keep every error trace and every trace slower than p99 with tail sampling.
+- Use recording rules for queries that dashboards run on raw high-volume metrics.
+- Redact secrets and personal data in the collector (`attributes` or `transform` processor) before export.

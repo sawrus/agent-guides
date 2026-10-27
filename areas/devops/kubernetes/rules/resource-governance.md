@@ -1,80 +1,26 @@
-# Rule: Resource Governance
+---
+description: Resource requests and limits, probes, autoscaling, disruption budgets, and quotas for Kubernetes workloads.
+paths:
+  - "**/k8s/**"
+  - "**/kubernetes/**"
+  - "**/manifests/**"
+  - "**/charts/**"
+  - "**/kustomization.yaml"
+  - "**/values*.yaml"
+---
 
-**Priority**: P1 — Missing resource contracts fail pre-deploy quality gate.
+# Resource governance
 
-## Mandatory Resource Contracts
-
-1. **Every container must specify requests AND limits**
-   ```yaml
-   resources:
-     requests:
-       cpu: 100m       # guaranteed CPU
-       memory: 128Mi   # guaranteed memory
-     limits:
-       cpu: 500m       # burst cap
-       memory: 512Mi   # OOM kill threshold
-   ```
-   - Containers without `resources` block are rejected by OPA/Gatekeeper policy.
-   - `limits.cpu` may be omitted only if the workload is explicitly classified as CPU-unbounded with team-lead approval.
-
-2. **QoS class targets**
-   - `Guaranteed` (requests == limits): required for stateful workloads and Tier 1 services.
-   - `Burstable` (requests < limits): acceptable for Tier 2 services.
-   - `BestEffort` (no resources): forbidden in production; allowed in dev/lab only.
-
-## Namespace LimitRange
-
-3. **Every production namespace has a LimitRange**
-   ```yaml
-   apiVersion: v1
-   kind: LimitRange
-   metadata:
-     name: default-limits
-   spec:
-     limits:
-       - type: Container
-         default:       { cpu: 200m, memory: 256Mi }    # applied when limits absent
-         defaultRequest:{ cpu: 50m,  memory: 64Mi  }    # applied when requests absent
-         max:           { cpu: 4,    memory: 4Gi   }    # hard ceiling per container
-   ```
-
-## Autoscaling
-
-4. **HPA required for all Tier 1 stateless workloads**
-   ```yaml
-   spec:
-     minReplicas: 2
-     maxReplicas: 20
-     metrics:
-       - type: Resource
-         resource:
-           name: cpu
-           target: { type: Utilization, averageUtilization: 70 }
-   ```
-
-5. **PodDisruptionBudget (PDB) required for Tier 1**
-   ```yaml
-   spec:
-     minAvailable: 1        # or maxUnavailable: 1 — choose one
-     selector:
-       matchLabels:
-         app: my-service
-   ```
-   - Tier 1 services must tolerate voluntary disruption (node drain) without outage.
-
-## Topology & Scheduling
-
-6. **TopologySpreadConstraints for Tier 1**
-   ```yaml
-   topologySpreadConstraints:
-     - maxSkew: 1
-       topologyKey: topology.kubernetes.io/zone
-       whenUnsatisfiable: DoNotSchedule
-       labelSelector:
-         matchLabels: { app: my-service }
-   ```
-   - Prevents all replicas landing on one zone during rolling update.
-
-7. **ResourceQuota on every production namespace**
-   - Prevents resource exhaustion from runaway deployments.
-   - Values set per team capacity plan; reviewed quarterly.
+- Set `resources.requests.cpu`, `resources.requests.memory`, and `resources.limits.memory` for every container.
+- Set `limits.memory` equal to `requests.memory` for stateful and tier 1 workloads (`Guaranteed` QoS for memory).
+- Never deploy a `BestEffort` pod (no resources block) to a production namespace.
+- Derive requests from observed usage: set CPU requests near the p95 of `container_cpu_usage_seconds_total` rate and memory requests near the p95 working set plus 20 %.
+- Add `readinessProbe` and `livenessProbe` to every serving container; add `startupProbe` when start takes over 30 seconds.
+- Do not point `livenessProbe` at an endpoint that checks downstream dependencies.
+- Add a `HorizontalPodAutoscaler` with `minReplicas: 2` or more for tier 1 stateless workloads.
+- Do not set a fixed `replicas` value in the manifest when an HPA manages the deployment.
+- Add a `PodDisruptionBudget` with `minAvailable` or `maxUnavailable` for every workload with 2 or more replicas.
+- Add `topologySpreadConstraints` on `topology.kubernetes.io/zone` with `maxSkew: 1` for tier 1 workloads.
+- Add a `LimitRange` with default requests and limits to every production namespace.
+- Add a `ResourceQuota` to every production namespace.
+- Set `terminationGracePeriodSeconds` longer than the longest request timeout of the service.

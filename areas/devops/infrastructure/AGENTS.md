@@ -1,36 +1,7 @@
-# Infrastructure — guidance index
+# Infrastructure
 
-## What this area covers
+Infrastructure as code with Terraform and Ansible: modules, state, secrets, and drift.
 
-Infrastructure-as-Code lifecycle: Terraform module authoring, environment provisioning and destruction, drift detection and remediation, state management, Ansible playbooks, cost optimization, and secret hygiene.
-
-## Cross-cutting constraints
-
-- **IaC-only changes** — zero manual console or CLI changes in non-development environments; document exceptions.
-- **State is sacred** — never manually edit Terraform state; always use `terraform state` commands with documented justification.
-- **Immutability over mutation** — replace resources rather than patching them in place where possible.
-- **Secret hygiene** — no credentials, tokens, or keys in IaC code, state, or commit history.
-
-## Spec map
-
-```text
-.agent/
-├── rules/
-│   ├── iac-standards.md       ← module structure, naming, provider pinning
-│   ├── immutability.md        ← replace-before-destroy, no in-place secret mutations
-│   ├── secret-hygiene.md      ← vault integration, forbidden patterns, rotation policy
-│   └── state-management.md   ← backend config, state locking, import procedures
-├── skills/
-│   ├── terraform-modules/SKILL.md    ← module authoring, variable design, output contracts
-│   ├── ansible-playbooks/SKILL.md    ← idempotency, role structure, vault integration
-│   ├── drift-detection/SKILL.md      ← plan-diff analysis, scheduled drift checks
-│   ├── state-management/SKILL.md     ← import, mv, rm, split-state patterns
-│   └── cost-optimization/SKILL.md   ← right-sizing, reserved capacity, unused resource cleanup
-├── workflows/
-│   ├── provision-environment.md   ← /provision-environment
-│   ├── destroy-environment.md     ← /destroy-environment
-│   ├── drift-remediation.md       ← /drift-remediation
-│   └── module-development.md      ← /module-development
-└── prompts/
-    └── *.md
-```
+- Rules: `iac-standards.md`, `state-management.md`, `immutability.md`, `secret-hygiene.md`, `ansible-standards.md`.
+- Skills: `terraform-modules` (create or change a Terraform module), `drift-detection` (find and resolve drift).
+- Workflows: `/iac-change` — provision, change, fix drift in, or destroy infrastructure.

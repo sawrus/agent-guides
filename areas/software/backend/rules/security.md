@@ -1,44 +1,25 @@
 ---
-trigger: manual
-description: authentication, authorization, input validation, and secret handling for services
+description: Authentication, authorization, input validation, and secret handling in backend service code.
+paths:
+  - "**/*.py"
+  - "**/*.go"
+  - "**/*.java"
+  - "**/*.kt"
 ---
-# Rule: Backend Security & OWASP Standards
 
-**Priority**: P0 — Security vulnerabilities affecting confidentiality, integrity, or availability are release blockers.
+# Backend security
 
-## OWASP-aligned baseline
-
-1. **Access control and authorization**
-   - Default-deny endpoint access.
-   - Enforce RBAC/ABAC and object-level authorization for every resource operation.
-   - Test negative authorization paths (forbidden cross-tenant access).
-
-2. **Authentication and session/token lifecycle**
-   - Validate issuer, audience, expiry, and signature for tokens.
-   - Use short-lived access tokens and revocable refresh strategy.
-   - Detect and alert on anomalous auth patterns.
-
-3. **Cryptography and secrets**
-   - Use modern algorithms (Argon2id/bcrypt for password hashing).
-   - Secrets only from dedicated manager (Vault/AWS/GCP/Azure secret stores).
-   - Define key/secret rotation and emergency revocation procedures.
-
-4. **Injection and input safety**
-   - Parameterized queries only; no string-concatenated SQL.
-   - Strict DTO/schema validation at boundaries.
-   - Block mass assignment with explicit writable-field allowlists.
-
-5. **Critical web attack defenses**
-   - SSRF protections for outbound HTTP integrations.
-   - Safe deserialization only; reject untrusted executable payload formats.
-   - File upload protection: type validation, scanning, quarantine storage.
-
-6. **Service identity and least privilege**
-   - Prefer workload identity/mTLS for service-to-service auth.
-   - Avoid static credentials in runtime environments.
-   - Separate service accounts per environment and per bounded context.
-
-7. **Security telemetry and audit**
-   - Log auth events, privilege changes, and sensitive config access.
-   - Mask/redact sensitive fields in logs and traces.
-   - Propagate correlation IDs for incident reconstruction.
+- Deny by default: every endpoint has an explicit authentication requirement and authorization check.
+- Check object-level authorization (owner or tenant) for every read and write by id; add a test for cross-tenant access that expects `403` or `404`.
+- Validate tokens for signature, `iss`, `aud`, `exp`, and `nbf`; reject `alg: none` and unexpected algorithms.
+- Keep access token lifetime at 15 minutes or less; store refresh tokens server-side so they can be revoked.
+- Hash passwords with Argon2id or bcrypt; never use MD5, SHA-1, or unsalted SHA-256 for passwords.
+- Validate every request body against a schema (Pydantic, Bean Validation, struct tags) with unknown fields rejected.
+- Use an allowlist of writable fields; never bind a request body directly to an ORM entity (mass assignment).
+- Read secrets from environment variables or a secret manager at startup; never commit a secret or default it in code.
+- Restrict outbound HTTP to an allowlist of hosts when the URL comes from user input (SSRF).
+- Do not deserialize untrusted data with `pickle`, Java native serialization, or YAML `load` without a safe loader.
+- Check type and size of uploaded files and store them outside the web root.
+- Log authentication failures, permission changes, and admin actions with the user id and request id.
+- Never log passwords, tokens, full card numbers, or session cookies; mask them in logs and traces.
+- Use a separate service account per service and per environment; no shared credentials.

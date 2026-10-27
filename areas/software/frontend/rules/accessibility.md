@@ -1,16 +1,19 @@
-# Rule: Accessibility First
+---
+description: WCAG 2.1 AA constraints for web UI components in React, Vue, or plain HTML.
+paths:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.vue"
+  - "**/*.html"
+---
 
-**Priority**: P0 — Blocks merge if violated.
+# Accessibility
 
-## Constraints
-
-1. Every interactive element (`button`, `a`, `input`, `select`, custom widget) **must** have an accessible name via `aria-label`, `aria-labelledby`, or visible text content.
-2. Color contrast ratio must be **≥ 4.5:1** for normal text and **≥ 3:1** for large text (WCAG 2.1 AA).
-3. All functionality must be operable via **keyboard only** (Tab, Shift+Tab, Enter, Space, Arrow keys).
-4. Images must have meaningful `alt` attributes; decorative images use `alt=""`.
-5. Dynamic content updates (toasts, modals, form errors) must be announced via `aria-live` regions or focus management.
-6. No `tabindex` values greater than `0` are permitted.
-
-## Verification
-
-The agent must run `axe-core` or `eslint-plugin-jsx-a11y` checks before considering any UI component complete.
+- Give every `button`, `a`, `input`, `select`, and custom widget an accessible name: visible text, `aria-label`, or `aria-labelledby`.
+- Keep text contrast at 4.5:1 or more, and 3:1 or more for large text.
+- Make every action work with the keyboard only (`Tab`, `Shift+Tab`, `Enter`, `Space`, arrow keys).
+- Add a meaningful `alt` to every `img`; use `alt=""` for decorative images.
+- Use an `aria-live` region or move focus to announce toasts, modal openings, and form errors.
+- Do not set a `tabindex` value greater than `0`.
+- Use native elements (`button`, `a href`) instead of a `div` with an `onClick` handler.
+- Run `axe-core` or `eslint-plugin-jsx-a11y` on changed components; fail the check on any WCAG A or AA violation.

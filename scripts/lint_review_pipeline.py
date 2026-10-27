@@ -7,14 +7,9 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-WORKFLOWS = {
-    'software/general/development-cycle-workflow': ['product-owner', 'pm', 'team-lead', 'developer', 'qa', 'devops-engineer'],
-    'software/backend/develop-feature': ['product-owner', 'pm', 'team-lead', 'developer', 'qa', 'analyst', 'devops-engineer'],
-    'software/backend/develop-epic': ['product-owner', 'pm', 'team-lead', 'developer', 'qa', 'devops-engineer'],
-    'software/full-stack/develop-feature-fullstack': ['team-lead', 'developer', 'qa', 'devops-engineer'],
-    'software/full-stack/feature-implementation-flow': ['pm', 'team-lead', 'analyst', 'developer', 'qa', 'devops-engineer'],
-    'software/full-stack/backend-project-full-cycle': ['pm', 'team-lead', 'developer', 'qa', 'devops-engineer'],
-}
+# Workflows with a Post-task review hook, as `area/spec/name` -> role list. The role-neutral workflows of the
+# content cleanup (docs/artifact-standard.md, ART-W1) have no roles, so no pack workflow carries the hook today.
+WORKFLOWS: dict[str, list[str]] = {}
 AGENTS = ('instruction-reviewer', 'memory-curator')
 ENVIRONMENTS = ('claude', 'codex', 'opencode', 'gemini')
 # Roles renamed in v1.4.0; only migration code and alias tables may mention old names.
@@ -132,7 +127,7 @@ def main() -> int:
     if issues:
         print('\n'.join(issues))
         return 1
-    print('Post-task review contracts pass across six workflows and four environments.')
+    print(f'Post-task review contracts pass across {len(WORKFLOWS)} workflows and four environments.')
     return 0
 
 

@@ -11,7 +11,7 @@ import lint_prompts
 
 ROOT = Path(__file__).resolve().parents[2]
 REQUEST_LIMIT = 32768
-GENERAL = "areas/software/general/workflows/development-cycle-workflow.md"
+GENERAL = "areas/software/general/workflows/develop-feature.md"
 VALID = 'type: workflow\nagent: qa\nselection:\n  general: false\n  use-when: "The request asks for a check."\n'
 
 
@@ -47,7 +47,7 @@ class RepositoryWorkflows(unittest.TestCase):
                 shutil.copy(path, target / path.name)
             catalog = questions.workflow_catalog(project)
             request = questions.workflow_request("разработай небольшое приложение " * 120, catalog, project, {})
-        self.assertGreaterEqual(len(catalog), 73)
+        self.assertGreaterEqual(len(catalog), 10)
         self.assertLess(len(json.dumps(request, ensure_ascii=False).encode()), REQUEST_LIMIT)
 
 

@@ -1,28 +1,19 @@
-# Rule: Immutable Infrastructure
+---
+description: No in-place changes to running infrastructure, drift checks, and the emergency change path.
+paths:
+  - "**/*.tf"
+  - "**/*.tfvars"
+  - "**/packer/**"
+  - "**/*.pkr.hcl"
+---
 
-**Priority**: P0 — Manual changes to running infrastructure are a critical policy violation.
+# Immutable infrastructure
 
-## Core Constraints
-
-1. **No SSH patching of running servers** — the fix is a new image + redeploy, not in-place modification.
-
-2. **Terraform is the single source of truth** — cloud console, CLI, or SDK changes that bypass Terraform are forbidden in production. Drift = violation.
-
-3. **Immutable image tags** — container images in production always reference content-addressed digest (`image@sha256:...`), never `:latest` or mutable tags.
-
-4. **Module versioning** — all Terraform module references pinned to semantic version tags. `?ref=main` is forbidden in staging and production.
-
-5. **Emergency exception process**
-   - Manual change allowed only for P0 incidents.
-   - Requires: Slack announcement + ticket + on-call sign-off.
-   - IaC PR to codify the change must be merged within **24 hours**.
-   - Recurring manual changes for the same resource = architecture review required.
-
-## Drift Policy
-
-6. **Drift detection runs every 6 hours** via CI scheduled job (`terraform plan`).
-7. **Detected drift classifications:**
-   - `ACCEPT`: approved architectural exception (documented in PR) → suppress alert
-   - `REMEDIATE`: unintended change → create ticket, remediate within 48h
-   - `INVESTIGATE`: unknown origin → P1 incident, may indicate unauthorized access
-8. **Drift in production security groups or IAM** → automatic P1 incident regardless of size.
+- Fix a running server with a new image and a redeploy; never patch it over SSH or in the cloud console.
+- Change production resources only through Terraform code; do not use the console, CLI, or SDK for them.
+- Build machine images with Packer (`*.pkr.hcl`) and reference them by image ID or digest, not by a `latest` name filter.
+- Use `create_before_destroy = true` for resources that serve traffic during replacement.
+- Run a scheduled drift check (`terraform plan -detailed-exitcode`) at least every 6 hours for each production state.
+- Tag each drift finding `accept`, `remediate`, or `investigate`; fix a `remediate` finding within 48 hours.
+- Create a P1 incident for drift of unknown origin and for any drift in security groups or IAM `policy` resources.
+- Allow a manual production change only during a P0 incident and merge the matching IaC change within 24 hours.

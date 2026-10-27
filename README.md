@@ -33,7 +33,7 @@ another does not.
 - 🧭 **One process.** A product owner, team lead, developer and QA agent hand work to each other with clear
   acceptance criteria — in Codex, Claude Code and OpenCode alike. The default `lean` profile keeps a short core
   and a quality gate; `--profile team` installs the full role team.
-- 🛡️ **Shared guardrails.** 85 rules and 73 workflows for backend, frontend, DevOps, data, ML, security and more,
+- 🛡️ **Shared guardrails.** 63 rules, 14 skills and 10 workflows for backend services, CI/CD, Kubernetes, infrastructure, security and more,
   loaded only when the task needs them.
 - 🔁 **Install once, keep in sync.** `agentic install` writes the native files each agent expects; `agentic upgrade`
   keeps them current without overwriting your own edits.
@@ -106,7 +106,7 @@ Installed with `--profile team`; the default `lean` profile adds only `explorer`
 | ⚙️ `devops-engineer` | Handles CI/CD, infrastructure and deployment |
 | 🧹 `instruction-reviewer` · `memory-curator` | Review the run afterwards and suggest guidance fixes |
 
-Pick the specializations your project needs — 10 software (backend, frontend, mobile, data, ML, security, …) and
+Pick the specializations your project needs — 8 software (backend, frontend, mobile, data, ML, security, …) and
 8 DevOps (Kubernetes, CI/CD, observability, SRE, …).
 
 ---

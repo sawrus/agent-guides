@@ -1,5 +1,30 @@
 # Changelog
 
+## v6.0.0
+
+- Breaking: the pack follows `docs/artifact-standard.md`; `make check-artifacts` runs with an empty baseline.
+  86 rules, 98 skills, 73 workflows and 73 prompts became 64 rules, 14 skills, 10 workflows and no prompts.
+  Installed content for `devops.infrastructure,devops.observability,software.backend,software.general` fell from
+  about 69k to 14k tokens; every selection's always-on context is under 4,000 tokens on every host (Claude:
+  infrastructure + kubernetes + sre 9,273 → 1,872).
+- Breaking: removed the specializations `software.full-stack` and `software.platform`. `install` and `upgrade`
+  map them to `software.backend` + `software.frontend` + `software.general` and to `devops.kubernetes` +
+  `devops.infrastructure` + `devops.ci-cd`, with a warning. An unknown specialization now stops with the list of
+  available ones.
+- Breaking: ten role-neutral workflows remain: `develop-feature` (general), `debug-issue`, `refactor-module`,
+  `code-review-workflow`, `add-migration`, `incident-response`, `debug-workload`, `iac-change`,
+  `release-pipeline`, `security-scan`. Each has 4–5 steps with **Do** / **Done when** and an `Example request:`.
+  Lean runs the steps itself; team sends each step to the installed role agent that fits it.
+- Breaking: `agentic` no longer installs `prompts/`; an upgrade removes unchanged prompt files. The docs site takes
+  examples from workflow `Example request:` lines (catalog 1.3.0).
+- Breaking: `agentic upgrade` in a project with agentic files but no `.agentic.json` stops and asks for
+  `agentic install` (or `agentic tui`); `--force` keeps the old default rebuild.
+- Every rule has `paths:` or `trigger: manual` and lists checkable items. New backend rules `api-contracts`,
+  `configuration`, `service-telemetry`; infrastructure rule `ansible-standards`; the image-digest item moved to the
+  Kubernetes `workload-security` rule. Renamed and merged rules are listed in `UPGRADE.md`.
+- `check-docs-coverage` counts a deleted file as covered by a changed page that covered it before.
+- `scripts/sync_workflow_diagrams.py` and `make sync-diagrams` are removed.
+
 ## v5.0.0
 
 - `make check-artifacts` (`scripts/check_artifacts.py`) checks rules, skills and workflows against every

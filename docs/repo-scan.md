@@ -35,6 +35,7 @@ Outputs: `repositories.json`, `relationships.json`, `guide-applicability.json`, 
 
 Repository applicability is separate from task routing. `task_routing` only orders candidate workflows per task
 kind; JEV still chooses the workflow for a concrete task. The relationship graph is an input for cross-project
-work.
+work. `tools/repo-scan/applicability.json` names rules and workflows by their current pack ids
+(`<area>/<spec>/<name>`); when the pack removes or renames an artifact, the same change updates these ids.
 
 Details, rule format, relationship kinds and limits: [tools/repo-scan/README.md](../tools/repo-scan/README.md).

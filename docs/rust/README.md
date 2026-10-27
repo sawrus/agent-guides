@@ -124,7 +124,7 @@ self-contained cross-platform Rust binary.
 
 - `Makefile`: `build`, `test` (cargo test), `test-coverage`, `lint`
   (fmt --check + clippy -D warnings), `fmt`, `clean`, `release-build`;
-  content-tooling targets (lint-prompts, sync-diagrams, assess-areas,
+  content-tooling targets (lint-prompts, assess-areas,
   build-docs-catalog) preserved.
 - `install` script: downloads the platform binary from GitHub Releases
   (only the bootstrap script itself needs curl/wget).

@@ -1,10 +1,18 @@
-# Rule: Offline-First Architecture
+---
+description: Offline behaviour and sync queue constraints for iOS, Android, and React Native apps.
+paths:
+  - "**/*.swift"
+  - "**/*.kt"
+  - "**/*.dart"
+  - "ios/**"
+  - "android/**"
+---
 
-**Priority**: P1 — Mobile apps must be functional without network connectivity.
+# Offline first
 
-1. **Optimistic UI required**: User actions update the UI immediately without waiting for network.
-2. **Network state awareness**: Every screen requiring network data handles offline state with clear UI feedback, not blank screens.
-3. **Sync conflict resolution**: Defined conflict resolution strategy must exist and be documented.
-4. **Queue persistence**: Outgoing action queue must be persisted to disk (not memory) to survive app termination.
-5. **Background sync**: Queued actions synced when connectivity restored, including when app is backgrounded.
-6. **Stale data disclosure**: Cached data older than SLA for that data type must be labeled "Last updated X ago."
+- Update the UI before the network request returns, and roll back the change when the request fails.
+- Show an offline state with a retry action on every screen that needs network data; never render a blank screen.
+- Persist the outgoing action queue to disk (database or file), not only in memory.
+- Run the queued requests when connectivity returns, including from a background task.
+- Define one conflict resolution strategy per synced entity type and document it next to the sync code.
+- Label cached data older than its freshness limit with the time of the last update.

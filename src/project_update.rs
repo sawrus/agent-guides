@@ -241,6 +241,20 @@ pub fn synchronize(app: &mut App) -> crate::Result<()> {
         );
         return Ok(());
     }
+    // Without a manifest the install settings are unknown. Defaults would mark every artifact of
+    // another selection obsolete, so only `--force` may rebuild from defaults.
+    if !app.upgrade_force && !before.contains_key(crate::PROJECT_MANIFEST_NAME) {
+        return Err(format!(
+            "{} has agentic files but no {}; the install settings are unknown. \
+             Run `agentic install --project-dir {} --agent-os <list> --areas <list> --specializations <list>` \
+             (or `agentic tui`) with the intended settings, or run `agentic upgrade --force` \
+             to rebuild with default settings (default + software.general)",
+            root.display(),
+            crate::PROJECT_MANIFEST_NAME,
+            root.display()
+        )
+        .into());
+    }
     app.upgrade_mode = true;
     app.project_dir = root.to_string_lossy().to_string();
     app.interactive_override = Some(false);
@@ -251,6 +265,17 @@ pub fn synchronize(app: &mut App) -> crate::Result<()> {
     app.jev_api_url = None;
     app.selected_mcps.clear();
     manifest::load_install_settings_from_manifest(app, &root.join(crate::PROJECT_MANIFEST_NAME))?;
+    crate::install::resolve_spec_aliases(app);
+    let unknown = crate::install::unknown_specs(app);
+    if !app.upgrade_force && !unknown.is_empty() {
+        return Err(format!(
+            "{} in {}. Run `agentic install` with valid --specializations, or `agentic upgrade --force` \
+             to rebuild with default settings",
+            crate::install::unknown_specs_message(app, &unknown),
+            crate::PROJECT_MANIFEST_NAME
+        )
+        .into());
+    }
     if !settings_valid(app, &data) {
         reset_settings(app);
         ui::warn(

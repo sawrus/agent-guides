@@ -7,7 +7,6 @@ on:
       - 'areas/**'
       - 'docs/site/**'
       - 'scripts/build_docs_catalog.py'
-      - 'scripts/sync_workflow_diagrams.py'
       - '.github/workflows/docs-site.yml'
   workflow_dispatch:
 
@@ -34,7 +33,6 @@ jobs:
 
       - name: Build docs catalog for site
         run: |
-          python3 scripts/sync_workflow_diagrams.py --check
           python3 scripts/build_docs_catalog.py --output docs/site/catalog.json --validate
 
       - name: Configure Pages

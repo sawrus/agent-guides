@@ -77,6 +77,17 @@ class LeanProfile(unittest.TestCase):
             self.assertIn('Agent tool', claude)
             self.assertIn('REVIEW_PIPELINE', claude)
 
+    def test_team_role_neutral_workflow_delegates_by_step_fit(self):
+        workflow = {'id': 'fix-bug', 'path': '.agent/workflows/fix-bug.md', 'initiator': '', 'roles': []}
+        for delegation, tool in ((adapters.CODEX_DELEGATION, 'spawn_agent'), (adapters.CLAUDE_DELEGATION, 'the Agent tool')):
+            context = adapters.workflow_context(workflow, delegation)
+            self.assertIn('.agent/workflows/fix-bug.md', context)
+            self.assertIn('installed role agent whose description fits the step', context)
+            self.assertIn('through ' + tool, context)
+            self.assertNotIn('declared initiator', context)
+        legacy = adapters.workflow_context({**workflow, 'initiator': 'product-owner', 'roles': ['developer']}, adapters.CLAUDE_DELEGATION)
+        self.assertIn('declared initiator', legacy)
+
     def test_native_answer_adds_no_context_and_turns_the_session_off(self):
         with patch.object(hook, 'evaluate', side_effect=lambda p, s, r: self.answer(r, 'native')) as client:
             self.assertEqual(hook.codex_event(self.project, self.payload('UserPromptSubmit', prompt='Where is restock?')), {})

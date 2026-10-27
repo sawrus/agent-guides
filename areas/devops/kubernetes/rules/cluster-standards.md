@@ -1,51 +1,24 @@
-# Rule: Cluster Standards
+---
+description: Control plane, node, runtime, CNI, and exposure standards for Kubernetes clusters and their config.
+paths:
+  - "**/clusters/**"
+  - "**/cluster/**"
+  - "**/kubeadm*.yaml"
+  - "**/talos/**"
+  - "**/eks/**"
+  - "**/gke/**"
+---
 
-**Priority**: P0 — Non-compliant clusters are blocked from receiving production workloads.
+# Cluster standards
 
-## Control Plane
-
-1. **High availability required for production**
-   - Minimum 3 control plane nodes across 3 failure domains (separate physical hosts or AZs).
-   - Single-node control plane allowed only in dev/lab; explicitly labelled `env=dev`.
-   - etcd must run on dedicated nodes or co-located on control plane nodes — never on workers.
-
-2. **Supported distributions**
-   - Bare-metal: kubeadm, k3s (single-node / small clusters), RKE2, Talos Linux.
-   - Cloud: EKS, GKE, AKS — managed control plane only; node pools follow these same rules.
-   - Custom distros require architecture review sign-off before production use.
-
-3. **Kubernetes version policy**
-   - Production clusters must run a version within **2 minor releases** of the latest stable.
-   - No cluster older than N-3 in any environment.
-   - Patch updates applied within 30 days of release.
-
-## Node Standards
-
-4. **Operating system**
-   - Preferred: Ubuntu 22.04 LTS or Rocky Linux 9 (immutable image preferred).
-   - All nodes run the same OS and kernel version within a node group.
-   - `unattended-upgrades` / `dnf-automatic` enabled for security patches only (not kernel).
-
-5. **Container runtime**
-   - **containerd** is the standard CRI. Docker Engine as CRI is forbidden.
-   - `runc` is the default OCI runtime. `gVisor` / `kata-containers` for sensitive workloads.
-
-6. **Node labelling (mandatory)**
-   ```
-   node-role.kubernetes.io/worker=
-   topology.kubernetes.io/zone=<zone>
-   topology.kubernetes.io/region=<region>
-   node.kubernetes.io/instance-type=<type>
-   environment=<prod|staging|dev>
-   ```
-
-## Networking
-
-7. **CNI**
-   - Cilium is the standard for new clusters (eBPF, NetworkPolicy, Hubble observability).
-   - Calico accepted for existing clusters. Flannel only in dev/lab — no NetworkPolicy support.
-   - Pod CIDR and Service CIDR must not overlap and must not conflict with datacenter routing.
-
-8. **No NodePort in production**
-   - Services exposed via `LoadBalancer` (MetalLB for bare-metal) or `Ingress` only.
-   - `NodePort` allowed in dev/lab environments only.
+- Run at least 3 control plane nodes across 3 failure domains in production; allow a single control plane node only in clusters labelled `env=dev`.
+- Never schedule etcd on worker nodes.
+- Use a managed control plane (EKS, GKE, AKS) or kubeadm, RKE2, k3s, or Talos for self-managed clusters.
+- Use `containerd` as the container runtime; never use Docker Engine as the CRI.
+- Keep the same OS image and kernel version within a node group.
+- Add the labels `topology.kubernetes.io/zone`, `topology.kubernetes.io/region`, `node.kubernetes.io/instance-type`, and `environment` to every node.
+- Use Cilium for new clusters; use Calico only for existing clusters; never use Flannel outside dev clusters.
+- Choose pod and service CIDR ranges that do not overlap each other or the routed network.
+- Expose production services through `Ingress`, `Gateway`, or `type: LoadBalancer`; do not use `NodePort` in production.
+- Enable etcd encryption at rest with an `EncryptionConfiguration` that uses a KMS or `aescbc` provider.
+- Enable API server audit logging and ship the audit log to central storage.

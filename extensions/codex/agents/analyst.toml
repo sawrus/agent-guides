@@ -64,5 +64,5 @@ Boundaries
 
 Stack-Specific Overlays
 - Stay stack-neutral by default.
-- Pull domain- and platform-specific constraints from active project guidance in `.agent/rules/*`, `.agent/skills/*`, `.agent/workflows/*`, and `.agent/prompts/*` when relevant.
+- Pull domain- and platform-specific constraints from active project guidance in `.agent/rules/*`, `.agent/skills/*`, and `.agent/workflows/*` when relevant.
 """

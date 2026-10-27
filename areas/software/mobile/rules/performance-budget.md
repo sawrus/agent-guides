@@ -1,20 +1,20 @@
-# Rule: Mobile Performance Budget
+---
+description: Startup, memory, frame rate, and list rendering limits for iOS, Android, and React Native apps.
+paths:
+  - "**/*.swift"
+  - "**/*.kt"
+  - "**/*.tsx"
+  - "ios/**"
+  - "android/**"
+---
 
-**Priority**: P1 — Poor mobile performance directly correlates with abandonment.
+# Mobile performance budget
 
-## Thresholds
-
-| Metric | Target | Hard Limit |
-|:---|:---|:---|
-| Cold start | < 2s | < 3s |
-| Time to interactive | < 1s after bundle | < 2s |
-| JS bundle size | < 2 MB | < 4 MB |
-| Memory usage (background) | < 50 MB | < 100 MB |
-| Frame rate | 60 fps | 30 fps minimum |
-
-## Constraints
-
-1. **No blocking the JS thread**: Long computations offloaded to native modules or worker threads.
-2. **FlatList for all lists**: Never `ScrollView` for lists of unknown length. Use `FlatList` or `FlashList`.
-3. **Image optimization**: All images resized to display size before loading. Use `FastImage` for caching.
-4. **Hermes engine**: Must be enabled on both platforms.
+- Keep cold start under 3 s and time to interactive under 2 s on the slowest supported device.
+- Limit background memory use to 100 MB.
+- Keep the UI at 60 fps; fail a release check that measures below 30 fps on a supported device.
+- Limit the React Native JavaScript bundle to 4 MB.
+- Do not run long computations on the UI or JavaScript thread; move them to a worker or native module.
+- Use `FlatList` or `FlashList` for lists of unknown length, never `ScrollView`.
+- Resize images to their display size before load and use a caching image component.
+- Enable the Hermes engine (`hermesEnabled`) on both platforms in React Native projects.

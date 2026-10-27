@@ -27,6 +27,11 @@ CODEX_DELEGATION = ('Act as its declared initiator and coordinate delivery. Dele
                     'to its declared native role agents through spawn_agent.', 'spawn hooks')
 CLAUDE_DELEGATION = ('Act as its declared initiator in this main session and coordinate delivery. Delegate repository exploration '
                      'and implementation to its declared role agents through the Agent tool (subagent_type = role name).', 'Agent hooks')
+# Role-neutral workflows (no `roles`, no `execution.initiator`) name no role per step: the team picks one agent per step.
+ROLE_NEUTRAL = ('Run its steps in order in this main session. For each step, delegate to the installed role agent whose description '
+                'fits the step (developer for code, qa for verification, devops-engineer for infrastructure) through {tool}, one '
+                'subagent per step at most; when no installed agent fits, do the step yourself.')
+ROLE_NEUTRAL_TOOLS = {'spawn hooks': 'spawn_agent', 'Agent hooks': 'the Agent tool'}
 OWN_OUTPUT = ('SubagentStart', 'UserPromptSubmit', 'PermissionRequest')
 # `lean` installs no role agents: the workflow is a checklist for the native main session, which keeps its own
 # planning and delegation. Spawn hooks still route the models of the subagents it chooses to start.
@@ -123,6 +128,8 @@ def workflow_context(workflow, delegation, lean=False, plan=False):
         return plan_context(workflow)
     if lean:
         return LEAN_CONTEXT.format(id=workflow['id'], path=workflow['path'], hooks=hooks)
+    if not workflow.get('initiator') and not workflow.get('roles'):
+        sentence = ROLE_NEUTRAL.format(tool=ROLE_NEUTRAL_TOOLS.get(hooks, 'the host subagent tool'))
     return ('JEV selected installed workflow ' + workflow['id'] + '. Load ' + workflow['path'] + ' and execute it for the ORIGINAL user request. '
             + sentence + ' Keep the scope of the ORIGINAL request; do not add requirements. Model routing happens automatically through '
             + hooks + '; omit guessed model overrides (Codex prepared selections are explicit exceptions). ' + review_context())

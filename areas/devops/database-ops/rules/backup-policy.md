@@ -1,33 +1,18 @@
-# Rule: Database Backup Policy
+---
+description: Backup schedule, retention, encryption, restore tests, and alerts for production databases.
+trigger: manual
+---
 
-**Priority**: P0 — Missing or unverified backups are a critical operational failure.
+# Database backup policy
 
-## Backup Requirements
-
-1. **Continuous WAL archiving** — PostgreSQL WAL archived to object storage (S3/GCS/MinIO) for PITR.
-2. **Daily full snapshots** — in addition to WAL archiving; retained per schedule below.
-3. **Backup verification** — weekly restore test to isolated environment; result logged.
-4. **Backup encryption** — all backups encrypted at rest (AES-256 or KMS).
-
-## Retention Schedule
-
-| Backup type | Retention |
-|:---|:---|
-| Hourly (WAL) | 7 days |
-| Daily full | 30 days |
-| Weekly full | 3 months |
-| Monthly full | 1 year |
-| Pre-migration snapshot | Until next major release |
-
-## Recovery Objectives
-
-| Tier | RTO | RPO |
-|:---|:---|:---|
-| Tier 1 (revenue-critical) | 30 min | 15 min (PITR) |
-| Tier 2 (internal tools) | 4 hours | 1 hour |
-
-## Monitoring
-
-- Alert if no backup completed in last 26 hours.
-- Alert if backup size deviates > 20% from rolling average (data loss or corruption indicator).
-- Backup storage capacity alert at 70% full.
+- Enable continuous WAL archiving to object storage for point-in-time recovery of every production PostgreSQL database.
+- Run a daily full backup in addition to WAL archiving.
+- Keep WAL for 7 days, daily backups for 30 days, weekly backups for 3 months, and monthly backups for 1 year.
+- Take a snapshot before every production migration and keep it until the next major release.
+- Encrypt every backup at rest with KMS-managed keys (AES-256).
+- Store backups in a different account or project than the database and enable object lock or versioning.
+- Run a restore test into an isolated environment every week and record the restore time and a row-count check.
+- Set RTO 30 min and RPO 15 min for tier 1 databases; set RTO 4 h and RPO 1 h for tier 2.
+- Alert when no backup completed in the last 26 hours.
+- Alert when a backup size differs from the 7-day average by more than 20 %.
+- Alert when backup storage use exceeds 70 % of its quota.

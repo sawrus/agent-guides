@@ -2,121 +2,53 @@
 name: code-review-workflow
 type: workflow
 trigger: /code-review-workflow
-description: Conduct a structured, constructive code review of a pull or merge request.
+description: Review a merge request or diff against its requirements and the review regulation, with evidence per finding.
 inputs:
-  - pull_request_or_merge_request
-  - codebase_context
+  - merge_request_or_diff
+  - requirements
 outputs:
-  - review_comments
-  - approval_or_change_requests
-roles:
-  - team-lead
-  - developer
-  - qa
-execution:
-  initiator: developer
-agent: developer
+  - review_findings
+  - verdict
 selection:
   general: false
   use-when: "The request asks to review an existing pull request, merge request or diff and give review comments."
   avoid-when: "The request asks to write or change code."
+uses-skills: []
 related-rules:
   - code-style-guide.md
+  - docs-layout.md
   - git-workflow-guide.md
-  - sdlc-methodology-guide.md
-uses-skills:
-  - general-dev-tools
-quality-gates:
-  - CI pipeline passes before manual review begins
-  - all blocking comments resolved before approval
-  - no secrets or credentials in diff
+checks: []
 ---
+
+# Review a change
+
+Example request: Review MR !87 "Add rate limiting to the public API".
 
 ## Steps
 
-### 1. Automated Pre-check — `@developer` (author)
-- **Input:** feature branch with changes
-- **Actions:** confirm CI passes (lint / tests / build); no merge conflicts; branch up to date with target
-- **Output:** CI-green PR
-- **Done when:** automated checks pass — only then request review
+### 1. Collect the change and its requirements
 
-### 2. Context Understanding — `@team-lead`
-- **Input:** PR description and linked issue/task
-- **Actions:** read PR description and linked ticket; check scope focus; if diff > 400 lines of logic — request splitting the PR
-- **Output:** decision to proceed or split
-- **Done when:** reviewer understands the intent and scope is acceptable
+- **Do:** get the diff against the merge base (`git diff origin/main...HEAD`, `glab mr diff`, `gh pr diff`).
+  Collect requirements from the linked ticket, the feature page under `docs/`, and the description.
+- **Done when:** you have the full diff and a numbered list of requirements, or a note that none exist.
 
-### 3. Code Review — `@team-lead` + `@qa`
-- **Input:** PR diff + context
-- **Actions — Correctness:**
-  - Does the code do what the ticket describes?
-  - Are edge cases and error paths handled?
-- **Actions — Design & Architecture:**
-  - Does the change follow existing codebase patterns?
-  - No unnecessary complexity or over-engineering?
-  - Abstractions at the right level?
-- **Actions — Code Quality:**
-  - Names are clear and intention-revealing?
-  - No duplicated logic that could be extracted?
-  - No magic numbers or strings?
-- **Actions — Tests:**
-  - New behaviors covered by tests?
-  - Tests assert meaningful behavior, not implementation details?
-  - Edge cases tested?
-- **Actions — Security:**
-  - No secrets or credentials committed
-  - User input validated/sanitized
-  - Permissions and access control respected
-- **Output:** review comments with blocking / non-blocking labels; at least one positive comment
-- **Done when:** all review dimensions checked
+### 2. Check gates and scope
 
-### 4. Feedback Resolution — `@developer`
-- **Input:** review comments
-- **Actions:** address all blocking comments; push fixes as new commits (no force-push during review); re-request review
-- **Output:** updated PR
-- **Done when:** no open blocking comments
+- **Do:** read the CI result of the last commit. Run the project checks locally when CI is not available.
+  Compare changed paths with the requirements and mark unrelated edits.
+- **Done when:** gate status is known for build, tests, lint, and security scan, with a link or command output.
 
-### 5. Approval & Merge — `@team-lead`
-- **Input:** resolved PR
-- **Actions:** re-check fixes; approve; author squashes or rebases per project convention; merge; delete feature branch
-- **Output:** merged PR; branch deleted
-- **Done when:** change merged and feature branch removed
+### 3. Review the diff
 
-## Agent Interaction Diagram
+- **Do:** check each requirement (`met`, `partial`, `missing`). Look for wrong behaviour, missing tests for
+  changed behaviour, broken contracts (API, schema, config, CLI), unsafe migrations, secrets, unbounded remote
+  calls, and changed code without a matching docs page. Do not report what a linter or formatter enforces.
+- **Done when:** every finding has a severity (`blocker`, `major`, `minor`, `info`), a file and line, and a fix.
 
-<!-- agent-diagram:start -->
-```mermaid
-flowchart TD
-  start(["Start /code-review-workflow"])
-  role_1["developer"]
-  role_2["team-lead"]
-  role_3["qa"]
-  step_1["1. Automated Pre-check"]
-  step_2["2. Context Understanding"]
-  step_3["3. Code Review"]
-  step_4["4. Feedback Resolution"]
-  step_5["5. Approval & Merge"]
-  exit(["Approved and merged PR = review complete. This workflow is the reusable rev..."])
-  start --> step_1
-  step_1 --> step_2
-  step_2 --> step_3
-  step_3 --> step_4
-  step_4 --> step_5
-  step_5 --> exit
-  role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_2 -. owns .-> step_3
-  role_3 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_2 -. owns .-> step_5
-  step_5 -. iterate if blocked .-> step_1
-```
-<!-- agent-diagram:end -->
+### 4. Give the verdict
 
-## Iteration Loop
-If fixes introduce new issues → reviewer re-raises blocking comments. Maximum 3 review rounds; if blocking issues remain after the third, `@team-lead` decides between merging with follow-up tasks and rejecting the change.
-
-## Exit
-Approved and merged PR = review complete. This workflow is the reusable review phase invoked by delivery workflows (e.g. `/development-cycle-workflow` Step 6 and their spec equivalents).
-
-**Next:** terminal — no follow-up workflow.
+- **Do:** answer in the review thread or the chat, not in a file: a status table of requirements, findings by
+  severity, and the verdict (`changes_requested`, `approve_with_comments`, `approve`). Do not merge.
+- **Done when:** the verdict follows the findings: any `missing` requirement or open `blocker`/`major` gives
+  `changes_requested`.

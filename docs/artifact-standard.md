@@ -152,6 +152,11 @@ Remove an artifact from the pack when any of these is true:
   "ask the user".
 - **ART-B1.** The check installs every installable specialization alone and each common selection with the debug
   binary (`scripts/context_budget.py --all-selections`) and reports each selection over 4,000 tokens on any host.
+  A specialization is installable when it has `rules/`, `skills/`, or `workflows/`; `prompts/` is not an install
+  bucket.
+- **No prompt files.** `agentic` does not install `prompts/`. A workflow carries its example as an
+  `Example request: <text>` body line ([prompt-format.md](prompt-format.md)); `scripts/assess_area_quality.py`
+  warns about a workflow without one.
 - **Project mode.** `check_artifacts.py --project <dir>` checks the company rules in `<dir>/.agent/company/**`
   (ART-C1, C2, C3, C4, C7, R1–R4) against the pack rules installed in `<dir>/.agent/rules`. ART-K1 reports a
   company rule that covers the topic of an installed pack rule without `replaces:`, a `replaces:` entry that names

@@ -1,34 +1,7 @@
-# CI/CD — guidance index
+# CI/CD
 
-## What this area covers
+GitLab CI and GitHub Actions pipelines: stages, gates, secrets, and artifact supply chain.
 
-Continuous integration and delivery pipelines: GitHub Actions, GitLab CI, quality gates, artifact management, build optimization, supply-chain security, and pipeline security hardening.
-
-## Cross-cutting constraints
-
-- **No secrets in pipeline YAML** — all credentials via vault / environment secrets, never inline.
-- **Quality gates are non-negotiable** — pipelines must not merge on test failure, ever.
-- **Supply-chain integrity** — pin all external actions to a full commit SHA, not a tag.
-- **Artifact immutability** — built artifacts are never modified after creation; re-build instead.
-
-## Spec map
-
-```text
-.agent/
-├── rules/
-│   ├── pipeline-standards.md         ← stage order, naming, timeout policies
-│   ├── quality-gates.md              ← required checks, merge block conditions
-│   └── supply-chain-security.md      ← action pinning, SBOM, provenance attestation
-├── skills/
-│   ├── github-actions-patterns/SKILL.md  ← reusable workflows, matrix, caching strategies
-│   ├── gitlab-ci-patterns/SKILL.md       ← DAG pipelines, include templates, runners
-│   ├── artifact-management/SKILL.md      ← registry push, versioning, retention policy
-│   ├── build-optimization/SKILL.md       ← layer caching, parallelism, incremental builds
-│   └── pipeline-security/SKILL.md        ← OIDC auth, secret scanning, SAST integration
-├── workflows/
-│   ├── onboard-repo.md        ← /onboard-repo
-│   ├── pipeline-debug.md      ← /pipeline-debug
-│   └── release-pipeline.md   ← /release-pipeline
-└── prompts/
-    └── *.md
-```
+- Rules: `pipeline-standards.md`, `supply-chain-security.md`.
+- Skills: `gitlab-ci-patterns` (write or fix `.gitlab-ci.yml`), `github-actions-patterns` (write or fix `.github/workflows/`).
+- Workflows: `/release-pipeline` — build, sign, and promote a release through the pipeline.

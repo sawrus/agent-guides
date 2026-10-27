@@ -1,9 +1,16 @@
-# Rule: Test Data Management
+---
+description: Test data sources, isolation, and fake value conventions for automated tests.
+paths:
+  - "**/tests/**"
+  - "**/fixtures/**"
+  - "**/factories/**"
+---
 
-**Priority**: P1 — Improper test data causes production incidents.
+# Test data
 
-1. **No production data in tests**: Use synthetic data generators or fixtures. Never real customer data.
-2. **Test data is deterministic**: Each test creates its own data and cleans up after itself.
-3. **No shared mutable state between tests**: Tests sharing state create ordering dependencies and flakiness.
-4. **Factories over fixtures**: Use factory patterns (factory_boy, @faker-js/faker). Raw SQL fixtures go stale.
-5. **Sensitive data obviously fake**: Emails must use `@example.com`, phones use `555-` prefix.
+- Never copy production data into tests; use synthetic data from factories.
+- Create the data each test needs inside the test, and delete it in teardown or roll back the transaction.
+- Do not share mutable state between tests; each test must pass when run alone and in random order.
+- Use factories (`factory_boy`, `@faker-js/faker`) instead of raw SQL fixture files.
+- Use `example.com` addresses and obviously fake phone numbers in test data.
+- Set a fixed seed for fake data generators so a failing test reproduces.

@@ -35,8 +35,7 @@ Create:
 - `AGENTS.md` (high-level operating guidance)
 - `.agent/rules/*` (non-negotiable constraints)
 - `.agent/skills/*/SKILL.md` (focused execution playbooks)
-- `.agent/workflows/*` (repeatable delivery flows)
-- `.agent/prompts/*` (ready-to-use commands/prompts)
+- `.agent/workflows/*` (repeatable delivery flows, each with an `Example request:` line)
 
 ## STEP 3: Quality checks
 

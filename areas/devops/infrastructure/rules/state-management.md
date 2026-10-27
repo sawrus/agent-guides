@@ -1,47 +1,23 @@
-# Rule: State Management
+---
+description: Remote backend, isolation, locking, protection, and safe state operations for Terraform state.
+paths:
+  - "**/backend.tf"
+  - "**/backend*.hcl"
+  - "**/versions.tf"
+  - "**/terragrunt.hcl"
+  - "**/*.tf"
+---
 
-**Priority**: P0 — State corruption or conflicts can cause catastrophic resource deletion.
+# Terraform state management
 
-## Remote State (mandatory for all non-local environments)
-
-1. **Backend configuration**
-   ```hcl
-   # AWS
-   terraform {
-     backend "s3" {
-       bucket         = "${project}-terraform-state"
-       key            = "${environment}/${component}/terraform.tfstate"
-       region         = "us-east-1"
-       encrypt        = true
-       kms_key_id     = "arn:aws:kms:..."
-       dynamodb_table = "terraform-state-lock"
-     }
-   }
-
-   # GCS (GCP)
-   terraform {
-     backend "gcs" {
-       bucket = "${project}-terraform-state"
-       prefix = "${environment}/${component}"
-     }
-   }
-   ```
-
-2. **State isolation by environment AND component**
-   - One state file per `environment/component` (not one global state).
-   - Staging and production MUST use separate backends (separate buckets/prefix).
-   - Never share state between environments.
-
-3. **State locking** — DynamoDB (AWS) or GCS built-in locking must be enabled. Never disable locking.
-
-4. **No `terraform_remote_state` across environment boundaries**
-   - Cross-stack values shared via SSM Parameter Store, Consul KV, or environment-specific outputs file.
-
-## State File Security
-
-5. **State contains secrets** — treat state files with the same security as production secrets:
-   - S3 bucket: versioning enabled, public access blocked, KMS encryption.
-   - GCS: uniform bucket-level access, CMEK encryption.
-   - Access: only CI/CD pipeline roles and on-call engineers (MFA required for humans).
-
-6. **State file backup** — versioned storage satisfies this; never manually delete old versions.
+- Use a remote backend (`s3`, `gcs`, `azurerm`, or HCP Terraform) for every non-local environment.
+- Keep one state per `environment/component` key; never share a state between staging and production.
+- Use separate buckets (or accounts) for staging and production state.
+- Enable state locking (`use_lockfile = true` or `dynamodb_table` for S3; built-in for GCS) and never disable it.
+- Enable versioning, encryption with a KMS key (`encrypt = true`, `kms_key_id`), and a public access block on the state bucket.
+- Limit state bucket access to CI roles and on-call engineers with MFA.
+- Do not read `terraform_remote_state` across environment boundaries; publish shared values to SSM Parameter Store or another key-value store.
+- Use `import` blocks (Terraform 1.5+) to adopt existing resources and require `terraform plan` to show no changes after import.
+- Prefer `moved` blocks over `terraform state mv`; run `terraform state pull > backup-<date>.tfstate` before any `state mv` or `state rm`.
+- Run `terraform force-unlock <LOCK_ID>` only after you confirm that no apply job holds the lock.
+- Never delete old state versions from the bucket by hand.

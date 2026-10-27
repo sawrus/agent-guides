@@ -19,15 +19,14 @@ Thank you for improving this knowledge base. Every quality addition makes agent 
 
 ### High-value contributions
 - New skills for existing specialization areas (check the spec's `AGENTS.md` for gaps).
-- New specialization areas with a full `rules/` + `skills/` + `workflows/` + `prompts/` structure.
+- New rules for the target segment: backend services, infrastructure, CI/CD, Kubernetes, observability, security.
 - Improved workflow steps — more specific actions, better failure paths, clearer "Done when" criteria.
-- Real-world examples in prompts (EN + RU, no placeholders, realistic values).
 - Rule improvements: converting advisory language ("should", "ideally") to imperative ("must", "never").
 
 ### What to avoid
 - Duplicating content already covered in `areas/software/general/`.
 - Generic advice that isn't actionable by an agent (e.g., "write clean code").
-- Prompt examples with placeholder values like `[YOUR_PRODUCT]` or `{{INSERT_URL}}`.
+- Example requests with placeholder values like `[YOUR_PRODUCT]` or `{{INSERT_URL}}`.
 - Role assignments (`@pm`, "one subagent per role") and required report files (`*_report.md`).
 - Rules over 80 lines, skills over 250 lines, workflows over 120 lines or with more than 6 steps
   ([docs/artifact-standard.md](docs/artifact-standard.md)).
@@ -44,11 +43,9 @@ agent-guides/
 │   │   ├── general/       # Shared baseline — all software specs inherit from here
 │   │   ├── backend/
 │   │   ├── frontend/
-│   │   ├── full-stack/
 │   │   ├── data-engineering/
 │   │   ├── mlops/
 │   │   ├── mobile/
-│   │   ├── platform/
 │   │   ├── qa/
 │   │   └── security/
 │   └── devops/            # Platform and operations specializations
@@ -73,11 +70,10 @@ Each specialization follows this consistent layout:
 
 ```text
 <specialization>/
-├── AGENTS.md       # Navigation index — load first
+├── AGENTS.md       # A few lines, installed into the project AGENTS.md
 ├── rules/          # Checkable constraints, scoped by `paths:` or `trigger: manual`
 ├── skills/         # Technical capabilities (loaded on demand)
-├── workflows/      # Step-by-step processes (loaded on /command)
-└── prompts/        # Human copy-paste templates (EN + RU)
+└── workflows/      # Step-by-step processes (loaded on /command)
 ```
 
 ---
@@ -96,9 +92,9 @@ Each specialization follows this consistent layout:
 
 ### Adding a new workflow
 
-1. Create `areas/<domain>/<spec>/workflows/<kebab-case-name>.md`.
-2. Create a matching `areas/<domain>/<spec>/prompts/<kebab-case-name>.md`.
-3. Use `areas/template/workflow.tmpl.md` and `areas/template/prompt.tmpl.md`.
+1. Check that no workflow covers the same kind of task (ART-W5); a stack variant is a step condition.
+2. Create `areas/<domain>/<spec>/workflows/<kebab-case-name>.md` from `areas/template/workflow.tmpl.md`.
+3. Add at least one `Example request:` line with a plain user request (no `/command`); there are no separate prompt files.
 4. Write 3–6 steps. Every step has **Do** and a checkable **Done when**. Do not add roles or report files.
 5. Add a `selection` block. JEV workflow routing shows it to the model as the option text:
    ```yaml
@@ -109,9 +105,9 @@ Each specialization follows this consistent layout:
    ```
    - `use-when` is required: one quoted sentence, at most 300 characters. Describe the kind of request by purpose, inputs and outputs. Do not copy a test prompt.
    - `avoid-when` is optional. Name the nearest request that belongs to another workflow.
-   - `general: true` marks the catch-all workflow for ordinary requests. Each top-level area (`areas/software`, `areas/devops`) may have at most one; today it is `software/general/development-cycle-workflow`.
+   - `general: true` marks the catch-all workflow for ordinary requests. Each top-level area (`areas/software`, `areas/devops`) may have at most one; today it is `software/general/develop-feature`.
    - `make lint-content` fails on a missing or invalid block.
-6. Update the spec's `AGENTS.md` spec map.
+6. List the workflow in the spec `AGENTS.md` and the area trigger registry.
 7. Limit: 120 lines and 1,800 tokens for the workflow.
 
 ### Adding a new rule
@@ -127,7 +123,7 @@ Each specialization follows this consistent layout:
 
 1. Create the directory structure under `areas/<domain>/<spec>/`.
 2. Start with `AGENTS.md` (use `areas/template/AGENTS.tmpl.md`).
-3. Add at least one rule, one skill, and one workflow before opening a PR.
+3. Add at least one rule before opening a PR; add skills and workflows only for real tasks.
 4. If adding a new domain root, also create a domain-level `AGENTS.md` (use `areas/template/AGENTS-area.tmpl.md`).
 
 ---
@@ -140,7 +136,7 @@ Each specialization follows this consistent layout:
 - All `AGENT INSTRUCTIONS` comment blocks deleted.
 - Frontmatter fields fully populated.
 - Files stay within line-count targets.
-- Spec map in `AGENTS.md` updated to reflect new files.
+- The spec `AGENTS.md` lists the new files.
 
 ### Rules for skills
 
@@ -152,12 +148,6 @@ Each specialization follows this consistent layout:
 - Every step has **Do** and a checkable **Done when** criterion.
 - A step that touches production says "ask the user first".
 - No roles, `agent`, or `execution.initiator`; the main session runs the workflow.
-
-### Rules for prompts
-
-- Both EN and RU blocks present in every example.
-- Blocks are semantically identical — full translation, not paraphrase.
-- No placeholder values — all fields contain realistic, specific values.
 
 ---
 
@@ -203,7 +193,7 @@ Reviewers check:
 - [ ] Line-count targets respected.
 - [ ] Spec map updated in `AGENTS.md`.
 - [ ] Constraints in rules use imperative language.
-- [ ] Prompt examples contain no placeholder values and include both EN and RU.
+- [ ] The workflow `Example request:` line contains no placeholder values.
 - [ ] New skills state a specific trigger in `description`.
 - [ ] Workflow steps have **Do** and checkable **Done when** criteria.
 - [ ] `make check-artifacts` reports no new findings and `make check-docs-coverage` passes.

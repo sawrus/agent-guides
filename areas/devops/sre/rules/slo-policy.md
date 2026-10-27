@@ -1,31 +1,24 @@
-# Rule: SLO Policy
+---
+description: SLI and SLO definitions, targets per tier, and the error budget actions that gate releases.
+paths:
+  - "**/slo*.yaml"
+  - "**/slo*.yml"
+  - "**/sloth/**"
+  - "**/pyrra/**"
+  - "**/openslo/**"
+---
 
-**Priority**: P1 — Services in production must have defined SLOs with error budgets.
+# SLO and error budget policy
 
-## SLO Definition Requirements
-
-1. **Every Tier 1 service must define:**
-   - **SLI** (what we measure): e.g., proportion of requests completing < 500ms
-   - **SLO** (the target): e.g., 99.5% of requests complete < 500ms over 28 days
-   - **Error budget**: 100% - SLO = 0.5% = ~3.6h of downtime per 28 days
-
-2. **SLI types (choose appropriate)**
-
-   | SLI type | Formula | Use when |
-   |:---|:---|:---|
-   | Availability | good_requests / total_requests | HTTP services |
-   | Latency | requests_below_threshold / total_requests | Latency-sensitive APIs |
-   | Throughput | actual_throughput / target_throughput | Batch/stream processing |
-   | Correctness | correct_results / total_results | Data pipelines |
-
-3. **SLO tiers**
-
-   | Tier | Example SLO | Error budget / 28d |
-   |:---|:---|:---|
-   | Tier 1 (revenue) | 99.9% availability | 43 minutes |
-   | Tier 2 (internal) | 99.5% availability | 3.6 hours |
-   | Tier 3 (batch) | 99.0% availability | 7.2 hours |
-
-4. **28-day rolling window** is the default measurement period. Rolling > calendar month (avoids "burn ahead" gaming).
-
-5. **SLOs reviewed quarterly** — adjust based on actual reliability data.
+- Define an SLI, an SLO target, and an error budget for every tier 1 service in an SLO file in the repository.
+- Write each SLI as a ratio of good events to valid events (`good_requests / total_requests`), not as a raw average.
+- Use availability and latency SLIs for HTTP and gRPC services, freshness or correctness SLIs for pipelines.
+- Set tier 1 targets at 99.9 % (43 min budget per 28 days), tier 2 at 99.5 %, and tier 3 at 99.0 %.
+- Use a 28-day rolling window for every SLO; do not use calendar months.
+- Exclude only documented planned maintenance and synthetic traffic from the SLI query.
+- Keep normal releases while more than 50 % of the budget remains.
+- Add reliability tickets to the next iteration when 25–50 % of the budget remains.
+- Stop feature releases and ship only reliability, security, and critical bug fixes when less than 25 % remains.
+- Write an incident page and block feature releases until the budget recovers when the budget reaches 0 %.
+- Record the approver and reason for every release made during a freeze in the release merge request.
+- Review every SLO target each quarter against the measured reliability and update the SLO file.

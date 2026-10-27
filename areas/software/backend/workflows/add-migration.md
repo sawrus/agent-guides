@@ -2,117 +2,63 @@
 name: add-migration
 type: workflow
 trigger: /add-migration
-description: Plan, implement, and validate safe schema migrations using expand/contract principles.
+description: Add a backward-compatible database schema migration with rollback and tests.
 inputs:
-  - schema_change_request
-  - affected_services
+  - schema_change
 outputs:
-  - migration_artifacts
-  - validation_report
-roles:
-  - pm
-  - team-lead
-  - developer
-  - qa
-execution:
-  initiator: team-lead
-agent: team-lead
+  - migration_file
+  - tests
+  - docs_page
 selection:
   general: false
-  use-when: "The request explicitly needs a database schema change in a backend service, delivered with expand and contract steps."
+  use-when: "The request asks to add, rename, drop or change a table, column, index or constraint in a service database through a migration."
+  avoid-when: "Analytics warehouse models or dbt changes, or a request that only changes queries."
+uses-skills: []
 related-rules:
   - data_access.md
-  - architecture.md
   - testing.md
-uses-skills:
-  - database-modeling
-  - troubleshooting
-quality-gates:
-  - forward migration validated on test DB
-  - rollback or mitigation strategy documented
-  - no blocking backward-compatibility risk for running services
+checks:
+  - make lint
+  - make test
+artifacts:
+  - docs/<service>.md
 ---
+
+# Add a migration
+
+Example request: Rename users.full_name to users.display_name without downtime.
 
 ## Steps
 
-### 1. Risk & Compatibility Analysis — `@team-lead`
-- **Input:** schema change request + list of affected services
-- **Actions:**
-  - classify change: non-breaking (add nullable column, add index) vs. breaking (rename/drop column, change type, add NOT NULL)
-  - for breaking changes: require expand/contract — two-phase migration across separate deployments
-  - identify all consumers of the affected table/column; confirm backward-compatibility window
-  - document rollback plan or mitigation (feature flag, dual-read window)
-- **Output:** migration strategy doc: phases, compatibility window, rollback plan
-- **Done when:** strategy approved; no services will break on forward migration
+### 1. Read the current schema
 
-### 2. Migration Implementation — `@developer`
-- **Input:** approved migration strategy
-- **Actions:**
-  - write migration script (Alembic, Flyway, Liquibase, etc.) following project conventions
-  - Phase 1 (expand): add new column/table as nullable or with default; keep old structure intact
-  - ensure migration is idempotent and reversible (`upgrade` + `downgrade` both implemented)
-  - update application code to write to both old and new structures during transition if needed
-- **Output:** migration file + updated application code on feature branch
-- **Done when:** migration runs cleanly on local test DB; `downgrade` also verified
+- **Do:** find the migration tool and its head revision (`alembic heads`, `flyway info`, `goose status`). Read
+  the current table definition and every query that reads or writes the affected columns (`grep -rn`).
+  Estimate the table size from the docs page or ask the user.
+- **Done when:** you can list the affected tables, columns, indexes, and code paths.
 
-### 3. Test DB Validation & Data Checks — `@qa`
-- **Input:** migration file + test DB
-- **Actions:**
-  - run `upgrade` on a copy of the test DB; verify schema matches expected state
-  - run `downgrade`; verify clean revert with no data loss
-  - execute affected queries and check index usage (EXPLAIN ANALYZE)
-  - validate row counts and data integrity on key tables post-migration
-- **Output:** `validation_report.md` — migration results, query plans, data integrity checks
-- **Done when:** both directions validated; no unexpected data loss or performance degradation
+### 2. Plan expand and contract
 
-### 4. Review & Remediation Loop — `@team-lead` + `@developer`
-- **Input:** validation report
-- **Actions:** `@team-lead` reviews migration SQL and application changes; flags any issues; `@developer` fixes and re-runs validation
-- **Output:** approved migration
-- **Done when:** `@team-lead` approves; no open issues in validation report
+- **Do:** split a breaking change into releases: expand (add nullable column, new table, or index), switch code
+  to dual write and read, backfill, then contract (drop) in a later change. Mark locking operations on large
+  tables and plan `CONCURRENTLY` or `NOT VALID` variants.
+- **Done when:** the plan says which release runs each migration and the running code works after every step.
 
-### 5. Readiness Report — `@pm`
-- **Input:** approved migration + validation report
-- **Actions:** confirm deployment sequence (migrate before or after app rollout); document rollback command; note monitoring signals to watch post-deploy; if no PM is assigned, `@team-lead` performs this step
-- **Output:** `migration_readiness.md` with deployment steps, rollback command, monitoring checklist
-- **Done when:** ops/release team has everything needed to deploy safely
+### 3. Write the migration and code
 
-## Agent Interaction Diagram
+- **Do:** generate the file with the project tool (`alembic revision -m "<msg>"`, a new `V<n>__<msg>.sql`),
+  write `upgrade` and `downgrade`, and change the code for this release only. Put a backfill in a separate,
+  batched, resumable step.
+- **Done when:** the migration has a downgrade or a comment that says why rollback is impossible.
 
-<!-- agent-diagram:start -->
-```mermaid
-flowchart TD
-  start(["Start /add-migration"])
-  role_1["team-lead"]
-  role_2["developer"]
-  role_3["qa"]
-  role_4["pm"]
-  step_1["1. Risk & Compatibility Analysis"]
-  step_2["2. Migration Implementation"]
-  step_3["3. Test DB Validation & Data Checks"]
-  step_4["4. Review & Remediation Loop"]
-  step_5["5. Readiness Report"]
-  exit(["Validated migration + readiness report + @team-lead approval = ready to dep..."])
-  start --> step_1
-  step_1 --> step_2
-  step_2 --> step_3
-  step_3 --> step_4
-  step_4 --> step_5
-  step_5 --> exit
-  role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_3 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_2 -. owns .-> step_4
-  role_4 -. owns .-> step_5
-  step_5 -. iterate if blocked .-> step_1
-```
-<!-- agent-diagram:end -->
+### 4. Test up and down
 
-## Iteration Loop
-If validation reveals data issues or compatibility risks → return to Step 1 for strategy revision. Maximum 2 returns to Step 1; a third validation failure halts the migration and escalates to `@team-lead` with the open issue list for a decision.
+- **Do:** run upgrade, downgrade, and upgrade again on a clean database (Testcontainers or `docker compose`).
+  Run the repository tests against the migrated schema.
+- **Done when:** all three runs succeed and the tests pass.
 
-## Exit
-Validated migration + readiness report + `@team-lead` approval = ready to deploy.
+### 5. Document and hand over
 
-**Next:** terminal — no follow-up workflow.
+- **Do:** update the service docs page (schema, rollout order, rollback). Run every command in `checks`.
+  Ask the user first before you run the migration or the backfill against a shared or production database.
+- **Done when:** all `checks` commands exit 0 and the docs page lists the rollout and rollback steps.

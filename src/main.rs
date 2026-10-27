@@ -43,7 +43,9 @@ pub const APP_TUI_TITLE: &str = "Agentic installer (TUI mode)";
 pub const APP_REPO_LINK: &str = "https://github.com/sawrus/agent-guides";
 pub const PROJECT_MANIFEST_NAME: &str = ".agentic.json";
 pub const DEFAULT_AGENT_OS: &str = "default";
-pub const INSTALL_DIRS: [&str; 4] = ["rules", "skills", "workflows", "prompts"];
+/// Knowledge-base buckets copied per specialization. Prompt files are no longer installed;
+/// an upgrade removes previously installed ones as obsolete artifacts.
+pub const INSTALL_DIRS: [&str; 3] = ["rules", "skills", "workflows"];
 pub const THEME_CHOICES: [&str; 3] = ["auto", "dark", "light"];
 
 pub fn app_version() -> String {

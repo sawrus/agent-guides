@@ -1,226 +1,59 @@
 ---
 name: backup-restore
-type: skill
-description: PostgreSQL backup and restore with pgBackRest — full/incremental/WAL, PITR, K8s CronJob scheduling, and restore verification.
-related-rules:
-  - backup-policy.md
-allowed-tools: Read, Write, Edit, Bash
+description: "Procedure to verify a PostgreSQL or MySQL backup by restoring it into a scratch instance, and to run a point-in-time restore. Use when you check backups, set up backup jobs, or must restore data."
 ---
 
-# Skill: Backup & Restore
+# Backup verification and restore
 
-> **Expertise:** pgBackRest full/WAL/incremental backup, PITR, S3/MinIO storage, CronJob scheduling, CloudNativePG backup CRDs.
+A backup counts only after a restore from it succeeds. Work on a scratch instance unless the user asks for a
+production restore.
 
-## When to load
+## 1. Find the backup setup
 
-When configuring backup infrastructure, running a restore, verifying backup integrity, or recovering from data loss.
+1. Find the backup tool and schedule: `pgbackrest`, `wal-g`, `barman`, `pg_dump` cron jobs, a Kubernetes
+   operator (CloudNativePG, Zalando), or a managed service snapshot.
+2. Record the retention, the WAL or binlog archive location, and the encryption key location.
+3. If no backup job exists, stop and tell the user. Do not create one without agreement on the storage target.
 
-## pgBackRest Configuration
-
-```ini
-# /etc/pgbackrest/pgbackrest.conf
-[global]
-repo1-type=s3
-repo1-path=/postgres-backups
-repo1-s3-bucket=mycompany-db-backups
-repo1-s3-endpoint=s3.eu-west-1.amazonaws.com
-repo1-s3-region=eu-west-1
-repo1-s3-key=<AWS_ACCESS_KEY>
-repo1-s3-key-secret=<AWS_SECRET_KEY>
-repo1-cipher-type=aes-256-cbc
-repo1-cipher-pass=<STRONG_PASSPHRASE>    # rotate annually
-repo1-retention-full=4                  # keep 4 full backups
-repo1-retention-diff=14                 # keep 14 differential backups
-
-[global:archive-push]
-compress-level=3
-
-[production-db]
-pg1-path=/var/lib/postgresql/data
-pg1-host=postgres-primary
-pg1-host-user=postgres
-```
-
-## PostgreSQL: Enable WAL Archiving
-
-```sql
--- postgresql.conf (or via ALTER SYSTEM)
-ALTER SYSTEM SET wal_level = replica;
-ALTER SYSTEM SET archive_mode = on;
-ALTER SYSTEM SET archive_command = 'pgbackrest --stanza=production-db archive-push %p';
-ALTER SYSTEM SET archive_timeout = '300';   -- archive segment at least every 5 min
-SELECT pg_reload_conf();
-```
-
-## Backup Commands
+## 2. List the latest backups
 
 ```bash
-# Initialize stanza (run once)
-pgbackrest --stanza=production-db stanza-create
-
-# Full backup (schedule: weekly)
-pgbackrest --stanza=production-db --type=full backup
-
-# Differential backup (changes since last full — schedule: daily)
-pgbackrest --stanza=production-db --type=diff backup
-
-# Incremental backup (changes since last backup — schedule: hourly)
-pgbackrest --stanza=production-db --type=incr backup
-
-# Check backup catalog
-pgbackrest --stanza=production-db info
-
-# Verify backup integrity (reads and checksums)
-pgbackrest --stanza=production-db --set=<backup-label> check
+pgbackrest --stanza=<name> info
+wal-g backup-list --detail
+aws rds describe-db-snapshots --db-instance-identifier <id> --query 'DBSnapshots[-3:]'
 ```
 
-## PITR Restore (Point-in-Time Recovery)
+Check that the newest full backup is younger than the policy allows and that WAL archiving has no gap.
 
-```bash
-# PITR to specific timestamp (e.g., 1 minute before accidental DELETE)
-# Step 1: Stop PostgreSQL
-systemctl stop postgresql
+## 3. Restore into a scratch instance
 
-# Step 2: Restore
-pgbackrest --stanza=production-db \
-  --delta \
-  --target="2024-11-15 03:40:00+00" \
-  --target-action=promote \
-  --target-timeline=current \
-  restore
+1. Start an empty instance with the same major version as the source:
+   `docker run -d --name restore-check -e POSTGRES_PASSWORD=check postgres:<major>`.
+2. Restore the latest backup:
+   - `pg_dump` custom format: `pg_restore --no-owner --dbname=<scratch-url> <file>.dump`.
+   - pgBackRest: `pgbackrest --stanza=<name> --pg1-path=<scratch-data-dir> restore`.
+   - WAL-G: `wal-g backup-fetch <scratch-data-dir> LATEST`, then start the server with recovery settings.
+   - Managed service: restore the snapshot to a new instance name with a `restore-check-` prefix.
+3. Time the restore. Compare it with the recovery time objective (RTO).
 
-# Step 3: Start PostgreSQL in recovery mode
-systemctl start postgresql
+## 4. Check the restored data
 
-# Step 4: Monitor recovery progress
-tail -f /var/log/postgresql/postgresql.log
-# Watch for: "recovery stopping before commit of transaction"
-# Then:      "database system is ready to accept connections"
+1. Compare row counts of the largest tables with the source, within the backup age:
+   `SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 10;`
+2. Read the newest timestamp of a write-heavy table. The gap to the backup time is the real recovery point
+   (RPO).
+3. Run `SELECT count(*)` on one table per schema to force a full read of its pages.
+4. If counts or timestamps are off, the backup fails. Report the gap and keep the scratch instance for analysis.
 
-# Step 5: Verify data integrity
-psql -c "SELECT count(*) FROM orders WHERE created_at > '2024-11-15 03:39:00';"
-```
+## 5. Point-in-time restore (incident)
 
-## K8s CronJob: Automated Backups
+1. Ask the user first: confirm the target time, the target instance, and that writes to it are stopped.
+2. Restore to a new instance, never over the damaged one:
+   `pgbackrest --stanza=<name> --type=time --target="<YYYY-MM-DD HH:MM:SS+00>" restore`.
+3. Check the data with step 4 and let the user confirm before traffic moves.
+4. Ask the user first before you switch the application connection string or copy rows back.
 
-```yaml
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: postgres-backup-daily
-  namespace: database
-spec:
-  schedule: "0 2 * * *"      # 02:00 UTC daily
-  concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 3
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          serviceAccountName: postgres-backup
-          restartPolicy: OnFailure
-          containers:
-            - name: pgbackrest
-              image: pgbackrest/pgbackrest:2.50
-              command:
-                - /bin/sh
-                - -c
-                - |
-                  pgbackrest --stanza=production-db --type=diff backup
-                  pgbackrest --stanza=production-db check
-              envFrom:
-                - secretRef:
-                    name: pgbackrest-s3-credentials
-              volumeMounts:
-                - name: pgbackrest-config
-                  mountPath: /etc/pgbackrest
-          volumes:
-            - name: pgbackrest-config
-              configMap:
-                name: pgbackrest-config
-```
+## 6. Clean up
 
-## CloudNativePG Backup (K8s Operator)
-
-```yaml
-# Cluster with scheduled backup
-apiVersion: postgresql.cnpg.io/v1
-kind: Cluster
-metadata:
-  name: postgres-cluster
-spec:
-  backup:
-    barmanObjectStore:
-      destinationPath: s3://mycompany-db-backups/production
-      s3Credentials:
-        accessKeyId:
-          name: s3-creds
-          key: ACCESS_KEY_ID
-        secretAccessKey:
-          name: s3-creds
-          key: SECRET_ACCESS_KEY
-      wal:
-        compression: gzip
-      data:
-        compression: gzip
-    retentionPolicy: "30d"
-
----
-# Scheduled backup CRD
-apiVersion: postgresql.cnpg.io/v1
-kind: ScheduledBackup
-metadata:
-  name: postgres-daily
-spec:
-  schedule: "0 2 * * *"
-  backupOwnerReference: self
-  cluster:
-    name: postgres-cluster
-```
-
-## Restore Verification Script (weekly)
-
-```bash
-#!/bin/bash
-# verify-backup.sh — restore to isolated pod and check row counts
-
-STANZA="production-db"
-RESTORE_HOST="postgres-restore-test"
-TABLES=("orders" "payments" "users")
-
-echo "=== pgBackRest Backup Verification $(date) ==="
-
-# 1. Check last backup age
-LAST_BACKUP=$(pgbackrest --stanza=$STANZA info --output=json | \
-  jq -r '.[] | .backup[-1].timestamp.stop')
-echo "Last backup: $LAST_BACKUP"
-
-AGE_HOURS=$(( ($(date +%s) - $(date -d "$LAST_BACKUP" +%s)) / 3600 ))
-if [ $AGE_HOURS -gt 26 ]; then
-  echo "ERROR: Last backup is ${AGE_HOURS}h old — exceeds 26h threshold"
-  exit 1
-fi
-
-# 2. Restore to test instance
-pgbackrest --stanza=$STANZA --delta --pg1-host=$RESTORE_HOST restore
-
-# 3. Start test PostgreSQL
-pg_ctl -D /var/lib/postgresql/restore -l /tmp/restore.log start
-
-# 4. Verify row counts match production
-for table in "${TABLES[@]}"; do
-  PROD_COUNT=$(psql -h postgres-primary -c "SELECT count(*) FROM $table;" -t | tr -d ' ')
-  REST_COUNT=$(psql -h $RESTORE_HOST -c "SELECT count(*) FROM $table;" -t | tr -d ' ')
-  if [ "$PROD_COUNT" != "$REST_COUNT" ]; then
-    echo "MISMATCH in $table: prod=$PROD_COUNT restore=$REST_COUNT"
-    FAILED=1
-  else
-    echo "OK: $table = $PROD_COUNT rows"
-  fi
-done
-
-pg_ctl -D /var/lib/postgresql/restore stop
-
-[ -z "$FAILED" ] && echo "BACKUP VERIFICATION PASSED" || exit 1
-```
+- Delete the scratch instance and any restored snapshot copy.
+- Record the restore duration, the measured RPO, and the backup id in the docs page of the database service.

@@ -1,38 +1,25 @@
 ---
-trigger: glob
+description: Linter and formatter configuration, pre-commit hooks, and CI lint gates.
 paths:
   - ".pre-commit-config.yaml"
   - "pyproject.toml"
   - "setup.cfg"
   - ".editorconfig"
-  - ".eslintrc*"
-  - "eslint.config.*"
-  - ".prettierrc*"
   - ".golangci.yml"
-glob: lint-format-guide
-description: enforce consistent linting and auto-formatting across all code
+  - ".golangci.yaml"
+  - "checkstyle.xml"
+  - "eslint.config.*"
+  - ".eslintrc*"
+  - ".prettierrc*"
 ---
 
-# Linting & Formatting Rule
+# Lint and format
 
-**Rules:**
-
-- Every project must configure a linter and auto-formatter appropriate to the language.
-- Common tooling by language:
-  - **Python:** `ruff` (lint + format) or `flake8` + `black` + `isort`
-  - **JavaScript/TypeScript:** `eslint` + `prettier`
-  - **Go:** `golangci-lint` + `gofmt`
-  - **Shell:** `shellcheck`
-- Linter and formatter config stored in the repo (`.eslintrc`, `pyproject.toml`, `.golangci.yml`).
-- Zero lint errors policy — CI fails on any lint warning treated as error.
-- Auto-format on save configured in project settings (`.editorconfig`, IDE config).
-- Pre-commit hooks run formatter then linter before every commit (`.pre-commit-config.yaml`).
-- `make lint` runs the linter; `make fmt` runs the formatter.
-- Format check (not just lint) runs in CI to catch unformatted code.
-
-**Violations:**
-
-- Disabling lint rules with inline suppressions without a documented reason.
-- CI pipeline that does not fail on lint errors.
-- Inconsistent formatting between contributors.
-- Missing `.editorconfig` causing whitespace/indentation inconsistencies.
+- Configure one formatter and one linter per language in a committed file: `ruff` for Python, `gofmt` and `golangci-lint` for Go, `spotless` or `checkstyle` for Java, `shellcheck` for shell.
+- Keep tool versions pinned in the config (`rev:` in `.pre-commit-config.yaml`, plugin versions in the build file).
+- Add a `make lint` target that runs the format check and the linter without changing files.
+- Add a `make fmt` target that applies the formatter.
+- Run the format check and the linter in CI and fail the job on any finding.
+- Add a reason comment to every inline suppression (`# noqa: E501  reason`, `//nolint:errcheck // reason`).
+- Do not disable a lint rule for the whole repository in the same change that introduces a violation of it.
+- Keep `.editorconfig` with charset, line ending, and indentation per file type.

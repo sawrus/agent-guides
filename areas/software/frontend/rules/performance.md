@@ -1,23 +1,21 @@
-# Rule: Performance Budget
+---
+description: Performance budget for web frontends covering Core Web Vitals, bundle size, lazy loading, and images.
+paths:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.vue"
+  - "package.json"
+  - "vite.config.*"
+  - "webpack.config.*"
+  - "next.config.*"
+---
 
-**Priority**: P1 — Must be resolved before release; tracked per PR.
+# Frontend performance
 
-## Core Web Vitals Targets (Production)
-
-| Metric | Target | Hard Limit |
-|:---|:---|:---|
-| LCP (Largest Contentful Paint) | < 2.0s | < 2.5s |
-| INP (Interaction to Next Paint) | < 100ms | < 200ms |
-| CLS (Cumulative Layout Shift) | < 0.05 | < 0.1 |
-
-## Bundle Constraints
-
-1. **Initial JS bundle**: ≤ 200 KB gzipped for the critical path.
-2. **Route-level chunks**: Every route must be lazy-loaded via `React.lazy()` + `Suspense`.
-3. **Third-party libraries**: Any dependency > 50 KB gzipped must be explicitly approved in `bundle-policy.md`.
-4. **No synchronous localStorage access** in the render path.
-5. Images must use modern formats (WebP/AVIF) and include `width`/`height` attributes.
-
-## Enforcement
-
-Bundle size is tracked via `bundlesize` in CI. PRs that increase the initial bundle by > 5 KB trigger a mandatory `/bundle-analyze` workflow run.
+- Keep LCP under 2.5 s, INP under 200 ms, and CLS under 0.1 on the production build.
+- Limit the initial JavaScript bundle to 200 KB gzipped on the critical path.
+- Use lazy loading for every route (`React.lazy` with `Suspense`, or the framework's dynamic `import()`).
+- Check the size of a new dependency; document the reason in the change when it adds more than 50 KB gzipped.
+- Do not read `localStorage` synchronously in the render path.
+- Use WebP or AVIF images and set `width` and `height` attributes on every `img`.
+- Run the bundle size check (for example `size-limit` or `bundlesize`) in CI and fail the job when the budget is exceeded.

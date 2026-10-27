@@ -23,10 +23,10 @@ agentic install --project-dir <dir> --agent-os claude --areas software \
 | `.claude/agents/*.md` | 9 role subagents with `tools:` and, with a profile, `model:` | `instruction-reviewer` and `memory-curator` are read-only |
 | `.claude/rules/*.md` | Specialization rules | Loaded automatically; every rule loads in every session |
 | `.claude/skills/<name>/SKILL.md` | Specialization skills | Each `name` matches its directory; Claude loads a skill by its description |
-| `.claude/commands/<id>.md` | Thin wrapper per workflow (`description`, `argument-hint`) | Runs `.agent/workflows/<id>.md`, which stays the single source |
+| `.claude/commands/<id>.md` | Thin wrapper per workflow (`description`, `argument-hint`) | Runs `.agent/workflows/<id>.md`, which stays the single source. A role-neutral workflow (no `roles`, no `execution.initiator`) runs in the main session: `lean` does every step itself; `team` sends each step to the installed role agent that fits it (`developer` for code, `qa` for verification, `devops-engineer` for infrastructure), one subagent per step at most |
 | `.claude/settings.json` | `agent: product-owner`, `enabledMcpjsonServers`, optional JEV and Telegram hooks | Each entry is ownership-tracked (see below) |
 | `.mcp.json` | Selected MCP servers (Context7, MemPalace, Playwright, …) | Same registry as OpenCode and Codex |
-| `.agent/{rules,skills,workflows,prompts}` | Shared copies for every host | Workflows and prompts are read from here |
+| `.agent/{rules,skills,workflows}` | Shared copies for every host | Workflows are read from here |
 
 ## SDLC team
 

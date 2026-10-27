@@ -45,7 +45,8 @@
                 "quality_gates",
                 "examples",
                 "skill_refs",
-                "workflow_diagram"
+                "workflow_diagram",
+                "use_when"
               ],
               "properties": {
                 "trigger": {
@@ -59,12 +60,6 @@
                 },
                 "workflow_path": {
                   "type": "string"
-                },
-                "prompt_path": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
                 },
                 "use_when": {
                   "type": "string"
@@ -109,42 +104,8 @@
                   "type": "string"
                 },
                 "examples": {
-                  "type": "object",
-                  "required": [
-                    "both"
-                  ],
-                  "properties": {
-                    "both": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "required": [
-                          "number",
-                          "title",
-                          "en",
-                          "ru"
-                        ],
-                        "properties": {
-                          "number": {
-                            "type": "integer",
-                            "minimum": 1
-                          },
-                          "title": {
-                            "type": "string"
-                          },
-                          "en": {
-                            "type": "string"
-                          },
-                          "ru": {
-                            "type": "string"
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                "prompt_command_refs": {
                   "type": "array",
+                  "description": "`Example request:` lines from the workflow body",
                   "items": {
                     "type": "string"
                   }
@@ -180,24 +141,19 @@
       "type": "object",
       "required": [
         "workflows",
-        "prompts",
-        "problems",
-        "matched_prompts"
+        "examples",
+        "problems"
       ],
       "properties": {
         "workflows": {
           "type": "integer",
           "minimum": 0
         },
-        "prompts": {
+        "examples": {
           "type": "integer",
           "minimum": 0
         },
         "problems": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "matched_prompts": {
           "type": "integer",
           "minimum": 0
         }

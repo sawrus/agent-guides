@@ -13,6 +13,8 @@ AREAS = ROOT / "areas"
 
 FRONTMATTER = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 LIST_ITEM = re.compile(r"^\s*-\s+(.+?)\s*$", re.MULTILINE)
+# Same line format as scripts/build_docs_catalog.py.
+EXAMPLE_REQUEST = re.compile(r"^\*{0,2}Example request:\*{0,2}\s*\S", re.MULTILINE)
 
 
 @dataclass
@@ -76,12 +78,13 @@ def assess_spec(spec: Path, environment: str) -> Score:
         "reference_integrity": 100,
         "sdlc_coverage": 100,
         "workflow_contract": 100,
-        "prompt_usefulness": 100,
+        "example_usefulness": 100,
         "environment_compatibility": 100,
         "token_efficiency": 100,
     }
 
-    required_dirs = ["rules", "skills", "workflows", "prompts"]
+    # Prompt files are no longer part of the pack; workflows carry `Example request:` lines instead.
+    required_dirs = ["rules", "skills", "workflows"]
     if not (spec / "AGENTS.md").exists():
         findings.append(Finding("error", "missing specialization AGENTS.md", rel_spec))
         dimensions["structure"] -= 35
@@ -92,7 +95,6 @@ def assess_spec(spec: Path, environment: str) -> Score:
 
     skills = {p.parent.name for p in spec.glob("skills/*/SKILL.md")}
     workflows = sorted(spec.glob("workflows/*.md"))
-    prompts = sorted(spec.glob("prompts/*.md"))
     rules = sorted(spec.glob("rules/*.md"))
 
     if len(skills) > 6:
@@ -102,13 +104,7 @@ def assess_spec(spec: Path, environment: str) -> Score:
         findings.append(Finding("warn", f"rule count is {len(rules)}; consider consolidating always-loaded guidance", rel_spec))
         dimensions["token_efficiency"] -= min(30, (len(rules) - 12) * 3)
 
-    workflow_stems = {p.stem for p in workflows}
-    prompt_stems = {p.stem for p in prompts}
-    missing_prompts = sorted(workflow_stems - prompt_stems)
-    if missing_prompts:
-        findings.append(Finding("error", f"workflows without matching prompts: {', '.join(missing_prompts)}", rel_spec))
-        dimensions["reference_integrity"] -= min(40, len(missing_prompts) * 10)
-
+    missing_examples = 0
     for workflow in workflows:
         rel = workflow.relative_to(ROOT).as_posix()
         front = frontmatter(workflow)
@@ -130,22 +126,17 @@ def assess_spec(spec: Path, environment: str) -> Score:
                 findings.append(Finding("error", f"uses missing skill `{skill}`", rel))
                 dimensions["reference_integrity"] -= 12
 
-        text = read(workflow).lower()
+        body = read(workflow)
+        if not EXAMPLE_REQUEST.search(body):
+            findings.append(Finding("warn", "workflow has no `Example request:` line", rel))
+            missing_examples += 1
+        text = body.lower()
         for phase in ["**do", "**done when"]:
             if phase not in text:
                 findings.append(Finding("warn", f"workflow steps lack `{phase.strip('*')}` (ART-W2)", rel))
                 dimensions["sdlc_coverage"] -= 5
 
-    for prompt in prompts:
-        rel = prompt.relative_to(ROOT).as_posix()
-        text = read(prompt)
-        examples = len(re.findall(r"^##\s*Example\s+\d+", text, re.MULTILINE))
-        if examples < 2:
-            findings.append(Finding("warn", "prompt has fewer than two examples", rel))
-            dimensions["prompt_usefulness"] -= 15
-        if "**EN:**" not in text or "**RU:**" not in text:
-            findings.append(Finding("warn", "prompt should include EN and RU examples", rel))
-            dimensions["prompt_usefulness"] -= 10
+    dimensions["example_usefulness"] -= min(30, missing_examples * 5)
 
     agent_text = read(spec / "AGENTS.md") if (spec / "AGENTS.md").exists() else ""
     if environment == "opencode" and "skills/*/SKILL.md" not in agent_text:

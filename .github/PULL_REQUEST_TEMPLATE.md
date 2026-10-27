@@ -18,7 +18,7 @@
 
 **Agent tool:** <!-- opencode / Claude Code / Cursor / etc. -->
 **Model:** <!-- claude-sonnet / gpt-4o / etc. -->
-**Workflow or command tested:** <!-- /develop-feature / /upgrade-cluster / etc. -->
+**Workflow or command tested:** <!-- /develop-feature / /debug-workload / etc. -->
 **Outcome:**
 
 ## Checklist

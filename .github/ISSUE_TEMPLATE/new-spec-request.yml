@@ -12,7 +12,7 @@ body:
     attributes:
       label: Proposed spec name
       description: Kebab-case name for the new spec directory
-      placeholder: "chaos-engineering or graphql-api"
+      placeholder: "argocd-gitops or graphql-api"
     validations:
       required: true
 

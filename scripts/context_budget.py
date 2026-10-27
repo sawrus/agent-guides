@@ -122,7 +122,7 @@ def install(binary, host, project, areas, specs):
 
 def installable_specs(root=ROOT):
     """Every `area.spec` that `agentic install` accepts and that ships at least one install bucket."""
-    buckets = ('rules', 'skills', 'workflows', 'prompts')
+    buckets = ('rules', 'skills', 'workflows')
     return [f'{area.name}.{spec.name}' for area in sorted((root / 'areas').iterdir())
             if area.is_dir() and area.name != 'template'
             for spec in sorted(area.iterdir()) if spec.is_dir() and any((spec / b).is_dir() for b in buckets)]

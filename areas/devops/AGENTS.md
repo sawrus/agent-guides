@@ -1,92 +1,51 @@
-# DevOps — area guidance index
+# DevOps — area index
 
-Load this file before any spec-level guidance in `areas/devops/`.
-
-## What this area covers
-
-Infrastructure and platform operations: CI/CD pipelines, Kubernetes clusters, infrastructure-as-code, networking,
-observability, database operations, security tooling, and site reliability. Used by agents executing operational
-changes where mistakes affect production availability — every spec assumes changes are staged, verified, and
-documented before being declared done.
+Infrastructure and operations for backend services: CI/CD (GitLab first, GitHub second), Terraform and Ansible,
+Kubernetes, observability, incidents, database operations, networking, and security tooling.
 
 ## Spec selection
 
-Match the task to the spec that owns it:
-
-| Task type | Spec to load |
+| Task type | Spec |
 |:---|:---|
 | Pipelines, builds, releases | `ci-cd/` |
-| Postgres / Redis operations, backups, DB incidents | `database-ops/` |
-| Security scanning, policy-as-code, supply chain | `devsecops/` |
-| Terraform / IaC, environments, drift | `infrastructure/` |
-| Clusters, workloads, Helm, RBAC | `kubernetes/` |
-| Ingress, service mesh, TLS, DNS | `networking/` |
-| Metrics, logs, traces, alerting, SLO dashboards | `observability/` |
-| Incidents, postmortems, SLO reviews, on-call | `sre/` |
-
-If the task spans multiple specs, load the primary spec's full chain, then the secondary spec's `rules/*` only.
-
-## Cross-cutting constraints
-
-- **Standard roles** — workflows use only: `product-owner`, `pm`, `team-lead`, `developer`, `qa`, `analyst`,
-  `devops-engineer`. No parenthetical annotations; the initiator appears in the workflow's own `roles` list.
-- **Bounded loops** — every retry or iteration states a maximum (default 3) and an escalation path; cross-workflow
-  trigger chains are acyclic or carry a circuit breaker.
-- **Verify after change** — the last mutating step is followed by a verification step; never end on an unverified change.
-- **Document outcomes** — incident workflows end with `docs/incidents/<date>-<slug>-root-cause.md`; delivery
-  workflows end with a Document & Version step (docs + CHANGELOG + version source).
-- **No destructive action without a verified backup** — and if backup verification itself fails, escalate to a human;
-  do not enter an incident loop that requires the failed backup.
+| PostgreSQL access, backups, migrations in production | `database-ops/` |
+| Security scans, SBOM, signing, policy-as-code | `devsecops/` |
+| Terraform, Ansible, environments, drift | `infrastructure/` |
+| Workloads, Helm, cluster standards | `kubernetes/` |
+| Ingress, network policies, TLS | `networking/` |
+| Metrics, logs, alerts, SLO dashboards | `observability/` |
+| Incidents, on-call, SLO policy | `sre/` |
 
 ## Load order
 
-1. This file (`areas/devops/AGENTS.md`)
-2. Spec `AGENTS.md` (`areas/devops/<spec>/AGENTS.md`)
-3. Spec `rules/*.md` — all rules for the selected spec
-4. Spec `skills/*/SKILL.md` — on-demand, matching "When to load"
-5. Spec `workflows/*.md` — matching the slash command trigger
+1. Spec `AGENTS.md` — installed into the project `AGENTS.md`.
+2. Rules — Claude Code loads a rule when a file matches its `paths:`; read a `trigger: manual` rule when the
+   task touches its topic.
+3. Skills — on demand, when the description matches the task.
+4. Workflows — when the request matches `selection.use-when` or the user types the trigger.
 
 ## Trigger registry
 
-Every workflow trigger in this area. Triggers are unique across ALL areas — check `areas/software/AGENTS.md` too
-before adding one.
+Triggers are unique across all areas; check `areas/software/AGENTS.md` before you add one.
 
 | Trigger | Spec | Purpose |
 |:---|:---|:---|
-| `/onboard-repo` | ci-cd | Add a repository to CI |
-| `/pipeline-debug` | ci-cd | Diagnose failing pipelines |
-| `/release-pipeline` | ci-cd | Ship a production release |
-| `/backup-verify` | database-ops | Verify backup restorability |
-| `/db-incident` | database-ops | Handle a database incident |
-| `/policy-onboard` | devsecops | Roll out a policy-as-code control |
-| `/security-scan-pipeline` | devsecops | Add security scanning to CI |
-| `/provision-environment` | infrastructure | Create an environment via IaC |
-| `/destroy-environment` | infrastructure | Decommission an environment |
-| `/drift-remediation` | infrastructure | Reconcile infrastructure drift |
-| `/module-development` | infrastructure | Build a reusable IaC module |
-| `/cluster-bootstrap` | kubernetes | Stand up a new cluster |
-| `/onboard-service` | kubernetes | Deploy a service to Kubernetes |
+| `/release-pipeline` | ci-cd | Build or fix a release pipeline |
+| `/security-scan` | devsecops | Scan, triage, and gate security findings |
+| `/iac-change` | infrastructure | Provision, change, fix drift in, or destroy infrastructure |
 | `/debug-workload` | kubernetes | Diagnose a failing workload |
-| `/upgrade-cluster` | kubernetes | Upgrade a cluster version |
-| `/onboard-ingress` | networking | Expose a service via ingress |
-| `/service-mesh-onboard` | networking | Add a service to the mesh |
-| `/alert-investigation` | observability | Investigate a firing alert |
-| `/observability-stack-setup` | observability | Deploy the observability stack |
-| `/onboard-service-monitoring` | observability | Instrument and monitor a service |
-| `/incident-response` | sre | Coordinate an active incident |
-| `/postmortem` | sre | Produce a postmortem |
-| `/slo-review` | sre | Review and adjust SLOs |
+| `/incident-response` | sre | Mitigate an incident and write the incident page |
 
 ## Specs in this area
 
 ```text
 areas/devops/
 ├── ci-cd/           # pipelines, builds, releases
-├── database-ops/    # Postgres/Redis operations, backups
-├── devsecops/       # scanning, policy-as-code, supply chain
-├── infrastructure/  # Terraform, environments, drift
-├── kubernetes/      # clusters, workloads, Helm, RBAC
-├── networking/      # ingress, mesh, TLS, DNS
-├── observability/   # metrics, logs, traces, alerting
-└── sre/             # incidents, postmortems, SLOs
+├── database-ops/    # access, backups, production migrations
+├── devsecops/       # scans, SBOM, signing, policy-as-code
+├── infrastructure/  # Terraform, Ansible, environments, drift
+├── kubernetes/      # workloads, Helm, cluster standards
+├── networking/      # ingress, segmentation, TLS (rules only)
+├── observability/   # alerts, golden signals, retention, SLO alerts
+└── sre/             # incidents, on-call, SLO policy
 ```

@@ -1,20 +1,20 @@
-# Rule: Database Access Control
+---
+description: Least-privilege database roles, credentials, pooling, and audit settings for service databases.
+paths:
+  - "**/migrations/**"
+  - "**/*.sql"
+  - "**/pgbouncer*.ini"
+---
 
-**Priority**: P0 — Database access follows least-privilege; no wildcard grants.
+# Database access control
 
-## Role Separation
-
-| Role | Permissions | Who/what |
-|:---|:---|:---|
-| `app_<service>` | SELECT, INSERT, UPDATE, DELETE on owned tables | Application service |
-| `readonly_<service>` | SELECT only | Reporting, analytics, support |
-| `migration_<service>` | DDL (CREATE, ALTER, DROP) on owned schema | CI/CD migration runner (transient) |
-| `superuser` | ALL | DBAs only; MFA required; session-logged |
-
-## Rules
-
-1. **Application role never has DDL permissions** — migrations run as a separate migration role.
-2. **No shared passwords** — each service has its own credential in Vault/Secrets Manager.
-3. **Connection pooling required** — all apps connect via PgBouncer (transaction mode); no direct K8s pod → PostgreSQL.
-4. **Access log** — `pgaudit` extension enabled for all DDL and suspicious DML patterns.
-5. **Public schema dropped** — `DROP SCHEMA public; CREATE SCHEMA <service>` — no default public schema exposure.
+- Create one `app_<service>` role per service with only `SELECT`, `INSERT`, `UPDATE`, `DELETE` on its own tables.
+- Create a separate `migration_<service>` role for DDL; never grant `CREATE`, `ALTER`, or `DROP` to the application role.
+- Create `readonly_<service>` roles with `SELECT` only for reporting and support access.
+- Never use `GRANT ALL` or grant `SUPERUSER` to an application or migration role.
+- Store each service credential in a secret manager (Vault, cloud secret store); never share one password between services.
+- Rotate database credentials at least every 90 days and after offboarding a person with database access.
+- Connect applications through a connection pooler (`pgbouncer` in transaction mode) and set a pool size limit per service.
+- Enable `pgaudit` (or the engine equivalent) for all DDL and role changes.
+- Revoke `CREATE` on schema `public` from `PUBLIC` and put service tables in a named schema.
+- Require TLS (`sslmode=verify-full`) in every client connection string.

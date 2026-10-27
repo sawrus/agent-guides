@@ -177,6 +177,9 @@ def check_change(repo: Path, base: str, head: str, config: dict) -> list[Violati
             violations.append(Violation('DOC-6', page, f'`covers:` glob {broad[0]!r} covers everything; '
                                                        'add a root design page instead'))
     covering = [g for covers in changed_pages.values() for g in covers or [] if g.strip() not in BROAD]
+    # A changed page also covers what it covered at the base, so a deleted file whose glob the page dropped counts.
+    base_pages = pages_at(repo, merge_base, docs_dir)
+    covering += [g for p in changed if p in base_pages for g in base_pages[p] or [] if g.strip() not in BROAD]
     exempt = exempt_files(repo, merge_base, head, config['trailer'])
     for path in changed:
         if not is_code(path, config) or matches(path, covering) or path in exempt:

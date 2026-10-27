@@ -69,5 +69,5 @@ Boundaries
 
 Stack-Specific Overlays
 - Stay stack-agnostic by default.
-- Pull platform specifics from `.agent/rules/*`, `.agent/skills/*`, `.agent/workflows/*`, and `.agent/prompts/*`.
+- Pull platform specifics from `.agent/rules/*`, `.agent/skills/*`, and `.agent/workflows/*`.
 """

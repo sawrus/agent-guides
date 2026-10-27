@@ -2,123 +2,63 @@
 name: incident-response
 type: workflow
 trigger: /incident-response
-description: Structured P0/P1 incident response — acknowledge, scope, mitigate, communicate, resolve, document.
+description: Investigate an alert or production incident, mitigate it, fix the cause, and write the incident page.
 inputs:
-  - incident_summary
-  - severity (P0|P1)
+  - alert_or_symptom
   - affected_service
 outputs:
-  - incident_resolved
-  - preliminary_postmortem
-roles:
-  - devops-engineer
-  - developer
-  - pm
-  - team-lead
-execution:
-  initiator: developer
-agent: developer
+  - mitigation
+  - fix
+  - incident_page
 selection:
   general: false
-  use-when: "A P0 or P1 production incident is in progress and needs coordinated mitigation and communication."
-related-rules:
-  - on-call-standards.md
-  - error-budget-policy.md
+  use-when: "The request reports a firing alert, an outage, elevated errors or latency, a database incident, or asks for a postmortem of a production event."
+  avoid-when: "A bug found in development or tests with no production impact; use the debug workflow."
 uses-skills:
   - incident-command
-  - postmortem-analysis
-quality-gates:
-  - status page updated within 10 min of P0 declaration
-  - a mitigation from the runbook was attempted and its result recorded before deep root-cause work began
-  - timeline captured in real-time (not reconstructed after)
+related-rules:
+  - on-call-standards.md
+  - slo-policy.md
+artifacts:
+  - docs/incidents/<YYYY-MM-DD>-<id>.md
 ---
+
+# Respond to an incident
+
+Example request: order-service returns 100% 5xx since 15:42 UTC and checkout is down; help me mitigate and find the cause.
 
 ## Steps
 
-Role assignments: `@devops-engineer` is incident commander (IC), `@developer` is technical lead, `@pm` owns comms.
+### 1. Assess impact
 
-### T+0–5: Acknowledge & Scope — `@devops-engineer`
-- **Input:** incident_summary, severity, and affected_service from the workflow inputs.
-- Post to #incidents: "I'm on this. War room: [link]"
-- Scope: `kubectl get pods -A | grep -v Running`; check Grafana golden signals
-- Declare severity; page secondary if P0
-- **Done when:** severity declared, war room open, and blast radius scoped.
+- **Do:** read the alert, the dashboard, and the SLO burn rate. Record what fails, for whom, and since when.
+  Set the severity from `on-call-standards.md`. Read-only queries (logs, metrics, `kubectl get`, `describe`)
+  are allowed; ask the user first before any command that changes production.
+- **Done when:** the incident has a severity, a start time, and one sentence of user impact.
 
-### T+5–15: Mitigate — `@developer` + `@devops-engineer`
-- **Input:** scoped incident and declared severity from T+0–5.
-- **First: try rollback** — `helm rollback <release> -n <ns>`
-- If rollback not applicable: feature flag off → scale up → restart
-- Start scribe doc: copy timeline template, log every action with timestamp
-- **Done when:** a runbook mitigation applied and its result recorded in the scribe doc.
+### 2. Mitigate
 
-### T+10: Communicate — `@pm`
-- **Input:** declared severity and symptom summary from T+0–5.
-- Status page update: "Investigating [symptom] affecting [service]"
-- Stakeholder Slack message in #incidents + product channel
-- **Done when:** status page updated within 10 min of P0 declaration and stakeholders notified.
+- **Do:** pick the fastest safe action from the evidence: roll back the last deploy, turn off a feature flag,
+  scale out, fail over, or block bad traffic. Ask the user first and state the exact command before you run it.
+- **Done when:** the error rate or latency is back under the SLO threshold for 15 minutes, or the user decides
+  to stop mitigation.
 
-### T+15–30: Stabilize — `@devops-engineer`
-- **Input:** applied mitigation and scribe timeline from T+5–15.
-- Watch error rate for 10 min post-mitigation
-- Confirm P95 and P99 latency returning to baseline
-- If not stabilized: work through the runbook mitigation list at most once end-to-end; if none stabilize, escalate to `@team-lead` to raise severity or engage the vendor
-- **Done when:** error rate and P95/P99 latency back at baseline for 10 min, or escalation raised.
+### 3. Find the root cause
 
-### T+30: Resolve or Escalate — `@devops-engineer`
-- **Input:** stabilization result from T+15–30.
-- If resolved: status page "Monitoring"; all-clear in #incidents
-- If not: retry the current mitigation at most 3 times, then escalate to `@team-lead` for a severity raise
-- **Done when:** incident resolved with all-clear posted, or severity raised with `@team-lead` engaged.
+- **Do:** build a timeline from deploys, config changes, alerts, and logs. Test each hypothesis against data
+  (queries, commits, traces) until one cause explains all symptoms. For a database incident, include slow
+  queries, locks, replication lag, and connection counts. Use read-only access; ask the user first before
+  a query that could load the production database.
+- **Done when:** the cause is backed by evidence and is not "human error".
 
-### T+60: Preliminary Postmortem — `@team-lead`
-- **Input:** real-time scribe timeline from the incident.
-- Create preliminary postmortem notes with timeline (while fresh) at `docs/incidents/<date>-<slug>-root-cause.md`
-- Mark as Draft; schedule 5-whys session within 48h
-- **Done when:** preliminary notes committed and 5-whys session scheduled.
+### 4. Fix and prevent
 
-### T+24h: Full Postmortem — `@team-lead`
-- **Input:** preliminary postmortem notes from T+60.
-- Trigger `/postmortem` with incident_id, severity, and timeline_raw (the preliminary postmortem notes) — at most one automatic trigger; if it fails, escalate to a human decision
-- **Done when:** /postmortem triggered with the handoff inputs.
+- **Do:** change the code, config, or alert that allowed the failure, with a regression test or a check. Add at
+  least one prevention item (test, alert, limit, rule) with an owner. Ask the user first before you deploy it.
+- **Done when:** the fix is in a change with green checks and each prevention item has an owner.
 
-## Agent Interaction Diagram
+### 5. Write the incident page
 
-<!-- agent-diagram:start -->
-```mermaid
-flowchart TD
-  start(["Start /incident-response"])
-  role_1["devops-engineer"]
-  role_2["developer"]
-  role_3["pm"]
-  role_4["team-lead"]
-  step_1["T+0–5: Acknowledge & Scope"]
-  step_2["T+5–15: Mitigate"]
-  step_3["T+10: Communicate"]
-  step_4["T+15–30: Stabilize"]
-  step_5["T+30: Resolve or Escalate"]
-  step_6["T+60: Preliminary Postmortem"]
-  step_7["T+24h: Full Postmortem"]
-  exit(["Service healthy + stakeholders informed + preliminary postmortem filed = in..."])
-  start --> step_1
-  step_1 --> step_2
-  step_2 --> step_3
-  step_3 --> step_4
-  step_4 --> step_5
-  step_5 --> step_6
-  step_6 --> step_7
-  step_7 --> exit
-  role_1 -. owns .-> step_1
-  role_2 -. owns .-> step_2
-  role_1 -. owns .-> step_2
-  role_3 -. owns .-> step_3
-  role_1 -. owns .-> step_4
-  role_1 -. owns .-> step_5
-  role_4 -. owns .-> step_6
-  role_4 -. owns .-> step_7
-```
-<!-- agent-diagram:end -->
-
-## Exit
-Service healthy + stakeholders informed + preliminary postmortem filed = incident closed.
-
-**Next:** /postmortem — full RCA, action items, and publication.
+- **Do:** write `docs/incidents/<YYYY-MM-DD>-<id>.md` with `covers:` for the changed code and the sections
+  impact, root cause with evidence, fix with link and test, and prevention with owners.
+- **Done when:** the page has all four sections and links the fix change.

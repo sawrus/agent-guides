@@ -1,9 +1,14 @@
-# Rule: Production Safety
+---
+description: Fallback, latency, prediction logging, and drift alert requirements for model serving endpoints.
+paths:
+  - "**/serving/**"
+  - "**/inference/**"
+---
 
-**Priority**: P1 — Required before any model serves real traffic.
+# Model serving safety
 
-1. **Fallback mechanism**: Every model endpoint must have a defined fallback: rule-based baseline, previous model version, or graceful degradation.
-2. **Latency SLO**: Inference endpoints must define and enforce a latency SLO (e.g., p99 < 200ms). Models that cannot meet SLO must be optimized before deploy.
-3. **Prediction monitoring**: All production models log predictions with input features and timestamps. Monitoring must be active before go-live.
-4. **Shadow mode**: High-stakes models (credit, medical, fraud) must run in shadow mode ≥ 2 weeks before live traffic.
-5. **Drift alerting**: Alerts configured for input feature drift and output prediction drift vs. training baseline.
+- Define a fallback for every model endpoint: a rule-based baseline, the previous model version, or a degraded response.
+- Set a latency target per endpoint (for example p99 under 200 ms) and test it before release.
+- Log every prediction with its input features, model version, and timestamp.
+- Run high-stakes models (credit, medical, fraud) in shadow mode for at least 2 weeks before live traffic.
+- Configure alerts for input feature drift and prediction drift against the training baseline.

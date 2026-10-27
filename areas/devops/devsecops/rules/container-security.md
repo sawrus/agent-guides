@@ -1,22 +1,23 @@
-# Rule: Container Security Standards
+---
+description: Hardening requirements for Dockerfiles and container images of backend services.
+paths:
+  - "**/Dockerfile"
+  - "**/Dockerfile.*"
+  - "**/Containerfile"
+  - "**/.dockerignore"
+  - "**/.trivyignore"
+---
 
-**Priority**: P0 — Containers violating these standards are rejected at deploy time via policy.
+# Container security
 
-## Dockerfile Standards
-
-1. **Non-root user** — `USER 1000:1000` in Dockerfile; never run as root.
-2. **Minimal base image** — prefer distroless or Alpine; never `FROM ubuntu:latest`.
-3. **Pin base image to digest** — `FROM python:3.12-slim@sha256:...` (not tag-only).
-4. **No secrets in layers** — no `COPY .env`, no `ARG password=`; multi-stage to exclude build secrets.
-5. **No SETUID binaries** — `RUN find / -perm /6000 -type f -exec chmod a-s {} \;`
-6. **Read-only filesystem** where possible — `readOnlyRootFilesystem: true` in pod spec.
-
-## K8s Admission Policy (OPA/Gatekeeper or Kyverno)
-
-Blocked at admission:
-- `privileged: true` containers in production namespace
-- `runAsRoot: true` or missing `runAsNonRoot`
-- `allowPrivilegeEscalation: true`
-- Missing `resources.requests` / `resources.limits`
-- Image without digest (`:latest` or mutable tag)
-- Unsigned images (if cosign policy enabled)
+- Pin every `FROM` image by `@sha256` digest; never use `:latest` or a tag-only reference.
+- Use a multi-stage build and copy only the built artifact into the runtime stage.
+- Use a minimal runtime base image (`distroless`, `-slim`, or Alpine); do not ship compilers or package managers in the runtime stage.
+- Set `USER` to a numeric non-root UID (for example `USER 1000:1000`) in the final stage.
+- Never `COPY` a `.env` file or pass a secret through `ARG` or `ENV`; use BuildKit `--mount=type=secret` for build secrets.
+- Add `.env`, `.git`, and credential files to `.dockerignore`.
+- Remove SETUID and SETGID bits in the runtime stage (`find / -perm /6000 -type f -exec chmod a-s {} +`).
+- Use the exec form of `ENTRYPOINT` and `CMD` so the process receives `SIGTERM`.
+- Run `trivy image --severity CRITICAL,HIGH --exit-code 1` on every built image in CI.
+- Record every `.trivyignore` entry with the CVE id, the reason, a ticket reference, and a review date.
+- Keep the image writable only under mounted paths so it runs with `readOnlyRootFilesystem: true`.
