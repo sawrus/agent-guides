@@ -18,7 +18,7 @@ directory) and is not counted.
 |---|---|---|---|
 | H4: reviewer in the lean default | Codex T8v2 | `lean` 9/9 vs `lean-noreviewer` 9/9; median full 134.6k vs 108.1k; cost per success $0.083 vs $0.081 | not met (needs +2 accepted) |
 | | Claude T8v2 | 3/3 vs 3/3; median full 109.0k vs 138.2k; cost per success $0.098 vs $0.114 | guard holds |
-| H0: no lean helper above the session tier | Codex T6–T8 | `lean` 9/9, `lean-jev` 9/9; 6 helper spawns (T7, 3 per arm), all on `gpt-6.1-terra`, none on a frontier model; cost per success $0.096 vs $0.088 (× 1.09) | met |
+| H0: no lean helper above the session tier | Codex T6–T8 | `lean` 9/9, `lean-jev` 9/9; 6 helper spawns (T7, 3 per arm), all on `gpt-6.1-terra`, none on a frontier model; cost per success `lean-jev` $0.096 vs `lean` $0.088 (× 1.09) | met |
 | | Claude T6–T8 | `lean` 9/9, `lean-jev` 8/8 valid; 0 helper spawns | inconclusive |
 | H-clean: cleanup on the core selection, T1–T7 + T10, r1 | Claude | accepted 8/8 before and after; full 1,211k → 1,122k (× 0.93); uncached 128k → 135k (× 1.05); cost $0.755 → $0.770 (× 1.02) | quality kept; full ≤ 0.9 × not met |
 | H-clean-devops: cleanup on T11, 3 reps | Claude `lean` | accepted 3/3 before and after; full 458k → 441k (× 0.96); uncached 83k → 60k (× 0.72); cost $0.434 → $0.369 (× 0.85) | quality kept; full ≤ 0.9 × not met |
