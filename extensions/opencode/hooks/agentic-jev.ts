@@ -26,7 +26,12 @@ export default Plugin.define({
     const tierModels = Object.values(tierMap?.providers ?? {}).flatMap((tiers: any) => Object.values(tiers ?? {})).filter((m): m is string => typeof m === "string");
     const refID = (model: any): string | undefined => typeof model === "string" ? model : model?.id && model?.providerID ? `${model.providerID}/${model.id}` : undefined;
     const original = new Map<string, string>();
-    const toolInputs = new Map<string, {action: string; input: unknown}>();
+    // Code mode reports one MCP call twice under one call id: the `execute` wrapper and `<server>_<tool>`.
+    // One entry per call id keeps the concrete name; `open` counts hooks still in flight for that id.
+    const CODE_MODE = "execute";
+    const toolInputs = new Map<string, {action: string; input: unknown; open: number}>();
+    const recordedTools = new Set<string>();
+    const sessionModels = new Map<string, string>();
     const disposables: Array<{ dispose(): Promise<void> }> = [];
     async function enabled() {
       if (/^(0|false|no|n)$/i.test(process.env.AGENTIC_ENABLE_JEV ?? "")) return false;
@@ -86,14 +91,19 @@ export default Plugin.define({
         return;
       }
       original.set(event.sessionID, event.prompt.text ?? "");
+      // OpenCode's `plan` agent is read-only; the hook returns the shared plan-mode text as `context`.
       const result = await decide({kind: "prompt", session_id: event.sessionID,
-        event_id: event.messageID, prompt: event.prompt.text});
+        event_id: event.messageID, prompt: event.prompt.text, plan_mode: session.agent === "plan"});
       if (result.status === "switched") {
         // The prompt hook cannot cancel a turn; keep it to one short confirmation.
         event.prompt.text = `[Agentic JEV hook] ${result.message} Reply with exactly this sentence and do nothing else.`;
         return;
       }
       if (!result.workflow) return;
+      if (typeof result.context === "string") {
+        event.prompt.text += `\n\n[Agentic JEV hook context]\n${result.context}`;
+        return;
+      }
       if (await leanProfile()) {
         // lean has no role agents: the native session keeps planning and delegation; spawn hooks still route models.
         event.prompt.text += `\n\n[Agentic JEV hook context]\nJEV suggests installed workflow ${result.workflow.id}. Use ${result.workflow.path} as a checklist for the ORIGINAL user request above and perform its steps yourself in this session; there are no role agents. Start a subagent only where the project core rules call for one; hooks route its model, so omit guessed model overrides. Preserve original scope and native permissions.`;
@@ -111,7 +121,10 @@ export default Plugin.define({
     }));
     disposables.push(await ctx.tool.hook("execute.before", async (event) => {
       if (!(await enabled())) return;
-      toolInputs.set(`${event.sessionID}:${event.id}`, {action: event.tool, input: event.input});
+      const key = `${event.sessionID}:${event.id}`;
+      const known = toolInputs.get(key);
+      const replace = !known || known.action === CODE_MODE;
+      toolInputs.set(key, replace ? {action: event.tool, input: event.input, open: (known?.open ?? 0) + 1} : {...known, open: known.open + 1});
       if (event.tool !== "subagent") return;
       const input = event.input as {agent: string; prompt: string; model?: string; sessionID?: string};
       const agents = (await ctx.agent.list()).data;
@@ -134,7 +147,8 @@ export default Plugin.define({
       const models = (await ctx.model.list()).data.filter((m) => pool.has(`${m.providerID}/${m.id}`) && m.capabilities.tools && (!provider || m.providerID === provider)).map((m) => ({
         id: `${m.providerID}/${m.id}`, description: m.name, capabilities: m.capabilities, prices: m.cost,
       }));
-      const result = await decide({kind: "spawn", session_id: event.sessionID, event_id: event.id,
+      const sessionModel = sessionModels.get(event.sessionID) ?? await ctx.session.get({ sessionID: event.sessionID }).then((session) => refID(session.model)).catch(() => undefined);
+      const result = await decide({kind: "spawn", session_id: event.sessionID, event_id: event.id, session_model: sessionModel,
         original_prompt: await rootPrompt(event.sessionID), input, agent: input.agent, prompt: input.prompt,
         // Without a confident tier the hook falls back to this role default, never to the session model.
         models, role_default: refID(agent?.model) ?? profileDefaults[input.agent], lightweight_model: lightweight, role_description: agent?.description,
@@ -149,7 +163,16 @@ export default Plugin.define({
     }));
     disposables.push(await ctx.tool.hook("execute.after", async (event) => {
       if (!(await enabled())) return;
-      toolInputs.delete(`${event.sessionID}:${event.id}`);
+      const key = `${event.sessionID}:${event.id}`;
+      const known = toolInputs.get(key);
+      if (known && known.open > 1) toolInputs.set(key, {...known, open: known.open - 1});
+      else toolInputs.delete(key);
+      // One record per call id: skip the wrapper when a concrete tool shares its id, and any repeat.
+      if (recordedTools.has(key) || (event.tool === CODE_MODE && known && known.action !== CODE_MODE)) return;
+      if (event.tool !== CODE_MODE) {
+        recordedTools.add(key);
+        if (recordedTools.size > 4096) recordedTools.delete(recordedTools.values().next().value!);
+      }
       await decide({kind: "tool", session_id: event.sessionID, event_id: event.id,
         action: event.tool, input: event.input, status: event.status});
     }));
@@ -171,7 +194,8 @@ export default Plugin.define({
     disposables.push(await ctx.session.hook("model.request", async (event) => {
       if (!(await enabled()) || event.kind !== "primary") return;
       const session = await ctx.session.get({ sessionID: event.sessionID });
-      if (!session.parentID) return;
+      // Lean caps helper tiers at the root session's model.
+      if (!session.parentID) { sessionModels.set(event.sessionID, `${event.model.providerID}/${event.model.id}`); return; }
       await decide({kind: "observation", session_id: session.parentID,
         event_id: `${event.sessionID}:${event.model.providerID}/${event.model.id}`,
         child_session_id: event.sessionID, agent: event.agent,

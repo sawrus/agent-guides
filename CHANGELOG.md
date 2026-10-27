@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.4.0
+
+- JEV: in host plan mode (Claude Code `permission_mode: plan`, the OpenCode `plan` agent) the workflow hint is
+  read-only: do only the diagnosis and analysis steps, present the rest as a plan, do not edit files. Codex is
+  unchanged (its payload has no mode). The hint text lives only in the Python runtime.
+- JEV (OpenCode): a code-mode MCP call that the host reports both as `execute` and as `<server>_<tool>` now gives
+  one tool record under the concrete tool name, and the permission hook keeps that call's input.
+- JEV (lean): `explorer` and `reviewer` spawns never route above the session model's tier (`balanced` when the
+  session tier is unknown). When every candidate is above the cap, the result is `fallback/tier_above_session`
+  and the helper runs on the session model.
+
 ## v2.3.1
 
 - New `docs/artifact-standard.md`: the acceptance contract for rules, skills, workflows and company rules, with

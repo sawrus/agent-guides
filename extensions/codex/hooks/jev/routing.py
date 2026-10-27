@@ -23,6 +23,9 @@ CLAUDE_MODELS = (
     {'id': 'opus', 'description': 'Claude Opus: most capable and most expensive model for complex planning and architecture.', 'prices': None},
 )
 CLAUDE_ALIASES = frozenset(m['id'] for m in CLAUDE_MODELS)
+# Lean helpers serve the session; they never run on a model above the session's tier.
+LEAN_HELPERS = ('explorer', 'reviewer')
+UNKNOWN_SESSION_CAP = 'balanced'
 
 
 def canonical_role(role):
@@ -195,13 +198,39 @@ def review_tier(tiers):
     return (tiers['fast'], 'tier_fast_price_unknown') if (tiers or {}).get('fast') else None
 
 
-def spawn_rule(event, settings, models, tiers=None):
+def session_tier(event, tier_maps):
+    """Tier of the session model in any configured map: the session model need not be a spawn candidate."""
+    model = event.get('session_model')
+    if event.get('host') == 'claude':
+        model = claude_alias(model)
+    tiers = [tier_of(tiers, model) for tiers in tier_maps] if model else []
+    return next((tier for tier in tiers if tier), None)
+
+
+def helper_cap(event, tier_maps):
+    """Highest tier a lean helper may use: the session model's tier, or `balanced` when that tier is unknown."""
+    if event.get('profile') != 'lean' or (event.get('agent') or event.get('native_agent_type')) not in LEAN_HELPERS:
+        return None
+    return session_tier(event, tier_maps) or UNKNOWN_SESSION_CAP
+
+
+def cap_tiers(models, tiers, cap):
+    """Drop tier models above `cap`; untiered models stay, since no explicit tier marks them as expensive."""
+    allowed = {t: m for t, m in tiers.items() if TIERS.index(t) <= TIERS.index(cap)}
+    above = set(tiers.values()) - set(allowed.values())
+    return [m for m in models if m['id'] not in above], allowed
+
+
+def spawn_rule(event, settings, models, tiers=None, capped_out=False):
     """Deterministic spawn outcomes that never ask JEV; `keep_native` blocks the role-default fallback."""
     if event.get('configuration_unavailable'):
         return {'result': {'status': 'fallback', 'reason_code': 'project_configuration_unavailable'}, 'keep_native': True}
     if event.get('pinned_model') or event.get('continuation'):
         return {'result': {'status': 'preserved', 'reason_code': 'explicit_model_or_continuation'},
                 'keep_native': True, 'fields': {'model_source': 'pinned', 'outcome': 'rule_applied'}}
+    if capped_out:
+        # Every eligible model is above the session tier: the host runs the helper on the session model.
+        return {'result': {'status': 'fallback', 'reason_code': 'tier_above_session'}, 'keep_native': True}
     if len(models) == 1:
         return routed(models[0]['id'], 'single_eligible_model', 'single_eligible')
     if event.get('agent') == 'instruction-reviewer':
@@ -233,7 +262,13 @@ def plan_spawn(event, models, defaults, settings, tier_map=None):
     """Spawn plan without I/O: a deterministic `result`, or `role_ctx` and `pool` for the model question."""
     tier_map = tier_map or load_tier_map(None)
     tiers, cost_source = spawn_tiers(event, models, defaults, settings.get('tiers'), tier_map)
-    rule = spawn_rule(event, settings, models, tiers)
+    known = [tiers, defaults['tiers'], *([CLAUDE_TIERS] if event.get('host') == 'claude' else []), *tier_map['providers'].values()]
+    cap = helper_cap(event, known)
+    capped_out = False
+    if cap:
+        capped, tiers = cap_tiers(models, tiers, cap)
+        capped_out, models = bool(models) and not capped, capped
+    rule = spawn_rule(event, settings, models, tiers, capped_out)
     if rule:
         rule.setdefault('fields', {}).update(cost_source=cost_source, role_default_source=None)
         return rule
