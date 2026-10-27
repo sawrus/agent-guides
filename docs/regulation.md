@@ -119,7 +119,7 @@ Rules:
 | DOC-1 | The docs root holds only root design pages and project-wide policies (release policy, this regulation). Feature work goes into a feature directory. |
 | DOC-2 | A feature directory name is a kebab-case slug, optionally prefixed with the ticket id (`ABC-123-payment-split`). |
 | DOC-3 | Every root design page, feature page, and incident page has frontmatter `covers:` with code globs relative to the repository root. |
-| DOC-4 | **Coverage rule.** If a change modifies a code path, the same change modifies at least one docs page whose `covers:` matches that path. Code paths are all tracked files except `docs/`, tests, CI config, and files the project lists as excluded. |
+| DOC-4 | **Coverage rule.** If a change modifies a code path, the same change modifies at least one docs page whose `covers:` matches that path. Code paths are all tracked files except `docs/`, tests, CI config, and files the project lists as excluded. A deleted file counts as covered by a changed page that covered it before the change. |
 | DOC-5 | **Exemption.** A change that does not alter behaviour (tests only, CI only, refactoring with unchanged behaviour, dependency bump without API change) adds the commit trailer `Docs-Not-Needed: <reason>`. A reviewer checks that the reason is true (CR-10). |
 | DOC-6 | Code that no `covers:` glob matches is reported as uncovered. A project fixes uncovered code by adding a root design page, not by widening a glob to `**`. |
 | DOC-7 | Docs describe behaviour and decisions. They do not copy code. |
