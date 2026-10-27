@@ -6,7 +6,7 @@ COVERAGE_MIN ?= 80
 
 .PHONY: help install dev build release-build test test-unit test-integration \
 	e2e test-coverage lint fmt clean check-no-pycache check-version-sync \
-	lint-content test-content build-docs sync-diagrams assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode blackbox-claude test-jev-hooks test-notify test-jev-sdk test-gate \
+	lint-content test-content build-docs assess-areas jev-rnd-verify blackbox blackbox-codex blackbox-opencode blackbox-claude test-jev-hooks test-notify test-jev-sdk test-gate \
 	test-repo-scan repo-scan repo-scan-check repo-scan-tools repo-scan-skill context-budget check-artifacts \
 	check-docs-coverage bench-v1 bench-prepare bench bench-selftest bench-report bench-regrade
 
@@ -25,7 +25,6 @@ help:
 	@echo "  clean            - cargo clean + report cleanup"
 	@echo "  install          - install release binary to ~/.local/bin"
 	@echo "  build-docs       - build docs catalog (content tooling)"
-	@echo "  sync-diagrams    - sync workflow diagrams (content tooling)"
 	@echo "  assess-areas     - area quality scorecards (content tooling)"
 	@echo "  jev-rnd-verify   - inspect saved research results offline"
 	@echo "  test-notify      - offline Telegram notifier tests (fake Bot API)"
@@ -185,11 +184,10 @@ clean:
 # --- Content tooling (areas/docs payload, unchanged from the bash era) ---
 
 lint-content:
-	PYTHONPYCACHEPREFIX=/tmp/agentic-pycache-check python3 -m py_compile extensions/codex/hooks/gate/gate.py scripts/context_budget.py scripts/check_artifacts.py scripts/check_docs_coverage.py scripts/bench_sdlc.py scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/lint_review_pipeline.py scripts/assess_area_quality.py scripts/sync_workflow_diagrams.py \
+	PYTHONPYCACHEPREFIX=/tmp/agentic-pycache-check python3 -m py_compile extensions/codex/hooks/gate/gate.py scripts/context_budget.py scripts/check_artifacts.py scripts/check_docs_coverage.py scripts/bench_sdlc.py scripts/build_docs_catalog.py scripts/lint_prompts.py scripts/lint_review_pipeline.py scripts/assess_area_quality.py \
 		tools/repo-scan/repo_scan.py tools/repo-scan/reposcan/*.py
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_prompts.py --strict
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_review_pipeline.py
-	PYTHONDONTWRITEBYTECODE=1 python3 scripts/sync_workflow_diagrams.py --check
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/build_docs_catalog.py --validate --output /tmp/agentic-catalog-check.json
 	$(MAKE) check-artifacts ARTIFACTS_ARGS=
 	$(MAKE) check-no-pycache
@@ -208,11 +206,7 @@ check-no-pycache:
 	fi
 
 build-docs:
-	PYTHONDONTWRITEBYTECODE=1 python3 scripts/sync_workflow_diagrams.py --check
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/build_docs_catalog.py --output docs/site/catalog.json --validate
-
-sync-diagrams:
-	python3 scripts/sync_workflow_diagrams.py
 
 assess-areas:
 	python3 scripts/assess_area_quality.py --json-output reports/area-quality.json --markdown-output reports/area-quality.md

@@ -51,25 +51,23 @@ Each **area** (e.g., `devops/kubernetes`) provides:
 agent-guides/
 ├── areas/
 │   ├── software/              # Application development
-│   │   ├── general/           # Shared baseline — all software specs inherit from here
-│   │   ├── backend/           # REST/GraphQL APIs, services, database access
-│   │   ├── frontend/          # Components, accessibility, performance, CSS
-│   │   ├── full-stack/        # End-to-end product features
-│   │   ├── data-engineering/  # dbt, warehouses, pipelines, streaming
-│   │   ├── mlops/             # Training, evaluation, serving, monitoring
-│   │   ├── mobile/            # iOS, Android, React Native, Flutter
-│   │   ├── platform/          # K8s manifests, IaC, CI/CD, secrets
-│   │   ├── qa/                # Test strategy, coverage, flakiness, performance
-│   │   └── security/          # Threat modeling, SAST/DAST, auth, compliance
+│   │   ├── general/           # Shared rules + develop-feature, debug-issue, refactor-module, code-review
+│   │   ├── backend/           # Python/Go/Java services: API contracts, data access, security, testing
+│   │   ├── frontend/          # Rules only: components, accessibility, performance
+│   │   ├── data-engineering/  # Rules only: pipelines, schemas, governance, PII
+│   │   ├── mlops/             # Rules only: reproducibility, governance, serving safety
+│   │   ├── mobile/            # Rules only: offline, performance, store compliance
+│   │   ├── qa/                # Rules only: test strategy, data, flakiness, gates
+│   │   └── security/          # Secure coding, secrets, dependencies, compliance
 │   └── devops/                # Platform and operations
-│       ├── kubernetes/        # Cluster bootstrap, workload ops, RBAC, upgrades
-│       ├── ci-cd/             # GitHub Actions, GitLab CI, quality gates, supply chain
-│       ├── infrastructure/    # Terraform, Ansible, IaC standards, drift detection
-│       ├── observability/     # Prometheus, Loki, Tempo, Grafana, SLOs
-│       ├── sre/               # SLOs, error budgets, incidents, chaos engineering
-│       ├── networking/        # Ingress, TLS, service mesh, DNS, VPC
-│       ├── devsecops/         # Shift-left, SBOM, OPA/Kyverno, container hardening
-│       └── database-ops/      # PostgreSQL, Redis, migrations, backup/restore
+│       ├── kubernetes/        # Workload standards, Helm, pod troubleshooting, upgrades
+│       ├── ci-cd/             # GitLab CI first, GitHub Actions, supply chain, release pipeline
+│       ├── infrastructure/    # Terraform, Ansible, state, drift, iac-change
+│       ├── observability/     # Golden signals, alerting, retention, SLO alerts
+│       ├── sre/               # On-call, SLO policy, incident-response
+│       ├── networking/        # Rules only: ingress, segmentation, TLS
+│       ├── devsecops/         # Scan gates, SBOM and signing, policy-as-code
+│       └── database-ops/      # Access, backups, production migrations
 ├── extensions/
 │   ├── opencode/              # OpenCode agent definitions, commands, skills
 │   │   └── agents/            # SDLC agents + post-task specialists for .opencode/agents/

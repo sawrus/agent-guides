@@ -94,7 +94,7 @@ Each specialization follows this consistent layout:
 
 1. Check that no workflow covers the same kind of task (ART-W5); a stack variant is a step condition.
 2. Create `areas/<domain>/<spec>/workflows/<kebab-case-name>.md` from `areas/template/workflow.tmpl.md`.
-3. Add one `Example request:` line; there are no separate prompt files.
+3. Add at least one `Example request:` line with a plain user request (no `/command`); there are no separate prompt files.
 4. Write 3–6 steps. Every step has **Do** and a checkable **Done when**. Do not add roles or report files.
 5. Add a `selection` block. JEV workflow routing shows it to the model as the option text:
    ```yaml

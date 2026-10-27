@@ -200,9 +200,9 @@ class ScanTest(unittest.TestCase):
         rules = {r['id'] for r in engine['rules']}
         workflows = {w['id'] for w in engine['workflows']}
         self.assertIn('software/general/makefile-guide', rules)
-        self.assertIn('software/full-stack/env-settings-guide', rules)
-        self.assertIn('devops/ci-cd/pipeline-debug', workflows)
-        self.assertIn('software/full-stack/debug-issue-fullstack', workflows)  # http-consumer
+        self.assertIn('software/backend/configuration', rules)
+        self.assertIn('devops/ci-cd/release-pipeline', workflows)
+        self.assertIn('software/general/debug-issue', workflows)  # http-consumer
         library = {r['id'] for r in self.guides['repositories'][rid('shared-lib')]['rules']}
         self.assertIn('software/security/dependency-policy', library)  # internal-library: incoming edges
         for task, ids in engine['task_routing'].items():
@@ -389,7 +389,7 @@ class LlmTest(unittest.TestCase):
                 'applicability': [{'id': 'software/general/makefile-guide', 'applies': True, 'confidence': 0.9,
                                    'why': 'Makefile'},
                                   {'id': 'software/invented/workflow', 'applies': True, 'confidence': 0.5, 'why': 'x'}],
-                'missing_guides': ['devops/sre/postmortem'], 'risks': ['lint target fails'],
+                'missing_guides': ['devops/sre/incident-response'], 'risks': ['lint target fails'],
                 'recommendations': ['add AGENTS.md'], 'gate': {'commands': ['make test'], 'notes': ''}}
 
     def test_claude_provider_with_cache(self):

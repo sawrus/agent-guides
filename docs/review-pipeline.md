@@ -16,15 +16,12 @@ read-only specialist reports: instruction effectiveness and documentation/memory
 hygiene. Recommendations help improve future SDLC work; they are not applied
 in the delivery task. Reviews do not replace acceptance, QA, or code review.
 
-The first release covers:
-- `/development-cycle-workflow`
-- `/develop-feature`
-- `/develop-epic`
-- `/develop-feature-fullstack`
-- `/feature-implementation-flow`
-- `/backend-project-full-cycle`
+Since the content cleanup no pack workflow carries the hook: the ten role-neutral workflows have no
+`roles` or `execution.initiator` (docs/artifact-standard.md, ART-W1), so the pipeline runs only for a project or
+company workflow that adds a `Post-task review` section with an initiator. `scripts/lint_review_pipeline.py`
+checks such hooks when they are registered in its `WORKFLOWS` table; the table is empty for the pack.
 
-Other workflows are unchanged. Claude, Codex, OpenCode, and existing Gemini
+Claude, Codex, OpenCode, and existing Gemini
 profiles share the same report boundaries. This is guidance-driven orchestration,
 not an executable runner or a telemetry collection system.
 
@@ -37,8 +34,7 @@ a workflow's second-level `Post-task review` hook activates, after acceptance
 and the docs/changelog/version completion contract, before the final response.
 The workflow initiator coordinates the handoff and saves the reports.
 
-Specialists stay outside workflow `roles`. `/develop-feature` still has exactly
-six mandatory SDLC agents; these two specialists are additional reviewers.
+Specialists stay outside workflow `roles`; they are additional reviewers.
 Use native agent definitions when available, or their installed profiles with
 read-only generic delegation. Without delegation, record unavailability.
 
@@ -163,6 +159,6 @@ reports and reconcile skipped hooks/profiles manually to enable the full behavio
 No database migration, new MCP requirement, or automatic recommendation application
 is introduced. Version 1.1.0 includes the change in Cargo/npm and the changelog.
 
-Validate with `make lint`, `make test`, and `make test-coverage`. Regenerate content
-through `make sync-diagrams` and `make build-docs`. The content contract check covers
+Validate with `make lint`, `make test`, and `make test-coverage`. Regenerate the docs
+catalog through `make build-docs`. The content contract check covers
 hooks, role ownership, shared profile boundaries, and the on-demand protocol.

@@ -573,10 +573,11 @@ fn review_profiles_install_for_each_environment() {
         let protocol = std::fs::read_to_string(project.path().join("REVIEW_PIPELINE.md")).unwrap();
         assert!(protocol.contains("summary.md"));
         let workflow =
-            std::fs::read_to_string(project.path().join(".agent/workflows/develop-feature.md"))
+            std::fs::read_to_string(project.path().join(".agent/workflows/add-migration.md"))
                 .unwrap();
-        assert!(workflow.contains("## Post-task review"));
-        assert!(workflow.contains("outside SDLC `roles`"));
+        // Role-neutral pack workflows carry no Post-task review hook (docs/review-pipeline.md).
+        assert!(workflow.contains("**Done when:**"));
+        assert!(!workflow.contains("## Post-task review"));
     }
 }
 
@@ -1247,12 +1248,8 @@ fn claude_install_writes_native_layout() {
     assert!(p.join(".claude/skills/api-design/SKILL.md").is_file());
     // Claude auto-loads `.claude/rules`; on-demand rules stay in `.agent/rules` only.
     assert!(p.join(".claude/rules/makefile-guide.md").is_file());
-    assert!(!p
-        .join(".claude/rules/sdlc-role-responsibilities.md")
-        .exists());
-    assert!(p
-        .join(".agent/rules/sdlc-role-responsibilities.md")
-        .is_file());
+    assert!(!p.join(".claude/rules/git-workflow-guide.md").exists());
+    assert!(p.join(".agent/rules/git-workflow-guide.md").is_file());
     // Lean profile: two helper subagents and the native main session.
     assert!(p.join(".claude/agents/explorer.md").is_file());
     assert!(p.join(".claude/agents/reviewer.md").is_file());

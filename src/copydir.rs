@@ -162,7 +162,7 @@ mod tests {
         let dest = tmp.path().join(".claude/rules");
         copy_dir_contents(&mut app, "areas/software/general/rules", &dest, false).unwrap();
         assert!(dest.join("makefile-guide.md").is_file());
-        assert!(!dest.join("sdlc-role-responsibilities.md").exists());
+        assert!(!dest.join("git-workflow-guide.md").exists());
         assert!(is_manual_rule("---\ntrigger: manual\n---\nbody"));
         let workflow =
             "a\n<!-- agent-diagram:start -->\n```mermaid\n```\n<!-- agent-diagram:end -->\n\nb";
