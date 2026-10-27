@@ -29,7 +29,7 @@ artifacts:
 
 # Debug a workload
 
-Example request: `/debug-workload "payment-service in CrashLoopBackOff every 30s since the v2.3.1 deploy"`
+Example request: payment-service is in CrashLoopBackOff every 30 seconds since the v2.3.1 deploy; find the cause and fix it.
 
 ## Steps
 

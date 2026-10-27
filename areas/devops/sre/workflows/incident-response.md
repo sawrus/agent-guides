@@ -25,7 +25,7 @@ artifacts:
 
 # Respond to an incident
 
-Example request: `/incident-response "order-service returns 100% 5xx since 15:42 UTC, checkout is down"`
+Example request: order-service returns 100% 5xx since 15:42 UTC and checkout is down; help me mitigate and find the cause.
 
 ## Steps
 

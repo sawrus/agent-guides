@@ -28,7 +28,7 @@ artifacts:
 
 # Develop a feature
 
-Example request: `/develop-feature "Subscription cancellation: DELETE /subscriptions/{id} records a reason and keeps access until the period ends"`
+Example request: Add subscription cancellation: DELETE /subscriptions/{id} records a reason and keeps access until the period ends.
 
 ## Steps
 

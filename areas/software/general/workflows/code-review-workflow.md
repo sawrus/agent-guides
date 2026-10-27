@@ -23,7 +23,7 @@ checks: []
 
 # Review a change
 
-Example request: `/code-review-workflow MR !87 "Add rate limiting to the public API"`
+Example request: Review MR !87 "Add rate limiting to the public API".
 
 ## Steps
 

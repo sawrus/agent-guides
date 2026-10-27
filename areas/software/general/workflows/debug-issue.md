@@ -25,7 +25,7 @@ checks:
 
 # Debug an issue
 
-Example request: `/debug-issue "POST /orders returns 500 when the cart holds a discounted item"`
+Example request: POST /orders returns 500 when the cart holds a discounted item; find the cause and fix it.
 
 ## Steps
 

@@ -26,7 +26,7 @@ artifacts:
 
 # Release pipeline
 
-Example request: `/release-pipeline "payments-api v3.8.0: add a gated production deploy with a migration job and automatic rollback"`
+Example request: Add a gated production deploy with a migration job and automatic rollback to the payments-api pipeline for v3.8.0.
 
 ## Steps
 

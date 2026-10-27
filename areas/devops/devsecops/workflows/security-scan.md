@@ -28,7 +28,7 @@ artifacts:
 
 # Security scan
 
-Example request: `/security-scan "payment-service v2.5.0 pre-release gate: semgrep, trivy fs and image, gitleaks, checkov"`
+Example request: Add a pre-release security gate for payment-service v2.5.0: semgrep, trivy for the repo and the image, gitleaks, and checkov.
 
 ## Steps
 

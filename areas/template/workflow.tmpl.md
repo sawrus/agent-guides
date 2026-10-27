@@ -34,7 +34,7 @@ AGENT INSTRUCTIONS (docs/artifact-standard.md, ART-C*, ART-W*):
 
 # {{Workflow title}}
 
-Example request: `/{{kebab-case-workflow-name}} "{{ONE REALISTIC REQUEST, no placeholders in the final file}}"`
+Example request: {{ONE REALISTIC USER REQUEST in plain words, without the /command; no placeholders in the final file}}
 
 ## Steps
 

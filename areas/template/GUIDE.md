@@ -64,7 +64,7 @@ topic. File names must be unique across all specs of an area that can be install
 - `selection.use-when` is a quoted sentence of at most 300 characters; `general: true` only for the single
   catch-all workflow of a top-level area.
 - At most 120 lines and 1,800 tokens.
-- Add one `Example request:` line with a realistic request; there are no separate prompt files.
+- Add at least one `Example request:` line with a realistic user request (plain words, no `/command`); there are no separate prompt files.
 
 ### 6. Update the spec and area `AGENTS.md`
 

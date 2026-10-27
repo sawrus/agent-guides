@@ -26,7 +26,7 @@ artifacts:
 
 # Add a migration
 
-Example request: `/add-migration "Rename users.full_name to users.display_name"`
+Example request: Rename users.full_name to users.display_name without downtime.
 
 ## Steps
 

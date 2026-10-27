@@ -24,7 +24,7 @@ checks:
 
 # Refactor a module
 
-Example request: `/refactor-module "Move business logic from OrderController into OrderService"`
+Example request: Move the business logic from OrderController into OrderService.
 
 ## Steps
 

@@ -32,7 +32,7 @@ artifacts:
 
 # Change infrastructure as code
 
-Example request: `/iac-change "Provision a staging environment: private network 10.20.0.0/16, three worker VMs, one load balancer"`
+Example request: Provision a staging environment with Terraform: private network 10.20.0.0/16, three worker VMs, and one load balancer.
 
 ## Steps
 
