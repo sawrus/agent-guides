@@ -1,3 +1,13 @@
+---
+covers:
+  - src/upgrade.rs
+  - src/upgrade_config.rs
+  - src/project_update.rs
+  - src/project_inventory.rs
+  - src/project_transaction.rs
+  - src/tomledit.rs
+---
+
 # Smart project upgrades
 
 `agentic upgrade [--project-dir <path>] [--force] [--dry-run]` updates the release

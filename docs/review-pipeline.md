@@ -1,3 +1,12 @@
+---
+covers:
+  - REVIEW_PIPELINE.md
+  - scripts/lint_review_pipeline.py
+  - scripts/review_usage.py
+  - extensions/*/agents/instruction-reviewer.*
+  - extensions/*/agents/memory-curator.*
+---
+
 # Post-task Review Pipeline
 
 ## User-facing behavior

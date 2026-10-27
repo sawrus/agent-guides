@@ -1,3 +1,8 @@
+---
+covers:
+  - tools/repo-scan/**
+---
+
 # repo-scan v3 design: repository slices, LLM skip classes, any Git host
 
 Status: design, not implemented. Target release: `v3.0.0` (feature plus a changed file layout, see

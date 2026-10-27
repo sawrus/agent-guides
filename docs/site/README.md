@@ -1,3 +1,9 @@
+---
+covers:
+  - scripts/build_docs_catalog.py
+  - scripts/sync_workflow_diagrams.py
+---
+
 # Markdown docs site (search + menu)
 
 This prototype renders a documentation site directly from markdown-derived catalog data.

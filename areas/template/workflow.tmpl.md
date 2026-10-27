@@ -1,145 +1,56 @@
 ---
 name: {{kebab-case-workflow-name}}
 type: workflow
-trigger: /{{workflow-name}}
-description: {{ONE_SENTENCE — what completing this workflow produces}}
-inputs:
-  - {{input_1 — name and description of required input}}
-  - {{input_2}}
-outputs:
-  - {{output_1 — concrete deliverable, e.g. "signed-off implementation_plan.md"}}
-  - {{output_2}}
-roles:
-  - {{role-1 — function name, e.g. "copywriter", "campaign-manager"}}
-  - {{role-2}}
-execution:
-  initiator: {{role — must be one of: product-owner | pm | team-lead | developer | qa | analyst | devops-engineer}}
-agent: {{same role as execution.initiator}}
+trigger: /{{kebab-case-workflow-name}}
+description: {{ONE_SENTENCE, at most 200 chars — what completing this workflow produces}}
 selection:
   general: {{false — true only for the one catch-all workflow of a top-level area}}
   use-when: "{{ONE_SENTENCE — the requests this workflow fits, judged by purpose, inputs and outputs}}"
   avoid-when: "{{OPTIONAL — a near-miss request that belongs to another workflow; delete the line if none}}"
-related-rules:
-  - {{rule-filename.md}}
 uses-skills:
-  - {{skill-directory-name}}
-quality-gates:
-  - {{MEASURABLE_CRITERION_1 — checkable without human judgment}}
-  - {{MEASURABLE_CRITERION_2}}
+  - {{skill-directory-name — same spec only; use [] when none}}
+related-rules:
+  - {{rule-filename.md — same spec only; use [] when none}}
+checks:
+  - {{COMMAND that must pass, e.g. "make test"}}
+artifacts:
+  - {{OPTIONAL — paths the task must change or create, e.g. "docs/<feature>/README.md"}}
 ---
 
 <!--
-AGENT INSTRUCTIONS:
-1. Fill all frontmatter fields. Missing fields cause the workflow to be skipped.
-2. "trigger" must start with / and match the prompt filename exactly.
-   It must be unique across ALL areas — check the trigger registry in the
-   area-level AGENTS.md (areas/<area>/AGENTS.md) before choosing a name.
-3. "roles" are who performs steps — use function names, not seniority titles.
-   No parenthetical annotations (write "pm", not "pm (comms)").
-   Every role used in a step heading must appear in "roles"; every declared
-   role must own at least one step.
-4. "execution.initiator" must be one of the seven standard roles and must
-   also appear in the workflow's own "roles" list. The top-level "agent"
-   field must exactly match "execution.initiator".
-5. "selection" tells JEV routing when to pick this workflow. "use-when" is
-   required, quoted, at most 300 characters, and names the kind of request
-   (not a test example). "avoid-when" is optional and names the nearest
-   request that belongs elsewhere. Set "general: true" only for the single
-   catch-all workflow of a top-level area; all others use "general: false".
-   `make lint-content` rejects a missing or invalid block.
-6. "quality-gates" must be objectively checkable. "Looks good" is NOT a gate.
-   Good gate: "All copy variants pass brand-voice rule 2 and score ≥ 70 on Flesch-Kincaid."
-7. Every step MUST have: @role, Input, Actions (specific), Done when (checkable criterion).
-   When the @role changes between steps, the Input MUST name the artifact
-   handed over (e.g. "implementation_plan.md from step 2"), never just
-   "output of step N".
-8. Use imperative voice: "Create", "Check", "Verify", "Ask" — not "You should" or "Consider".
-9. Include a failure path for at least one step.
-10. Every loop or retry (in steps, failure paths, or an "Iteration Loop"
-   section) MUST be bounded: state the maximum iterations (default: 3) and
-   the escalation path when the bound is hit (e.g. "escalate to @team-lead
-   with the open blocker list"). "Loop until done" without a bound is a defect.
-11. If this workflow triggers another workflow (by /trigger name), the
-    combined chain must be acyclic. If two workflows can trigger each other,
-    add a circuit-breaker clause (e.g. "at most one automatic re-trigger;
-    afterwards escalate to a human decision").
-12. Delivery workflows MUST end with a "Document & Version" step: update the
-    affected docs under docs/**, CHANGELOG.md, and the version source.
-    Incident workflows MUST end with a root-cause document at
-    docs/incidents/<date>-<slug>-root-cause.md.
-13. End the Exit section with an explicit handoff: "Next: /<trigger>" for the
-    follow-up workflow, or "Next: terminal — no follow-up workflow."
-14. Target: 60–200 lines total. Over 200 lines = split into two workflows.
-15. Delivery workflows opting into post-task review use a second-level
-    "Post-task review" heading, coordinated by execution.initiator. Load
-    project-root REVIEW_PIPELINE.md after successful delivery; specialists stay
-    outside roles. Run once at the top level, never in nested/retest loops.
-16. Delete all AGENT INSTRUCTIONS comments before finalising.
+AGENT INSTRUCTIONS (docs/artifact-standard.md, ART-C*, ART-W*):
+1. One workflow per kind of task in the whole pack. A variant for another stack is a step condition.
+2. The main session runs the workflow. Do not add `roles`, `agent`, `execution.initiator`, `@role` handles,
+   subagent instructions, or report files.
+3. Write 3–6 steps. Each step has **Do** (actions) and **Done when** (a checkable condition).
+4. The first step reproduces or states the current behaviour. A change workflow ends with the checks green
+   and the docs updated per docs/regulation.md section 3 (covers: and Docs-Not-Needed).
+5. A step that touches production (deploy, data change, cluster access) says "ask the user first".
+6. "trigger" is `/` + `name` and is unique across all areas (see the area AGENTS.md trigger registry).
+   "selection.use-when" is required, quoted, and at most 300 characters.
+7. Keep the workflow at most 120 lines and 1,800 tokens.
+8. Run `make check-artifacts` and delete these AGENT INSTRUCTIONS before you finish.
 -->
 
 ## Steps
 
-### 1. {{STEP_NAME}} — `@{{role-1}}`
+### 1. Reproduce
 
-- **Input:** {{what arrives at this step — be specific}}
-- **Actions:**
+- **Do:** {{STATE OR REPRODUCE THE CURRENT BEHAVIOUR — e.g. "Run the failing test and record its output."}}
+- **Done when:** {{CHECKABLE — e.g. "the failure reproduces with one command"}}
 
-  {{SPECIFIC_ACTION_1 — include the actual command, query, template, or decision the agent should use}}
+### 2. {{STEP_NAME}}
 
-  {{SPECIFIC_ACTION_2}}
+- **Do:** {{ACTIONS — exact commands, files, and decisions}}
+- **Done when:** {{CHECKABLE CONDITION}}
 
-  > **If {{FAILURE_CONDITION}}:** {{EXPLICIT_FAILURE_PATH — what to do instead, not just "handle the error"}}
+### 3. {{STEP_NAME — e.g. "Deploy"}}
 
-- **Done when:** {{CHECKABLE_CRITERION — e.g. "brief confirmed in writing", "all required fields in the template are non-empty"}}
+- **Do:** {{ACTIONS}}. Ask the user first before {{the production action, if any}}.
+- **Done when:** {{CHECKABLE CONDITION}}
 
----
+### 4. Verify and document
 
-### 2. {{STEP_NAME}} — `@{{role-1}}`
-
-- **Input:** output of step 1
-- **Actions:**
-
-  {{ACTIONS}}
-
-- **Done when:** {{CRITERION}}
-
----
-
-### 3. {{STEP_NAME}} — `@{{role-2}}`
-
-<!--
-Steps involving a different role must state the handoff explicitly.
-Example: "Receive draft from @developer. Review against architecture.md constraints."
--->
-
-- **Input:** output of step 2
-- **Actions:**
-
-  {{ACTIONS}}
-
-- **Done when:** {{CRITERION}}
-
----
-
-### 4. {{STEP_NAME}} — `@{{role-1}}`
-
-<!--
-Add or remove steps as needed. Most workflows are 3–7 steps.
-Fewer than 3 steps = write a skill instead.
-More than 8 steps = split into two workflows.
--->
-
-- **Input:** output of step 3
-- **Actions:**
-
-  {{ACTIONS}}
-
-- **Done when:** {{CRITERION}}
-
----
-
-## Exit
-
-{{ONE_SENTENCE: when the workflow is complete and what was produced.}}
-
-**Next:** {{/follow-up-trigger — or "terminal — no follow-up workflow"}}
+- **Do:** run the `checks` commands; update the docs page whose `covers:` matches the changed code, or add the
+  commit trailer `Docs-Not-Needed: <reason>`.
+- **Done when:** every `checks` command exits 0 and the docs coverage check passes.

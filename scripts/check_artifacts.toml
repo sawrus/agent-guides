@@ -1,0 +1,125 @@
+# Thresholds and lists for scripts/check_artifacts.py. Values follow docs/artifact-standard.md.
+# Keep corporate names out of this file: the ART-C6 deny list for a company lives outside the repository
+# (AGENTIC_DENY_TERMS_FILE or --deny-terms-file).
+
+[common]
+description_max = 200          # ART-C1 (rules, workflows); skills use [skill].description_max (ART-S1)
+# ART-C2: statements of the root AGENTS.md core that artifacts must not repeat.
+core_file = "AGENTS.md"
+core_sections = ["Scale the process to the task", "Definition of done", "Git", "Response language"]
+core_similarity = 0.45         # Jaccard of content words, statement vs core statement
+core_min_words = 4
+# Phrases that only the core may state (case-insensitive regular expressions).
+core_patterns = [
+  '<type>/<task-id>-<slug>',
+  '<type>\(<scope>\): <subject>',
+  'ASD-STE100',
+]
+# ART-C3: word shingles + Jaccard over the body (frontmatter removed).
+shingle_size = 5
+duplicate_similarity = 0.2    # current near-duplicates: generic vs spec delivery workflows (0.21-0.22)
+duplicate_min_shingles = 20
+
+[deny]
+# ART-C6: generic secret and private-network patterns (regular expressions). Company terms come from
+# AGENTIC_DENY_TERMS_FILE: one term per line, `re:` prefix for a regular expression, `#` for comments.
+patterns = [
+  '-----BEGIN [A-Z ]*PRIVATE KEY-----',
+  '\bAKIA[0-9A-Z]{16}\b',
+  '\bgh[pousr]_[A-Za-z0-9]{36,}\b',
+  '\bglpat-[A-Za-z0-9_-]{20,}\b',
+  '\bxox[abprs]-[A-Za-z0-9-]{10,}\b',
+  '\bsk-[A-Za-z0-9]{32,}\b',
+  # Host addresses in private ranges; CIDR blocks (`10.0.0.0/16`) are documentation, not data.
+  '\b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b(?!/)',
+  '\b192\.168\.\d{1,3}\.\d{1,3}\b(?!/)',
+  '\b172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}\b(?!/)',
+]
+# Matches that are allowed placeholders.
+allow = ['gitlab.example.com', 'example.com', 'example.org']
+
+[roles]
+# ART-C7: role handles and report files.
+handles = ["product-owner", "pm", "team-lead", "developer", "qa", "analyst", "devops-engineer"]
+role_patterns = [
+  'subagent per role',
+  'spawn (?:one|a) subagent',
+  'one subagent never owns',
+]
+report_patterns = [
+  '\b[\w.-]*_(?:report|summary)\.md\b',
+  '\bimplementation_plan\.md\b',
+]
+
+[rule]
+max_lines = 80                 # ART-R3
+max_tokens = 1200              # ART-R3
+code_block_max_lines = 15      # ART-R4
+code_share_max = 0.30          # ART-R4
+checkable_share_min = 0.70     # ART-R2
+# ART-R1: rules that may use `trigger: always_on` (paths relative to the repository root).
+always_on_allowed = []
+forbidden_fields = ["glob", "globs", "model_decision"]
+# ART-R2 heuristic: a checkable item has one of these verbs and names a concrete object.
+verbs = [
+  "use", "set", "pin", "add", "keep", "run", "never", "do not", "don't", "must", "require", "required",
+  "forbid", "forbidden", "avoid", "define", "enable", "disable", "store", "put", "name", "return", "log",
+  "validate", "check", "limit", "include", "exclude", "write", "declare", "expose", "mount", "configure",
+  "apply", "reject", "deny", "allow", "only", "always", "fail", "block", "rotate", "encrypt", "scan",
+  "test", "tag", "version", "document", "update", "create", "remove", "delete", "prefer", "no",
+]
+objects = [
+  "file", "flag", "field", "command", "value", "header", "key", "image", "tag", "version", "timeout",
+  "limit", "secret", "token", "endpoint", "test", "config", "variable", "env", "port", "label",
+  "annotation", "column", "table", "index", "schema", "migration", "branch", "commit", "job", "stage",
+  "pipeline", "step", "probe", "request", "response", "status", "code", "error", "log", "metric", "alert",
+  "dashboard", "query", "transaction", "lock", "retry", "container", "pod", "namespace", "role", "policy",
+  "certificate", "dependency", "package", "module", "function", "class", "method", "type", "interface",
+]
+
+[skill]
+description_max = 1024         # ART-S1
+max_lines = 250                # ART-S3 (SKILL.md)
+references_max_lines = 400     # ART-S3 (all other files of the skill)
+code_share_max = 0.40          # ART-S4
+# ART-S5: framework scaffolding (case-insensitive regular expressions).
+scaffolding = [
+  'create-react-app', 'npx create-', 'npm create ', 'npm init [a-z]', 'yarn create ', 'pnpm create ',
+  'django-admin startproject', 'rails new ', 'cargo generate', 'start\.spring\.io', 'spring init ',
+  'cookiecutter', '\bnest new ', '\bng new ', 'vue create ', 'flutter create ', 'expo init',
+  'create-expo-app', 'dotnet new ', 'mvn archetype:generate', 'boilerplate', 'starter (?:project|template|kit)',
+  'project scaffold',
+]
+# ART-S6: a description with such a phrase is a trigger the host can match on its own.
+trigger_pattern = '\b(?:use|load|invoke|apply|trigger)\w*\b[^.]{0,60}?\b(?:when|whenever|if|for)\b'
+
+[workflow]
+min_steps = 3                  # ART-W2
+max_steps = 6
+max_lines = 120                # ART-W4
+max_tokens = 1800              # ART-W4
+required_fields = ["name", "type", "trigger", "description", "uses-skills", "related-rules"]
+forbidden_fields = ["roles", "agent"]
+# ART-W6: step text that touches production must also say "ask the user".
+production_pattern = '\b(?:deploy\w*|production|prod|rollout|roll out|kubectl (?:apply|delete|scale|rollout)|helm (?:upgrade|install|uninstall|rollback)|terraform (?:apply|destroy)|drop table|delete from|truncate|data (?:change|fix|migration)|cluster access)\b'
+ask_pattern = '\bask the user\b'
+
+[budget]
+max_tokens = 4000              # ART-B1
+hosts = ["claude", "codex", "opencode"]
+# Every installable specialization is measured alone; these selections are measured too.
+common_selections = [
+  "software.backend,software.general",
+  "software.frontend,software.general",
+  "software.full-stack,software.general",
+  "software.backend,software.frontend,software.general",
+  "software.backend,software.general,devops.ci-cd,devops.kubernetes",
+  "devops.kubernetes,devops.ci-cd,devops.observability",
+  "devops.infrastructure,devops.kubernetes,devops.sre",
+]
+
+[company]
+# ART-K1/K2 in --project mode.
+topic_similarity = 0.35        # shingle Jaccard: the company rule covers the pack rule topic
+statement_similarity = 0.6     # content-word Jaccard: one company statement restates a pack statement
+topic_statement_share = 0.5    # or this share of company statements restate the pack rule

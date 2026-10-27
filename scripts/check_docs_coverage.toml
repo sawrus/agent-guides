@@ -1,0 +1,16 @@
+# scripts/check_docs_coverage.py settings for agent-guides (docs/regulation.md, DOC-4).
+docs_dir = "docs"
+trailer = "Docs-Not-Needed"
+# Not code in this repository: user-facing text that is documentation itself, generated reports and images,
+# lock files, and repository metadata. Tests and CI config are excluded by the script defaults.
+exclude = [
+  "README.md",
+  "CONTRIBUTING.md",
+  "UPGRADE.md",
+  "CHANGELOG.md",
+  "LICENSE",
+  ".gitignore",
+  "Cargo.lock",
+  "images/**",
+  "reports/**",
+]

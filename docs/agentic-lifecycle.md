@@ -1,3 +1,13 @@
+---
+covers:
+  - src/kb.rs
+  - src/selfinstall.rs
+  - src/upgrade.rs
+  - src/legacy.rs
+  - bin/agentic.js
+  - install
+---
+
 # Installed CLI lifecycle
 
 This guide describes how an installed `agentic` binary resolves and updates its knowledge base checkout.

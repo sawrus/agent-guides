@@ -1,3 +1,8 @@
+---
+covers:
+  - tools/repo-scan/**
+---
+
 # Repository analysis (repo-scan)
 
 `tools/repo-scan` scans many local Git repositories and answers two questions:

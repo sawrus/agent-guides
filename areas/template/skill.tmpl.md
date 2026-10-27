@@ -1,108 +1,35 @@
 ---
-name: {{kebab-case-skill-name}}
-type: skill
-description: {{ONE_SENTENCE_STARTING_WITH_VERB — e.g. "Design and execute conversion-focused landing page copy."}}
+name: {{kebab-case-skill-name — equals the directory name}}
+description: {{WHAT_IT_DOES. Use when {{TRIGGER — the task or words that should load it}}. At most 1,024 chars.}}
 related-rules:
-  - {{rule-filename-1.md}}
-  - {{rule-filename-2.md}}
-allowed-tools: {{COMMA_SEPARATED — Read, Write, Edit, Bash, WebSearch}}
+  - {{rule-filename.md — only rules of the same spec}}
+allowed-tools: {{COMMA_SEPARATED — only the tools the steps need, e.g. Read, Bash}}
 ---
 
 <!--
-AGENT INSTRUCTIONS:
-1. Fill all frontmatter fields before writing the body.
-2. "name" must match the directory name exactly.
-3. "description" starts with a verb; states what the agent CAN DO after loading this skill.
-4. "related-rules" lists only the rule files that constrain how this skill is applied.
-5. "allowed-tools" lists only tools actually needed — don't include all five by default.
-6. Target: 150–350 lines total. Shorter = stub. Longer = split into two skills.
-7. All examples must be REAL and runnable — no placeholders like [YOUR_VALUE].
-8. Every skill needs at least 2 substantive sections and a "Common mistakes" section.
-9. Delete all AGENT INSTRUCTIONS comments before finalising.
+AGENT INSTRUCTIONS (docs/artifact-standard.md, ART-C*, ART-S*):
+1. A skill is an on-demand procedure the agent would not get right without it: numbered steps, decision
+   points, exact commands, or a bundled script. It is not a topic overview or a tutorial.
+2. `description` says when to load the skill ("Use when ..."), so the host can match it on its own. A workflow
+   or rule of the same spec may also link it in `uses-skills`. A skill without either is an orphan.
+3. Keep SKILL.md at most 250 lines; references and assets at most 400 lines in total. Code blocks are at most
+   40 % of SKILL.md. Move long templates into a script or remove them.
+4. No framework scaffolding (app generators, starter projects), no roles, no report files.
+5. If the skill only restates a rule with code, keep the rule and delete the skill.
+6. Run `make check-artifacts` and delete these AGENT INSTRUCTIONS before you finish.
 -->
 
-# Skill: {{DISPLAY_NAME}}
+# {{DISPLAY_NAME}}
 
-> **Expertise:** {{COMMA_SEPARATED_LIST_OF_SPECIFIC_TECHNIQUES_TOOLS_OR_CONCEPTS}}
+## Procedure
 
-## When to load
+1. {{STEP — an exact command or check, e.g. "Run `kubectl get events -n <ns> --sort-by=.lastTimestamp`."}}
+2. {{DECISION — "If {{condition}}, go to step 4; otherwise continue."}}
+3. {{STEP}}
+4. {{STEP — how to confirm the result, e.g. "Run `make test`; it must exit 0."}}
 
-<!--
-Critical section — the agent reads this to decide whether to load the skill.
-Write precise triggers. Vague triggers waste context.
-
-Bad:  "When working in this spec."
-Good: "When writing a new dbt model that joins more than two source tables and requires incremental materialization."
--->
-
-Load this skill when:
-- {{SPECIFIC_TRIGGER_1 — describe the exact task condition}}
-- {{SPECIFIC_TRIGGER_2}}
-- {{SPECIFIC_TRIGGER_3}}
-
-Do NOT load for: {{WHAT_LOOKS_SIMILAR_BUT_DOES_NOT_NEED_THIS_SKILL}}
-
----
-
-## {{MAIN_CONCEPT_OR_FRAMEWORK_SECTION}}
-
-<!--
-Explain the core technique, framework, or pattern set this skill covers.
-For technical domains: use runnable code or commands.
-For process domains: use named methodologies with real document snippets.
-For creative domains: use named frameworks (AIDA, PAS) with real examples.
--->
-
-{{EXPLANATION_IN_2_TO_4_SENTENCES}}
-
-### {{PATTERN_OR_TECHNIQUE_1}}
-
-{{DESCRIPTION}}
+## Commands
 
 ```{{language}}
-{{REAL_WORKING_EXAMPLE — not a placeholder}}
+{{SHORT_COMMANDS_OR_SCRIPT_CALL}}
 ```
-
-### {{PATTERN_OR_TECHNIQUE_2}}
-
-{{DESCRIPTION}}
-
-```{{language}}
-{{REAL_WORKING_EXAMPLE}}
-```
-
-### {{PATTERN_OR_TECHNIQUE_3}}
-
-{{DESCRIPTION}}
-
----
-
-## {{SECOND_TECHNIQUE_OR_TOOL_SECTION}}
-
-<!--
-Add a second section for a related technique, tool operations, quality criteria, or decision framework.
-Every skill must have at least 2 substantive sections.
--->
-
-{{CONTENT}}
-
----
-
-## {{OPTIONAL_THIRD_SECTION — e.g. "Quality Checklist", "Decision Framework", "Common Scenarios"}}
-
-{{CONTENT}}
-
----
-
-## Common mistakes
-
-<!--
-3–5 items. State the mistake, then the correction. Keep each under 2 sentences.
-Write from experience — what do agents (or humans) actually get wrong here?
--->
-
-1. **{{MISTAKE_1}}** — {{CORRECTION}}
-2. **{{MISTAKE_2}}** — {{CORRECTION}}
-3. **{{MISTAKE_3}}** — {{CORRECTION}}
-4. **{{MISTAKE_4_OPTIONAL}}** — {{CORRECTION}}
-5. **{{MISTAKE_5_OPTIONAL}}** — {{CORRECTION}}
