@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.3.1
+
+- New `docs/artifact-standard.md`: the acceptance contract for rules, skills, workflows and company rules, with
+  requirement ids (`ART-*`) and removal criteria. `CONTRIBUTING.md` links it.
+- New `docs/regulation.md`: a vendor-neutral Definition of Done for code review (`CR-*`) and design review
+  (`DR-*`, `IR-*`, `RD-*`), and the docs layout and code-to-docs coverage rule (`DOC-*`) for AI auditors.
+- New rule `software/general/rules/docs-layout.md` (scoped to `docs/**`).
+- The orchestration research adds anonymized field findings and the plan status; `docs/repo-scan-design.md` is
+  now tracked.
+
 ## v2.3.0
 
 - The benchmark price table and the docs no longer name a private OpenCode provider; they use the placeholder
