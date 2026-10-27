@@ -58,8 +58,8 @@ class QuestionFixtures(unittest.TestCase):
         text = json.dumps(self.family('workflow_routing'), ensure_ascii=False)
         self.assertIsNone(re.search(r'calculator|калькулятор|crud', text, re.I))
         criteria = self.family('workflow_routing')[0]['questions']['workflow']['criteria']
-        self.assertTrue(criteria['development-cycle-workflow'].startswith('GENERAL. '))
-        self.assertIn('create-endpoint', criteria)
+        self.assertTrue(criteria['develop-feature'].startswith('GENERAL. '))
+        self.assertIn('add-migration', criteria)
 
     def test_experiment_selects_the_questions_suite(self):
         sys.path.insert(0, str(RND))
