@@ -186,7 +186,7 @@ fn jev_hooks_enable_provider_replay_and_explicit_disable() {
     )
     .unwrap();
     assert_eq!(defaults["version"], 2);
-    assert_eq!(defaults["roles"]["developer"], "gpt-6.1-sol");
+    assert_eq!(defaults["roles"]["developer"], "gpt-6.1-terra");
     assert_eq!(defaults["tiers"]["frontier"], "gpt-6-astra");
     for runtime in ["questions.py", "routing.py", "adapters.py"] {
         assert!(project.path().join(".agent/jev").join(runtime).is_file());
@@ -231,10 +231,10 @@ fn jev_hooks_enable_provider_replay_and_explicit_disable() {
         .exists());
     assert!(std::fs::read_to_string(&developer_profile)
         .unwrap()
-        .contains("model = \"gpt-6.1-sol\""));
+        .contains("model = \"gpt-6.1-terra\""));
     let user_profile = std::fs::read_to_string(&developer_profile)
         .unwrap()
-        .replace("gpt-6.1-sol", "user-pinned-model");
+        .replace("gpt-6.1-terra", "user-pinned-model");
     std::fs::write(&developer_profile, &user_profile).unwrap();
     let limited = std::fs::read_to_string(&codex_config)
         .unwrap()

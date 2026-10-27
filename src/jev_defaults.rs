@@ -113,10 +113,10 @@ mod tests {
     fn codex_defaults_are_v2_with_bundled_tiers() {
         let defaults = model_defaults(&app_for(&["codex"]));
         assert_eq!(defaults["version"], 2);
-        assert_eq!(defaults["roles"]["developer"], "gpt-6.1-sol");
+        assert_eq!(defaults["roles"]["developer"], "gpt-6.1-terra");
         assert_eq!(
             defaults["tiers"],
-            json!({"fast":"gpt-6-luna","balanced":"gpt-6.1-sol","frontier":"gpt-6-astra"})
+            json!({"fast":"gpt-6-luna","balanced":"gpt-6.1-terra","frontier":"gpt-6-astra"})
         );
     }
 

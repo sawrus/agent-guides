@@ -30,8 +30,9 @@ from pilot_jev import Meter, claude_cost, command, git, host_env, opencode_child
 
 BENCH = ROOT / 'tests/bench'
 TASKS = json.loads((BENCH / 'tasks.json').read_text())
-# `<profile>-jev` arms install the profile with JEV hooks; `v1` is the frozen v1.6 binary (`make bench-v1`).
-MODES = ('plain', 'v1', 'lean', 'lean-jev', 'team', 'team-jev')
+# `<profile>-jev` arms install the profile with JEV hooks; `lean-noreviewer` is lean without the reviewer agent;
+# `v1` is the frozen v1.6 binary (`make bench-v1`).
+MODES = ('plain', 'v1', 'lean', 'lean-noreviewer', 'lean-jev', 'team', 'team-jev')
 DEFAULT_MODES = ('plain', 'lean', 'lean-jev', 'team-jev')
 HOSTS = ('claude', 'codex', 'opencode')
 SELECTION = ('software', 'software.backend,software.general')
@@ -74,8 +75,24 @@ def project_path(host, mode):
 def install_flags(mode):
     if mode in ('plain', 'v1'):
         return []
-    profile, _, jev = mode.partition('-')
-    return ['--profile', profile, *(['--enable-jev', '--jev-api-url', JEV_API_URL] if jev else [])]
+    profile, _, variant = mode.partition('-')
+    return ['--profile', profile, *(['--enable-jev', '--jev-api-url', JEV_API_URL] if variant == 'jev' else [])]
+
+
+def remove_reviewer(project):
+    """`lean-noreviewer`: delete the installed reviewer agent and the host config entries that name it."""
+    for path in ('.claude/agents/reviewer.md', '.codex/agents/reviewer.toml', '.opencode/agents/reviewer.md'):
+        (project / path).unlink(missing_ok=True)
+    opencode = project / '.opencode/opencode.json'
+    if opencode.is_file():
+        config = json.loads(opencode.read_text())
+        if 'reviewer' in (config.get('agent') or {}):
+            del config['agent']['reviewer']
+            opencode.write_text(json.dumps(config, indent=2) + '\n')
+    codex = project / '.codex/config.toml'
+    if codex.is_file():
+        # Drop an `[agents.reviewer]` table up to the next table header.
+        codex.write_text(re.sub(r'^\[agents\.reviewer\]\n(?:(?!\[).*\n?)*', '', codex.read_text(), flags=re.M))
 
 
 def forget_host_state(host, project):
@@ -95,6 +112,8 @@ def prepare(host, task, mode, args):
                                 capture_output=True, text=True)
         if result.returncode:
             raise RuntimeError('agentic install failed: ' + result.stderr[-400:])
+        if mode == 'lean-noreviewer':
+            remove_reviewer(project)
         git(project, 'add', '-A')
         git(project, *AUTHOR, 'commit', '-q', '-m', 'bench: agentic install')
     return project
@@ -244,6 +263,32 @@ def codex_untrusted(project):
     return missing
 
 
+def gate_record(project):
+    """Gate verdict from `.agentic/gate/last.json`. All None when the file is missing or predates the
+    `accepted`/`reason_code` fields; `released` means the gate let the agent stop after `max_blocks`."""
+    unknown = {'accepted': None, 'reason_code': None, 'released': None}
+    try:
+        last = json.loads((Path(project) / '.agentic/gate/last.json').read_text())
+    except (OSError, ValueError, TypeError):
+        return unknown
+    if not isinstance(last, dict) or not {'accepted', 'reason_code'} & last.keys():
+        return unknown
+    return {'accepted': bool(last['accepted']) if 'accepted' in last else None, 'reason_code': last.get('reason_code'),
+            'released': last.get('reason_code') == 'max_blocks' or bool(last.get('released'))}
+
+
+def cell_gate(cell):
+    """The recorded gate verdict, or one read from the cell's project snapshot for cells graded before it existed."""
+    gate = cell.get('gate') or {}
+    return gate if gate.get('accepted') is not None else gate_record(cell.get('project'))
+
+
+def gate_count(cells, key):
+    """'k/n' over the cells whose gate recorded the field; None when no cell has it."""
+    known = [cell_gate(c)[key] for c in cells if cell_gate(c)[key] is not None]
+    return f'{sum(known)}/{len(known)}' if known else None
+
+
 def cell_name(host, task, mode, rep):
     return f'{host}-{task}-{mode}-r{rep}'
 
@@ -277,7 +322,7 @@ def run_cell(host, task, mode, rep, args):
     code, reason = turn(argv + ([text] if host == 'codex' else []), None if host == 'codex' else text, project, env, trace, meter, deadline)
     turns = 1
     events, final_text = trace_events(host, trace)
-    stopped_early = not changed_files(project) and TASKS[task]['kind'] != 'question'
+    stopped_early = not changed_files(project) and not TASKS[task]['kind'].startswith('question')
     quota = pilot_jev.QUOTA.search(trace.read_text(errors='replace'))
     if not reason and stopped_early and not quota and time.monotonic() < deadline - 30:
         # The coordinator stopped for approval without changing anything; answer it once.
@@ -321,7 +366,7 @@ def run_cell(host, task, mode, rep, args):
     result = base | {'status': 'accepted' if verdict['accepted'] else (reason or 'rejected'),
                      'cap': reason, 'exit': code, 'turns': turns, 'elapsed_s': elapsed, 'acceptance': verdict,
                      'verified_after_edit': verified_after_edit(events), 'subagents': subagents, 'project': str(snapshot),
-                     'gate_evidence': (project / '.agentic/gate/last.json').is_file(),
+                     'gate_evidence': (project / '.agentic/gate/last.json').is_file(), 'gate': gate_record(project),
                      'tokens': {'uncached': sum(r['uncached'] for r in measured), 'cached': sum(r['cached'] for r in measured),
                                 'output': sum(r.get('output') or 0 for r in measured),
                                 'complete': len(measured) == len(rows) and bool(rows), 'agents': rows},
@@ -342,6 +387,7 @@ def regrade(out):
         events, final_text = trace_events(result['host'], path.parent / 'trace.jsonl')
         result['acceptance'] = grade(result['task'], project, final_text)
         result['verified_after_edit'] = verified_after_edit(events)
+        result['gate'] = gate_record(project)
         result['subagents'] = max(result.get('subagents') or 0, sum(1 for kind, _ in events if kind == 'spawn'))
         result['status'] = 'accepted' if result['acceptance']['accepted'] else (result.get('cap') or 'rejected')
         path.write_text(json.dumps(result, ensure_ascii=False, indent=2))
@@ -478,6 +524,7 @@ def summarize(cells, prices):
                 'jev_tokens': sum(sum((j.get('usage') or {}).values()) for j in jev) if mode.endswith('-jev') else None,
                 'jev_cost': (sum(jev_cost(c, prices) or 0 for c in group) if mode.endswith('-jev') and prices.get('typesafe/jev')
                              else None),
+                'accepted_by_gate': gate_count(group, 'accepted'), 'released': gate_count(group, 'released'),
                 'harness_errors': errors})
     return rows
 
@@ -486,30 +533,35 @@ def report(out, path):
     """Markdown report per cell, per host and mode, and per task; summary.json next to it."""
     cells = [json.loads(p.read_text()) for p in sorted(Path(out).glob('*/result.json'))]
     prices = {k: v for k, v in json.loads(PRICES.read_text()).items() if not k.startswith('_')} if PRICES.is_file() else {}
-    lines = ['| Host | Task | Mode | Rep | Status | Full | Uncached | Cached | Cost $ | Turns | Subagents | JEV calls | Green | Failed checks |',
-             '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
+    lines = ['| Host | Task | Mode | Rep | Status | Full | Uncached | Cached | Cost $ | Turns | Subagents | JEV calls | Green | '
+             'Accepted by gate | Released | Failed checks |',
+             '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
+    known = (lambda v: 'n/a' if v is None else v)
     for c in sorted(cells, key=lambda c: (c['host'], c['task'], MODES.index(c['mode']), c.get('rep', 1))):
         acceptance = c.get('acceptance') or {}
         failed = [k for k, v in (acceptance.get('checks') or {}).items() if not v] or ([c['reason']] if c.get('reason') else [])
         tokens = c.get('tokens') or {}
         cost = estimated_cost(c, prices) if tokens else None
+        gate = cell_gate(c)
         lines.append(f"| {c['host']} | {c['task']} | {c['mode']} | {c.get('rep', 1)} | {c['status']} | {fmt_tokens(input_tokens(tokens))} | "
                      f"{fmt_tokens(tokens.get('uncached'))} | {fmt_tokens(tokens.get('cached'))} | {'' if cost is None else round(cost, 3)} | "
                      f"{c.get('turns', '')} | {c.get('subagents', '')} | {(c.get('jev') or {}).get('calls', '')} | "
-                     f"{acceptance.get('delivered_green', '')} | {', '.join(failed)} |")
+                     f"{acceptance.get('delivered_green', '')} | {known(gate['accepted'])} | {known(gate['released'])} | "
+                     f"{', '.join(failed)} |")
     summary = summarize(cells, prices)
     lines += ['', 'Full = uncached + cached tokens. Tokens: median (IQR). Cost per success = total cost / accepted cells. '
               'Codex and OpenCode cost is an API-equivalent estimate from `tests/bench/prices.json`; empty when a price is unknown. '
-              'Cost includes the JEV API (also shown alone as JEV $).',
-              '', '| Host | Mode | Tasks | Accepted | Success (95% CI) | Green | Full tokens | Uncached tokens | Subagents (mean) | '
-              'Cost $ | Cost per success $ | JEV calls (mean) | JEV tokens | JEV $ | Harness errors |',
-              '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
+              'Cost includes the JEV API (also shown alone as JEV $). Accepted by gate and Released come from '
+              '`.agentic/gate/last.json` (`accepted`, `reason_code`) over the cells that record them; n/a when none does.',
+              '', '| Host | Mode | Tasks | Accepted | Success (95% CI) | Green | Accepted by gate | Released | Full tokens | '
+              'Uncached tokens | Subagents (mean) | Cost $ | Cost per success $ | JEV calls (mean) | JEV tokens | JEV $ | Harness errors |',
+              '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for r in summary:
         ci = r['wilson95']
         rate = '' if r['success_rate'] is None else f"{r['success_rate']:.0%} ({ci[0]:.0%}–{ci[1]:.0%})"
         money = (lambda v: '' if v is None else f'{v:.3f}')
         lines.append(f"| {r['host']} | {r['mode']} | {','.join(r['tasks'])} | {r['accepted']}/{r['n']} | {rate} | {r['green']}/{r['n']} | "
-                     f"{fmt_range(r['full_tokens'])} | {fmt_range(r['uncached_tokens'])} | "
+                     f"{known(r['accepted_by_gate'])} | {known(r['released'])} | {fmt_range(r['full_tokens'])} | {fmt_range(r['uncached_tokens'])} | "
                      f"{'' if r['subagents_mean'] is None else round(r['subagents_mean'], 2)} | {money(r['cost_total'])} | "
                      f"{money(r['cost_per_success'])} | {'' if r['jev_calls_mean'] is None else round(r['jev_calls_mean'], 2)} | "
                      f"{'' if r['jev_tokens'] is None else fmt_tokens(r['jev_tokens'])} | "

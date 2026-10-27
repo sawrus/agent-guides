@@ -187,12 +187,22 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
   that already fails `make lint` (the suite is green, so only an agent or gate that runs lint sees it), T6
   multi-module bugfix (the symptom is in `orders.py`; the causes are in `pricing.py` and in the tax base), T7
   multi-module feature (`Stock.reserve_many` plus a CLI command; hidden tests check that lines with the same SKU
-  count together and that the existing over-reservation bug does not leak into the new API).
+  count together and that the existing over-reservation bug does not leak into the new API), T8 bugfix with a
+  hidden defect (`Stock.release` lets the reservation go negative; the prompt states the criterion "release only
+  lowers the reservation". The suite and lint stay green. The obvious fix checks only "more than reserved"; the
+  hidden tests also reject a negative quantity, which a careful review of the diff against the criterion
+  catches), T10 question that needs a rule (which standard Makefile targets from the installed
+  `makefile-guide` rule are missing; the answer must name `make install`, `make dev`, `make fmt`, and
+  `make clean`; no changes allowed).
 - Seeds: a task with `seed` in `tasks.json` copies `tests/bench/<seed>` over the fixture before the first
-  commit. T5 and T6 use it, so the other tasks keep the base fixture.
+  commit. T5, T6, and T8 use it, so the other tasks keep the base fixture.
 - Allowlists include the version file and `docs/`, because the pack's own completion contract requires them.
-- Arms (`--modes`): `plain`, `lean`, `lean-jev`, `team-jev` by default; also `team` and `v1` (v1.6 binary from
-  `make bench-v1`). A `-jev` arm installs with `--enable-jev`; `JEV_API_URL` overrides the endpoint.
+- Arms (`--modes`): `plain`, `lean`, `lean-jev`, `team-jev` by default; also `lean-noreviewer`, `team`, and `v1`
+  (v1.6 binary from `make bench-v1`). A `-jev` arm installs with `--enable-jev`; `JEV_API_URL` overrides the
+  endpoint. `lean-noreviewer` installs `lean` and then deletes the reviewer agent (`.claude/agents/reviewer.md`,
+  `.codex/agents/reviewer.toml`, `.opencode/agents/reviewer.md`, the `reviewer` entry in `.opencode/opencode.json`,
+  and an `[agents.reviewer]` table in `.codex/config.toml` if one exists) before the install commit. The core
+  text in `AGENTS.md` stays the same, so the agent can still start a native subagent for a review.
 - Repetitions: `--reps N` runs every host × task × arm N times. The cell order is shuffled with `--seed`
   (default 0), so no arm always runs right after another and reuses its prompt cache.
 - Projects: one stable path per host and arm (`/tmp/agentic-bench/<host>-<arm>`), because Codex trusts hooks
@@ -216,7 +226,11 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
   otherwise. Prices (2026-10-23, secondary sources listed in the file): `gpt-6-astra` $10 / $1 cached / $50 output,
   `gpt-6-luna` $0.10 / $0.01 / $0.50 per 1M tokens. Cost includes the JEV API at $0.042 per 1M input tokens
   (output free); the report also shows it alone (JEV $). Cost per success = total cost of the arm's cells /
-  accepted cells.
+  accepted cells. `gpt-6.1-terra` has no published price yet: `prices.json` marks it as an estimate equal to
+  `gpt-5.6-terra` ($2 / $0.20 / $12).
+- Gate columns: when `.agentic/gate/last.json` records `accepted` and `reason_code`, the report shows
+  `Accepted by gate` and `Released` (`reason_code = max_blocks`) per cell and as `k/n` per host and mode. A gate
+  without these fields shows `n/a`.
 - Models: `--model host=model` and `--effort codex=<level>`. OpenCode JEV routing stays on the provider of the
   coordinator model (`AGENTIC_JEV_MODEL_PROVIDER` overrides it). A routed model without a price in `prices.json`
   leaves the cell cost empty.
@@ -226,6 +240,69 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
 - Decision rule for lean + JEV (fixed before round 4): recommend it only if, on a host, its success rate is not
   below lean (the Wilson intervals overlap or lean + JEV is higher) and its cost per success is at most 1.1 ×
   lean, with no worse success rate on the other hosts. Otherwise it stays opt-in, with no savings claimed.
+
+### Round 6 decision rules (fixed before the run)
+
+Source: [plan](../agentic-orchestration-research/plan.md) steps 0 and 4, experiment E1 in
+[experiments](../agentic-orchestration-research/experiments.md). Hosts: Codex with `--model codex=gpt-6.1-terra`
+(the Codex session model of round 6; `pilot_jev.COORDINATOR` keeps its default, so pass the flag on every Codex
+command) and Claude (`sonnet`). One output folder for the round: `BENCH_OUT=.agentic-blackbox/bench-r6`. A cell
+that already has a valid result is not run again, so later commands reuse earlier cells. The cell counts below
+are paid cells; each hypothesis spends at most 30. `harness_error` and `quota_exhausted` cells run again and do
+not count.
+
+Before the first paid command (no model calls), create the projects and trust the Codex hooks in `/hooks`:
+
+```bash
+make bench-prepare BENCH_OUT=.agentic-blackbox/bench-r6 BENCH_ARGS="--hosts codex --modes lean,lean-noreviewer,lean-jev"
+```
+
+Run order: H4, then H0, then H-clean "before". H-clean "after" runs only after the content cleanup is merged.
+
+**H4: the reviewer earns its place in the lean default.** Precondition: plan steps 0–2 are merged.
+
+```bash
+make bench BENCH_OUT=.agentic-blackbox/bench-r6 BENCH_ARGS="--hosts codex --tasks T8 --modes lean,lean-noreviewer --reps 9 --model codex=gpt-6.1-terra"  # 18 cells
+make bench BENCH_OUT=.agentic-blackbox/bench-r6 BENCH_ARGS="--hosts claude --tasks T8 --modes lean,lean-noreviewer --reps 3"  # 6 cells
+```
+
+Total: 24 paid cells. Rule: the reviewer stays in the lean default only if, on Codex T8, `lean` accepted ≥
+`lean-noreviewer` accepted + 2 (of 9), and the total cost of the 9 `lean` cells ≤ 1.3 × the total cost of the 9
+`lean-noreviewer` cells. Claude is a guard: `lean` accepted on T8 must not be below `lean-noreviewer`. If any
+part fails, the reviewer leaves the lean default, and plan step 2 continues for `explorer` only.
+
+**H0: after the JEV tier-cap fix, no lean helper gets a model above the session tier.** Precondition: plan step 0
+is merged.
+
+```bash
+make bench BENCH_OUT=.agentic-blackbox/bench-r6 BENCH_ARGS="--hosts codex --tasks T6,T7,T8 --modes lean,lean-jev --reps 3 --model codex=gpt-6.1-terra"  # 18 cells, 15 paid (lean T8 r1-r3 come from H4)
+make bench BENCH_OUT=.agentic-blackbox/bench-r6 BENCH_ARGS="--hosts claude --tasks T6,T7,T8 --modes lean,lean-jev --reps 3"  # 18 cells, 15 paid (lean T8 r1-r3 come from H4)
+```
+
+Total: 30 paid cells. Check every `lean-jev` cell: each helper row in `tokens.agents` (Codex: `agent_path` other
+than `/root`; Claude: a model other than the session model) and each JEV `spawn` or `observation` record in
+`jev.decisions` names a model. Session tier: Codex `gpt-6.1-terra` = `balanced` (`extensions/codex/model-tiers.json`),
+Claude `sonnet` = `balanced`. A model is above the session tier when its tier is `frontier` (`gpt-6-astra`,
+`opus`), or, for a model without a tier, when its input price in `tests/bench/prices.json` is above the session
+model's price. Rule: H0 holds if no helper on any host gets a model above the session tier. With fewer than 3
+helper spawns on a host, H0 is inconclusive for that host; no claim is made. Secondary check from plan step 0:
+Codex `lean-jev` cost per accepted task ≤ 1.1 × `lean` on T6–T8 at a success rate not below `lean`.
+
+**H-clean: the planned content cleanup does not lower lean results and saves tokens.** Tasks: T1–T7 and T10.
+
+```bash
+# before the cleanup (the current build)
+make bench BENCH_OUT=.agentic-blackbox/bench-r6 BENCH_ARGS="--hosts codex --tasks T1,T2,T3,T4,T5,T6,T7,T10 --modes lean --model codex=gpt-6.1-terra"  # 8 cells, 6 paid (T6, T7 r1 come from H0)
+make bench BENCH_OUT=.agentic-blackbox/bench-r6 BENCH_ARGS="--hosts claude --tasks T1,T2,T3,T4,T5,T6,T7,T10 --modes lean"  # 8 cells, 6 paid (T6, T7 r1 come from H0)
+# after the cleanup is merged and built
+make bench BENCH_OUT=.agentic-blackbox/bench-r6-clean BENCH_ARGS="--hosts codex --tasks T1,T2,T3,T4,T5,T6,T7,T10 --modes lean --model codex=gpt-6.1-terra"  # 8 cells
+make bench BENCH_OUT=.agentic-blackbox/bench-r6-clean BENCH_ARGS="--hosts claude --tasks T1,T2,T3,T4,T5,T6,T7,T10 --modes lean"  # 8 cells
+```
+
+Total: 28 paid cells. Compare the `r1` cells of the same tasks on each host. Rule: the cleanup ships if, on each
+host, `lean` after accepted ≥ `lean` before accepted, and the sum of full tokens (uncached + cached) after ≤ 0.9 ×
+before. Otherwise the cleanup is revised before release. With one repetition, a one-task difference in accepted
+cells is noise; the token rule carries the decision.
 
 ## Results
 
