@@ -330,8 +330,10 @@ A profile has two axes: the role set and an optional model profile. Each host ha
   OpenCode config declares only these roles. Unknown names, bases, or ids fail the install before any write.
 - `models` names a model profile: `anthropic`/`none` for Claude Code, an OpenCode model profile id for OpenCode.
   Codex has no model profiles and ignores it with a warning. `null` keeps the current model profile.
-- `lean/` and `team/` are seeded the first time `agentic profile` or the TUI runs. Existing files are never
-  overwritten; an edited `lean/profile.json` is used instead of the built-in definition.
+- `lean/` and `team/` are seeded the first time `agentic profile` or the TUI runs. Existing files are not
+  overwritten; an edited `lean/profile.json` is used instead of the built-in definition. One exception: an
+  unedited `lean` seed of an older release (`"agents": ["explorer", "reviewer"]`, `"models": null`) follows the
+  built-in `lean` (`explorer` only) and is rewritten on the next seed. To keep the reviewer, use a custom profile.
 - A directory with only `opencode.json` stays an OpenCode model profile and is not listed as a role profile.
 - `.agentic.json` stores `settings.profile_ids` (host → id) and `settings.profile`, the base for JEV: `team` only
   when every selected host has a `team` base. `settings.profile_defs` keeps a copy of each custom profile, so a

@@ -290,9 +290,10 @@ mod jev_model_tests {
         app.install_profile = crate::profile::LEAN.into();
         let dest = project.path().join(".codex");
         copy_dir_contents(&mut app, "extensions/codex", &dest, false).unwrap();
-        let text = std::fs::read_to_string(dest.join("agents/reviewer.toml")).unwrap();
+        let text = std::fs::read_to_string(dest.join("agents/explorer.toml")).unwrap();
         assert!(!text.contains("\nmodel ="));
         assert!(text.contains("\nmodel_reasoning_effort ="));
         assert!(!dest.join("agents/developer.toml").exists());
+        assert!(!dest.join("agents/reviewer.toml").exists());
     }
 }

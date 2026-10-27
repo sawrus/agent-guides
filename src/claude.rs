@@ -233,7 +233,7 @@ fn command_text(id: &str, meta: &WorkflowMeta, team: bool) -> String {
     let delegation = if team {
         "Delegate each step to the role it names through the Agent tool (`subagent_type` = role name, for example `developer`). Follow the step order, handoff outputs, and quality gates in the workflow. When the workflow has a Post-task review section, follow `REVIEW_PIPELINE.md` after successful delivery."
     } else {
-        "Perform the role steps yourself, in order, with their outputs and quality gates. Use the `explorer` subagent only for unfamiliar code and the `reviewer` subagent once on the final diff. Skip the Post-task review section unless its specialists are installed."
+        "Perform the role steps yourself, in order, with their outputs and quality gates. Use the `explorer` subagent only for unfamiliar code. Skip the Post-task review section unless its specialists are installed."
     };
     format!("{header}Act as its initiator ({initiator}) in this main session. {delegation}\n")
 }

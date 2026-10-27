@@ -330,13 +330,13 @@ without a profile counts as `team`, because JEV installed the role team before p
 
 | | `lean` + JEV | `team` + JEV |
 |---|---|---|
-| Agents | `explorer`, `reviewer`, native main session | nine SDLC roles, `product-owner` main session |
+| Agents | `explorer`, native main session | nine SDLC roles, `product-owner` main session |
 | First prompt | one workflow call per session | one workflow call per session |
 | `native`, `clarify`, low confidence | no context; the session turns JEV off | no context; the session turns JEV off |
 | Workflow chosen | one sentence: use the workflow file as a checklist and perform its steps yourself; start a subagent only where the core rules ask | load the workflow, act as its initiator, delegate to its role agents; a role-neutral workflow runs in the main session and sends each step to the installed role agent that fits it, one subagent per step at most; Codex prepared spawns; post-task review packet |
 | OpenCode | no switch to the workflow initiator | switch to the initiator when it is installed |
 | Plan mode | one sentence: perform only the diagnosis and analysis steps, present the rest as a plan, do not edit files | same as `lean` |
-| Spawn routing | models of `explorer`, `reviewer` (never above the session tier), and native agents | models of the role agents |
+| Spawn routing | models of `explorer`, a custom-profile `reviewer` (never above the session tier), and native agents | models of the role agents |
 | Codex | thread default; helpers keep `model_reasoning_effort` | `agents.max_threads = 8`; role profiles lose `model` and `model_reasoning_effort` |
 | Quality gate | unchanged | unchanged |
 

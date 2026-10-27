@@ -35,7 +35,7 @@ def load(relative):
 
 
 def codex_role_models():
-    # Lean helpers (explorer, reviewer) pin no model and inherit the session model.
+    # Helpers (explorer; reviewer for custom profiles) pin no model and inherit the session model.
     profiles = sorted((EXTENSIONS / 'codex/agents').glob('*.toml'))
     found = {p.stem: TOML_MODEL.search(p.read_text(encoding='utf-8')) for p in profiles}
     return {role: match[1] for role, match in found.items() if match}

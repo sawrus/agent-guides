@@ -1,5 +1,5 @@
 //! Role profiles. A profile has two axes: the role set and an optional model profile.
-//! Built-in `lean` (default) installs two helper subagents and lets the native harness lead; `team` installs the
+//! Built-in `lean` (default) installs the `explorer` helper and lets the native harness lead; `team` installs the
 //! v1 SDLC role team. Custom profiles live in `~/.config/agentic/<host>/profiles/<id>/profile.json`:
 //! `{"name","base":"lean|team","agents":[...],"models":"<model-profile-id>"|null}`. `base` drives host behavior
 //! (Codex memories, `AGENTS.override.md`, the Claude main agent); `agents` selects the role files.
@@ -16,7 +16,12 @@ pub const TEAM: &str = "team";
 pub const CHOICES: [&str; 2] = [LEAN, TEAM];
 /// Hosts with their own role profile store.
 pub const HOSTS: [&str; 3] = ["claude", "codex", "opencode"];
-pub const LEAN_AGENTS: [&str; 2] = ["explorer", "reviewer"];
+pub const LEAN_AGENTS: [&str; 1] = ["explorer"];
+/// Helper subagents a profile may list. `reviewer` left the lean default (benchmark round 6, rule H4); a custom
+/// profile can still add it.
+pub const HELPER_AGENTS: [&str; 2] = ["explorer", "reviewer"];
+/// The lean seed written to `profiles/lean/profile.json` before `reviewer` left the default.
+const LEGACY_LEAN_AGENTS: [&str; 2] = ["explorer", "reviewer"];
 pub const TEAM_AGENTS: [&str; 9] = [
     "product-owner",
     "pm",
@@ -72,11 +77,11 @@ impl Profile {
 }
 
 fn is_role(name: &str) -> bool {
-    LEAN_AGENTS.contains(&name) || TEAM_AGENTS.contains(&name)
+    HELPER_AGENTS.contains(&name) || TEAM_AGENTS.contains(&name)
 }
 
 fn all_roles() -> Vec<&'static str> {
-    LEAN_AGENTS
+    HELPER_AGENTS
         .iter()
         .chain(TEAM_AGENTS.iter())
         .copied()
@@ -124,6 +129,9 @@ pub fn load(app: &App, host: &str, id: &str) -> crate::Result<Profile> {
             profile.name = id.into();
         }
         profile.validate(id)?;
+        if id == LEAN && is_legacy_lean_seed(&profile) {
+            return Ok(builtin(LEAN).unwrap());
+        }
         return Ok(profile);
     }
     if let Some(profile) = builtin(id) {
@@ -138,6 +146,14 @@ pub fn load(app: &App, host: &str, id: &str) -> crate::Result<Profile> {
         path.display()
     )
     .into())
+}
+
+/// An unedited `lean` seed of an older release. It follows the current built-in `lean`.
+fn is_legacy_lean_seed(profile: &Profile) -> bool {
+    profile.name == LEAN
+        && profile.base == LEAN
+        && profile.models.is_none()
+        && profile.agents == LEGACY_LEAN_AGENTS
 }
 
 /// The copy of a custom profile saved in the project manifest for this host.
@@ -289,17 +305,25 @@ pub fn prepare(app: &mut App) -> crate::Result<()> {
     Ok(())
 }
 
-/// Write `lean/` and `team/` into the host store when they are missing. Existing files stay untouched.
+/// Write `lean/` and `team/` into the host store when they are missing. Existing files stay untouched, except an
+/// unedited `lean` seed of an older release, which is rewritten to the current built-in.
 pub fn seed(app: &App, host: &str) -> crate::Result<()> {
     for id in CHOICES {
         let path = profile_file(app, host, id);
-        if path.exists() {
+        if path.exists() && !(id == LEAN && legacy_seed_file(&path)) {
             continue;
         }
         std::fs::create_dir_all(path.parent().unwrap())?;
         std::fs::write(&path, profile_json(&builtin(id).unwrap()))?;
     }
     Ok(())
+}
+
+fn legacy_seed_file(path: &Path) -> bool {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<Profile>(&text).ok())
+        .is_some_and(|profile| is_legacy_lean_seed(&profile))
 }
 
 fn profile_json(profile: &Profile) -> String {
@@ -392,7 +416,7 @@ pub fn opencode_agents(data: &mut Value, profile: &Profile) {
         return;
     };
     agents.retain(|name, _| !is_role(name) || profile.has_agent(name));
-    for name in LEAN_AGENTS {
+    for name in HELPER_AGENTS {
         if profile.has_agent(name) {
             agents
                 .entry(name)
@@ -707,6 +731,12 @@ mod tests {
         assert!(!skips_extension_file(
             &app,
             "extensions/codex",
+            "agents/explorer.toml"
+        ));
+        // Round 6 (rule H4): `reviewer` left the lean default.
+        assert!(skips_extension_file(
+            &app,
+            "extensions/codex",
             "agents/reviewer.toml"
         ));
         assert!(skips_extension_file(
@@ -717,17 +747,52 @@ mod tests {
     }
 
     #[test]
+    fn legacy_lean_seed_follows_the_builtin_and_custom_profiles_keep_reviewer() {
+        let home = tempfile::tempdir().unwrap();
+        let mut app = test_app(home.path());
+        let legacy = json!({"name": "lean", "base": "lean", "agents": ["explorer", "reviewer"], "models": null});
+        write_profile(&app, "claude", "lean", legacy);
+        assert_eq!(
+            load(&app, "claude", "lean").unwrap(),
+            builtin(LEAN).unwrap()
+        );
+        seed(&app, "claude").unwrap();
+        let text = std::fs::read_to_string(profile_file(&app, "claude", "lean")).unwrap();
+        assert!(!text.contains("reviewer"));
+        // An edited lean file stays as the user wrote it.
+        let edited = json!({"name": "lean", "base": "lean", "agents": ["explorer", "reviewer"], "models": "fast"});
+        write_profile(&app, "codex", "lean", edited);
+        seed(&app, "codex").unwrap();
+        assert!(load(&app, "codex", "lean").unwrap().has_agent("reviewer"));
+        // A custom profile may still list the reviewer helper.
+        write_profile(
+            &app,
+            "opencode",
+            "review",
+            json!({"name": "review", "base": "lean", "agents": ["explorer", "reviewer"]}),
+        );
+        app.host_profiles.insert("opencode".into(), "review".into());
+        let profile = resolve(&app, "opencode");
+        assert!(profile.has_agent("reviewer"));
+        assert!(!skips_extension_file(
+            &app,
+            "extensions/opencode",
+            "agents/reviewer.md"
+        ));
+        let mut data = json!({"agent": {}});
+        opencode_agents(&mut data, &profile);
+        assert!(data["agent"].get("reviewer").is_some());
+    }
+
+    #[test]
     fn lean_opencode_config_keeps_user_agents() {
         let mut data =
             json!({"agent": {"product-owner": {"mode": "primary"}, "mine": {"mode": "subagent"}}});
         opencode_agents(&mut data, &builtin(LEAN).unwrap());
         let agents = data["agent"].as_object().unwrap();
         assert!(!agents.contains_key("product-owner"));
-        assert!(
-            agents.contains_key("mine")
-                && agents.contains_key("explorer")
-                && agents.contains_key("reviewer")
-        );
+        assert!(agents.contains_key("mine") && agents.contains_key("explorer"));
+        assert!(!agents.contains_key("reviewer"));
     }
 
     #[test]
@@ -850,7 +915,7 @@ mod tests {
     fn labels_show_roles_and_kind() {
         assert_eq!(
             label(LEAN, &builtin(LEAN).unwrap()),
-            "lean · explorer, reviewer · native main session"
+            "lean · explorer · native main session"
         );
         assert_eq!(
             label(TEAM, &builtin(TEAM).unwrap()),
