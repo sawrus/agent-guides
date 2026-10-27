@@ -8,6 +8,7 @@ mod copydir;
 mod doctor;
 mod doctor_cleanup;
 mod gate;
+mod gitstate;
 mod hookmerge;
 mod install;
 mod jev_defaults;

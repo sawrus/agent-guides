@@ -298,6 +298,73 @@ class ConfirmGuard(unittest.TestCase):
     def test_deny_rules_still_win(self):
         self.assertEqual(self.decide('kubectl --context prod-cluster apply -f .env')[0], 'deny')
         self.assertEqual(self.decide('git push -f origin main')[0], 'deny')
+def git(cwd, *args):
+    subprocess.run(['git', *AUTHOR, '-c', 'commit.gpgsign=false', *args], cwd=cwd, check=True,
+                   capture_output=True)
+
+
+def stale_clone(upstream):
+    """Clone of a bare origin whose default branch master has `upstream` commits; origin/main is the first."""
+    root = Path(tempfile.mkdtemp(prefix='gate-start-'))
+    seed = root / 'seed'
+    seed.mkdir()
+    git(seed, 'init', '-q', '-b', 'master')
+    for i in range(upstream):
+        git(seed, 'commit', '-q', '--allow-empty', '-m', f'c{i}')
+        if i == 0:
+            git(seed, 'branch', 'main')
+    git(root, 'clone', '-q', '--bare', str(seed), str(root / 'origin.git'))
+    git(root, 'clone', '-q', str(root / 'origin.git'), str(root / 'clone'))
+    return root / 'clone'
+
+
+class Start(unittest.TestCase):
+    def context(self, project):
+        result = gate.start(project, {})
+        if not result:
+            return None
+        self.assertEqual(result['hookSpecificOutput']['hookEventName'], 'SessionStart')
+        return result['hookSpecificOutput']['additionalContext']
+
+    def test_stale_long_lived_branch_warns_once_in_one_line(self):
+        clone = stale_clone(4)
+        self.assertIsNone(self.context(clone))
+        git(clone, 'switch', '-q', '-c', 'main', 'origin/main')
+        self.assertEqual(self.context(clone),
+                         'Stale checkout: HEAD is on branch main, not on the origin default branch master; it has no '
+                         'own commits and is 3 commits behind origin/master, so the code here may be outdated. '
+                         'Run: git switch master && git pull')
+
+    def test_feature_branch_with_own_commits_is_silent(self):
+        clone = stale_clone(4)
+        git(clone, 'switch', '-q', '-c', 'feat/x', 'origin/main')
+        git(clone, 'commit', '-q', '--allow-empty', '-m', 'own')
+        self.assertIsNone(self.context(clone))
+
+    def test_detached_and_default_branch_lag(self):
+        clone = stale_clone(gate.STALE_BEHIND + 1)
+        git(clone, 'switch', '-q', '--detach', 'origin/master~1')
+        self.assertIn('HEAD is on a detached HEAD', self.context(clone))
+        self.assertIn('1 commit behind', self.context(clone))
+        git(clone, 'switch', '-q', 'master')
+        git(clone, 'reset', '-q', '--hard', f'origin/master~{gate.STALE_BEHIND - 1}')
+        self.assertIsNone(self.context(clone))
+        git(clone, 'reset', '-q', '--hard', f'origin/master~{gate.STALE_BEHIND}')
+        self.assertTrue(self.context(clone).startswith('Stale checkout: master is 20 commits behind origin/master'))
+
+    def test_non_git_and_no_origin_are_silent(self):
+        root = Path(tempfile.mkdtemp(prefix='gate-start-'))
+        self.assertEqual(gate.start(root, {}), {})
+        git(root, 'init', '-q')
+        git(root, 'commit', '-q', '--allow-empty', '-m', 'x')
+        self.assertEqual(gate.start(root, {}), {})
+
+    def test_cli_prints_session_start_json(self):
+        clone = stale_clone(3)
+        git(clone, 'switch', '-q', '-c', 'main', 'origin/main')
+        out = subprocess.run(['python3', gate.__file__, '--event', 'start', '--project-dir', str(clone)],
+                             input='{"source": "startup"}', capture_output=True, text=True, check=True).stdout
+        self.assertEqual(json.loads(out)['hookSpecificOutput']['hookEventName'], 'SessionStart')
 
 
 FIELD_SCRIPT = '''import psycopg

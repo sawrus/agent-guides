@@ -1298,10 +1298,14 @@ fn claude_install_writes_native_layout() {
         serde_json::from_str(&std::fs::read_to_string(p.join(".claude/settings.json")).unwrap())
             .unwrap();
     assert_eq!(settings["agent"], "product-owner");
-    // The quality gate is on by default: one Stop and one PreToolUse group.
+    // The quality gate is on by default: one Stop, one PreToolUse, and one SessionStart group.
     let hooks = settings["hooks"].to_string();
     assert!(hooks.contains(".agent/gate/gate.py"));
     assert_eq!(settings["hooks"]["Stop"].as_array().unwrap().len(), 1);
+    assert!(settings["hooks"]["SessionStart"][0]["hooks"][0]["command"]
+        .as_str()
+        .unwrap()
+        .contains("--event start"));
     assert!(p.join(".agent/gate/gate.py").is_file());
     let manifest: Value =
         serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap()).unwrap();
@@ -1657,4 +1661,71 @@ fn profile_cli_list_create_show() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("run `agentic install` first"));
+}
+
+fn git_in(dir: &Path, args: &[&str]) {
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args(["-c", "user.name=t", "-c", "user.email=t@localhost"])
+        .args(["-c", "commit.gpgsign=false"])
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "git {args:?}");
+}
+
+/// Field case: a clone checked out on a stale local `main` while origin's default branch is
+/// `master`. Install and upgrade warn without blocking; the current default branch stays silent.
+#[test]
+fn install_and_upgrade_warn_about_a_stale_checkout() {
+    let home = tempfile::tempdir().unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let seed = tmp.path().join("seed");
+    let origin = tmp.path().join("origin.git");
+    let clone = tmp.path().join("clone");
+    std::fs::create_dir_all(&seed).unwrap();
+    git_in(&seed, &["init", "-q", "-b", "master"]);
+    for i in 0..4 {
+        git_in(
+            &seed,
+            &["commit", "-q", "--allow-empty", "-m", &format!("c{i}")],
+        );
+        if i == 0 {
+            git_in(&seed, &["branch", "main"]);
+        }
+    }
+    let path = |p: &Path| p.to_str().unwrap().to_string();
+    git_in(
+        tmp.path(),
+        &["clone", "-q", "--bare", &path(&seed), &path(&origin)],
+    );
+    git_in(tmp.path(), &["clone", "-q", &path(&origin), &path(&clone)]);
+    let expected = "Stale checkout: HEAD is on branch main, not on the origin default branch master; it has no \
+                    own commits and is 3 commits behind origin/master, so the code here may be outdated. \
+                    Run: git switch master && git pull";
+    let install = || {
+        let mut cmd = agentic(home.path());
+        cmd.args(["install", "--project-dir"])
+            .arg(&clone)
+            .args(["--agent-os", "claude", "--areas", "software"])
+            .args(["--specializations", "software.general", "--no-doctor"]);
+        cmd
+    };
+
+    install()
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Stale checkout").not());
+    git_in(&clone, &["switch", "-q", "-c", "main", "origin/main"]);
+    install()
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(format!(
+            "[agentic][warn] {expected}"
+        )));
+    sync_upgrade(&clone, home.path(), false)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(expected));
 }

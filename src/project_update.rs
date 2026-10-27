@@ -304,6 +304,7 @@ pub fn synchronize(app: &mut App) -> crate::Result<()> {
         ui::log(app, action);
     }
     crate::project_transaction::apply(app, &root, &before, &after)?;
+    crate::gitstate::report(app, &root);
     if !dry_run {
         crate::gate::write_baseline(app, &root)?;
         crate::doctor::run_agentic_doctor(app);

@@ -12,7 +12,9 @@ script files it runs: write or maintenance SQL against a non-local database is d
 credentials from the environment (.env) asks, and plan mode denies any non-local connection (`guard.db`).
 Settings: optional `.agent/gate.json` {"commands": ["make test"], "changelog": true, "max_blocks": 3,
 "guard": {"defaults": true, "confirm": [...], "prod_context_pattern": "prod", "prod_hosts": [],
-"db": {"mode": "ask", "write": "deny"}}}. Standard library only.
+"db": {"mode": "ask", "write": "deny"}}}.
+`--event start`: when the checkout is older than the origin default branch (local refs only, no fetch), add one
+line of SessionStart `additionalContext`; the rule and text match `src/gitstate.rs`. Standard library only.
 """
 import argparse
 import hashlib
@@ -583,11 +585,64 @@ def detect_host(value):
     if value:
         return value
     return 'claude' if os.environ.get('CLAUDE_PROJECT_DIR') else None
+STALE_BEHIND = 20
+
+
+def git(project, *args):
+    try:
+        result = subprocess.run(['git', '-C', str(project), *args], capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def git_state(project):
+    """(branch or None when detached, default, ahead, behind); None outside git or without origin/HEAD."""
+    head = git(project, 'rev-parse', '--abbrev-ref', 'HEAD')
+    origin_head = git(project, 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD')
+    if head is None or not origin_head or not origin_head.startswith('origin/') or origin_head == 'origin/':
+        return None
+    default = origin_head[len('origin/'):]
+    counts = (git(project, 'rev-list', '--left-right', '--count', f'HEAD...origin/{default}') or '').split()
+    if len(counts) != 2 or not all(c.isdigit() for c in counts):
+        return None
+    return (None if head == 'HEAD' else head), default, int(counts[0]), int(counts[1])
+
+
+def commits(n):
+    return '1 commit' if n == 1 else f'{n} commits'
+
+
+def stale_warning(state):
+    """Same rule and text as `src/gitstate.rs::warning`."""
+    branch, default, ahead, behind = state
+    hint = f'Run: git switch {default} && git pull'
+    if branch == default:
+        if behind < STALE_BEHIND:
+            return None
+        return (f'Stale checkout: {default} is {commits(behind)} behind origin/{default} (local refs may be older '
+                f'still); the code here may be outdated. {hint}')
+    if ahead > 0 or behind == 0:
+        return None
+    place = f'branch {branch}' if branch is not None else 'a detached HEAD'
+    return (f'Stale checkout: HEAD is on {place}, not on the origin default branch {default}; it has no own commits '
+            f'and is {commits(behind)} behind origin/{default}, so the code here may be outdated. {hint}')
+
+
+def start(project, payload, host=None):
+    state = git_state(project)
+    text = stale_warning(state) if state else None
+    if not text:
+        return {}
+    return {'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': text}}
+
+
+EVENTS = {'stop': stop, 'guard': guard, 'start': start}
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--event', choices=('stop', 'guard'), required=True)
+    parser.add_argument('--event', choices=tuple(EVENTS), required=True)
     parser.add_argument('--project-dir', default='.')
     parser.add_argument('--host', choices=('claude', 'codex', 'opencode'))
     args = parser.parse_args(argv)
@@ -598,7 +653,7 @@ def main(argv=None):
     project = Path(args.project_dir or payload.get('cwd') or '.')
     host = detect_host(args.host)
     try:
-        result = stop(project, payload, host) if args.event == 'stop' else guard(project, payload, host)
+        result = EVENTS[args.event](project, payload, host)
     except Exception as error:  # a gate bug must never trap the agent
         print(f'agentic gate error: {error}', file=sys.stderr)
         return 0
