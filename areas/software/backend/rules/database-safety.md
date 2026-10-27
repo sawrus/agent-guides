@@ -1,5 +1,5 @@
 ---
-trigger: glob
+description: Keep agents and scripts from changing a real database (production, replicas, shared stages).
 paths:
   - "**/migrations/**"
   - "**/alembic/**"
@@ -7,7 +7,6 @@ paths:
   - "**/db/**"
   - "**/scripts/**"
   - "**/.env.example"
-description: Safety rules for agents and scripts that connect to a real database (production, replicas, shared stages)
 ---
 # Rule: Database safety
 
