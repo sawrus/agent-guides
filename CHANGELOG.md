@@ -1,5 +1,11 @@
 # Changelog
 
+## v8.1.2
+
+- A pushed `vX.Y.Z` tag now also publishes the npm package: `release.yml` calls `publish-npm.yml` after it creates
+  the GitHub release. Before, a release created with `GITHUB_TOKEN` did not start the `release` trigger, so npm
+  stayed at 2.1.0 while GitHub had v2.1.1–v8.1.1. The publish step skips a version that is already on npm.
+
 ## v8.1.1
 
 - README: describes the current product. Rules are the base, the quality gate checks and records acceptance, and
