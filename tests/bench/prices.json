@@ -1,6 +1,7 @@
 {
   "_note": "API-equivalent USD per 1M tokens for hosts that do not report cost (Codex, OpenCode on a ChatGPT plan), plus the JEV decision API. Secondary sources, OpenAI's own page was not reachable: gpt-6-astra from cloudzero.com, getdeploying.com and docs.litellm.ai (standard tier, under 272K context, cache writes not billed separately because Codex does not report them); gpt-6-luna from llmgateway.io and getdeploying.com; typesafe/jev from zuplo.com and docs.litellm.ai (output is free). private_llm/coding-agent-default is Qwen3.8-Flash-Next on a private LiteLLM, priced at the Qwen API list price (anotherwrapper.com citing Qwen; edenai.co and requesty.ai list $0.20/$0.50); `private_llm` stands for the private OpenCode provider; a cell whose model has another provider prefix matches this entry by the model part after the slash; the provider reports no cached tokens, so all input counts as uncached and the cached price is unused. gpt-6-sol from computingforgeeks.com (one source; its cached price is assumed at 10% of input, as for the other OpenAI models); gpt-5.6-terra from the OpenAI community post on the 2026-07-30 price cut and docs.apiyi.com. gpt-5.6-sol (a JEV-routed subagent model) from eesel.ai and the same OpenAI community post.",
   "_as_of": "2026-10-23",
+  "_estimates": "gpt-6.1-terra (the Codex session model of round 6, listed in the Codex catalog on 2026-10-27) has no published price in this repository or in the sources above. Until one is found, it is an estimate equal to gpt-5.6-terra, the closest terra entry. Its cost is an API-equivalent estimate, not a quote.",
   "gpt-6-astra": {
     "input": 10.0,
     "cached_input": 1.0,
@@ -39,5 +40,11 @@
     "input": 5.0,
     "cached_input": 0.5,
     "output": 30.0
+  },
+  "gpt-6.1-terra": {
+    "input": 2.0,
+    "cached_input": 0.2,
+    "output": 12.0,
+    "source": "estimate: equal to gpt-5.6-terra"
   }
 }

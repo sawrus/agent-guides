@@ -853,7 +853,7 @@ mod tests {
         assert_eq!(prompt, "Select role profile for claude:");
         assert_eq!(ids, ["team", "lean", "my"]);
         assert_eq!(labels[0], "team · 9 roles: product-owner, pm, team-lead, …");
-        assert_eq!(labels[1], "lean · explorer, reviewer · native main session");
+        assert_eq!(labels[1], "lean · explorer · native main session");
         assert_eq!(labels[2], "my · explorer · base lean · models: anthropic");
     }
 

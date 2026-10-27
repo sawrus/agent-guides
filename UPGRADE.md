@@ -157,3 +157,24 @@ This release removes prompt files and two specializations, and makes workflows r
    rule only when you touch a matching file; manual rules stay in `.agent/rules/` and are read on demand.
 8. **No Post-task review hook in pack workflows.** The role-neutral workflows have no `Post-task review`
    section, so `REVIEW_PIPELINE.md` runs only for a project workflow that adds the hook.
+
+## Migrating to v7.0.0
+
+The `lean` profile no longer installs the `reviewer` helper subagent; it installs only `explorer`. The SDLC
+benchmark (round 6, rule H4 in docs/agentic-v2-lean/README.md) never saw lean start the reviewer on the task built
+to need it, and lean without it accepted the same cells. Run `agentic upgrade` in each project, then check these
+points:
+
+1. **Obsolete files.** The upgrade removes an unmodified `.claude/agents/reviewer.md`,
+   `.codex/agents/reviewer.toml`, `.opencode/agents/reviewer.md`, and the `reviewer` entry in
+   `.opencode/opencode.json`. A reviewer file you edited stays (`Preserved customized obsolete artifact`); remove
+   it by hand if you no longer need it.
+2. **Seeded profile.** An unedited `~/.config/agentic/<host>/profiles/lean/profile.json` from an older release
+   (`"agents": ["explorer", "reviewer"]`, `"models": null`) follows the new built-in `lean` and is rewritten the
+   next time `agentic profile` or the TUI runs. An edited `lean/profile.json` is used as written.
+3. **Keep the reviewer.** Create a custom profile and add the helper, then switch to it:
+   `agentic profile create lean-review --from lean`, add `"reviewer"` to `agents` in
+   `~/.config/agentic/<host>/profiles/lean-review/profile.json`, and run `agentic profile use lean-review`.
+   The `team` profile is unchanged.
+4. **Core text.** `AGENTS.md` now asks for a reviewer subagent after a multi-module diff only when one is
+   available (the host's native reviewer or an installed one).

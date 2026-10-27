@@ -115,8 +115,8 @@ per-role model aliases in `.claude/agents`; see [Claude Code](claude-code/README
 
 ### Role profiles
 
-A role profile picks the agent files per host. `lean` (default) installs `explorer` and `reviewer` and keeps
-the native main session. `team` installs the 9 SDLC roles. Custom profiles live in
+A role profile picks the agent files per host. `lean` (default) installs `explorer` and keeps the native
+main session. A custom profile can add the `reviewer` helper (`"agents": ["explorer", "reviewer"]`). `team` installs the 9 SDLC roles. Custom profiles live in
 `~/.config/agentic/<host>/profiles/<id>/profile.json`:
 
 ```json
@@ -253,7 +253,7 @@ site shows these lines.
 
 The interactive wizard is implemented with ratatui and does not require an external `fzf` binary.
 After the Agent OS step it asks for a role profile once per selected host (Claude Code, Codex, OpenCode).
-The labels show the roles and the kind, for example `lean · explorer, reviewer · native main session`,
+The labels show the roles and the kind, for example `lean · explorer · native main session`,
 `team · 9 roles: product-owner, pm, team-lead, …`, or `my · developer, qa · base team · models: anthropic`.
 The choice is saved in `.agentic.json` (`settings.profile_ids`).
 

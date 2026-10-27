@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Opt-in paid SDLC benchmark: plain host, lean and team profiles, with and without JEV (docs/agentic-v2-lean/README.md).
 
-Every cell copies tests/bench/fixture into a fresh Git project outside any repository, installs the arm,
+Every cell copies tests/bench/fixture (or the task's `fixture`) into a fresh Git project outside any repository,
+installs the arm with the task's area and specialization selection,
 runs one native turn (plus at most one follow-up), and grades the result with deterministic checks:
 hidden tests, the existing suite, lint, CHANGELOG, allowed files, and exact answers. Never bypasses
 native trust or permissions. Cells run in a seeded random order and repeat `--reps` times.
@@ -30,11 +31,14 @@ from pilot_jev import Meter, claude_cost, command, git, host_env, opencode_child
 
 BENCH = ROOT / 'tests/bench'
 TASKS = json.loads((BENCH / 'tasks.json').read_text())
-# `<profile>-jev` arms install the profile with JEV hooks; `v1` is the frozen v1.6 binary (`make bench-v1`).
-MODES = ('plain', 'v1', 'lean', 'lean-jev', 'team', 'team-jev')
+# `<profile>-jev` arms install the profile with JEV hooks; `lean-noreviewer` is lean without the reviewer agent (since
+# round 6 lean installs no reviewer, so the arm equals `lean`; it stays for older binaries and saved results);
+# `v1` is the frozen v1.6 binary (`make bench-v1`).
+MODES = ('plain', 'v1', 'lean', 'lean-noreviewer', 'lean-jev', 'team', 'team-jev')
 DEFAULT_MODES = ('plain', 'lean', 'lean-jev', 'team-jev')
 HOSTS = ('claude', 'codex', 'opencode')
-SELECTION = ('software', 'software.backend,software.general')
+# Default install selection; a task may set its own `areas` and `specializations` (T11: devops).
+SELECTION = (('software',), ('software.backend', 'software.general'))
 # Outside any repository, so no parent AGENTS.md/CLAUDE.md leaks into a run; Codex trusts hooks per path.
 PROJECTS = Path('/tmp/agentic-bench')
 PRICES = BENCH / 'prices.json'
@@ -53,11 +57,25 @@ def binary(mode, args):
     return args.v1_binary if mode == 'v1' else ROOT / 'target/debug/agentic'
 
 
+def selection(task):
+    """(areas, specializations) the arm installs for a task."""
+    spec = TASKS[task]
+    return tuple(spec.get('areas') or SELECTION[0]), tuple(spec.get('specializations') or SELECTION[1])
+
+
+def selection_slug(task):
+    """'' for the default selection; else areas plus short specialization names, e.g. devops-kubernetes-sre."""
+    areas, specs = selection(task)
+    if (areas, specs) == SELECTION:
+        return ''
+    return '-'.join([*areas, *(s.split('.')[-1] for s in specs)])
+
+
 def copy_fixture(task, project):
-    """Fresh Git project from the shared fixture plus the task's optional seed overlay."""
+    """Fresh Git project from the task's fixture (default: the shared one) plus its optional seed overlay."""
     if project.exists():
         shutil.rmtree(project)
-    shutil.copytree(BENCH / 'fixture', project, ignore=shutil.ignore_patterns('__pycache__'))
+    shutil.copytree(BENCH / TASKS[task].get('fixture', 'fixture'), project, ignore=shutil.ignore_patterns('__pycache__'))
     if TASKS[task].get('seed'):
         shutil.copytree(BENCH / TASKS[task]['seed'], project, dirs_exist_ok=True,
                         ignore=shutil.ignore_patterns('__pycache__'))
@@ -66,16 +84,34 @@ def copy_fixture(task, project):
     git(project, *AUTHOR, 'commit', '-q', '-m', 'bench: fixture')
 
 
-def project_path(host, mode):
-    """One stable path per host and arm: Codex trusts hooks per absolute path, so every task and rep reuses it."""
-    return PROJECTS / f'{host}-{mode}'
+def project_path(host, mode, task=None):
+    """One stable path per host, arm, and install selection: Codex trusts hooks per absolute path, so every task
+    and rep with the same selection reuses it. A task with its own selection gets `<host>-<mode>-<slug>`."""
+    slug = selection_slug(task) if task else ''
+    return PROJECTS / f'{host}-{mode}' if not slug else PROJECTS / f'{host}-{mode}-{slug}'
 
 
 def install_flags(mode):
     if mode in ('plain', 'v1'):
         return []
-    profile, _, jev = mode.partition('-')
-    return ['--profile', profile, *(['--enable-jev', '--jev-api-url', JEV_API_URL] if jev else [])]
+    profile, _, variant = mode.partition('-')
+    return ['--profile', profile, *(['--enable-jev', '--jev-api-url', JEV_API_URL] if variant == 'jev' else [])]
+
+
+def remove_reviewer(project):
+    """`lean-noreviewer`: delete the installed reviewer agent and the host config entries that name it."""
+    for path in ('.claude/agents/reviewer.md', '.codex/agents/reviewer.toml', '.opencode/agents/reviewer.md'):
+        (project / path).unlink(missing_ok=True)
+    opencode = project / '.opencode/opencode.json'
+    if opencode.is_file():
+        config = json.loads(opencode.read_text())
+        if 'reviewer' in (config.get('agent') or {}):
+            del config['agent']['reviewer']
+            opencode.write_text(json.dumps(config, indent=2) + '\n')
+    codex = project / '.codex/config.toml'
+    if codex.is_file():
+        # Drop an `[agents.reviewer]` table up to the next table header.
+        codex.write_text(re.sub(r'^\[agents\.reviewer\]\n(?:(?!\[).*\n?)*', '', codex.read_text(), flags=re.M))
 
 
 def forget_host_state(host, project):
@@ -85,16 +121,19 @@ def forget_host_state(host, project):
 
 
 def prepare(host, task, mode, args):
-    project = project_path(host, mode)
+    project = project_path(host, mode, task)
     forget_host_state(host, project)
     copy_fixture(task, project)
     if mode != 'plain':
         result = subprocess.run([str(binary(mode, args)), 'install', '--project-dir', str(project), '--agent-os', host,
-                                 '--areas', SELECTION[0], '--specializations', SELECTION[1], '--no-doctor',
+                                 '--areas', ','.join(selection(task)[0]), '--specializations', ','.join(selection(task)[1]),
+                                 '--no-doctor',
                                  *install_flags(mode)],
                                 capture_output=True, text=True)
         if result.returncode:
             raise RuntimeError('agentic install failed: ' + result.stderr[-400:])
+        if mode == 'lean-noreviewer':
+            remove_reviewer(project)
         git(project, 'add', '-A')
         git(project, *AUTHOR, 'commit', '-q', '-m', 'bench: agentic install')
     return project
@@ -144,6 +183,12 @@ def grade(task, project, final_text):
             checks[check] = all(word.split('/')[-1] in final_text for word in spec['answer'])
         elif check == 'no_changes':
             checks[check] = not scoped
+        elif check == 'hidden_check':
+            # A grader script outside the project (T11 manifest rules); it reads the project and never changes it.
+            result = subprocess.run([sys.executable, '-I', str(BENCH / spec['hidden_check']), str(project)],
+                                    capture_output=True, text=True, timeout=120)
+            checks[check] = result.returncode == 0
+            test_log += (result.stdout + result.stderr)[-600:]
     if 'hidden_tests' in spec['checks']:
         for test in (BENCH / spec['hidden']).glob('*.py'):
             shutil.copy2(test, project / 'tests' / test.name)
@@ -244,6 +289,32 @@ def codex_untrusted(project):
     return missing
 
 
+def gate_record(project):
+    """Gate verdict from `.agentic/gate/last.json`. All None when the file is missing or predates the
+    `accepted`/`reason_code` fields; `released` means the gate let the agent stop after `max_blocks`."""
+    unknown = {'accepted': None, 'reason_code': None, 'released': None}
+    try:
+        last = json.loads((Path(project) / '.agentic/gate/last.json').read_text())
+    except (OSError, ValueError, TypeError):
+        return unknown
+    if not isinstance(last, dict) or not {'accepted', 'reason_code'} & last.keys():
+        return unknown
+    return {'accepted': bool(last['accepted']) if 'accepted' in last else None, 'reason_code': last.get('reason_code'),
+            'released': last.get('reason_code') == 'max_blocks' or bool(last.get('released'))}
+
+
+def cell_gate(cell):
+    """The recorded gate verdict, or one read from the cell's project snapshot for cells graded before it existed."""
+    gate = cell.get('gate') or {}
+    return gate if gate.get('accepted') is not None else gate_record(cell.get('project'))
+
+
+def gate_count(cells, key):
+    """'k/n' over the cells whose gate recorded the field; None when no cell has it."""
+    known = [cell_gate(c)[key] for c in cells if cell_gate(c)[key] is not None]
+    return f'{sum(known)}/{len(known)}' if known else None
+
+
 def cell_name(host, task, mode, rep):
     return f'{host}-{task}-{mode}-r{rep}'
 
@@ -277,7 +348,7 @@ def run_cell(host, task, mode, rep, args):
     code, reason = turn(argv + ([text] if host == 'codex' else []), None if host == 'codex' else text, project, env, trace, meter, deadline)
     turns = 1
     events, final_text = trace_events(host, trace)
-    stopped_early = not changed_files(project) and TASKS[task]['kind'] != 'question'
+    stopped_early = not changed_files(project) and not TASKS[task]['kind'].startswith('question')
     quota = pilot_jev.QUOTA.search(trace.read_text(errors='replace'))
     if not reason and stopped_early and not quota and time.monotonic() < deadline - 30:
         # The coordinator stopped for approval without changing anything; answer it once.
@@ -321,7 +392,7 @@ def run_cell(host, task, mode, rep, args):
     result = base | {'status': 'accepted' if verdict['accepted'] else (reason or 'rejected'),
                      'cap': reason, 'exit': code, 'turns': turns, 'elapsed_s': elapsed, 'acceptance': verdict,
                      'verified_after_edit': verified_after_edit(events), 'subagents': subagents, 'project': str(snapshot),
-                     'gate_evidence': (project / '.agentic/gate/last.json').is_file(),
+                     'gate_evidence': (project / '.agentic/gate/last.json').is_file(), 'gate': gate_record(project),
                      'tokens': {'uncached': sum(r['uncached'] for r in measured), 'cached': sum(r['cached'] for r in measured),
                                 'output': sum(r.get('output') or 0 for r in measured),
                                 'complete': len(measured) == len(rows) and bool(rows), 'agents': rows},
@@ -342,6 +413,7 @@ def regrade(out):
         events, final_text = trace_events(result['host'], path.parent / 'trace.jsonl')
         result['acceptance'] = grade(result['task'], project, final_text)
         result['verified_after_edit'] = verified_after_edit(events)
+        result['gate'] = gate_record(project)
         result['subagents'] = max(result.get('subagents') or 0, sum(1 for kind, _ in events if kind == 'spawn'))
         result['status'] = 'accepted' if result['acceptance']['accepted'] else (result.get('cap') or 'rejected')
         path.write_text(json.dumps(result, ensure_ascii=False, indent=2))
@@ -349,26 +421,30 @@ def regrade(out):
 
 
 def selftest():
-    """Offline grader check: the untouched fixture fails every task; the reference solutions pass."""
-    failures = []
+    """Offline grader check: the untouched fixture fails every task; the reference solutions pass; every
+    near-miss in tests/bench/negative/<task>/<case> (for example T8 `single-fix`: only `release` fixed) fails."""
+    failures, negatives = [], 0
     for task in TASKS:
-        for solved in (False, True):
-            project = PROJECTS / f'selftest-{task}-{int(solved)}'
+        cases = [('seed', None, False), ('reference', BENCH / 'reference' / task, True)]
+        cases += [(f'negative/{case.name}', case, False) for case in sorted((BENCH / 'negative' / task).glob('*'))
+                  if case.is_dir()]
+        negatives += len(cases) - 2
+        for name, overlay, solved in cases:
+            project = PROJECTS / f'selftest-{task}-{name.replace("/", "-")}'
             copy_fixture(task, project)
             answer = ''
-            if solved:
-                reference = BENCH / 'reference' / task
-                for source in reference.rglob('*'):
+            if overlay:
+                for source in overlay.rglob('*'):
                     if source.is_file() and source.name != 'answer.txt':
-                        target = project / source.relative_to(reference)
+                        target = project / source.relative_to(overlay)
                         target.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copy2(source, target)
-                answer = (reference / 'answer.txt').read_text() if (reference / 'answer.txt').is_file() else ''
+                answer = (overlay / 'answer.txt').read_text() if (overlay / 'answer.txt').is_file() else ''
             verdict = grade(task, project, answer)
             if verdict['accepted'] != solved:
-                failures.append(f'{task} solved={solved}: {verdict["checks"]}')
+                failures.append(f'{task} {name}: expected accepted={solved}, checks {verdict["checks"]}')
             shutil.rmtree(project)
-    print('\n'.join(failures) or f'bench selftest: ok ({len(TASKS)} tasks)')
+    print('\n'.join(failures) or f'bench selftest: ok ({len(TASKS)} tasks, {negatives} negatives)')
     return 1 if failures else 0
 
 
@@ -478,6 +554,7 @@ def summarize(cells, prices):
                 'jev_tokens': sum(sum((j.get('usage') or {}).values()) for j in jev) if mode.endswith('-jev') else None,
                 'jev_cost': (sum(jev_cost(c, prices) or 0 for c in group) if mode.endswith('-jev') and prices.get('typesafe/jev')
                              else None),
+                'accepted_by_gate': gate_count(group, 'accepted'), 'released': gate_count(group, 'released'),
                 'harness_errors': errors})
     return rows
 
@@ -486,30 +563,35 @@ def report(out, path):
     """Markdown report per cell, per host and mode, and per task; summary.json next to it."""
     cells = [json.loads(p.read_text()) for p in sorted(Path(out).glob('*/result.json'))]
     prices = {k: v for k, v in json.loads(PRICES.read_text()).items() if not k.startswith('_')} if PRICES.is_file() else {}
-    lines = ['| Host | Task | Mode | Rep | Status | Full | Uncached | Cached | Cost $ | Turns | Subagents | JEV calls | Green | Failed checks |',
-             '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
+    lines = ['| Host | Task | Mode | Rep | Status | Full | Uncached | Cached | Cost $ | Turns | Subagents | JEV calls | Green | '
+             'Accepted by gate | Released | Failed checks |',
+             '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
+    known = (lambda v: 'n/a' if v is None else v)
     for c in sorted(cells, key=lambda c: (c['host'], c['task'], MODES.index(c['mode']), c.get('rep', 1))):
         acceptance = c.get('acceptance') or {}
         failed = [k for k, v in (acceptance.get('checks') or {}).items() if not v] or ([c['reason']] if c.get('reason') else [])
         tokens = c.get('tokens') or {}
         cost = estimated_cost(c, prices) if tokens else None
+        gate = cell_gate(c)
         lines.append(f"| {c['host']} | {c['task']} | {c['mode']} | {c.get('rep', 1)} | {c['status']} | {fmt_tokens(input_tokens(tokens))} | "
                      f"{fmt_tokens(tokens.get('uncached'))} | {fmt_tokens(tokens.get('cached'))} | {'' if cost is None else round(cost, 3)} | "
                      f"{c.get('turns', '')} | {c.get('subagents', '')} | {(c.get('jev') or {}).get('calls', '')} | "
-                     f"{acceptance.get('delivered_green', '')} | {', '.join(failed)} |")
+                     f"{acceptance.get('delivered_green', '')} | {known(gate['accepted'])} | {known(gate['released'])} | "
+                     f"{', '.join(failed)} |")
     summary = summarize(cells, prices)
     lines += ['', 'Full = uncached + cached tokens. Tokens: median (IQR). Cost per success = total cost / accepted cells. '
               'Codex and OpenCode cost is an API-equivalent estimate from `tests/bench/prices.json`; empty when a price is unknown. '
-              'Cost includes the JEV API (also shown alone as JEV $).',
-              '', '| Host | Mode | Tasks | Accepted | Success (95% CI) | Green | Full tokens | Uncached tokens | Subagents (mean) | '
-              'Cost $ | Cost per success $ | JEV calls (mean) | JEV tokens | JEV $ | Harness errors |',
-              '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
+              'Cost includes the JEV API (also shown alone as JEV $). Accepted by gate and Released come from '
+              '`.agentic/gate/last.json` (`accepted`, `reason_code`) over the cells that record them; n/a when none does.',
+              '', '| Host | Mode | Tasks | Accepted | Success (95% CI) | Green | Accepted by gate | Released | Full tokens | '
+              'Uncached tokens | Subagents (mean) | Cost $ | Cost per success $ | JEV calls (mean) | JEV tokens | JEV $ | Harness errors |',
+              '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for r in summary:
         ci = r['wilson95']
         rate = '' if r['success_rate'] is None else f"{r['success_rate']:.0%} ({ci[0]:.0%}–{ci[1]:.0%})"
         money = (lambda v: '' if v is None else f'{v:.3f}')
         lines.append(f"| {r['host']} | {r['mode']} | {','.join(r['tasks'])} | {r['accepted']}/{r['n']} | {rate} | {r['green']}/{r['n']} | "
-                     f"{fmt_range(r['full_tokens'])} | {fmt_range(r['uncached_tokens'])} | "
+                     f"{known(r['accepted_by_gate'])} | {known(r['released'])} | {fmt_range(r['full_tokens'])} | {fmt_range(r['uncached_tokens'])} | "
                      f"{'' if r['subagents_mean'] is None else round(r['subagents_mean'], 2)} | {money(r['cost_total'])} | "
                      f"{money(r['cost_per_success'])} | {'' if r['jev_calls_mean'] is None else round(r['jev_calls_mean'], 2)} | "
                      f"{'' if r['jev_tokens'] is None else fmt_tokens(r['jev_tokens'])} | "
@@ -569,11 +651,14 @@ def main():
     if 'v1' in modes and not args.v1_binary.is_file():
         sys.exit(f'[bench] missing v1 binary {args.v1_binary}; run `make bench-v1`')
     if args.prepare_only:
+        # One project per install selection among the chosen tasks (T11 adds `<host>-<mode>-<slug>`).
+        firsts = list({selection(task): task for task in reversed(tasks)}.values())[::-1]
         for host in hosts:
             for mode in modes:
-                project = prepare(host, tasks[0], mode, args)
-                untrusted = codex_untrusted(project) if host == 'codex' else []
-                print(json.dumps({'project': str(project), 'untrusted_hooks': len(untrusted)}), flush=True)
+                for task in firsts:
+                    project = prepare(host, task, mode, args)
+                    untrusted = codex_untrusted(project) if host == 'codex' else []
+                    print(json.dumps({'project': str(project), 'untrusted_hooks': len(untrusted)}), flush=True)
         return 0
     cells = [(h, t, m, r) for h in hosts for t in tasks for m in modes for r in range(1, args.reps + 1)]
     # A fixed order lets later arms reuse an earlier arm's prompt cache; a seeded shuffle spreads that effect.

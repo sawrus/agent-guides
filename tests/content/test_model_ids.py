@@ -3,8 +3,8 @@
 Frozen catalogs, captured 2026-10-19. Refresh them when a host catalog changes:
 - OpenCode openai: `opencode models | grep '^openai/'`. OpenCode 2.x rejects the provider argument of
   `opencode models openai`.
-- Codex: the slugs with `visibility: list` in `~/.codex/models_cache.json` (fetched_at 2026-10-19T07:58:31Z,
-  client_version 0.163.0).
+- Codex: the slugs with `visibility: list` in `~/.codex/models_cache.json` (fetched_at 2026-10-27T07:22:08Z,
+  client_version 0.164.0; `gpt-6.1-terra` is new since 2026-10-19).
 """
 import json
 from pathlib import Path
@@ -21,7 +21,8 @@ OPENCODE_OPENAI = frozenset({
     'openai/gpt-6-luna', 'openai/gpt-6-luna-fast', 'openai/gpt-6-sol', 'openai/gpt-6-sol-fast',
     'openai/gpt-6.1-sol', 'openai/gpt-6.1-sol-fast', 'openai/gpt-6.1-sol-ultrafast',
 })
-CODEX = frozenset({'gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'})
+CODEX = frozenset({'gpt-6.1-sol', 'gpt-6.1-terra', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna',
+                   'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'})
 NATIVE_OPENCODE_AGENTS = {'explore', 'general'}
 RETIRED = 'gpt-6-terra'
 # PO decision 2026-10-19: the Copilot catalog is not verified; its profile is follow-up F1.
@@ -34,7 +35,7 @@ def load(relative):
 
 
 def codex_role_models():
-    # Lean helpers (explorer, reviewer) pin no model and inherit the session model.
+    # Helpers (explorer; reviewer for custom profiles) pin no model and inherit the session model.
     profiles = sorted((EXTENSIONS / 'codex/agents').glob('*.toml'))
     found = {p.stem: TOML_MODEL.search(p.read_text(encoding='utf-8')) for p in profiles}
     return {role: match[1] for role, match in found.items() if match}

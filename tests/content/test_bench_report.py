@@ -21,7 +21,33 @@ class BenchArms(unittest.TestCase):
         self.assertEqual(bench_sdlc.install_flags('lean'), ['--profile', 'lean'])
         self.assertEqual(bench_sdlc.install_flags('lean-jev')[:3], ['--profile', 'lean', '--enable-jev'])
         self.assertEqual(bench_sdlc.install_flags('team-jev')[:3], ['--profile', 'team', '--enable-jev'])
+        self.assertEqual(bench_sdlc.install_flags('lean-noreviewer'), ['--profile', 'lean'])
         self.assertTrue(set(bench_sdlc.DEFAULT_MODES) <= set(bench_sdlc.MODES))
+
+    def test_noreviewer_removes_the_reviewer_agent_and_its_config_entries(self):
+        with tempfile.TemporaryDirectory() as temp:
+            project = Path(temp)
+            agents = ['.claude/agents/reviewer.md', '.codex/agents/reviewer.toml', '.opencode/agents/reviewer.md',
+                      '.claude/agents/explorer.md']
+            for path in agents:
+                (project / path).parent.mkdir(parents=True, exist_ok=True)
+                (project / path).write_text('agent')
+            (project / '.opencode/opencode.json').write_text(json.dumps(
+                {'agent': {'explorer': {'mode': 'subagent'}, 'reviewer': {'mode': 'subagent'}}}))
+            (project / '.codex/config.toml').write_text(
+                '[agents]\nmax_threads = 8\n\n[agents.reviewer]\nconfig_file = "agents/reviewer.toml"\n\n'
+                '[agents.explorer]\nconfig_file = "agents/explorer.toml"\n')
+            bench_sdlc.remove_reviewer(project)
+            self.assertEqual([p for p in agents if (project / p).exists()], ['.claude/agents/explorer.md'])
+            self.assertEqual(json.loads((project / '.opencode/opencode.json').read_text())['agent'],
+                             {'explorer': {'mode': 'subagent'}})
+            config = (project / '.codex/config.toml').read_text()
+            self.assertNotIn('reviewer', config)
+            self.assertIn('[agents.explorer]', config)
+
+    def test_question_tasks_never_get_a_followup_turn(self):
+        kinds = {spec['kind'] for spec in bench_sdlc.TASKS.values() if 'no_changes' in spec['checks']}
+        self.assertEqual(kinds, {'question', 'question-rule'})
 
     def test_codex_usage_limit_is_a_quota_stop(self):
         message = "You've hit your usage limit. Upgrade to Pro or try again at 7:22 PM."
@@ -39,11 +65,21 @@ class BenchArms(unittest.TestCase):
         self.assertEqual(bench_sdlc.project_path('codex', 'lean-jev').name, 'codex-lean-jev')
         self.assertEqual(bench_sdlc.cell_name('codex', 'T1', 'lean-jev', 2), 'codex-T1-lean-jev-r2')
 
+    def test_a_task_selection_gets_its_own_project(self):
+        self.assertEqual(bench_sdlc.project_path('codex', 'lean', 'T8').name, 'codex-lean')
+        self.assertEqual(bench_sdlc.selection('T11'),
+                         (('devops',), ('devops.infrastructure', 'devops.kubernetes', 'devops.sre')))
+        self.assertEqual(bench_sdlc.project_path('codex', 'lean', 'T11').name,
+                         'codex-lean-devops-infrastructure-kubernetes-sre')
+
     def test_every_task_has_a_reference_and_hidden_tests(self):
         for task, spec in bench_sdlc.TASKS.items():
             self.assertTrue((bench_sdlc.BENCH / 'reference' / task).is_dir(), task)
+            self.assertTrue((bench_sdlc.BENCH / spec.get('fixture', 'fixture')).is_dir(), task)
             if 'hidden_tests' in spec['checks']:
                 self.assertTrue(any((bench_sdlc.BENCH / spec['hidden']).glob('test_hidden_*.py')), task)
+            if 'hidden_check' in spec['checks']:
+                self.assertTrue((bench_sdlc.BENCH / spec['hidden_check']).is_file(), task)
 
 
 class BenchStatistics(unittest.TestCase):
@@ -93,6 +129,23 @@ class BenchStatistics(unittest.TestCase):
         self.assertEqual((rows['lean-jev']['jev_calls_mean'], rows['lean-jev']['jev_tokens']), (1, 55))
         self.assertIsNone(rows['plain']['jev_calls_mean'])
 
+    def test_gate_columns_are_na_without_accepted_fields(self):
+        with tempfile.TemporaryDirectory() as temp:
+            old, new = Path(temp, 'old'), Path(temp, 'new')
+            (old / '.agentic/gate').mkdir(parents=True)
+            (old / '.agentic/gate/last.json').write_text(json.dumps({'checks': [], 'released': 'max_blocks reached'}))
+            (new / '.agentic/gate').mkdir(parents=True)
+            (new / '.agentic/gate/last.json').write_text(json.dumps({'accepted': False, 'reason_code': 'max_blocks'}))
+            self.assertEqual(bench_sdlc.gate_record(old), {'accepted': None, 'reason_code': None, 'released': None})
+            self.assertEqual(bench_sdlc.gate_record(new), {'accepted': False, 'reason_code': 'max_blocks', 'released': True})
+            rows = {r['mode']: r for r in bench_sdlc.summarize(
+                [cell('claude', 'T1', 'plain', project=str(old)),
+                 cell('claude', 'T1', 'lean', project=str(new)),
+                 cell('claude', 'T1', 'lean', rep=2, gate={'accepted': True, 'reason_code': 'checks_passed', 'released': False})],
+                {})}
+            self.assertEqual((rows['plain']['accepted_by_gate'], rows['plain']['released']), (None, None))
+            self.assertEqual((rows['lean']['accepted_by_gate'], rows['lean']['released']), ('1/2', '1/2'))
+
     def test_report_writes_markdown_and_summary_json(self):
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp)
@@ -103,6 +156,8 @@ class BenchStatistics(unittest.TestCase):
             summary = json.loads((out / 'summary.json').read_text())
             self.assertEqual({r['mode']: r['accepted'] for r in summary}, {'plain': 0, 'lean': 1})
             self.assertIn('Cost per success', (out / 'report.md').read_text())
+            self.assertIn('| Accepted by gate | Released |', (out / 'report.md').read_text())
+            self.assertIn('| n/a | n/a |', (out / 'report.md').read_text())
 
 
 if __name__ == '__main__':

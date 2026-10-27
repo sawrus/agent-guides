@@ -83,12 +83,15 @@ fn lean_jev_keeps_native_layout_on_each_host() {
         assert_eq!(manifest["settings"]["jev"]["enabled"], true, "{host}");
         assert!(p.join(".agent/jev/hook.py").is_file(), "{host}");
         assert!(p.join(".agent/gate/gate.py").is_file(), "{host}");
-        for helper in ["explorer", "reviewer"] {
-            assert!(
-                p.join(agents).join(format!("{helper}.{suffix}")).is_file(),
-                "{host} {helper}"
-            );
-        }
+        assert!(
+            p.join(agents).join(format!("explorer.{suffix}")).is_file(),
+            "{host} explorer"
+        );
+        // Round 6 (rule H4): `reviewer` left the lean default.
+        assert!(
+            !p.join(agents).join(format!("reviewer.{suffix}")).exists(),
+            "{host} reviewer"
+        );
         for role in team {
             assert!(
                 !p.join(agents).join(format!("{role}.{suffix}")).exists(),
@@ -186,7 +189,7 @@ fn jev_hooks_enable_provider_replay_and_explicit_disable() {
     )
     .unwrap();
     assert_eq!(defaults["version"], 2);
-    assert_eq!(defaults["roles"]["developer"], "gpt-6.1-sol");
+    assert_eq!(defaults["roles"]["developer"], "gpt-6.1-terra");
     assert_eq!(defaults["tiers"]["frontier"], "gpt-6-astra");
     for runtime in ["questions.py", "routing.py", "adapters.py"] {
         assert!(project.path().join(".agent/jev").join(runtime).is_file());
@@ -231,10 +234,10 @@ fn jev_hooks_enable_provider_replay_and_explicit_disable() {
         .exists());
     assert!(std::fs::read_to_string(&developer_profile)
         .unwrap()
-        .contains("model = \"gpt-6.1-sol\""));
+        .contains("model = \"gpt-6.1-terra\""));
     let user_profile = std::fs::read_to_string(&developer_profile)
         .unwrap()
-        .replace("gpt-6.1-sol", "user-pinned-model");
+        .replace("gpt-6.1-terra", "user-pinned-model");
     std::fs::write(&developer_profile, &user_profile).unwrap();
     let limited = std::fs::read_to_string(&codex_config)
         .unwrap()
@@ -458,13 +461,10 @@ fn opencode_codex_install_layout() {
     assert!(project.path().join("MEMORY.md").is_file());
     // lean leaves Codex memories off; its agents inherit the session model
     assert!(!project.path().join(".codex/config.toml").exists());
-    for agent in ["explorer", "reviewer"] {
-        let toml =
-            std::fs::read_to_string(project.path().join(format!(".codex/agents/{agent}.toml")))
-                .unwrap();
-        assert!(!toml.contains("\nmodel = "), "{agent} pins a model");
-        assert!(toml.contains("model_reasoning_effort"));
-    }
+    assert!(!project.path().join(".codex/agents/reviewer.toml").exists());
+    let toml = std::fs::read_to_string(project.path().join(".codex/agents/explorer.toml")).unwrap();
+    assert!(!toml.contains("\nmodel = "), "explorer pins a model");
+    assert!(toml.contains("model_reasoning_effort"));
     // opencode prompts are skipped, workflows land in commands
     assert!(!project.path().join(".opencode/prompts").exists());
 }
@@ -1250,9 +1250,9 @@ fn claude_install_writes_native_layout() {
     assert!(p.join(".claude/rules/makefile-guide.md").is_file());
     assert!(!p.join(".claude/rules/git-workflow-guide.md").exists());
     assert!(p.join(".agent/rules/git-workflow-guide.md").is_file());
-    // Lean profile: two helper subagents and the native main session.
+    // Lean profile: the explorer helper and the native main session.
     assert!(p.join(".claude/agents/explorer.md").is_file());
-    assert!(p.join(".claude/agents/reviewer.md").is_file());
+    assert!(!p.join(".claude/agents/reviewer.md").exists());
     assert!(!p.join(".claude/agents/product-owner.md").exists());
     let lean: Value =
         serde_json::from_str(&std::fs::read_to_string(p.join(".claude/settings.json")).unwrap())
@@ -1552,6 +1552,66 @@ fn profile_use_switches_team_to_lean_on_each_host() {
     }
 }
 
+/// A lean project of an older release has the `reviewer` helper and an unedited lean seed with it. The upgrade
+/// follows the new lean default: it removes the unchanged reviewer file and keeps an edited one.
+#[test]
+fn upgrade_removes_the_old_lean_reviewer_unless_edited() {
+    for host in ["codex", "claude", "opencode"] {
+        for edited in [false, true] {
+            let (agents, suffix, _) = host_layout(host);
+            let home = tempfile::tempdir().unwrap();
+            let project = tempfile::tempdir().unwrap();
+            let p = project.path();
+            let profiles = home.path().join(format!(".config/agentic/{host}/profiles"));
+            let old = profiles.join("old");
+            std::fs::create_dir_all(&old).unwrap();
+            std::fs::write(
+                old.join("profile.json"),
+                r#"{"name":"old","base":"lean","agents":["explorer","reviewer"],"models":null}"#,
+            )
+            .unwrap();
+            install_host(home.path(), p, host, "old");
+            let reviewer = p.join(format!("{agents}/reviewer.{suffix}"));
+            assert!(reviewer.is_file(), "{host}");
+            // Turn the install into an old lean one: the manifest names `lean` and the seed lists the reviewer.
+            std::fs::remove_dir_all(&old).unwrap();
+            std::fs::create_dir_all(profiles.join("lean")).unwrap();
+            std::fs::write(
+                profiles.join("lean/profile.json"),
+                r#"{"name":"lean","base":"lean","agents":["explorer","reviewer"],"models":null}"#,
+            )
+            .unwrap();
+            let manifest_path = p.join(".agentic.json");
+            let mut manifest: Value =
+                serde_json::from_str(&std::fs::read_to_string(&manifest_path).unwrap()).unwrap();
+            manifest["settings"]["profile_ids"][host] = json!("lean");
+            if let Some(settings) = manifest["settings"].as_object_mut() {
+                settings.remove("profile_defs");
+            }
+            std::fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+            if edited {
+                std::fs::write(&reviewer, "user edit\n").unwrap();
+            }
+            sync_upgrade(p, home.path(), false)
+                .env_remove("AGENTIC_PROFILE")
+                .env_remove("AGENTIC_ENABLE_JEV")
+                .env_remove("AGENTIC_OPENCODE_PROFILE")
+                .env_remove("AGENTIC_CLAUDE_PROFILE")
+                .assert()
+                .success();
+            assert_eq!(reviewer.is_file(), edited, "{host} edited={edited}");
+            assert!(
+                p.join(format!("{agents}/explorer.{suffix}")).is_file(),
+                "{host}"
+            );
+            if let Ok(config) = std::fs::read_to_string(p.join(".opencode/opencode.json")) {
+                let data: Value = serde_json::from_str(&config).unwrap();
+                assert!(data["agent"].get("reviewer").is_none(), "{host}");
+            }
+        }
+    }
+}
+
 /// A custom profile in `~/.config/agentic/<host>/profiles/<id>/profile.json` installs only its agents.
 #[test]
 fn custom_profile_installs_only_listed_agents_on_each_host() {
@@ -1639,7 +1699,7 @@ fn profile_cli_list_create_show() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "codex\tlean\tlean · explorer, reviewer · native main session",
+            "codex\tlean\tlean · explorer · native main session",
         ))
         .stdout(predicate::str::contains("codex\tteam\tteam · 9 roles"));
     agentic(home.path())
