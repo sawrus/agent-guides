@@ -158,7 +158,7 @@ This release removes prompt files and two specializations, and makes workflows r
 8. **No Post-task review hook in pack workflows.** The role-neutral workflows have no `Post-task review`
    section, so `REVIEW_PIPELINE.md` runs only for a project workflow that adds the hook.
 
-## Migrating to the lean-without-reviewer release
+## Migrating to v7.0.0
 
 The `lean` profile no longer installs the `reviewer` helper subagent; it installs only `explorer`. The SDLC
 benchmark (round 6, rule H4 in docs/agentic-v2-lean/README.md) never saw lean start the reviewer on the task built

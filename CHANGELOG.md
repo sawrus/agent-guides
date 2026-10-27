@@ -1,5 +1,24 @@
 # Changelog
 
+## v7.0.0
+
+- Breaking: the `lean` profile installs only the `explorer` helper. Benchmark round 6 rule H4: without `reviewer`
+  lean accepted the same cells (T8v2: Codex 9/9 vs 9/9, Claude 3/3 vs 3/3) and the reviewer never ran there.
+  `agentic upgrade` removes unchanged reviewer files and keeps edited ones; an unedited old `lean/profile.json`
+  seed follows the new default. To keep the reviewer, add `"reviewer"` to a custom profile (`UPGRADE.md`).
+- The core `AGENTS.md` asks for a reviewer subagent after a multi-module diff only when one is available
+  (host-native or installed); the Claude lean command wrapper no longer starts `reviewer`.
+- Benchmark round 6 (`docs/agentic-v2-lean/results.md`): H0 met on Codex (every lean helper ran on the session
+  model; lean + JEV costs 1.09 × lean), H4 applied, H-clean partly met (quality kept; on the devops task T11 plain
+  0/3 vs lean 3/3, lean uncached tokens ×0.72 and cost ×0.85 after the content cleanup).
+- Benchmark: harder T8 (two code paths), new devops task T11 with its own install selection (`areas`,
+  `specializations`, `fixture` per task), T10 graded on the Makefile targets every rule version requires, selftest
+  negatives (`tests/bench/negative/`), `Accepted by gate` and `Released` report columns, mode `lean-noreviewer`
+  (now an alias of `lean`).
+- Codex `gpt-6.1-terra` is the `balanced` tier, the team role default and the benchmark coordinator default; it
+  needs codex-cli 0.164 or later (0.153 rejects it with `model_not_found`). `tests/bench/prices.json` lists it at an
+  estimated price.
+
 ## v6.0.0
 
 - Breaking: the pack follows `docs/artifact-standard.md`; `make check-artifacts` runs with an empty baseline.
