@@ -26,9 +26,9 @@ from reposcan import applicability, cli, common, discover, metrics  # noqa: E402
 FIXTURES = Path(__file__).resolve().parent / 'fixtures'
 HOST = 'gitlab.example.com'
 LAYOUT = {
-    'apiutil': 'team/pypi/apiutil',
-    'rule-engine': 'team/antifraud-rules/rule-engine',
-    'rule-catalog': 'team/antifraud-rules/rule-catalog',
+    'shared-lib': 'team/pypi/shared-lib',
+    'order-service': 'team/example-group/order-service',
+    'catalog-lib': 'team/example-group/catalog-lib',
     'bash-scripts': 'team/maintenance/bash-scripts',
     'handbook': 'team/docs/handbook',
 }
@@ -95,17 +95,17 @@ class ScanTest(unittest.TestCase):
         graph = (self.out / 'graph.mmd').read_text()
         self.assertIn('flowchart LR', graph)
         self.assertIn('-->|library', graph)
-        self.assertIn(f'["{HOST}/team/antifraud-rules/rule-engine"]', graph)
+        self.assertIn(f'["{HOST}/team/example-group/order-service"]', graph)
 
     def test_discovery_and_url_identity(self):
         self.assertEqual(set(self.repos), {rid(n) for n in LAYOUT})
-        engine = self.repos[rid('rule-engine')]
-        self.assertEqual(engine['id'], f'https://{HOST}/team/antifraud-rules/rule-engine')
+        engine = self.repos[rid('order-service')]
+        self.assertEqual(engine['id'], f'https://{HOST}/team/example-group/order-service')
         self.assertEqual(engine['url_source'], 'path')
         self.assertTrue(engine['url_verified'])
-        self.assertEqual(engine['git']['remote_key'], f'{HOST}/{LAYOUT["rule-engine"]}')
+        self.assertEqual(engine['git']['remote_key'], f'{HOST}/{LAYOUT["order-service"]}')
         self.assertEqual(engine['git']['commits_window'], 1)
-        self.assertEqual(Path(engine['local_path']), (self.root / 'antifraud-rules/rule-engine').resolve())
+        self.assertEqual(Path(engine['local_path']), (self.root / 'example-group/order-service').resolve())
 
     def test_local_paths_only_in_repositories_json(self):
         for name in ('relationships.json', 'guide-applicability.json', 'graph.mmd'):
@@ -118,7 +118,7 @@ class ScanTest(unittest.TestCase):
 
     def test_activity_classes(self):
         classes = {r['name']: r['activity']['class'] for r in self.repos.values()}
-        self.assertEqual(classes, {'apiutil': 'active', 'rule-engine': 'active', 'rule-catalog': 'active',
+        self.assertEqual(classes, {'shared-lib': 'active', 'order-service': 'active', 'catalog-lib': 'active',
                                    'bash-scripts': 'junk', 'handbook': 'docs'})
         self.assertIn('path segment: maintenance', self.repos[rid('bash-scripts')]['activity']['reasons'])
 
@@ -134,42 +134,42 @@ class ScanTest(unittest.TestCase):
         stats = self.rel['stats']
         self.assertEqual(stats['trusted_min'], 0.8)
         self.assertEqual(stats['trusted_by_kind'], {'http': 1, 'kafka': 1, 'library': 1})
-        self.assertTrue(self.edge('rule-engine', 'apiutil', 'library')['trusted'])
+        self.assertTrue(self.edge('order-service', 'shared-lib', 'library')['trusted'])
         self.assertTrue(all(e['trusted'] == (e['confidence'] >= 0.8) for e in self.rel['edges']))
 
     def test_metrics_and_manifests(self):
-        engine = self.repos[rid('rule-engine')]
+        engine = self.repos[rid('order-service')]
         self.assertEqual(engine['metrics']['tool'], 'builtin')
         self.assertGreater(engine['metrics']['languages']['Python']['code'], 5)
         self.assertEqual(engine['makefile']['targets'], ['build', 'lint', 'test'])
-        self.assertEqual(engine['makefile']['name_vars'], {'APPLICATION': 'rule-engine'})
+        self.assertEqual(engine['makefile']['name_vars'], {'APPLICATION': 'order-service'})
         self.assertEqual([j['name'] for j in engine['ci']['gitlab']['jobs']], ['test'])
         self.assertFalse(engine['agents']['agents_md'])
         sources = engine['manifests']['pyproject']['sources']
         self.assertEqual(sources[0]['host'], 'registry.example.com')
         env = next(e for e in engine['manifests']['env'] if e['path'] == 'sample.env')
         keys = {k['key']: k for k in env['keys']}
-        self.assertEqual(keys['RULE_CATALOG_ENDPOINT'], {'key': 'RULE_CATALOG_ENDPOINT', 'line': 2, 'host': 'rule-catalog'})
+        self.assertEqual(keys['CATALOG_LIB_ENDPOINT'], {'key': 'CATALOG_LIB_ENDPOINT', 'line': 2, 'host': 'catalog-lib'})
         self.assertNotIn('host', keys['API_TOKEN'])
 
     def test_library_edge_from_pyproject_and_import(self):
-        edge = self.edge('rule-engine', 'apiutil', 'library')
+        edge = self.edge('order-service', 'shared-lib', 'library')
         self.assertEqual(edge['confidence'], 0.95)
-        self.assertEqual(edge['detail']['packages'], ['apiutil'])
-        self.assertEqual(edge['detail']['imports'], ['apiutil'])
+        self.assertEqual(edge['detail']['packages'], ['shared_lib'])
+        self.assertEqual(edge['detail']['imports'], ['shared_lib'])
         paths = {(e['repo'], e['path'], e.get('line')) for e in edge['evidence']}
-        self.assertIn((rid('rule-engine'), 'pyproject.toml', 12), paths)
-        self.assertIn((rid('rule-engine'), 'src/api.py', 6), paths)
-        self.assertIn((rid('apiutil'), 'pyproject.toml', 2), paths)
+        self.assertIn((rid('order-service'), 'pyproject.toml', 12), paths)
+        self.assertIn((rid('order-service'), 'src/api.py', 6), paths)
+        self.assertIn((rid('shared-lib'), 'pyproject.toml', 2), paths)
 
     def test_http_edge_from_sample_env(self):
-        edge = self.edge('rule-engine', 'rule-catalog', 'http')
+        edge = self.edge('order-service', 'catalog-lib', 'http')
         self.assertEqual(edge['confidence'], 0.9)
-        self.assertIn({'repo': rid('rule-engine'), 'path': 'sample.env', 'line': 2, 'key': 'RULE_CATALOG_ENDPOINT'},
+        self.assertIn({'repo': rid('order-service'), 'path': 'sample.env', 'line': 2, 'key': 'CATALOG_LIB_ENDPOINT'},
                       edge['evidence'])
 
     def test_kafka_edge_with_direction(self):
-        edge = self.edge('rule-catalog', 'rule-engine', 'kafka')
+        edge = self.edge('catalog-lib', 'order-service', 'kafka')
         self.assertEqual(edge['detail'], {'topics': ['rules.decisions'], 'direction': 'consumes-from'})
 
     def test_unresolved_is_not_guessed(self):
@@ -178,7 +178,7 @@ class ScanTest(unittest.TestCase):
         self.assertIn(('library', 'privatelib', 'private source, no publishing repo found'), refs)
         self.assertIn(('ci', 'team/infra/gitlab_ci', 'no matching repo'), refs)
         targets = {(e['from'], e['to']) for e in self.rel['edges']}
-        self.assertNotIn((rid('rule-engine'), rid('rule-engine')), targets)
+        self.assertNotIn((rid('order-service'), rid('order-service')), targets)
         self.assertEqual(self.rel['stats']['skipped_infra_endpoints'], 1)  # DATABASE_URL
 
     def test_no_secret_values_in_outputs(self):
@@ -190,7 +190,7 @@ class ScanTest(unittest.TestCase):
 
     def test_guide_applicability_uses_real_ids(self):
         known = applicability.guide_paths(ROOT)
-        engine = self.guides['repositories'][rid('rule-engine')]
+        engine = self.guides['repositories'][rid('order-service')]
         for kind in ('rules', 'workflows'):
             for entry in engine[kind]:
                 self.assertIn((kind, entry['id']), known)
@@ -203,7 +203,7 @@ class ScanTest(unittest.TestCase):
         self.assertIn('software/full-stack/env-settings-guide', rules)
         self.assertIn('devops/ci-cd/pipeline-debug', workflows)
         self.assertIn('software/full-stack/debug-issue-fullstack', workflows)  # http-consumer
-        library = {r['id'] for r in self.guides['repositories'][rid('apiutil')]['rules']}
+        library = {r['id'] for r in self.guides['repositories'][rid('shared-lib')]['rules']}
         self.assertIn('software/security/dependency-policy', library)  # internal-library: incoming edges
         for task, ids in engine['task_routing'].items():
             self.assertTrue(set(ids) <= workflows, task)
@@ -226,13 +226,13 @@ class ScanTest(unittest.TestCase):
         self.assertEqual(code, 0)
         repos = {r['id']: r for r in json.loads((out / 'repositories.json').read_text())['repositories']}
         self.assertEqual(set(repos), {rid(n, base) for n in LAYOUT})
-        engine = repos[rid('rule-engine', base)]
+        engine = repos[rid('order-service', base)]
         self.assertEqual(engine['url_source'], 'root-url')
         self.assertFalse(engine['url_verified'])  # origin points to gitlab.example.com
         rel = json.loads((out / 'relationships.json').read_text())
         pairs = {(e['from'], e['to'], e['kind'], e['trusted']) for e in rel['edges']}
-        self.assertIn((rid('rule-engine', base), rid('apiutil', base), 'library', True), pairs)
-        self.assertIn((rid('rule-engine', base), rid('rule-catalog', base), 'http', False), pairs)
+        self.assertIn((rid('order-service', base), rid('shared-lib', base), 'library', True), pairs)
+        self.assertIn((rid('order-service', base), rid('catalog-lib', base), 'http', False), pairs)
         self.assertEqual(rel['stats']['trusted_by_kind'], {'library': 1})
         meta_roots = json.loads((out / 'guide-applicability.json').read_text())['roots']
         self.assertEqual(meta_roots, [{'url': base, 'source': 'root-url'}])
@@ -249,10 +249,10 @@ class ScanTest(unittest.TestCase):
         code, _, _ = run_cli('scan', str(root), '--out', str(Path(tmp) / 'out'), '--now', NOW, '--no-scc',
                              '--write-repo-artifacts')
         self.assertEqual(code, 0)
-        repo = root / 'antifraud-rules/rule-engine'
+        repo = root / 'example-group/order-service'
         deps = json.loads((repo / '.agentic/dependencies.json').read_text())
         self.assertEqual({e['to'] for e in deps['outgoing']},
-                         {rid('apiutil'), rid('rule-catalog')})
+                         {rid('shared-lib'), rid('catalog-lib')})
         self.assertTrue((repo / '.agentic/repo-scan.json').is_file())
         self.assertIn('.agentic/', (repo / '.git/info/exclude').read_text().splitlines())
         self.assertEqual(sh('git', 'status', '--porcelain', cwd=repo), '')
@@ -267,39 +267,39 @@ class GateTest(unittest.TestCase):
 
     def test_propose_reads_makefile_and_ci_without_running(self):
         out = Path(self.tmp) / 'out'
-        engine = (self.root / 'antifraud-rules/rule-engine').resolve()
-        catalog = (self.root / 'antifraud-rules/rule-catalog').resolve()
-        code, _, _ = run_cli('gate-propose', str(engine), str(catalog), str(self.root / 'pypi/apiutil'),
+        engine = (self.root / 'example-group/order-service').resolve()
+        catalog = (self.root / 'example-group/catalog-lib').resolve()
+        code, _, _ = run_cli('gate-propose', str(engine), str(catalog), str(self.root / 'pypi/shared-lib'),
                              '--out', str(out))
         self.assertEqual(code, 0)
         proposals = json.loads((out / 'gate-proposals.json').read_text())['proposals']
-        self.assertEqual(set(proposals), {rid('rule-engine'), rid('rule-catalog'), rid('apiutil')})
-        self.assertEqual(proposals[rid('rule-engine')]['gate'], {'commands': ['make test', 'make lint'],
+        self.assertEqual(set(proposals), {rid('order-service'), rid('catalog-lib'), rid('shared-lib')})
+        self.assertEqual(proposals[rid('order-service')]['gate'], {'commands': ['make test', 'make lint'],
                                                                  'changelog': False, 'max_blocks': 3})
-        self.assertEqual(proposals[rid('rule-catalog')]['gate']['commands'], ['ruff check .', 'pytest -q'])
-        self.assertTrue(proposals[rid('apiutil')]['gate']['changelog'])
+        self.assertEqual(proposals[rid('catalog-lib')]['gate']['commands'], ['ruff check .', 'pytest -q'])
+        self.assertTrue(proposals[rid('shared-lib')]['gate']['changelog'])
         self.assertFalse((engine / '.agent').exists())
 
     def test_propose_looks_up_url_and_short_form_in_scan(self):
         scan = Path(self.tmp) / 'scan'
         run_cli('scan', str(self.root), '--out', str(scan), '--now', NOW, '--no-scc')
-        code, _, _ = run_cli('gate-propose', rid('apiutil'), 'antifraud-rules/rule-catalog',
-                             f'{HOST}/team/antifraud-rules/rule-engine', '--in', str(scan))
+        code, _, _ = run_cli('gate-propose', rid('shared-lib'), 'example-group/catalog-lib',
+                             f'{HOST}/team/example-group/order-service', '--in', str(scan))
         self.assertEqual(code, 0)
         proposals = json.loads((scan / 'gate-proposals.json').read_text())['proposals']
-        self.assertEqual(set(proposals), {rid('apiutil'), rid('rule-catalog'), rid('rule-engine')})
+        self.assertEqual(set(proposals), {rid('shared-lib'), rid('catalog-lib'), rid('order-service')})
         with self.assertRaises(SystemExit):
             run_cli('gate-propose', 'no-such-repo', '--in', str(scan))
 
     def test_verify_keeps_passing_commands_and_stays_untracked(self):
-        engine = self.root / 'antifraud-rules/rule-engine'
+        engine = self.root / 'example-group/order-service'
         scan = Path(self.tmp) / 'scan-verify'
         run_cli('scan', str(self.root), '--out', str(scan), '--now', NOW, '--no-scc')
-        code, out, _ = run_cli('gate-verify', rid('rule-engine'), '--in', str(scan), '--timeout', '30',
+        code, out, _ = run_cli('gate-verify', rid('order-service'), '--in', str(scan), '--timeout', '30',
                                '--out', str(scan))
         self.assertEqual(code, 0, out)
         report = json.loads((scan / 'gate-verify.json').read_text())['reports'][0]
-        self.assertEqual(report['repo'], rid('rule-engine'))
+        self.assertEqual(report['repo'], rid('order-service'))
         gate = json.loads((engine / '.agent/gate.json').read_text())
         self.assertEqual(gate['commands'], ['make test'])
         self.assertIn('.agent/gate.json', (engine / '.git/info/exclude').read_text())
@@ -337,32 +337,32 @@ class FocusTest(unittest.TestCase):
         return rel, {r['id']: r for r in repos}, guides
 
     def test_single_repository_resolves_links_from_its_group(self):
-        rel, repos, guides = self.scan('one', str(self.root / 'antifraud-rules/rule-engine'))
-        engine = rid('rule-engine')
+        rel, repos, guides = self.scan('one', str(self.root / 'example-group/order-service'))
+        engine = rid('order-service')
         self.assertEqual(rel['focus'], [engine])
         pairs = {(e['to'], e['kind']) for e in rel['edges']}
-        self.assertIn((rid('apiutil'), 'library'), pairs)
-        self.assertIn((rid('rule-catalog'), 'http'), pairs)
+        self.assertIn((rid('shared-lib'), 'library'), pairs)
+        self.assertIn((rid('catalog-lib'), 'http'), pairs)
         self.assertTrue(all(engine in (e['from'], e['to']) for e in rel['edges']))
-        self.assertEqual(set(repos), {engine, rid('apiutil'), rid('rule-catalog')})
-        self.assertTrue(repos[engine]['focus'] and not repos[rid('apiutil')]['focus'])
+        self.assertEqual(set(repos), {engine, rid('shared-lib'), rid('catalog-lib')})
+        self.assertTrue(repos[engine]['focus'] and not repos[rid('shared-lib')]['focus'])
         self.assertEqual(list(guides['repositories']), [engine])
 
     def test_repository_inside_a_root_is_scanned_once(self):
-        rel, repos, _ = self.scan('nested', str(self.root / 'antifraud-rules/rule-engine'),
+        rel, repos, _ = self.scan('nested', str(self.root / 'example-group/order-service'),
                                   '--root-url', f'{self.root}=https://{HOST}/team')
-        self.assertEqual(rel['focus'], [rid('rule-engine')])
+        self.assertEqual(rel['focus'], [rid('order-service')])
         self.assertFalse(any('#copy' in rid_ for rid_ in repos))
 
     def test_no_context_leaves_links_unresolved(self):
-        rel, repos, _ = self.scan('alone', str(self.root / 'antifraud-rules/rule-engine'), '--no-context')
-        self.assertEqual(list(repos), [rid('rule-engine')])
-        self.assertFalse(any(e['to'] == rid('apiutil') for e in rel['edges']))
+        rel, repos, _ = self.scan('alone', str(self.root / 'example-group/order-service'), '--no-context')
+        self.assertEqual(list(repos), [rid('order-service')])
+        self.assertFalse(any(e['to'] == rid('shared-lib') for e in rel['edges']))
 
     def test_focus_inside_group_roots(self):
-        rel, repos, _ = self.scan('group', str(self.root), '--focus', 'pypi/apiutil')
-        self.assertEqual(rel['focus'], [rid('apiutil')])
-        self.assertIn((rid('rule-engine'), rid('apiutil')), {(e['from'], e['to']) for e in rel['edges']})
+        rel, repos, _ = self.scan('group', str(self.root), '--focus', 'pypi/shared-lib')
+        self.assertEqual(rel['focus'], [rid('shared-lib')])
+        self.assertIn((rid('order-service'), rid('shared-lib')), {(e['from'], e['to']) for e in rel['edges']})
         self.assertNotIn(rid('handbook'), repos)
 
     def test_unknown_focus_fails(self):
@@ -385,7 +385,7 @@ class LlmTest(unittest.TestCase):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def answer(self):
-        return {'summary': 'Rule engine service.',
+        return {'summary': 'Order service.',
                 'applicability': [{'id': 'software/general/makefile-guide', 'applies': True, 'confidence': 0.9,
                                    'why': 'Makefile'},
                                   {'id': 'software/invented/workflow', 'applies': True, 'confidence': 0.5, 'why': 'x'}],
@@ -405,12 +405,12 @@ class LlmTest(unittest.TestCase):
         with mock.patch.dict(os.environ, {'AGENTIC_LLM_CLAUDE_BIN': str(fake)}):
             for _ in range(2):
                 code, _, _ = run_cli('llm', '--in', str(self.scan), '--out', str(out), '--provider', 'claude',
-                                     '--model', 'haiku', '--repo', 'rule-engine')
+                                     '--model', 'haiku', '--repo', 'order-service')
                 self.assertEqual(code, 0)
         self.assertEqual(len(calls.read_text().splitlines()), 1, 'second run must hit the cache')
         self.assertIn('-p --model haiku', calls.read_text())
         result = json.loads((out / 'llm-assessment.json').read_text())
-        entry = result['assessments'][rid('rule-engine')]
+        entry = result['assessments'][rid('order-service')]
         self.assertEqual(entry['status'], 'ok')
         ids = [a['id'] for a in entry['assessment']['applicability']]
         self.assertEqual(ids, ['software/general/makefile-guide'])
@@ -452,23 +452,23 @@ class LlmTest(unittest.TestCase):
         env = {'AGENTIC_LLM_BASE_URL': f'http://127.0.0.1:{server.server_port}/', 'AGENTIC_LLM_API_KEY': 'test-key'}
         with mock.patch.dict(os.environ, env):
             code, _, _ = run_cli('llm', '--in', str(self.scan), '--out', str(out), '--provider', 'litellm',
-                                 '--model', 'any_provider/coding-agent-default', '--repo', rid('apiutil'),
+                                 '--model', 'any_provider/coding-agent-default', '--repo', rid('shared-lib'),
                                  '--no-cache')
         self.assertEqual(code, 0)
         self.assertEqual(seen['path'], '/v1/chat/completions')
         self.assertEqual(seen['auth'], 'Bearer test-key')
         self.assertEqual(seen['body']['model'], 'coding-agent-default')
         result = json.loads((out / 'llm-assessment.json').read_text())
-        self.assertEqual(result['assessments'][rid('apiutil')]['status'], 'ok')
+        self.assertEqual(result['assessments'][rid('shared-lib')]['status'], 'ok')
         self.assertNotIn('test-key', (out / 'llm-assessment.json').read_text())
 
     def test_litellm_without_key_reports_error(self):
         out = Path(self.tmp) / 'llm-nokey'
         with mock.patch.dict(os.environ, {'AGENTIC_LLM_API_KEY': ''}):
             code, _, _ = run_cli('llm', '--in', str(self.scan), '--out', str(out), '--provider', 'litellm',
-                                 '--repo', rid('apiutil'), '--no-cache')
+                                 '--repo', rid('shared-lib'), '--no-cache')
         self.assertEqual(code, 1)
-        entry = json.loads((out / 'llm-assessment.json').read_text())['assessments'][rid('apiutil')]
+        entry = json.loads((out / 'llm-assessment.json').read_text())['assessments'][rid('shared-lib')]
         self.assertEqual(entry['error'], 'AGENTIC_LLM_API_KEY is not set')
 
 

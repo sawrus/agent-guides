@@ -9,7 +9,7 @@ python = "^3.11"
 fastapi = "^0.111.1"
 httpx = "^0.27.0"
 aiokafka = "^0.10.0"
-apiutil = {version = "^5.2.7", source = "util", python = "^3.11"}
+shared_lib = {version = "^5.2.7", source = "util", python = "^3.11"}
 privatelib = {version = "^1.0.0", source = "util"}
 
 [tool.poetry.group.dev.dependencies]

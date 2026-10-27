@@ -1,10 +1,10 @@
 .PHONY: test lint publish
 
 test:
-	@echo apiutil tests ok
+	@echo shared-lib tests ok
 
 lint:
-	@echo apiutil lint ok
+	@echo shared-lib lint ok
 
 publish:
 	poetry publish -r util

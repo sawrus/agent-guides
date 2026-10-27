@@ -4,9 +4,9 @@ This repository holds team documentation only.
 
 ## Services
 
-- rule-engine evaluates antifraud rules.
-- rule-catalog stores the rules and serves them over HTTP.
-- apiutil is the shared Python library for API clients.
+- order-service processes orders with rules.
+- catalog-lib stores the rules and serves them over HTTP.
+- shared-lib is the shared Python library for API clients.
 
 ## On-call
 

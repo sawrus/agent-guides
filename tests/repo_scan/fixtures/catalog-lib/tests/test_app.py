@@ -1,4 +1,4 @@
-from rule_catalog.app import rules
+from catalog_lib.app import rules
 
 
 def test_rules():

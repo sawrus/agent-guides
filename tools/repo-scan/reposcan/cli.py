@@ -263,7 +263,7 @@ def scan_records(scan_dir):
 
 def match_repos(records, wanted):
     """Records for a GitLab URL (with or without https://), the old 'host/path' or short form, a path suffix
-    (`antifraud-rules/rule-engine`), a repository name, or a local path."""
+    (`example-group/order-service`), a repository name, or a local path."""
     out = []
     for w in wanted:
         key = w.split('://', 1)[-1].strip('/').lower()
