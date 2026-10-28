@@ -119,6 +119,9 @@ workflows of the selected hosts, never as rules:
 | `.claude/rules/company-<area>-<name>.md` | `claude` | same |
 | `AGENTS.md`: one line `Company rules in .agent/company/ override agent-guides rules on conflict.` | every host | — |
 
+With `--agents-md keep` the company lines go to the generated guidance files (`.agent/AGENTS.md`,
+`AGENTS.override.md`, `.opencode/AGENTS.md`), not to root `AGENTS.md`.
+
 - The source id is the path as configured, or the git URL with `#ref` and `:subdir`. Install hides the user part
   of an `https://user:token@host` URL; do not put tokens in URLs anyway, because `settings` keeps the URL.
 - A path source that is `.agent/company` itself is used in place: install does not copy or mark its files, and
@@ -131,6 +134,46 @@ workflows of the selected hosts, never as rules:
 - Excluded pack rules are not copied for any host. A repeated `agentic install` removes the excluded pack rules
   that an earlier install wrote, unless you edited them. `agentic upgrade` removes them as obsolete artifacts, as
   well as company files that a source no longer has.
+
+## Commit only a short AGENTS.md
+
+Some teams commit only a short, hand-written root `AGENTS.md` and keep every generated agentic file local. Use
+`--agents-md keep` for that ([details](agentic-reference.md#root-agentsmd-generate-or-keep)):
+
+```bash
+agentic install --project-dir . --agent-os claude,codex,opencode --areas software \
+  --specializations software.backend --agents-md keep \
+  --company-rules-git https://gitlab.example.com/group/standards.git
+```
+
+1. Write root `AGENTS.md` yourself: a pointer to the company standards, the check commands (`make test`,
+   `make lint`), and other project facts. agentic never changes this file in `keep` mode.
+2. agentic writes the generated guidance to `.agent/AGENTS.md`, to `AGENTS.override.md` for Codex, and to
+   `.opencode/AGENTS.md` for OpenCode. Each starts with the text of your root `AGENTS.md`. `.claude/CLAUDE.md`
+   imports `.agent/AGENTS.md`.
+3. Add the generated paths to `.gitignore`. Install prints the list. A typical list:
+
+   ```gitignore
+   .agent/*
+   !.agent/company
+   .agents/
+   .claude/*
+   !.claude/rules/
+   .claude/rules/*
+   !.claude/rules/company-*
+   .codex/
+   .opencode/
+   AGENTS.override.md
+   .agentic.json
+   MEMORY.md
+   REVIEW_PIPELINE.md
+   CLAUDE.md
+   ```
+
+   Keep the `!` lines only for files that the project commits, such as company rules from a git submodule in
+   `.agent/company`.
+4. Each developer runs the same `agentic install` command once. `agentic upgrade` replays the saved mode from
+   the local `.agentic.json`.
 
 ## Git sources
 

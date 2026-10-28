@@ -154,6 +154,9 @@ using manifest settings or `default + software.general` when settings are unavai
 - **Company rules.** `upgrade` replays `settings.company_rules`, fetches git sources again (or uses the cached
   copy offline), and removes company files that a source dropped and pack rules that became excluded
   ([company rules](company-rules.md)).
+- **Root `AGENTS.md` mode.** `upgrade` replays `settings.agents_md` (see
+  [Root AGENTS.md: generate or keep](#root-agentsmd-generate-or-keep)). In `keep` mode, `upgrade` and
+  `upgrade --force` never change, move, or delete root `AGENTS.md`.
 Unrelated project files and global configuration are preserved. Backups live in
 `.agentic-backups/` and may contain credentials; exclude them from source control.
 See [smart upgrade behavior](agentic-upgrade/README.md) for details.
@@ -281,6 +284,8 @@ Details: [JEV verification](jev-integration/verification.md).
 
 `agentic` installs shared guidance into `.agent/` and selected IDE files into directories like `.claude/`,
 `.opencode/`, and `.codex/`. Generated runtime guidance goes to `AGENTS.md`; OpenCode also gets `.opencode/AGENTS.md`.
+With `--agents-md keep`, root `AGENTS.md` belongs to the project and the generated guidance goes to other files
+(see [below](#root-agentsmd-generate-or-keep)).
 
 ```text
 project/.agent/
@@ -317,6 +322,49 @@ Company files in `managed_files` have `marker: company` and `source: company:<so
 workflows: `company:<source-id>/skills/<relpath>` and `company:<source-id>/workflows/<relpath>`). Install flags:
 `--company-rules-path <dir>`, `--company-rules-git <url>[#ref][:subdir]`, `--company-rules-exclude <id>`. See
 [company rules](company-rules.md).
+
+### Root AGENTS.md: generate or keep
+
+`agentic install --agents-md <generate|keep>` selects who owns root `AGENTS.md`. `--agents-md=keep` also works.
+
+| Mode | Root `AGENTS.md` | Generated guidance |
+|---|---|---|
+| `generate` (default) | agentic writes it and tracks it in `managed_files`. | `AGENTS.md`; `.opencode/AGENTS.md` for OpenCode. |
+| `keep` | The project owns it. agentic never writes, overwrites, moves, or deletes it. If it is missing, agentic does not create it and prints a note. | `.agent/AGENTS.md` (always), `AGENTS.override.md` at the project root for Codex, `.opencode/AGENTS.md` for OpenCode. |
+
+In `keep` mode each generated file holds the text of root `AGENTS.md`, a `---` separator, and then the usual
+generated content: header, company rules lines, shared guidance, and specialization sections. All three files carry
+the agentic marker and a `managed_files` entry, so `upgrade` updates them and removes them when they become
+obsolete. A changed root `AGENTS.md` reaches the generated files on the next `install` or `upgrade`.
+
+How each host reads the guidance in `keep` mode:
+
+- **Claude Code.** The installed `.claude/CLAUDE.md` imports `@../.agent/AGENTS.md` instead of `@../AGENTS.md`.
+- **Codex.** In each directory Codex checks `AGENTS.override.md` before `AGENTS.md` and includes at most one file
+  per directory, so the root `AGENTS.override.md` replaces root `AGENTS.md` for Codex. Source:
+  [Codex: AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md) (checked
+  2026-10-28). The `team` profile file `.codex/AGENTS.override.md` is a different file and does not change.
+- **OpenCode.** agentic writes `.opencode/AGENTS.md` as in `generate` mode. The OpenCode rules page documents only
+  root `AGENTS.md` and the `instructions` list of `opencode.json`, so OpenCode can read only the short root file.
+- **Other hosts** (`default`, Cursor, Kilo Code) read root `AGENTS.md` only.
+
+`.agentic.json` stores `settings.agents_md: "keep"`; `generate` writes no key. `install` without `--agents-md`,
+the TUI, and `upgrade` use the saved mode. The TUI does not ask for the mode.
+
+Switching modes:
+
+- **`generate` → `keep`.** The generated root `AGENTS.md` stays in place, and the manifest stops tracking it. The
+  file now belongs to the project. While it still carries the agentic marker, agentic does not copy its text into
+  the generated files and prints a warning: replace it with the short project `AGENTS.md`.
+- **`keep` → `generate`.** agentic removes `.agent/AGENTS.md` and the root `AGENTS.override.md` that it generated,
+  if they are unchanged; otherwise it keeps them and prints a warning. A root `AGENTS.md` that the project owns
+  is not overwritten (`Skipping unmanaged target on rerun`); delete or move it to get the generated file again.
+
+After a `keep` install, agentic prints the generated paths that the project usually adds to `.gitignore`:
+`.agent/*` (except files the project commits, such as `.agent/company`), `.agents/`, `.claude/` (except
+`rules/company-*` with company rules), `.codex/`, `.opencode/`, `AGENTS.override.md`, `.agentic.json`,
+`MEMORY.md`, `REVIEW_PIPELINE.md`, `CLAUDE.md`. See
+[committing only a short AGENTS.md](company-rules.md#commit-only-a-short-agentsmd).
 
 ---
 

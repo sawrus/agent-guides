@@ -2458,3 +2458,167 @@ fn company_rules_report_duplicate_pack_rules() {
         json!([{"path": "standards"}])
     );
 }
+
+fn install_agents_md(home: &Path, project: &Path, extra: &[&str]) {
+    agentic(home)
+        .env_remove("AGENTIC_PROFILE")
+        .env_remove("AGENTIC_ENABLE_JEV")
+        .args(["install", "--project-dir"])
+        .arg(project)
+        .args([
+            "--agent-os",
+            "claude,codex,opencode",
+            "--areas",
+            "software",
+            "--specializations",
+            "software.backend",
+            "--no-doctor",
+        ])
+        .args(extra)
+        .assert()
+        .success();
+}
+
+/// Body of a generated file after the agentic frontmatter marker.
+fn body_after_marker(text: &str) -> &str {
+    let rest = text.strip_prefix("---\n").expect("agentic marker");
+    &rest[rest.find("\n---\n").expect("marker end") + 5..]
+}
+
+/// `--agents-md keep`: the project owns root AGENTS.md; generated guidance goes elsewhere.
+#[test]
+fn agents_md_keep_leaves_root_file_and_writes_host_files() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let p = project.path();
+    let root = "# Project\n\nRun `make check` before a commit.\n";
+    std::fs::write(p.join("AGENTS.md"), root).unwrap();
+    let assert = agentic(home.path())
+        .env_remove("AGENTIC_PROFILE")
+        .env_remove("AGENTIC_ENABLE_JEV")
+        .args(["install", "--project-dir"])
+        .arg(p)
+        .args([
+            "--agent-os",
+            "claude,codex,opencode",
+            "--areas",
+            "software",
+            "--specializations",
+            "software.backend",
+            "--no-doctor",
+            "--agents-md",
+            "keep",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    assert!(stdout.contains("AGENTS.override.md"), "{stdout}");
+    assert!(stdout.contains(".gitignore"), "{stdout}");
+
+    assert_eq!(std::fs::read_to_string(p.join("AGENTS.md")).unwrap(), root);
+    for rel in [
+        ".agent/AGENTS.md",
+        "AGENTS.override.md",
+        ".opencode/AGENTS.md",
+    ] {
+        let text = std::fs::read_to_string(p.join(rel)).unwrap();
+        let body = body_after_marker(&text);
+        assert!(body.starts_with(root.trim_end()), "{rel}: {body}");
+        assert!(body.contains("# Agentic Project Guidelines"), "{rel}");
+        assert!(body.contains("## software/backend"), "{rel}");
+    }
+    let claude = std::fs::read_to_string(p.join(".claude/CLAUDE.md")).unwrap();
+    assert!(claude.contains("@../.agent/AGENTS.md"), "{claude}");
+    assert!(!claude.contains("@../AGENTS.md"), "{claude}");
+
+    let manifest: Value =
+        serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap()).unwrap();
+    assert_eq!(manifest["settings"]["agents_md"], "keep");
+    let paths: Vec<&str> = manifest["managed_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|i| i["path"].as_str())
+        .collect();
+    assert!(!paths.contains(&"AGENTS.md"));
+    assert!(paths.contains(&".agent/AGENTS.md"));
+    assert!(paths.contains(&"AGENTS.override.md"));
+
+    // Upgrade replays keep: a changed root text reaches the generated files; root AGENTS.md stays as is.
+    let edited = "# Project\n\nRun `make verify` before a commit.\n";
+    std::fs::write(p.join("AGENTS.md"), edited).unwrap();
+    for force in [false, true] {
+        let mut cmd = agentic(home.path());
+        cmd.args(["upgrade", "--project-dir"]).arg(p);
+        if force {
+            cmd.arg("--force");
+        }
+        cmd.assert().success();
+        assert_eq!(
+            std::fs::read_to_string(p.join("AGENTS.md")).unwrap(),
+            edited
+        );
+        let generated = std::fs::read_to_string(p.join("AGENTS.override.md")).unwrap();
+        assert!(body_after_marker(&generated).starts_with(edited.trim_end()));
+        let claude = std::fs::read_to_string(p.join(".claude/CLAUDE.md")).unwrap();
+        assert!(claude.contains("@../.agent/AGENTS.md"));
+        let manifest: Value =
+            serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap())
+                .unwrap();
+        assert_eq!(manifest["settings"]["agents_md"], "keep");
+    }
+}
+
+/// Default generate mode is unchanged; switching to keep leaves the generated root file in place,
+/// and switching back removes the keep-mode files so Codex reads AGENTS.md again.
+#[test]
+fn agents_md_mode_switches() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let p = project.path();
+    install_agents_md(home.path(), p, &[]);
+    let generated = std::fs::read_to_string(p.join("AGENTS.md")).unwrap();
+    assert!(generated.contains("# Agentic Project Guidelines"));
+    assert!(!p.join(".agent/AGENTS.md").exists());
+    assert!(!p.join("AGENTS.override.md").exists());
+    let claude = std::fs::read_to_string(p.join(".claude/CLAUDE.md")).unwrap();
+    assert!(claude.contains("@../AGENTS.md"));
+    let manifest: Value =
+        serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap()).unwrap();
+    assert!(manifest["settings"].get("agents_md").is_none());
+
+    install_agents_md(home.path(), p, &["--agents-md=keep"]);
+    assert_eq!(
+        std::fs::read_to_string(p.join("AGENTS.md")).unwrap(),
+        generated
+    );
+    let keep = std::fs::read_to_string(p.join(".agent/AGENTS.md")).unwrap();
+    assert_eq!(keep.matches("# Agentic Project Guidelines").count(), 1);
+    assert!(p.join("AGENTS.override.md").is_file());
+
+    install_agents_md(home.path(), p, &["--agents-md", "generate"]);
+    assert!(!p.join(".agent/AGENTS.md").exists());
+    assert!(!p.join("AGENTS.override.md").exists());
+    let claude = std::fs::read_to_string(p.join(".claude/CLAUDE.md")).unwrap();
+    assert!(claude.contains("@../AGENTS.md"));
+    let manifest: Value =
+        serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap()).unwrap();
+    assert!(manifest["settings"].get("agents_md").is_none());
+}
+
+#[test]
+fn agents_md_keep_without_root_file_and_bad_value() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let p = project.path();
+    install_agents_md(home.path(), p, &["--agents-md", "keep"]);
+    assert!(!p.join("AGENTS.md").exists());
+    assert!(p.join(".agent/AGENTS.md").is_file());
+    agentic(home.path())
+        .args(["install", "--project-dir"])
+        .arg(p)
+        .args(["--agents-md", "maybe"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("expected generate or keep"));
+}

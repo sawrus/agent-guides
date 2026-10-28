@@ -96,6 +96,8 @@ Options:
   --company-rules-git   Company rules git repository: <url>[#ref][:subdir] (repeatable; subdir without ref: <url>#:<subdir>)
   --company-rules-exclude
                         Pack rule <area>/<spec>/<rule> to skip (repeatable or comma-separated)
+  --agents-md           Root AGENTS.md: generate (default) | keep (the project owns it; generated guidance goes
+                        to .agent/AGENTS.md, AGENTS.override.md for Codex, .opencode/AGENTS.md)
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)
   --force               Reset Agentic project artifacts for upgrade; overwrite binary for self-install
   --dry-run             Show actions without writing files
@@ -295,6 +297,18 @@ fn cmd_install(app: &mut App, rest: &[String]) -> Result<()> {
                     .ok_or("--profile requires lean, team, a custom id, or host=id pairs")?;
                 parse_profile_option(app, value)?;
                 i += 2;
+            }
+            "--agents-md" => {
+                let value = rest
+                    .get(i + 1)
+                    .filter(|v| !v.starts_with("--"))
+                    .ok_or("--agents-md requires generate or keep")?;
+                app.agents_md_mode = Some(agentsmd::parse_mode(value)?);
+                i += 2;
+            }
+            s if s.starts_with("--agents-md=") => {
+                app.agents_md_mode = Some(agentsmd::parse_mode(&s["--agents-md=".len()..])?);
+                i += 1;
             }
             "--disable-gate" => {
                 app.gate_enabled = Some(false);

@@ -6,6 +6,7 @@ use std::path::{Component, Path, PathBuf};
 
 const ROOT_FILES: &[&str] = &[
     "AGENTS.md",
+    "AGENTS.override.md",
     "MEMORY.md",
     "REVIEW_PIPELINE.md",
     ".agentic.json",

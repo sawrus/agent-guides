@@ -272,6 +272,10 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
         existing
             .retain(|path, _| Path::new(path).is_relative() && project_dir.join(path).is_file());
     }
+    if crate::agentsmd::keep_mode(app) {
+        // The project owns root AGENTS.md in keep mode; the manifest stops tracking it.
+        existing.remove("AGENTS.md");
+    }
     let original_existing = existing.clone();
 
     for record in app.managed_records.clone() {
@@ -433,6 +437,9 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
     if let Some(rules) = app.company_rules.as_ref().filter(|r| !r.is_empty()) {
         data["settings"]["company_rules"] = crate::company::to_settings(rules);
     }
+    if crate::agentsmd::keep_mode(app) {
+        data["settings"]["agents_md"] = json!(crate::agentsmd::MODE_KEEP);
+    }
     if let Some(old) = &old_data {
         let mut old_compare = old.clone();
         let mut new_compare = data.clone();
@@ -589,6 +596,7 @@ pub fn load_install_settings_from_manifest(
             }
         }
     }
+    crate::agentsmd::load_saved_mode(app, &settings);
     if let Some(saved) = crate::company::from_settings(&settings["company_rules"]) {
         crate::company::merge_saved(app, saved);
     }

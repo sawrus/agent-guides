@@ -85,6 +85,8 @@ pub struct App {
     pub company_agents_lines: Vec<String>,
     /// The real project root while an upgrade installs into a staging copy (relative path sources).
     pub company_base_dir: Option<PathBuf>,
+    /// `--agents-md generate|keep` (`settings.agents_md`); None = the saved mode or `generate`.
+    pub agents_md_mode: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -165,6 +167,7 @@ impl App {
             excluded_pack_rules: std::collections::BTreeSet::new(),
             company_agents_lines: Vec::new(),
             company_base_dir: None,
+            agents_md_mode: None,
         })
     }
 

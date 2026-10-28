@@ -100,6 +100,13 @@ pub fn copy_dir_contents(
             if rel.starts_with("agents/") && rel.ends_with(".md") {
                 content = crate::claude::apply_agent_model(app, &rel, &content);
             }
+            // `--agents-md keep`: the generated guidance lives in .agent/AGENTS.md, not in root AGENTS.md.
+            if rel == "CLAUDE.md" && crate::agentsmd::keep_mode(app) {
+                content = content.replace(
+                    "@../AGENTS.md",
+                    &format!("@../{}", crate::agentsmd::KEEP_OUTPUT),
+                );
+            }
         }
         let target = dest_root.join(&rel);
         let project_rel = app.project_rel_path(&target);
