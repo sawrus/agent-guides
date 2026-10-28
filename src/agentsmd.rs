@@ -33,7 +33,13 @@ pub fn get_dest_dir(agent_os: &str, bucket: &str) -> String {
 fn build_header(app: &App) -> String {
     let rules_dir = get_dest_dir(&app.selected_agent_os[0], "rules");
     let company = if crate::company::configured(app) {
-        format!("{}\n\n", crate::company::AGENTS_LINE)
+        let mut text = format!("{}\n", crate::company::AGENTS_LINE);
+        for line in &app.company_agents_lines {
+            text.push_str(line);
+            text.push('\n');
+        }
+        text.push('\n');
+        text
     } else {
         String::new()
     };

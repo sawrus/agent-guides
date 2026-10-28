@@ -72,7 +72,8 @@ Empty answers keep the feature off. The fields start with the values saved in th
 
 A source holds Markdown rule files, usually one directory per area: `<source>/<area>/<name>.md`, for example
 `rules/software/api.md` with `subdir: rules`. Install reads every `*.md` file below the source root. It skips
-`README.md` files and directories whose names start with `.`. A rule file follows the rule requirements of the
+`README.md` files, directories whose names start with `.`, and the top-level `skills/` and `workflows/`
+directories (see [Company skills and workflows](#company-skills-and-workflows)). A rule file follows the rule requirements of the
 [artifact standard](artifact-standard.md). Frontmatter keys that install reads:
 
 | Key | Effect |
@@ -82,6 +83,33 @@ A source holds Markdown rule files, usually one directory per area: `<source>/<a
 | `replaces: [<area>/<spec>/<rule>]` | The named pack rules are excluded, as if they were in `exclude`. |
 
 When two sources have the same relative path, the first source wins and install prints a warning.
+
+## Company skills and workflows
+
+A source can also hold skills and workflows next to its rules. Install treats them as pack skills and
+workflows of the selected hosts, never as rules:
+
+```text
+<source>/
+├── software/api.md                    # rule
+├── skills/release-notes/SKILL.md      # skill: every file below skills/<name>/ (scripts, templates)
+└── workflows/hotfix.md                # workflow: workflows/<id>.md (README.md is skipped)
+```
+
+| Source file | Written to | Hosts |
+|---|---|---|
+| `skills/<name>/**` | the skills directory of each host (`.claude/skills`, `.agents/skills`, `.opencode/skills`, ...) and `.agent/skills/<name>/` | every host |
+| `workflows/<id>.md` | `.agent/workflows/<id>.md` and the workflows directory of each host (`.opencode/commands`, ...) | every host |
+| `workflows/<id>.md` | `.claude/commands/<id>.md`: a thin wrapper that runs `@.agent/workflows/<id>.md`, like pack workflows | `claude` |
+| both | `AGENTS.md`: `- Company skills: ...` and `- Company workflows: ...` lines with the `description:` of each, below the company rules line, so that Codex and OpenCode models find them | every host |
+
+- A skill or workflow with the name of a pack skill or workflow of the selected specializations replaces it on
+  every host. When the source drops it, `agentic upgrade` restores the pack version.
+- Skills and workflows follow the [artifact standard](artifact-standard.md) (skills at most 250 lines,
+  workflows at most 120 lines and 6 steps).
+- The manifest source is `company:<source-id>/skills/<name>/<path>` or `company:<source-id>/workflows/<id>.md`.
+  Upgrade, the offline fallback, and the managed-file rules work as for rules.
+- When two sources have the same `skills/<name>/<path>` or `workflows/<id>.md`, the first source wins.
 
 ## What install writes
 

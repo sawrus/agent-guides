@@ -2308,6 +2308,124 @@ fn company_rules_from_git_replay_on_upgrade_and_fall_back_to_cache() {
     assert!(p.join(".claude/rules/company-software-sql.md").is_file());
 }
 
+const COMPANY_SKILL: &str = "---\nname: release-notes\ndescription: Write release notes from merged MRs. Use when the user asks for release notes.\n---\n\n# release-notes\n\nRun `scripts/notes.sh`.\n";
+const COMPANY_WORKFLOW: &str = "---\ndescription: \"Ship a hotfix to production.\"\ninputs: [ticket]\n---\n\n# Hotfix\n\n1. Branch from the release tag. **Done when** the branch exists.\n";
+
+/// `skills/` and `workflows/` of a source are installed like pack ones on every host, never as rules;
+/// a company workflow or skill replaces the pack one with the same name; upgrade drops removed ones.
+#[test]
+fn company_skills_and_workflows_install_per_host_and_replace_pack_ones() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let p = project.path();
+    write(&p.join("standards/software/api.md"), API_RULE);
+    write(
+        &p.join("standards/skills/release-notes/SKILL.md"),
+        COMPANY_SKILL,
+    );
+    write(
+        &p.join("standards/skills/release-notes/scripts/notes.sh"),
+        "#!/usr/bin/env bash\necho notes\n",
+    );
+    write(
+        &p.join("standards/skills/api-design/SKILL.md"),
+        "---\nname: api-design\ndescription: Company API design.\n---\n\n# Company API design\n",
+    );
+    write(&p.join("standards/workflows/hotfix.md"), COMPANY_WORKFLOW);
+    write(
+        &p.join("standards/workflows/add-migration.md"),
+        "---\ndescription: \"Company migration flow.\"\n---\n\n# Company migration\n",
+    );
+    write(&p.join("standards/workflows/README.md"), "# Workflows\n");
+    agentic(home.path())
+        .env_remove("AGENTIC_ENABLE_JEV")
+        .env_remove("AGENTIC_PROFILE")
+        .args(["install", "--project-dir"])
+        .arg(p)
+        .args(["--agent-os", "claude,codex,opencode", "--areas", "software"])
+        .args(["--specializations", "software.backend", "--no-doctor"])
+        .args(["--company-rules-path", "standards"])
+        .assert()
+        .success();
+    // Not rules: nothing from skills/ or workflows/ lands in .agent/company or .claude/rules.
+    assert!(p.join(".agent/company/software/api.md").is_file());
+    assert!(!p.join(".agent/company/skills").exists());
+    assert!(!p.join(".agent/company/workflows").exists());
+    assert!(!p
+        .join(".claude/rules/company-skills-release-notes-SKILL.md")
+        .exists());
+    for dir in [
+        ".agent/skills",
+        ".claude/skills",
+        ".agents/skills",
+        ".opencode/skills",
+    ] {
+        let skill = p.join(dir).join("release-notes");
+        assert!(skill.join("SKILL.md").is_file(), "{dir}");
+        assert!(skill.join("scripts/notes.sh").is_file(), "{dir}");
+        let api = std::fs::read_to_string(p.join(dir).join("api-design/SKILL.md")).unwrap();
+        assert!(api.contains("# Company API design"), "{dir}");
+    }
+    for dir in [".agent/workflows", ".opencode/commands"] {
+        assert!(p.join(dir).join("hotfix.md").is_file(), "{dir}");
+        let migration = std::fs::read_to_string(p.join(dir).join("add-migration.md")).unwrap();
+        assert!(migration.contains("# Company migration"), "{dir}");
+    }
+    assert!(!p.join(".agent/workflows/README.md").exists());
+    let agents = std::fs::read_to_string(p.join("AGENTS.md")).unwrap();
+    assert!(agents.contains(
+        "- Company skills: `api-design` — Company API design; `release-notes` — Write release notes"
+    ));
+    assert!(agents.contains(
+        "- Company workflows: `/add-migration` (`.agent/workflows/add-migration.md`) — Company migration flow; `/hotfix`"
+    ));
+    let command = std::fs::read_to_string(p.join(".claude/commands/hotfix.md")).unwrap();
+    assert!(command.contains("Ship a hotfix to production."));
+    assert!(command.contains("@.agent/workflows/hotfix.md"));
+    let migration = std::fs::read_to_string(p.join(".claude/commands/add-migration.md")).unwrap();
+    assert!(migration.contains("Company migration flow."));
+    let manifest = manifest_json(p);
+    let source = |path: &str| {
+        manifest["managed_files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["path"] == path)
+            .map(|i| {
+                (
+                    i["source"].as_str().unwrap().to_string(),
+                    i["marker"].as_str().unwrap().to_string(),
+                )
+            })
+            .unwrap()
+    };
+    assert_eq!(
+        source(".claude/skills/release-notes/scripts/notes.sh"),
+        (
+            "company:standards/skills/release-notes/scripts/notes.sh".into(),
+            "company".into()
+        )
+    );
+    assert_eq!(
+        source(".claude/commands/add-migration.md"),
+        (
+            "company:standards/workflows/add-migration.md".into(),
+            "company".into()
+        )
+    );
+
+    // Removed from the source: upgrade drops the copies; the pack version comes back.
+    std::fs::remove_dir_all(p.join("standards/skills/api-design")).unwrap();
+    std::fs::remove_file(p.join("standards/workflows/hotfix.md")).unwrap();
+    company_sync(p, home.path());
+    assert!(!p.join(".agent/workflows/hotfix.md").exists());
+    assert!(!p.join(".claude/commands/hotfix.md").exists());
+    assert!(!p.join(".opencode/commands/hotfix.md").exists());
+    let api = std::fs::read_to_string(p.join(".claude/skills/api-design/SKILL.md")).unwrap();
+    assert!(!api.contains("# Company API design"));
+    assert!(p.join(".agents/skills/release-notes/SKILL.md").is_file());
+}
+
 #[test]
 fn company_rules_report_duplicate_pack_rules() {
     let home = tempfile::tempdir().unwrap();

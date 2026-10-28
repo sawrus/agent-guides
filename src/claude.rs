@@ -238,6 +238,11 @@ fn command_text(id: &str, meta: &WorkflowMeta, team: bool) -> String {
     format!("{header}Act as its initiator ({initiator}) in this main session. {delegation}\n")
 }
 
+/// The `.claude/commands/<id>.md` wrapper text of workflow `id` (pack or company).
+pub fn workflow_command(id: &str, text: &str, team: bool) -> String {
+    command_text(id, &workflow_meta(text), team)
+}
+
 /// Thin `.claude/commands/<id>.md` wrappers: `.agent/workflows` stays the single source.
 pub fn generate_commands(app: &mut App, project: &Path) -> crate::Result<()> {
     if !app.selected_agent_os_contains("claude") {
@@ -251,8 +256,17 @@ pub fn generate_commands(app: &mut App, project: &Path) -> crate::Result<()> {
             let Some(id) = rel.strip_suffix(".md").filter(|r| !r.contains('/')) else {
                 continue;
             };
-            let content = command_text(id, &workflow_meta(&text), team);
             let dest = project.join(format!(".claude/commands/{id}.md"));
+            // A company workflow with this id already wrote its wrapper; the company version wins.
+            let rel = format!(".claude/commands/{id}.md");
+            if app
+                .managed_records
+                .iter()
+                .any(|r| r.path == rel && r.marker == "company")
+            {
+                continue;
+            }
+            let content = command_text(id, &workflow_meta(&text), team);
             write_file_with_agentic_marker(app, &content, &dest, "generated:claude-command")?;
         }
     }
