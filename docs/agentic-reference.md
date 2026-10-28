@@ -330,7 +330,7 @@ workflows: `company:<source-id>/skills/<relpath>` and `company:<source-id>/workf
 | Mode | Root `AGENTS.md` | Generated guidance |
 |---|---|---|
 | `generate` (default) | agentic writes it and tracks it in `managed_files`. | `AGENTS.md`; `.opencode/AGENTS.md` for OpenCode. |
-| `keep` | The project owns it. agentic never writes, overwrites, moves, or deletes it. If it is missing, agentic does not create it and prints a note. | `.agent/AGENTS.md` (always) and `AGENTS.override.md` at the project root for Codex. OpenCode gets `.agent/AGENTS.md` through `instructions` in `.opencode/opencode.json`; `.opencode/AGENTS.md` is not written. |
+| `keep` | The project owns it. agentic never writes, overwrites, moves, or deletes it. If it is missing, agentic does not create it and prints a note. | `.agent/AGENTS.md` (always) and `AGENTS.override.md` at the project root for Codex. OpenCode gets `.agent/AGENTS.md` from the plugin `.opencode/plugins/agentic-agents-md.ts`; `.opencode/AGENTS.md` is not written. |
 
 In `keep` mode each generated file holds the text of root `AGENTS.md`, a `---` separator, and then the usual
 generated content: header, company rules lines, shared guidance, and specialization sections. Both files carry
@@ -344,16 +344,16 @@ How each host reads the guidance in `keep` mode:
   per directory, so the root `AGENTS.override.md` replaces root `AGENTS.md` for Codex. Source:
   [Codex: AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md) (checked
   2026-10-28). The `team` profile file `.codex/AGENTS.override.md` is a different file and does not change.
-- **OpenCode.** The [rules page](https://opencode.ai/docs/rules/) documents root `AGENTS.md` and the
-  `instructions` list of the config; it does not document `.opencode/AGENTS.md`. So in `keep` mode agentic adds
-  `.agent/AGENTS.md` to `instructions` in `.opencode/opencode.json`, the config file that agentic already manages
-  (OpenCode 2.0.29 lists it as a project config source in `opencode debug config`), and does not write
-  `.opencode/AGENTS.md`. agentic owns only its own item (`config_owned_keys`:
-  `/instructions/.agent~1AGENTS.md`); other items stay. OpenCode reads root `AGENTS.md` as well, so the short text
-  is in context twice; it is short. Known gap: in a local check (2026-10-28) OpenCode 2.0.29 loaded root and global
-  `AGENTS.md` only and ignored `instructions` from every config source (root `opencode.json`,
-  `.opencode/opencode.json`, `OPENCODE_CONFIG_CONTENT`). It also ignored `.opencode/AGENTS.md`. With such a version,
-  OpenCode sees only the short root `AGENTS.md` in `keep` mode.
+- **OpenCode.** OpenCode 2.0.x loads only the global and the project `AGENTS.md` (from the current directory up
+  to the project root). In a local check (OpenCode 2.0.29, 2026-10-28) it ignored `instructions` from every config
+  source and did not read `.opencode/AGENTS.md`, although the [rules page](https://opencode.ai/docs/rules/)
+  documents `instructions`. So in `keep` mode agentic installs the plugin `.opencode/plugins/agentic-agents-md.ts`
+  and does not write `.opencode/AGENTS.md`. The plugin uses the session `context` hook, the same hook that the
+  gate plugin uses: it adds the text of `.agent/AGENTS.md` (without the agentic metadata block) as one system part
+  to every request. It reads the file again when the file changes. The plugin is a managed file: `generate` mode
+  does not install it and removes an unchanged copy. Root `AGENTS.md` also reaches OpenCode natively, so the
+  short root text is in context twice. The check above with a code word in `.agent/AGENTS.md` returned the code
+  word with the plugin installed.
 - **Other hosts** (`default`, Cursor, Kilo Code) read root `AGENTS.md` only.
 
 `.agentic.json` stores `settings.agents_md: "keep"`; `generate` writes no key. `install` without `--agents-md`,
@@ -365,9 +365,8 @@ Switching modes:
   file now belongs to the project. While it still carries the agentic marker, agentic does not copy its text into
   the generated files and prints a warning: replace it with the short project `AGENTS.md`.
 - **`keep` → `generate`.** agentic removes `.agent/AGENTS.md` and the root `AGENTS.override.md` that it generated,
-  if they are unchanged; otherwise it keeps them and prints a warning. It removes its `instructions` item from
-  `.opencode/opencode.json`. Like other shared configs, `install` skips that file when you changed it since the
-  last run; `upgrade` then removes only the agentic item. A root `AGENTS.md` that the project owns
+  if they are unchanged; otherwise it keeps them and prints a warning. The same applies to the OpenCode plugin
+  `.opencode/plugins/agentic-agents-md.ts`. A root `AGENTS.md` that the project owns
   is not overwritten (`Skipping unmanaged target on rerun`); delete or move it to get the generated file again.
 
 After a `keep` install, agentic prints the generated paths that the project usually adds to `.gitignore`:

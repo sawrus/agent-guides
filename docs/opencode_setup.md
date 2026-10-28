@@ -76,6 +76,7 @@ Selecting `none` applies no model profile and does not copy the baseline `extens
 For MCP servers, OpenCode uses top-level `mcp` entries. Agentic migrates legacy `mcpServers` in OpenCode configs to `mcp` and removes the invalid key.
 
 For OpenCode targets, `agentic` writes generated operating guidance to `.opencode/AGENTS.md`. With
-`--agents-md keep` it adds `.agent/AGENTS.md` to `instructions` in `.opencode/opencode.json` instead
-([details](agentic-reference.md#root-agentsmd-generate-or-keep)). If OpenCode is installed
+`--agents-md keep` it installs the plugin `.opencode/plugins/agentic-agents-md.ts` instead; the plugin adds
+`.agent/AGENTS.md` to every request through the session `context` hook, because OpenCode 2.0.x ignores
+`instructions` and `.opencode/AGENTS.md` ([details](agentic-reference.md#root-agentsmd-generate-or-keep)). If OpenCode is installed
 alongside another agent target, root `AGENTS.md` is generated as well for the non-OpenCode target.

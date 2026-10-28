@@ -83,10 +83,9 @@ pub const KEEP_OUTPUT: &str = ".agent/AGENTS.md";
 pub const CODEX_OVERRIDE: &str = "AGENTS.override.md";
 const SOURCE: &str = "generated:AGENTS.md";
 const OPENCODE_OUTPUT: &str = ".opencode/AGENTS.md";
-/// The OpenCode config that agentic manages; OpenCode loads it as a project config source.
-const OPENCODE_CONFIG: &str = ".opencode/opencode.json";
-/// `config_owned_keys` entry for the one `instructions` item that agentic adds (JSON pointer escaping).
-pub const OPENCODE_INSTRUCTION_KEY: &str = "/instructions/.agent~1AGENTS.md";
+/// OpenCode plugin (extension-relative path) that adds .agent/AGENTS.md to every request in keep mode.
+pub const OPENCODE_PLUGIN_REL: &str = "plugins/agentic-agents-md.ts";
+const OPENCODE_PLUGIN: &str = ".opencode/plugins/agentic-agents-md.ts";
 
 pub fn parse_mode(value: &str) -> crate::Result<String> {
     match value.trim() {
@@ -161,7 +160,7 @@ fn project_agents_md(app: &mut App, project_dir: &Path) -> Option<String> {
 pub fn generate_agents_md(app: &mut App, project_dir: &Path) -> crate::Result<()> {
     let keep = keep_mode(app);
     let mut outputs: Vec<PathBuf> = Vec::new();
-    // In keep mode OpenCode gets .agent/AGENTS.md through `instructions` (sync_opencode_instructions).
+    // In keep mode OpenCode gets .agent/AGENTS.md from the agentic-agents-md plugin (copy_extensions).
     if app.selected_agent_os_contains("opencode") && !keep {
         outputs.push(project_dir.join(OPENCODE_OUTPUT));
     }
@@ -188,6 +187,7 @@ pub fn generate_agents_md(app: &mut App, project_dir: &Path) -> crate::Result<()
         for rel in [KEEP_OUTPUT, CODEX_OVERRIDE] {
             remove_generated(app, project_dir, rel)?;
         }
+        remove_managed(app, project_dir, OPENCODE_PLUGIN)?;
     } else {
         remove_generated(app, project_dir, OPENCODE_OUTPUT)?;
         if !app.selected_agent_os_contains("codex") {
@@ -206,74 +206,30 @@ pub fn generate_agents_md(app: &mut App, project_dir: &Path) -> crate::Result<()
     Ok(())
 }
 
-/// Keep mode with OpenCode: add `.agent/AGENTS.md` to `instructions` of `.opencode/opencode.json`. Other items
-/// stay. Without keep mode (or OpenCode) the item that agentic added is removed again.
-pub fn sync_opencode_instructions(app: &mut App, project_dir: &Path) -> crate::Result<()> {
-    let dest = project_dir.join(OPENCODE_CONFIG);
-    let wanted = keep_mode(app) && app.selected_agent_os_contains("opencode");
-    if wanted {
-        return crate::manifest::write_json_config_file(
-            app,
-            &dest,
-            "generated:opencode-instructions",
-            |data, _| {
-                let list = data
-                    .entry("instructions")
-                    .or_insert_with(|| serde_json::json!([]));
-                if !list.is_array() {
-                    *list = serde_json::json!([]);
-                }
-                let items = list.as_array_mut().unwrap();
-                if !items.iter().any(|v| v == KEEP_OUTPUT) {
-                    items.push(serde_json::json!(KEEP_OUTPUT));
-                }
-            },
-        );
-    }
-    if app.dry_run
-        || !dest.is_file()
-        || !crate::upgrade_config::owns_key(app, OPENCODE_CONFIG, OPENCODE_INSTRUCTION_KEY)
-    {
-        return Ok(());
-    }
-    crate::util::unique_append(
-        app.config_released_keys
-            .entry(OPENCODE_CONFIG.into())
-            .or_default(),
-        OPENCODE_INSTRUCTION_KEY,
-    );
-    crate::manifest::write_json_config_file(
-        app,
-        &dest,
-        "generated:opencode-instructions",
-        |data, _| {
-            let empty = match data.get_mut("instructions").and_then(|v| v.as_array_mut()) {
-                Some(items) => {
-                    items.retain(|v| v != KEEP_OUTPUT);
-                    items.is_empty()
-                }
-                None => false,
-            };
-            if empty {
-                data.remove("instructions");
-            }
-        },
-    )
-}
-
 /// Remove a file that this generator wrote earlier, if the user did not change it.
 fn remove_generated(app: &mut App, project_dir: &Path, rel: &str) -> crate::Result<()> {
-    let ours = std::fs::read_to_string(app.project_manifest_path())
-        .ok()
-        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
-        .and_then(|d| d["managed_files"].as_array().cloned())
-        .into_iter()
-        .flatten()
-        .any(|i| i["path"] == rel && i["source"] == SOURCE);
-    if ours {
+    if manifest_source(app, rel).as_deref() == Some(SOURCE) {
         crate::legacy::remove_if_unmodified(app, project_dir, rel, "generated AGENTS.md")?;
     }
     Ok(())
+}
+
+/// Remove any file that the manifest records, if the user did not change it.
+fn remove_managed(app: &mut App, project_dir: &Path, rel: &str) -> crate::Result<()> {
+    if manifest_source(app, rel).is_some() {
+        crate::legacy::remove_if_unmodified(app, project_dir, rel, "agentic file")?;
+    }
+    Ok(())
+}
+
+fn manifest_source(app: &App, rel: &str) -> Option<String> {
+    std::fs::read_to_string(app.project_manifest_path())
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())?["managed_files"]
+        .as_array()?
+        .iter()
+        .find(|i| i["path"] == rel)
+        .and_then(|i| i["source"].as_str().map(str::to_owned))
 }
 
 /// Paths that a `keep` install generates and the project usually does not commit.

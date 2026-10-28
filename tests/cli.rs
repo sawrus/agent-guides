@@ -2517,10 +2517,8 @@ fn agents_md_keep_leaves_root_file_and_writes_host_files() {
 
     assert_eq!(std::fs::read_to_string(p.join("AGENTS.md")).unwrap(), root);
     assert!(!p.join(".opencode/AGENTS.md").exists());
-    let opencode: Value =
-        serde_json::from_str(&std::fs::read_to_string(p.join(".opencode/opencode.json")).unwrap())
-            .unwrap();
-    assert_eq!(opencode["instructions"], json!([".agent/AGENTS.md"]));
+    let plugin = std::fs::read_to_string(p.join(".opencode/plugins/agentic-agents-md.ts")).unwrap();
+    assert!(plugin.contains("\".agent\", \"AGENTS.md\""), "{plugin}");
     for rel in [".agent/AGENTS.md", "AGENTS.override.md"] {
         let text = std::fs::read_to_string(p.join(rel)).unwrap();
         let body = body_after_marker(&text);
@@ -2544,14 +2542,7 @@ fn agents_md_keep_leaves_root_file_and_writes_host_files() {
     assert!(!paths.contains(&"AGENTS.md"));
     assert!(paths.contains(&".agent/AGENTS.md"));
     assert!(paths.contains(&"AGENTS.override.md"));
-    let owned: Vec<&str> = manifest["config_owned_keys"][".opencode/opencode.json"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter_map(|k| k.as_str())
-        .filter(|k| k.starts_with("/instructions"))
-        .collect();
-    assert_eq!(owned, vec!["/instructions/.agent~1AGENTS.md"]);
+    assert!(paths.contains(&".opencode/plugins/agentic-agents-md.ts"));
 
     // Upgrade replays keep: a changed root text reaches the generated files; root AGENTS.md stays as is.
     let edited = "# Project\n\nRun `make verify` before a commit.\n";
@@ -2571,11 +2562,7 @@ fn agents_md_keep_leaves_root_file_and_writes_host_files() {
         assert!(body_after_marker(&generated).starts_with(edited.trim_end()));
         let claude = std::fs::read_to_string(p.join(".claude/CLAUDE.md")).unwrap();
         assert!(claude.contains("@../.agent/AGENTS.md"));
-        let opencode: Value = serde_json::from_str(
-            &std::fs::read_to_string(p.join(".opencode/opencode.json")).unwrap(),
-        )
-        .unwrap();
-        assert_eq!(opencode["instructions"], json!([".agent/AGENTS.md"]));
+        assert!(p.join(".opencode/plugins/agentic-agents-md.ts").is_file());
         let manifest: Value =
             serde_json::from_str(&std::fs::read_to_string(p.join(".agentic.json")).unwrap())
                 .unwrap();
@@ -2606,6 +2593,7 @@ fn agents_md_mode_switches() {
     assert!(!p.join(".agent/AGENTS.md").exists());
     assert!(!p.join("AGENTS.override.md").exists());
     assert!(p.join(".opencode/AGENTS.md").is_file());
+    assert!(!p.join(".opencode/plugins/agentic-agents-md.ts").exists());
     let claude = std::fs::read_to_string(p.join(".claude/CLAUDE.md")).unwrap();
     assert!(claude.contains("@../AGENTS.md"));
     assert!(read_json(".agentic.json")["settings"]
@@ -2621,21 +2609,9 @@ fn agents_md_mode_switches() {
     assert_eq!(keep.matches("# Agentic Project Guidelines").count(), 1);
     assert!(p.join("AGENTS.override.md").is_file());
     assert!(!p.join(".opencode/AGENTS.md").exists());
-    assert_eq!(
-        read_json(".opencode/opencode.json")["instructions"],
-        json!([".agent/AGENTS.md"])
-    );
-
-    // A user instruction in the OpenCode config stays; upgrade keeps both items.
-    let config = p.join(".opencode/opencode.json");
-    let mut opencode = read_json(".opencode/opencode.json");
-    opencode["instructions"] = json!(["docs/team.md", ".agent/AGENTS.md"]);
-    std::fs::write(&config, serde_json::to_string_pretty(&opencode).unwrap()).unwrap();
+    assert!(p.join(".opencode/plugins/agentic-agents-md.ts").is_file());
     upgrade();
-    assert_eq!(
-        read_json(".opencode/opencode.json")["instructions"],
-        json!(["docs/team.md", ".agent/AGENTS.md"])
-    );
+    assert!(p.join(".opencode/plugins/agentic-agents-md.ts").is_file());
 
     install_agents_md(home.path(), p, &["--agents-md", "generate"]);
     assert!(!p.join(".agent/AGENTS.md").exists());
@@ -2646,12 +2622,10 @@ fn agents_md_mode_switches() {
     assert!(read_json(".agentic.json")["settings"]
         .get("agents_md")
         .is_none());
-    // upgrade removes only the item that agentic added.
+    assert!(!p.join(".opencode/plugins/agentic-agents-md.ts").exists());
     upgrade();
-    assert_eq!(
-        read_json(".opencode/opencode.json")["instructions"],
-        json!(["docs/team.md"])
-    );
+    assert!(!p.join(".opencode/plugins/agentic-agents-md.ts").exists());
+    assert!(p.join(".opencode/AGENTS.md").is_file());
 }
 
 #[test]

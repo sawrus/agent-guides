@@ -149,8 +149,8 @@ agentic install --project-dir . --agent-os claude,codex,opencode --areas softwar
 1. Write root `AGENTS.md` yourself: a pointer to the company standards, the check commands (`make test`,
    `make lint`), and other project facts. agentic never changes this file in `keep` mode.
 2. agentic writes the generated guidance to `.agent/AGENTS.md` and to `AGENTS.override.md` for Codex. Each
-   starts with the text of your root `AGENTS.md`. `.claude/CLAUDE.md` imports `.agent/AGENTS.md`, and OpenCode gets
-   it through `instructions` in `.opencode/opencode.json`.
+   starts with the text of your root `AGENTS.md`. `.claude/CLAUDE.md` imports `.agent/AGENTS.md`, and the OpenCode plugin
+   `.opencode/plugins/agentic-agents-md.ts` adds it to every OpenCode request.
 3. Add the generated paths to `.gitignore`. Install prints the list. A typical list:
 
    ```gitignore

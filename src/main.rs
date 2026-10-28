@@ -97,7 +97,7 @@ Options:
   --company-rules-exclude
                         Pack rule <area>/<spec>/<rule> to skip (repeatable or comma-separated)
   --agents-md           Root AGENTS.md: generate (default) | keep (the project owns it; generated guidance goes
-                        to .agent/AGENTS.md, AGENTS.override.md for Codex, OpenCode `instructions`)
+                        to .agent/AGENTS.md, AGENTS.override.md for Codex, an OpenCode plugin)
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)
   --force               Reset Agentic project artifacts for upgrade; overwrite binary for self-install
   --dry-run             Show actions without writing files

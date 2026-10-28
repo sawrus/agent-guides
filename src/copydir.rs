@@ -49,6 +49,12 @@ pub fn copy_dir_contents(
         {
             continue;
         }
+        if src_rel == "extensions/opencode"
+            && rel == crate::agentsmd::OPENCODE_PLUGIN_REL
+            && !crate::agentsmd::keep_mode(app)
+        {
+            continue;
+        }
         if src_rel.ends_with("/workflows") {
             content = strip_agent_diagram(&content);
         }
