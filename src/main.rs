@@ -499,8 +499,11 @@ fn cmd_upgrade(app: &mut App, rest: &[String]) -> Result<()> {
     if app.upgrade_mode {
         return upgrade::sync_current_project_after_upgrade(app);
     }
-    if let Some(executable) = upgrade::upgrade_binary(app)? {
-        return upgrade::sync_with_new_binary(app, &executable);
+    // AGENTIC_SKIP_BINARY_UPGRADE=1: refresh the project only (offline, CI, pinned binary); no GitHub query
+    if std::env::var("AGENTIC_SKIP_BINARY_UPGRADE").as_deref() != Ok("1") {
+        if let Some(executable) = upgrade::upgrade_binary(app)? {
+            return upgrade::sync_with_new_binary(app, &executable);
+        }
     }
     upgrade::sync_current_project_after_upgrade(app)
 }

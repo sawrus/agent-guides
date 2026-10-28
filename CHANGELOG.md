@@ -15,6 +15,8 @@
   See [docs/agentic-reference.md](docs/agentic-reference.md#root-agentsmd-generate-or-keep) and
   [docs/company-rules.md](docs/company-rules.md#commit-only-a-short-agentsmd).
 
+- `AGENTIC_SKIP_BINARY_UPGRADE=1`: `agentic upgrade` refreshes the project without querying GitHub releases.
+
 ## v8.3.0
 
 - Company rules sources can hold company skills (`skills/<name>/**`) and workflows (`workflows/<id>.md`).

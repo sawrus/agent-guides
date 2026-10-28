@@ -134,6 +134,8 @@ the new executable. Recognizable legacy artifacts are adopted; non-overlapping
 local edits are merged. Conflicts are replaced after backup, and fully user-owned
 instructions are preserved. `--force` rebuilds Agentic artifacts without prompts,
 using manifest settings or `default + software.general` when settings are unavailable.
+`AGENTIC_SKIP_BINARY_UPGRADE=1` skips the GitHub release query and the binary replacement: `upgrade` only
+refreshes the project (offline machines, CI, a pinned binary).
 
 - **No `.agentic.json`.** When the project has Agentic files but no `.agentic.json`, `upgrade` stops with an
   error: the install settings are unknown. Run `agentic install --project-dir <dir> --agent-os ... --areas ...
