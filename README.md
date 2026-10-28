@@ -90,7 +90,15 @@ Keep it current:
 agentic upgrade            # new binary + refreshed project instructions, your edits preserved
 ```
 
-Other install options (curl script, release binary, build from source): [usage guide](docs/agentic-usage.md).
+Without npm, bootstrap the latest release binary (Linux x86_64/aarch64, macOS Intel/ARM):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sawrus/agent-guides/main/install | bash -s -- --force
+```
+
+Or download a binary from [GitHub Releases](https://github.com/sawrus/agent-guides/releases) and run
+`./agentic self-install --force`, or build from source with `make release-build && make install` (Rust toolchain).
+Details: [usage guide](docs/agentic-usage.md#requirements).
 
 ---
 
