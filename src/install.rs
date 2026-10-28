@@ -820,6 +820,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     crate::claude::generate_commands(app, &project_dir)?;
     crate::profile::install_commands(app, &project_dir)?;
     agentsmd::generate_agents_md(app, &project_dir)?;
+    agentsmd::sync_opencode_instructions(app, &project_dir)?;
     agentsmd::copy_memory_md(app, &project_dir)?;
     agentsmd::copy_review_pipeline(app, &project_dir)?;
     if app.selected_agent_os_contains("codex") {

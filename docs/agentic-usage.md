@@ -170,7 +170,7 @@ agentic install \
   --specializations software.general,software.backend
 ```
 
-After install, `agentic` writes `.agentic.json` in the target project. It records copied/generated files and their hashes. A later install rerun updates only manifest-managed files and skips files changed by the user. By default generated guidance is written to root `AGENTS.md`; when OpenCode is selected, `agentic` also writes `.opencode/AGENTS.md`. With `--agents-md keep` root `AGENTS.md` belongs to the project, and the generated guidance goes to `.agent/AGENTS.md`, `AGENTS.override.md` (Codex), and `.opencode/AGENTS.md` ([details](agentic-reference.md#root-agentsmd-generate-or-keep)).
+After install, `agentic` writes `.agentic.json` in the target project. It records copied/generated files and their hashes. A later install rerun updates only manifest-managed files and skips files changed by the user. By default generated guidance is written to root `AGENTS.md`; when OpenCode is selected, `agentic` also writes `.opencode/AGENTS.md`. With `--agents-md keep` root `AGENTS.md` belongs to the project, and the generated guidance goes to `.agent/AGENTS.md`, `AGENTS.override.md` (Codex), and `instructions` in `.opencode/opencode.json` (OpenCode) ([details](agentic-reference.md#root-agentsmd-generate-or-keep)).
 
 When Codex is selected with the `team` profile, `agentic` creates or updates the project-local `.codex/config.toml` with Codex memories enabled. The `lean` profile leaves memories off, because Codex then adds the user's cross-project memory to every request; on upgrade from `team` it removes the line that `agentic` wrote and keeps a value the user set:
 

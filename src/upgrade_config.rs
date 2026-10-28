@@ -25,6 +25,14 @@ pub fn merge_json(base: &mut Value, incoming: &Value) {
 }
 
 fn json_keys(value: &Value, prefix: &str, out: &mut Vec<String>) {
+    // OpenCode `instructions` is shared with the user: agentic owns single items, not the list.
+    if let Some(items) = value.as_array().filter(|_| prefix == "/instructions") {
+        for item in items.iter().filter_map(Value::as_str) {
+            let item = item.replace('~', "~0").replace('/', "~1");
+            util::unique_append(out, &format!("{prefix}/{item}"));
+        }
+        return;
+    }
     if let Some(map) = value.as_object().filter(|m| !m.is_empty()) {
         for (key, value) in map {
             let key = key.replace('~', "~0").replace('/', "~1");
@@ -124,6 +132,16 @@ fn remove_json_key(value: &mut Value, pointer: &str) {
                     Some("telegram-notification" | "agent-model-mapper")
                 )
             });
+        }
+        return;
+    }
+    if parent == "/instructions" {
+        let item = key.replace("~1", "/").replace("~0", "~");
+        if let Some(items) = value.pointer_mut(parent).and_then(Value::as_array_mut) {
+            items.retain(|v| v.as_str() != Some(item.as_str()));
+            if items.is_empty() {
+                remove_json_key(value, parent);
+            }
         }
         return;
     }
@@ -235,6 +253,23 @@ mod tests {
             json!(["custom-plugin", "telegram-notification"])
         );
         assert_eq!(incoming["mcp"]["custom"], value["mcp"]["custom"]);
+    }
+
+    #[test]
+    fn opencode_instructions_are_owned_per_item() {
+        let mut keys = vec![];
+        json_keys(
+            &json!({"instructions": [".agent/AGENTS.md"]}),
+            "",
+            &mut keys,
+        );
+        assert_eq!(keys, vec![crate::agentsmd::OPENCODE_INSTRUCTION_KEY]);
+        let mut value = json!({"instructions": ["docs/team.md", ".agent/AGENTS.md"]});
+        remove_json_key(&mut value, crate::agentsmd::OPENCODE_INSTRUCTION_KEY);
+        assert_eq!(value, json!({"instructions": ["docs/team.md"]}));
+        let mut value = json!({"instructions": [".agent/AGENTS.md"], "x": 1});
+        remove_json_key(&mut value, crate::agentsmd::OPENCODE_INSTRUCTION_KEY);
+        assert_eq!(value, json!({"x": 1}));
     }
 
     #[test]

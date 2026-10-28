@@ -120,7 +120,7 @@ workflows of the selected hosts, never as rules:
 | `AGENTS.md`: one line `Company rules in .agent/company/ override agent-guides rules on conflict.` | every host | — |
 
 With `--agents-md keep` the company lines go to the generated guidance files (`.agent/AGENTS.md`,
-`AGENTS.override.md`, `.opencode/AGENTS.md`), not to root `AGENTS.md`.
+`AGENTS.override.md`), not to root `AGENTS.md`.
 
 - The source id is the path as configured, or the git URL with `#ref` and `:subdir`. Install hides the user part
   of an `https://user:token@host` URL; do not put tokens in URLs anyway, because `settings` keeps the URL.
@@ -148,9 +148,9 @@ agentic install --project-dir . --agent-os claude,codex,opencode --areas softwar
 
 1. Write root `AGENTS.md` yourself: a pointer to the company standards, the check commands (`make test`,
    `make lint`), and other project facts. agentic never changes this file in `keep` mode.
-2. agentic writes the generated guidance to `.agent/AGENTS.md`, to `AGENTS.override.md` for Codex, and to
-   `.opencode/AGENTS.md` for OpenCode. Each starts with the text of your root `AGENTS.md`. `.claude/CLAUDE.md`
-   imports `.agent/AGENTS.md`.
+2. agentic writes the generated guidance to `.agent/AGENTS.md` and to `AGENTS.override.md` for Codex. Each
+   starts with the text of your root `AGENTS.md`. `.claude/CLAUDE.md` imports `.agent/AGENTS.md`, and OpenCode gets
+   it through `instructions` in `.opencode/opencode.json`.
 3. Add the generated paths to `.gitignore`. Install prints the list. A typical list:
 
    ```gitignore

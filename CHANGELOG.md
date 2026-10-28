@@ -6,7 +6,10 @@
   `AGENTS.md` belongs to the project: agentic never writes, overwrites, moves, or deletes it, also on
   `agentic upgrade --force`. The generated guidance (root `AGENTS.md` text, a separator, then the usual generated
   content) goes to `.agent/AGENTS.md`, to a root `AGENTS.override.md` for Codex (Codex reads it instead of
-  `AGENTS.md`), and to `.opencode/AGENTS.md` for OpenCode. `.claude/CLAUDE.md` imports `@../.agent/AGENTS.md`.
+  `AGENTS.md`). `.claude/CLAUDE.md` imports `@../.agent/AGENTS.md`. For OpenCode, agentic adds `.agent/AGENTS.md`
+  to `instructions` in `.opencode/opencode.json` (only this item is agentic-owned; `generate` removes it again)
+  and no longer writes `.opencode/AGENTS.md` in this mode. Known gap: OpenCode 2.0.29 ignored `instructions` in a
+  local check, so it sees only root `AGENTS.md`.
   `.agentic.json` saves `settings.agents_md`, so `install`, the TUI, and `upgrade` replay it. A `keep` install
   prints the generated paths to add to `.gitignore`. Teams can now commit only a short hand-written `AGENTS.md`.
   See [docs/agentic-reference.md](docs/agentic-reference.md#root-agentsmd-generate-or-keep) and

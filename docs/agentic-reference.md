@@ -330,10 +330,10 @@ workflows: `company:<source-id>/skills/<relpath>` and `company:<source-id>/workf
 | Mode | Root `AGENTS.md` | Generated guidance |
 |---|---|---|
 | `generate` (default) | agentic writes it and tracks it in `managed_files`. | `AGENTS.md`; `.opencode/AGENTS.md` for OpenCode. |
-| `keep` | The project owns it. agentic never writes, overwrites, moves, or deletes it. If it is missing, agentic does not create it and prints a note. | `.agent/AGENTS.md` (always), `AGENTS.override.md` at the project root for Codex, `.opencode/AGENTS.md` for OpenCode. |
+| `keep` | The project owns it. agentic never writes, overwrites, moves, or deletes it. If it is missing, agentic does not create it and prints a note. | `.agent/AGENTS.md` (always) and `AGENTS.override.md` at the project root for Codex. OpenCode gets `.agent/AGENTS.md` through `instructions` in `.opencode/opencode.json`; `.opencode/AGENTS.md` is not written. |
 
 In `keep` mode each generated file holds the text of root `AGENTS.md`, a `---` separator, and then the usual
-generated content: header, company rules lines, shared guidance, and specialization sections. All three files carry
+generated content: header, company rules lines, shared guidance, and specialization sections. Both files carry
 the agentic marker and a `managed_files` entry, so `upgrade` updates them and removes them when they become
 obsolete. A changed root `AGENTS.md` reaches the generated files on the next `install` or `upgrade`.
 
@@ -344,8 +344,16 @@ How each host reads the guidance in `keep` mode:
   per directory, so the root `AGENTS.override.md` replaces root `AGENTS.md` for Codex. Source:
   [Codex: AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md) (checked
   2026-10-28). The `team` profile file `.codex/AGENTS.override.md` is a different file and does not change.
-- **OpenCode.** agentic writes `.opencode/AGENTS.md` as in `generate` mode. The OpenCode rules page documents only
-  root `AGENTS.md` and the `instructions` list of `opencode.json`, so OpenCode can read only the short root file.
+- **OpenCode.** The [rules page](https://opencode.ai/docs/rules/) documents root `AGENTS.md` and the
+  `instructions` list of the config; it does not document `.opencode/AGENTS.md`. So in `keep` mode agentic adds
+  `.agent/AGENTS.md` to `instructions` in `.opencode/opencode.json`, the config file that agentic already manages
+  (OpenCode 2.0.29 lists it as a project config source in `opencode debug config`), and does not write
+  `.opencode/AGENTS.md`. agentic owns only its own item (`config_owned_keys`:
+  `/instructions/.agent~1AGENTS.md`); other items stay. OpenCode reads root `AGENTS.md` as well, so the short text
+  is in context twice; it is short. Known gap: in a local check (2026-10-28) OpenCode 2.0.29 loaded root and global
+  `AGENTS.md` only and ignored `instructions` from every config source (root `opencode.json`,
+  `.opencode/opencode.json`, `OPENCODE_CONFIG_CONTENT`). It also ignored `.opencode/AGENTS.md`. With such a version,
+  OpenCode sees only the short root `AGENTS.md` in `keep` mode.
 - **Other hosts** (`default`, Cursor, Kilo Code) read root `AGENTS.md` only.
 
 `.agentic.json` stores `settings.agents_md: "keep"`; `generate` writes no key. `install` without `--agents-md`,
@@ -357,7 +365,9 @@ Switching modes:
   file now belongs to the project. While it still carries the agentic marker, agentic does not copy its text into
   the generated files and prints a warning: replace it with the short project `AGENTS.md`.
 - **`keep` → `generate`.** agentic removes `.agent/AGENTS.md` and the root `AGENTS.override.md` that it generated,
-  if they are unchanged; otherwise it keeps them and prints a warning. A root `AGENTS.md` that the project owns
+  if they are unchanged; otherwise it keeps them and prints a warning. It removes its `instructions` item from
+  `.opencode/opencode.json`. Like other shared configs, `install` skips that file when you changed it since the
+  last run; `upgrade` then removes only the agentic item. A root `AGENTS.md` that the project owns
   is not overwritten (`Skipping unmanaged target on rerun`); delete or move it to get the generated file again.
 
 After a `keep` install, agentic prints the generated paths that the project usually adds to `.gitignore`:
