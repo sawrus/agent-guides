@@ -1,5 +1,22 @@
 # Changelog
 
+## v8.4.0
+
+- New install option `--agents-md <generate|keep>` (default `generate`, the old behaviour). With `keep`, root
+  `AGENTS.md` belongs to the project: agentic never writes, overwrites, moves, or deletes it, also on
+  `agentic upgrade --force`. The generated guidance (root `AGENTS.md` text, a separator, then the usual generated
+  content) goes to `.agent/AGENTS.md`, to a root `AGENTS.override.md` for Codex (Codex reads it instead of
+  `AGENTS.md`). `.claude/CLAUDE.md` imports `@../.agent/AGENTS.md`. OpenCode 2.0.x ignores config `instructions`
+  and `.opencode/AGENTS.md`, so a new plugin `.opencode/plugins/agentic-agents-md.ts` adds `.agent/AGENTS.md` to
+  every request through the session `context` hook; keep mode installs it instead of `.opencode/AGENTS.md`, and
+  `generate` removes it.
+  `.agentic.json` saves `settings.agents_md`, so `install`, the TUI, and `upgrade` replay it. A `keep` install
+  prints the generated paths to add to `.gitignore`. Teams can now commit only a short hand-written `AGENTS.md`.
+  See [docs/agentic-reference.md](docs/agentic-reference.md#root-agentsmd-generate-or-keep) and
+  [docs/company-rules.md](docs/company-rules.md#commit-only-a-short-agentsmd).
+
+- `AGENTIC_SKIP_BINARY_UPGRADE=1`: `agentic upgrade` refreshes the project without querying GitHub releases.
+
 ## v8.3.0
 
 - Company rules sources can hold company skills (`skills/<name>/**`) and workflows (`workflows/<id>.md`).

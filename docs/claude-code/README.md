@@ -19,7 +19,7 @@ agentic install --project-dir <dir> --agent-os claude --areas software \
 
 | Path | Content | Notes |
 | --- | --- | --- |
-| `.claude/CLAUDE.md` | `@../AGENTS.md` and `@../MEMORY.md` imports, layout, SDLC order | Loaded automatically at session start |
+| `.claude/CLAUDE.md` | `@../AGENTS.md` and `@../MEMORY.md` imports, layout, SDLC order | Loaded automatically at session start. With `--agents-md keep` it imports `@../.agent/AGENTS.md` instead, because root `AGENTS.md` belongs to the project ([details](../agentic-reference.md#root-agentsmd-generate-or-keep)) |
 | `.claude/agents/*.md` | 9 role subagents with `tools:` and, with a profile, `model:` | `instruction-reviewer` and `memory-curator` are read-only |
 | `.claude/rules/*.md` | Specialization rules | Loaded automatically; every rule loads in every session |
 | `.claude/skills/<name>/SKILL.md` | Specialization skills | Each `name` matches its directory; Claude loads a skill by its description |
@@ -89,7 +89,8 @@ warning.
 
 - `/agents` lists the nine roles; `/develop-feature …` and the other installed
   workflows appear as slash commands; installed skills are available.
-- `.claude/rules/*.md`, `AGENTS.md` and `MEMORY.md` load at session start.
+- `.claude/rules/*.md`, `AGENTS.md` (`.agent/AGENTS.md` with `--agents-md keep`) and `MEMORY.md` load at
+  session start.
 - Reviewers cannot write files (`tools: Read, Grep, Glob`).
 - Re-running install is idempotent; disabling a feature removes only owned entries.
 - `make blackbox-claude` verifies this with the real CLI (see the

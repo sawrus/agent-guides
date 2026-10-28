@@ -74,12 +74,104 @@ fn append_specialization_template(app: &App, out: &mut String, spec_key: &str) {
     out.push_str("\n---\n\n");
 }
 
-pub fn generate_agents_md(app: &mut App, project_dir: &Path) -> crate::Result<()> {
-    let mut outputs: Vec<PathBuf> = Vec::new();
-    if app.selected_agent_os_contains("opencode") {
-        outputs.push(project_dir.join(".opencode/AGENTS.md"));
+/// `--agents-md` values: `generate` writes root `AGENTS.md`; `keep` leaves it to the project.
+pub const MODE_GENERATE: &str = "generate";
+pub const MODE_KEEP: &str = "keep";
+/// The canonical generated guidance in `keep` mode.
+pub const KEEP_OUTPUT: &str = ".agent/AGENTS.md";
+/// Codex reads `AGENTS.override.md` instead of `AGENTS.md` in the same directory.
+pub const CODEX_OVERRIDE: &str = "AGENTS.override.md";
+const SOURCE: &str = "generated:AGENTS.md";
+const OPENCODE_OUTPUT: &str = ".opencode/AGENTS.md";
+/// OpenCode plugin (extension-relative path) that adds .agent/AGENTS.md to every request in keep mode.
+pub const OPENCODE_PLUGIN_REL: &str = "plugins/agentic-agents-md.ts";
+const OPENCODE_PLUGIN: &str = ".opencode/plugins/agentic-agents-md.ts";
+
+pub fn parse_mode(value: &str) -> crate::Result<String> {
+    match value.trim() {
+        v @ (MODE_GENERATE | MODE_KEEP) => Ok(v.to_string()),
+        other => Err(format!("--agents-md: expected generate or keep, got '{other}'").into()),
     }
-    outputs.push(project_dir.join("AGENTS.md"));
+}
+
+/// True when root `AGENTS.md` belongs to the project (`--agents-md keep`).
+pub fn keep_mode(app: &App) -> bool {
+    app.agents_md_mode.as_deref() == Some(MODE_KEEP)
+}
+
+/// Take the saved `settings.agents_md` when the CLI did not set a mode.
+pub fn load_saved_mode(app: &mut App, settings: &serde_json::Value) {
+    if app.agents_md_mode.is_none() {
+        if let Some(mode) = settings["agents_md"]
+            .as_str()
+            .filter(|m| *m == MODE_GENERATE || *m == MODE_KEEP)
+        {
+            app.agents_md_mode = Some(mode.to_string());
+        }
+    }
+}
+
+/// `install` paths (the TUI among them) that did not replay the manifest still keep its mode.
+pub fn resolve_mode(app: &mut App) {
+    if app.agents_md_mode.is_some() {
+        return;
+    }
+    let settings = std::fs::read_to_string(app.project_manifest_path())
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+        .map(|d| d["settings"].clone())
+        .unwrap_or(serde_json::Value::Null);
+    load_saved_mode(app, &settings);
+}
+
+fn generated_content(app: &App) -> String {
+    let mut content = build_header(app);
+    append_root_agents_template(app, &mut content);
+    for spec_key in app.selected_specs.clone() {
+        append_specialization_template(app, &mut content, &spec_key);
+    }
+    content
+}
+
+/// The project's root `AGENTS.md` text that `keep` mode puts above the generated guidance.
+fn project_agents_md(app: &mut App, project_dir: &Path) -> Option<String> {
+    let path = project_dir.join("AGENTS.md");
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        ui::warn(
+            app,
+            &format!(
+                "--agents-md keep: no AGENTS.md at the project root; agentic does not create it. \
+                 The generated guidance is in {KEEP_OUTPUT} only"
+            ),
+        );
+        return None;
+    };
+    if crate::project_inventory::recognized(&text) {
+        ui::warn(
+            app,
+            "--agents-md keep: AGENTS.md still holds guidance that agentic generated earlier. \
+             agentic no longer changes it; replace it with the short project AGENTS.md",
+        );
+        return None;
+    }
+    Some(text)
+}
+
+pub fn generate_agents_md(app: &mut App, project_dir: &Path) -> crate::Result<()> {
+    let keep = keep_mode(app);
+    let mut outputs: Vec<PathBuf> = Vec::new();
+    // In keep mode OpenCode gets .agent/AGENTS.md from the agentic-agents-md plugin (copy_extensions).
+    if app.selected_agent_os_contains("opencode") && !keep {
+        outputs.push(project_dir.join(OPENCODE_OUTPUT));
+    }
+    if keep {
+        outputs.push(project_dir.join(KEEP_OUTPUT));
+        if app.selected_agent_os_contains("codex") {
+            outputs.push(project_dir.join(CODEX_OVERRIDE));
+        }
+    } else {
+        outputs.push(project_dir.join("AGENTS.md"));
+    }
 
     if app.dry_run {
         for out in &outputs {
@@ -90,15 +182,86 @@ pub fn generate_agents_md(app: &mut App, project_dir: &Path) -> crate::Result<()
     }
 
     app.ensure_dir(project_dir);
-    let mut content = build_header(app);
-    append_root_agents_template(app, &mut content);
-    for spec_key in app.selected_specs.clone() {
-        append_specialization_template(app, &mut content, &spec_key);
+    if !keep {
+        // Files of an earlier `keep` install; a stale AGENTS.override.md would hide AGENTS.md from Codex.
+        for rel in [KEEP_OUTPUT, CODEX_OVERRIDE] {
+            remove_generated(app, project_dir, rel)?;
+        }
+        remove_managed(app, project_dir, OPENCODE_PLUGIN)?;
+    } else {
+        remove_generated(app, project_dir, OPENCODE_OUTPUT)?;
+        if !app.selected_agent_os_contains("codex") {
+            remove_generated(app, project_dir, CODEX_OVERRIDE)?;
+        }
+    }
+    let mut content = generated_content(app);
+    if keep {
+        if let Some(root) = project_agents_md(app, project_dir) {
+            content = format!("{}\n\n---\n\n{content}", root.trim_end());
+        }
     }
     for out in outputs {
-        write_file_with_agentic_marker(app, &content, &out, "generated:AGENTS.md")?;
+        write_file_with_agentic_marker(app, &content, &out, SOURCE)?;
     }
     Ok(())
+}
+
+/// Remove a file that this generator wrote earlier, if the user did not change it.
+fn remove_generated(app: &mut App, project_dir: &Path, rel: &str) -> crate::Result<()> {
+    if manifest_source(app, rel).as_deref() == Some(SOURCE) {
+        crate::legacy::remove_if_unmodified(app, project_dir, rel, "generated AGENTS.md")?;
+    }
+    Ok(())
+}
+
+/// Remove any file that the manifest records, if the user did not change it.
+fn remove_managed(app: &mut App, project_dir: &Path, rel: &str) -> crate::Result<()> {
+    if manifest_source(app, rel).is_some() {
+        crate::legacy::remove_if_unmodified(app, project_dir, rel, "agentic file")?;
+    }
+    Ok(())
+}
+
+fn manifest_source(app: &App, rel: &str) -> Option<String> {
+    std::fs::read_to_string(app.project_manifest_path())
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())?["managed_files"]
+        .as_array()?
+        .iter()
+        .find(|i| i["path"] == rel)
+        .and_then(|i| i["source"].as_str().map(str::to_owned))
+}
+
+/// Paths that a `keep` install generates and the project usually does not commit.
+pub fn print_keep_hint(app: &App) {
+    if !keep_mode(app) {
+        return;
+    }
+    let claude = if crate::company::configured(app) {
+        ".claude/ (except rules/company-* when the project commits company rules)"
+    } else {
+        ".claude/"
+    };
+    ui::out(app, "");
+    ui::out(
+        app,
+        "--agents-md keep: root AGENTS.md is yours; agentic generated the rest. \
+         Add the generated paths to .gitignore, for example:",
+    );
+    for path in [
+        ".agent/* (except files the project commits, such as .agent/company or .agent/gate.json)",
+        ".agents/",
+        claude,
+        ".codex/",
+        ".opencode/",
+        "AGENTS.override.md",
+        ".agentic.json",
+        "MEMORY.md",
+        "REVIEW_PIPELINE.md",
+        "CLAUDE.md",
+    ] {
+        ui::out(app, &format!("  {path}"));
+    }
 }
 
 pub fn copy_memory_md(app: &mut App, project_dir: &Path) -> crate::Result<()> {
@@ -183,6 +346,41 @@ mod tests {
         generate_agents_md(&mut app, tmp.path()).unwrap();
         assert!(tmp.path().join(".opencode/AGENTS.md").is_file());
         assert!(tmp.path().join("AGENTS.md").is_file());
+    }
+
+    #[test]
+    fn agents_md_mode_parse_and_saved_value() {
+        assert_eq!(parse_mode("keep").unwrap(), MODE_KEEP);
+        assert_eq!(parse_mode(" generate ").unwrap(), MODE_GENERATE);
+        assert!(parse_mode("both").is_err());
+        let tmp = tempfile::tempdir().unwrap();
+        let mut app = test_app(tmp.path());
+        load_saved_mode(&mut app, &serde_json::json!({"agents_md": "bogus"}));
+        assert!(!keep_mode(&app));
+        load_saved_mode(&mut app, &serde_json::json!({"agents_md": "keep"}));
+        assert!(keep_mode(&app));
+        app.agents_md_mode = Some(MODE_GENERATE.into());
+        load_saved_mode(&mut app, &serde_json::json!({"agents_md": "keep"}));
+        assert!(!keep_mode(&app), "the CLI value wins");
+    }
+
+    #[test]
+    fn keep_mode_prefixes_project_text_and_skips_root() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut app = test_app(tmp.path());
+        app.selected_agent_os = vec!["codex".to_string()];
+        app.agents_md_mode = Some(MODE_KEEP.into());
+        std::fs::write(tmp.path().join("AGENTS.md"), "# Mine\n").unwrap();
+        generate_agents_md(&mut app, tmp.path()).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(tmp.path().join("AGENTS.md")).unwrap(),
+            "# Mine\n"
+        );
+        for rel in [KEEP_OUTPUT, CODEX_OVERRIDE] {
+            let text = std::fs::read_to_string(tmp.path().join(rel)).unwrap();
+            assert!(text.contains("---\n# Mine\n\n---\n\n# Agentic Project Guidelines"));
+        }
+        assert!(!app.managed_records.iter().any(|r| r.path == "AGENTS.md"));
     }
 
     #[test]

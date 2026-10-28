@@ -53,6 +53,11 @@ pub fn can_write(app: &mut App, dest: &Path, config: bool) -> bool {
     false
 }
 
+/// `--agents-md keep`: root `AGENTS.md` belongs to the project; agentic never moves or deletes it.
+fn project_owned(app: &App, rel: &str) -> bool {
+    rel == "AGENTS.md" && crate::agentsmd::keep_mode(app)
+}
+
 pub fn baseline_path(root: &Path, rel: &str) -> PathBuf {
     root.join(BASELINES).join(util::sha256_hex(rel.as_bytes()))
 }
@@ -151,7 +156,7 @@ fn cleanup(
     force: bool,
 ) -> crate::Result<()> {
     for (rel, item) in owned {
-        if desired.contains(rel) || item["marker"] == "config" {
+        if desired.contains(rel) || item["marker"] == "config" || project_owned(app, rel) {
             continue;
         }
         let path = safe_path(Path::new(&app.project_dir), rel)?;
@@ -184,7 +189,10 @@ pub fn retire_legacy_artifacts(app: &mut App, root: &Path) -> crate::Result<()> 
     let legacy: Vec<String> = owned_files(&files, &Value::Null)
         .into_keys()
         .filter(|rel| {
-            !desired.contains(rel) && !rel.ends_with(".json") && !rel.ends_with("config.toml")
+            !desired.contains(rel)
+                && !rel.ends_with(".json")
+                && !rel.ends_with("config.toml")
+                && !project_owned(app, rel)
         })
         .collect();
     if legacy.is_empty() {
@@ -351,6 +359,9 @@ fn prepare(
 ) -> crate::Result<BTreeMap<String, Vec<u8>>> {
     if app.upgrade_force {
         for (rel, item) in owned {
+            if project_owned(app, rel) {
+                continue;
+            }
             let path = safe_path(staging, rel)?;
             if !path.is_file() {
                 continue;

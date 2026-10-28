@@ -794,6 +794,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     normalize_selected_agent_os(app);
     validate_inputs(app)?;
     crate::profile::validate_selected(app)?;
+    agentsmd::resolve_mode(app);
 
     app.project_dir = util::normalize_project_dir_path(&app.project_dir);
     let project_dir = PathBuf::from(&app.project_dir);
@@ -846,6 +847,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     crate::gate::write_baseline(app, &project_dir)?;
     crate::gitstate::report(app, &project_dir);
     print_report(app);
+    agentsmd::print_keep_hint(app);
     crate::company::report_duplicates(app, &project_dir);
     print_missing_agent_binary_guides(app);
     print_current_changelog(app);
