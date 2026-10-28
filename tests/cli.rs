@@ -2372,6 +2372,13 @@ fn company_skills_and_workflows_install_per_host_and_replace_pack_ones() {
         assert!(migration.contains("# Company migration"), "{dir}");
     }
     assert!(!p.join(".agent/workflows/README.md").exists());
+    let agents = std::fs::read_to_string(p.join("AGENTS.md")).unwrap();
+    assert!(agents.contains(
+        "- Company skills: `api-design` — Company API design; `release-notes` — Write release notes"
+    ));
+    assert!(agents.contains(
+        "- Company workflows: `/add-migration` (`.agent/workflows/add-migration.md`) — Company migration flow; `/hotfix`"
+    ));
     let command = std::fs::read_to_string(p.join(".claude/commands/hotfix.md")).unwrap();
     assert!(command.contains("Ship a hotfix to production."));
     assert!(command.contains("@.agent/workflows/hotfix.md"));

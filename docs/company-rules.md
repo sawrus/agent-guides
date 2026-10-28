@@ -101,6 +101,7 @@ workflows of the selected hosts, never as rules:
 | `skills/<name>/**` | the skills directory of each host (`.claude/skills`, `.agents/skills`, `.opencode/skills`, ...) and `.agent/skills/<name>/` | every host |
 | `workflows/<id>.md` | `.agent/workflows/<id>.md` and the workflows directory of each host (`.opencode/commands`, ...) | every host |
 | `workflows/<id>.md` | `.claude/commands/<id>.md`: a thin wrapper that runs `@.agent/workflows/<id>.md`, like pack workflows | `claude` |
+| both | `AGENTS.md`: `- Company skills: ...` and `- Company workflows: ...` lines with the `description:` of each, below the company rules line, so that Codex and OpenCode models find them | every host |
 
 - A skill or workflow with the name of a pack skill or workflow of the selected specializations replaces it on
   every host. When the source drops it, `agentic upgrade` restores the pack version.

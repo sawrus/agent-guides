@@ -691,6 +691,38 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
     Ok(())
 }
 
+/// AGENTS.md lines in the style of the specialization sections, so that hosts without native
+/// discovery of commands (Codex, OpenCode models) learn the company skills and workflows.
+pub fn agents_lines(prepared: &Prepared) -> Vec<String> {
+    let described = |name: String, content: &str| match front_list(content, "description").first() {
+        Some(text) => format!("{name} — {}", text.trim_end_matches('.')),
+        None => name,
+    };
+    let skills: Vec<String> = prepared
+        .skills
+        .iter()
+        .filter_map(|f| Some((f.rel.strip_suffix("/SKILL.md")?, &f.content)))
+        .filter(|(name, _)| !name.contains('/'))
+        .map(|(name, content)| described(format!("`{name}`"), content))
+        .collect();
+    let workflows: Vec<String> = prepared
+        .workflows
+        .iter()
+        .map(|f| {
+            let id = f.rel.trim_end_matches(".md");
+            described(format!("`/{id}` (`.agent/workflows/{id}.md`)"), &f.content)
+        })
+        .collect();
+    let mut lines = Vec::new();
+    if !skills.is_empty() {
+        lines.push(format!("- Company skills: {}.", skills.join("; ")));
+    }
+    if !workflows.is_empty() {
+        lines.push(format!("- Company workflows: {}.", workflows.join("; ")));
+    }
+    lines
+}
+
 /// Destination directories of `bucket` (skills, workflows) for the selected hosts plus `.agent/`.
 fn asset_dirs(app: &App, bucket: &str) -> Vec<String> {
     let mut dirs = Vec::new();
@@ -711,6 +743,7 @@ fn asset_dirs(app: &App, bucket: &str) -> Vec<String> {
 /// Company skills and workflows go where pack ones go; written after the pack, a company file with the
 /// same name replaces the pack file. Claude Code gets a `.claude/commands/<id>.md` wrapper per workflow.
 fn install_assets(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate::Result<()> {
+    app.company_agents_lines = agents_lines(prepared);
     for (bucket, files) in [
         (SKILLS_DIR, &prepared.skills),
         (WORKFLOWS_DIR, &prepared.workflows),
