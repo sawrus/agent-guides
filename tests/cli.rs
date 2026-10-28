@@ -2549,7 +2549,9 @@ fn agents_md_keep_leaves_root_file_and_writes_host_files() {
     std::fs::write(p.join("AGENTS.md"), edited).unwrap();
     for force in [false, true] {
         let mut cmd = agentic(home.path());
-        cmd.args(["upgrade", "--project-dir"]).arg(p).env("AGENTIC_SKIP_BINARY_UPGRADE", "1");
+        cmd.args(["upgrade", "--project-dir"])
+            .arg(p)
+            .env("AGENTIC_SKIP_BINARY_UPGRADE", "1");
         if force {
             cmd.arg("--force");
         }
