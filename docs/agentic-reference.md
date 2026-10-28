@@ -309,7 +309,12 @@ project/.claude/                 ← with --agent-os claude
 | `sources[]` | `{"path": "<dir>"}` or `{"git": "<url>", "ref": "<ref>", "subdir": "<dir>"}`, in order; the first source wins on equal paths. |
 | `exclude[]` | Pack rule ids `<area>/<spec>/<rule>` that install skips; `replaces:` in a company rule adds to it. |
 
-Company files in `managed_files` have `marker: company` and `source: company:<source-id>/<relpath>`. Install flags:
+A source may also hold `skills/<name>/**` and `workflows/<id>.md`. Install places them on every selected host
+next to the pack skills and workflows; a company one replaces the pack one with the same name, and `AGENTS.md` lists
+them.
+
+Company files in `managed_files` have `marker: company` and `source: company:<source-id>/<relpath>` (skills and
+workflows: `company:<source-id>/skills/<relpath>` and `company:<source-id>/workflows/<relpath>`). Install flags:
 `--company-rules-path <dir>`, `--company-rules-git <url>[#ref][:subdir]`, `--company-rules-exclude <id>`. See
 [company rules](company-rules.md).
 
