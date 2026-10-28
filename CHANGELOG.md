@@ -1,5 +1,14 @@
 # Changelog
 
+## v8.3.0
+
+- Company rules sources can hold company skills (`skills/<name>/**`) and workflows (`workflows/<id>.md`).
+  `agentic install` and `agentic upgrade` write them where pack skills and workflows go on every selected host:
+  `.agent/skills`, `.claude/skills`, `.agents/skills`, `.opencode/skills`, `.agent/workflows`,
+  `.opencode/commands`, and a `.claude/commands/<id>.md` wrapper. A company skill or workflow replaces the pack
+  one with the same name. Before, install read every `*.md` of a source as a rule, so a `SKILL.md` or a workflow
+  became a company rule. See [docs/company-rules.md](docs/company-rules.md#company-skills-and-workflows).
+
 ## v8.2.0
 
 - `agentic upgrade` no longer fails with `Symlink project path` when the current directory holds a host directory

@@ -1,6 +1,7 @@
 //! Company rules (docs/company-rules.md): rule files from a local directory or a git repository that
 //! override pack rules. Install copies them into `.agent/company/` (every host) and, for Claude Code,
-//! into `.claude/rules/company-*.md`; `exclude` and `replaces:` drop pack rules.
+//! into `.claude/rules/company-*.md`; `exclude` and `replaces:` drop pack rules. A source can also hold
+//! company skills (`skills/<name>/`) and workflows (`workflows/<id>.md`), installed like pack ones.
 
 use crate::app::App;
 use crate::{manifest, ui, util};
@@ -15,6 +16,9 @@ pub const COMPANY_DIR: &str = ".agent/company";
 pub const AGENTS_LINE: &str =
     "Company rules in `.agent/company/` override agent-guides rules on conflict.";
 const MARKER: &str = "company";
+/// Source subdirectories that hold skills and workflows instead of rules.
+pub const SKILLS_DIR: &str = "skills";
+pub const WORKFLOWS_DIR: &str = "workflows";
 
 static CHECK_ARTIFACTS_PY: &str = include_str!("../scripts/check_artifacts.py");
 static CONTEXT_BUDGET_PY: &str = include_str!("../scripts/context_budget.py");
@@ -211,6 +215,10 @@ pub struct RuleFile {
 #[derive(Debug, Default)]
 pub struct Prepared {
     pub files: Vec<RuleFile>,
+    /// Skill files; `rel` is `<name>/<path>` below the source's `skills/`.
+    pub skills: Vec<RuleFile>,
+    /// Workflow files; `rel` is `<id>.md` below the source's `workflows/`.
+    pub workflows: Vec<RuleFile>,
     /// Files (`path`, `source`) that a source which cannot be read installed before; they stay.
     pub kept: Vec<(String, String)>,
 }
@@ -288,6 +296,9 @@ fn collect_md(root: &Path, dir: &Path, out: &mut Vec<(String, String)>) {
         let Ok(kind) = entry.file_type() else {
             continue;
         };
+        if kind.is_dir() && dir == root && (name == SKILLS_DIR || name == WORKFLOWS_DIR) {
+            continue;
+        }
         if kind.is_dir() {
             collect_md(root, &path, out);
         } else if kind.is_file() && name.ends_with(".md") && !name.eq_ignore_ascii_case("README.md")
@@ -297,6 +308,112 @@ fn collect_md(root: &Path, dir: &Path, out: &mut Vec<(String, String)>) {
             }
         }
     }
+}
+
+/// Every file below `dir` (skills carry scripts and templates); dot entries are skipped.
+fn collect_all(root: &Path, dir: &Path, out: &mut Vec<(String, Option<String>)>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut entries: Vec<_> = entries.filter_map(|e| e.ok()).collect();
+    entries.sort_by_key(|e| e.file_name());
+    for entry in entries {
+        if entry.file_name().to_string_lossy().starts_with('.') {
+            continue;
+        }
+        let path = entry.path();
+        match entry.file_type() {
+            Ok(kind) if kind.is_dir() => collect_all(root, &path, out),
+            Ok(kind) if kind.is_file() => {
+                if let Ok(rel) = path.strip_prefix(root) {
+                    let rel = rel.to_string_lossy().replace('\\', "/");
+                    out.push((rel, std::fs::read_to_string(&path).ok()));
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Skills (`skills/<name>/**`) and workflows (`workflows/<id>.md`) of one source root.
+fn collect_assets(
+    app: &mut App,
+    root: &Path,
+    id: &str,
+    seen: &mut BTreeSet<String>,
+    prepared: &mut Prepared,
+) {
+    let mut skills = Vec::new();
+    collect_all(&root.join(SKILLS_DIR), &root.join(SKILLS_DIR), &mut skills);
+    for (rel, content) in skills {
+        if !rel.contains('/') {
+            ui::warn(
+                app,
+                &format!("Company skills: {SKILLS_DIR}/{rel} from {id} is not inside a skill directory; skipped"),
+            );
+            continue;
+        }
+        push_asset(
+            app,
+            id,
+            SKILLS_DIR,
+            rel,
+            content,
+            seen,
+            &mut prepared.skills,
+        );
+    }
+    let mut workflows = Vec::new();
+    collect_md(
+        &root.join(WORKFLOWS_DIR),
+        &root.join(WORKFLOWS_DIR),
+        &mut workflows,
+    );
+    for (rel, content) in workflows {
+        if rel.contains('/') {
+            continue;
+        }
+        push_asset(
+            app,
+            id,
+            WORKFLOWS_DIR,
+            rel,
+            Some(content),
+            seen,
+            &mut prepared.workflows,
+        );
+    }
+}
+
+fn push_asset(
+    app: &mut App,
+    id: &str,
+    kind: &str,
+    rel: String,
+    content: Option<String>,
+    seen: &mut BTreeSet<String>,
+    out: &mut Vec<RuleFile>,
+) {
+    let Some(content) = content else {
+        ui::warn(
+            app,
+            &format!("Company {kind}: {kind}/{rel} from {id} is not UTF-8 text; skipped"),
+        );
+        return;
+    };
+    if !seen.insert(format!("{kind}/{rel}")) {
+        ui::warn(
+            app,
+            &format!("Company {kind}: {kind}/{rel} from {id} repeats an earlier source; skipped"),
+        );
+        return;
+    }
+    out.push(RuleFile {
+        source_id: id.to_string(),
+        rel,
+        content,
+        in_place: false,
+    });
 }
 
 pub fn cache_root(app: &App) -> PathBuf {
@@ -446,6 +563,7 @@ pub fn prepare(app: &mut App) -> crate::Result<Prepared> {
             prepared.kept.extend(previous_files(&project, &id));
             continue;
         };
+        collect_assets(app, &root, &id, &mut seen, &mut prepared);
         let mut found = Vec::new();
         collect_md(&root, &root, &mut found);
         for (rel, content) in found {
@@ -561,6 +679,7 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
             .join(claude_name(&file.rel));
         write(app, &file.content, &dest, &source_ref)?;
     }
+    install_assets(app, project_dir, prepared)?;
     for (path, source) in &prepared.kept {
         if !app.managed_records.iter().any(|r| &r.path == path) {
             manifest::register_managed_file(app, &project_dir.join(path), source, MARKER, false);
@@ -568,6 +687,59 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
     }
     if !app.upgrade_mode {
         remove_excluded(app, project_dir)?;
+    }
+    Ok(())
+}
+
+/// Destination directories of `bucket` (skills, workflows) for the selected hosts plus `.agent/`.
+fn asset_dirs(app: &App, bucket: &str) -> Vec<String> {
+    let mut dirs = Vec::new();
+    for target in app
+        .selected_agent_os
+        .iter()
+        .map(String::as_str)
+        .chain(["agents"])
+    {
+        let dir = crate::agentsmd::get_dest_dir(target, bucket);
+        if dir != "-" {
+            util::unique_append(&mut dirs, &dir);
+        }
+    }
+    dirs
+}
+
+/// Company skills and workflows go where pack ones go; written after the pack, a company file with the
+/// same name replaces the pack file. Claude Code gets a `.claude/commands/<id>.md` wrapper per workflow.
+fn install_assets(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate::Result<()> {
+    for (bucket, files) in [
+        (SKILLS_DIR, &prepared.skills),
+        (WORKFLOWS_DIR, &prepared.workflows),
+    ] {
+        for dir in asset_dirs(app, bucket) {
+            for file in files {
+                let source_ref = format!("company:{}/{bucket}/{}", file.source_id, file.rel);
+                write(
+                    app,
+                    &file.content,
+                    &project_dir.join(&dir).join(&file.rel),
+                    &source_ref,
+                )?;
+            }
+        }
+    }
+    if app.selected_agent_os_contains("claude") {
+        let team = crate::profile::is_team_for(app, "claude");
+        for file in &prepared.workflows {
+            let id = file.rel.trim_end_matches(".md");
+            let source_ref = format!("company:{}/{WORKFLOWS_DIR}/{}", file.source_id, file.rel);
+            let content = crate::claude::workflow_command(id, &file.content, team);
+            write(
+                app,
+                &content,
+                &project_dir.join(format!(".claude/commands/{id}.md")),
+                &source_ref,
+            )?;
+        }
     }
     Ok(())
 }
