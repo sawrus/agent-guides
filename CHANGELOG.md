@@ -1,5 +1,16 @@
 # Changelog
 
+## v8.5.0
+
+- OpenCode plugins no longer fail with "Duplicate plugin ID" when a parent directory has its own agentic install.
+  OpenCode loads `.opencode/plugins` from the project and from every parent directory. Before, the parent copy of
+  `agentic-gate`, `agentic-telegram`, `agentic-agents-md`, or `agentic-jev` stayed active, and the project copy
+  failed, so the TUI showed "2 plugins failed" and an older plugin ran for the project. Now each plugin id carries
+  a hash of its file path, and a plugin does nothing when a copy nearer to the project exists. A parent install
+  still serves directories that have no copy of their own. Run `agentic upgrade` in both the parent and the
+  project: a parent copy from an older version keeps the old id and still runs next to the project copy.
+  See [docs/opencode_setup.md](docs/opencode_setup.md#plugins-in-parent-directories).
+
 ## v8.4.0
 
 - New install option `--agents-md <generate|keep>` (default `generate`, the old behaviour). With `keep`, root

@@ -1,15 +1,35 @@
 /** Agentic Telegram notifications for the OpenCode V2 plugin API (2.0.28+). */
 import { Plugin } from "@opencode/plugin";
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, realpathSync } from "node:fs";
+import { dirname, join, sep } from "node:path";
+import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
+
+// OpenCode loads `.opencode/plugins` from the project and from every parent directory, and a second plugin with
+// the same id fails with "Duplicate plugin ID" while the outer, often older, copy stays active. So the id carries
+// a hash of this file's path, and setup does nothing unless this file is the copy nearest to the project.
+const selfPath = realPath(fileURLToPath(import.meta.url));
+const selfRel = selfPath.split(sep).join("/").replace(/^.*\/plugins\//, "");
+function realPath(path: string): string {
+  try { return realpathSync(path); } catch { return path; }
+}
+function nearestCopy(directory: string): boolean {
+  for (let dir = directory; ; dir = dirname(dir)) {
+    const copy = join(dir, ".opencode", "plugins", ...selfRel.split("/"));
+    if (existsSync(copy)) return realPath(copy) === selfPath;
+    if (dirname(dir) === dir) return true;
+  }
+}
+const pathHash = createHash("sha256").update(selfPath).digest("hex").slice(0, 8);
 
 // Forwards OpenCode events to the shared Agentic notifier (.agent/notify/telegram.py).
 // The notifier owns enablement, credentials, Markdown rendering and delivery, so
 // OpenCode, Claude Code and Codex send the same messages.
 export default Plugin.define({
-  id: "agentic-telegram",
+  id: `agentic-telegram-${pathHash}`,
   async setup(ctx) {
+    if (!nearestCopy(ctx.location.directory)) return async () => {};
     const project = ctx.location.directory;
     const script = join(project, ".agent", "notify", "telegram.py");
     const python = process.platform === "win32" ? "python" : "python3";

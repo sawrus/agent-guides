@@ -80,3 +80,13 @@ For OpenCode targets, `agentic` writes generated operating guidance to `.opencod
 `.agent/AGENTS.md` to every request through the session `context` hook, because OpenCode 2.0.x ignores
 `instructions` and `.opencode/AGENTS.md` ([details](agentic-reference.md#root-agentsmd-generate-or-keep)). If OpenCode is installed
 alongside another agent target, root `AGENTS.md` is generated as well for the non-OpenCode target.
+
+## Plugins in parent directories
+
+OpenCode loads `.opencode/plugins` from the project and from every parent directory. An agentic install in a
+workspace directory (for example `~/work`) and another one in a repository below it give two copies of each
+plugin. Each agentic plugin id ends with a hash of its file path, for example `agentic-gate-0777bcc3`, so the two
+copies do not fail with "Duplicate plugin ID". At startup a plugin looks for a copy of the same file in
+`.opencode/plugins` of the project and of each parent directory. Only the nearest copy works; the others do
+nothing. A directory without its own copy uses the nearest parent copy. Plugins from agentic 8.4.0 and older use a
+fixed id: run `agentic upgrade` in the parent directory too, or the old parent copy runs next to the project copy.
