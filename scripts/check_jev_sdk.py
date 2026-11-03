@@ -17,6 +17,8 @@ if not package.is_file() or json.loads(package.read_text())['version'] != '2.0.2
     raise SystemExit('Install SDK 2.0.28 + typescript@5.8.2 + @types/node@22 into SDK_DIR first')
 with tempfile.TemporaryDirectory(prefix='agentic-sdk-check-', dir=sdk) as directory:
     directory = Path(directory)
+    # OpenCode imports plugins as ES modules; without this NodeNext types the copies as CommonJS.
+    (directory / 'package.json').write_text('{"type": "module"}\n')
     sources = []
     for source in [ROOT / 'extensions/opencode/hooks/agentic-jev.ts', ROOT / 'extensions/opencode/plugins/agentic-gate.ts']:
         target = directory / source.name

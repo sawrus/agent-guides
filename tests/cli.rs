@@ -129,6 +129,18 @@ fn lean_jev_keeps_native_layout_on_each_host() {
             _ => {
                 assert!(p.join(".opencode/plugins/agentic-jev/index.ts").is_file());
                 assert!(p.join(".opencode/plugins/agentic-gate.ts").is_file());
+                // A copy in a parent directory must not clash with or shadow the project copy.
+                for rel in [
+                    ".opencode/plugins/agentic-jev/index.ts",
+                    ".opencode/plugins/agentic-gate.ts",
+                ] {
+                    let text = std::fs::read_to_string(p.join(rel)).unwrap();
+                    assert!(text.contains("-${pathHash}`"), "{rel}: unique id");
+                    assert!(
+                        text.contains("if (!nearestCopy(ctx.location.directory))"),
+                        "{rel}: nearest-copy guard"
+                    );
+                }
             }
         }
     }

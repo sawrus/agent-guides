@@ -1,8 +1,27 @@
 /** Agentic quality gate for the OpenCode V2 plugin API (2.0.28+). */
 import { Plugin } from "@opencode/plugin";
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, realpathSync } from "node:fs";
+import { dirname, join, sep } from "node:path";
+import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
+
+// OpenCode loads `.opencode/plugins` from the project and from every parent directory, and a second plugin with
+// the same id fails with "Duplicate plugin ID" while the outer, often older, copy stays active. So the id carries
+// a hash of this file's path, and setup does nothing unless this file is the copy nearest to the project.
+const selfPath = realPath(fileURLToPath(import.meta.url));
+const selfRel = selfPath.split(sep).join("/").replace(/^.*\/plugins\//, "");
+function realPath(path: string): string {
+  try { return realpathSync(path); } catch { return path; }
+}
+function nearestCopy(directory: string): boolean {
+  for (let dir = directory; ; dir = dirname(dir)) {
+    const copy = join(dir, ".opencode", "plugins", ...selfRel.split("/"));
+    if (existsSync(copy)) return realPath(copy) === selfPath;
+    if (dirname(dir) === dir) return true;
+  }
+}
+const pathHash = createHash("sha256").update(selfPath).digest("hex").slice(0, 8);
 
 // Forwards to the shared gate runtime (.agent/gate/gate.py), the same one Claude Code and Codex call
 // from native Stop and PreToolUse hooks. Stop: after a root turn succeeds, a failed check comes back as a
@@ -14,8 +33,9 @@ import { join } from "node:path";
 // Start: once per session the runtime checks for a stale checkout (local refs only); a warning becomes
 // one extra system line in that session's requests, like SessionStart additionalContext elsewhere.
 export default Plugin.define({
-  id: "agentic-gate",
+  id: `agentic-gate-${pathHash}`,
   async setup(ctx) {
+    if (!nearestCopy(ctx.location.directory)) return async () => {};
     const project = ctx.location.directory;
     const script = join(project, ".agent", "gate", "gate.py");
     const python = process.platform === "win32" ? "python" : "python3";
