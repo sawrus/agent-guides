@@ -599,6 +599,8 @@ define prompt, tool and permission evaluation hooks. SDK 2.0.28 source confirms
 the native `subagent.model` override is applied before child creation and retains
 role permission checks. Ordinary tests validate both endpoint contracts with mocks;
 official paid quota has not been used.
+`make test-jev-sdk` type-checks the OpenCode adapter and gate plugin against the pinned SDK 2.0.28 as ES
+modules, the way OpenCode imports them, so `import.meta.url` is allowed.
 
 ## Codex preselection
 
