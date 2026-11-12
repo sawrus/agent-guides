@@ -348,6 +348,9 @@ Measured in round 4 (docs/agentic-v2-lean/results.md, 21 cells per host and arm)
 tasks as lean on Claude and Codex (21/21) and 2 fewer on OpenCode (17/21). Cost per accepted task was 1.02 ×
 lean on Claude, 1.12 × on OpenCode, and 1.43 × on Codex, where routing sent helper spawns to a frontier model.
 JEV picked a workflow in 3 of 21 sessions and answered `native` in the rest. Lean + JEV stays opt-in.
+Round 7 (30 cells per host and arm, ten tasks) cost 1.14 × lean on Claude, 1.44 × on Codex and 1.76 × on OpenCode.
+JEV picked a workflow in 24 of 30 sessions and sent a Kubernetes manifest task to `iac-change` on every host;
+on Codex this failed 2 of 3 cells. See docs/agentic-v2-lean/results.md.
 
 Plan mode is read-only. Claude Code sends `permission_mode: plan`; in OpenCode the session agent is `plan`. Then
 the workflow hint asks the session to do only the workflow's diagnosis and analysis steps (read, search, reproduce

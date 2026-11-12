@@ -1,8 +1,64 @@
-# agentic v2 lean: benchmark results (2026-10-21 to 2026-10-27)
+# agentic v2 lean: benchmark results (2026-10-21 to 2026-11-12)
 
 Protocol: [README.md](README.md). Total: 36 paid cells, 1 run each (A0 plain, A1 v1.6 with JEV off, A2 v2 lean,
 × 3 hosts × 4 tasks). Models: Claude `sonnet`, Codex `gpt-6.1-sol`, OpenCode `openai/gpt-6-luna`. Every cell
 was graded again with the final `tasks.json` (`make bench-regrade`). Codex lean ran with the gate hooks trusted.
+
+## Round 7: lean vs lean + JEV, 10 tasks, 3 repetitions (2026-11-12)
+
+180 paid cells: 2 arms (`lean`, `lean-jev`) × 3 hosts × T1–T8, T10, T11 × 3 repetitions, seed 7. Every cell is
+valid (0 `harness_error`). Each host ran with its own `--out`: `.agentic-blackbox/bench-r7-claude`,
+`bench-r7-codex` and `bench-r7-opencode-cap3m`. The joined report is in `.agentic-blackbox/bench-r7`
+(Git-ignored). Models: Claude `sonnet` (Claude Code 2.1.322); Codex `gpt-6.1-terra` (codex-cli 0.164.0);
+OpenCode `private_llm/coding-agent-default`, which is Qwen3.8-Flash-Next on a private LiteLLM (opencode v2.2.5).
+OpenCode ran with `--cap 3000000`. This provider reports no cached tokens, so each step counts the whole history
+as uncached, and T2, T7 and T8 cells reach 0.6–2.0M tokens. A first run with the default 80k cap hit `token_cap`
+in 31 of 52 cells, and a 600k cap still hit it in about 5 of 20. Those runs were discarded and are not counted.
+
+Per host and arm, n = 30. Full tokens = uncached + cached input, median. Cost per success = total cost /
+accepted cells. Claude cost is `total_cost_usd`; Codex and OpenCode cost is an API-equivalent estimate from
+`tests/bench/prices.json`. OpenCode full and uncached tokens are equal.
+
+| Host | Arm | Accepted (95% CI) | Full / uncached tokens | Subagents (mean) | Cost per success | Lean + JEV ÷ lean |
+|---|---|---|---|---|---|---|
+| Claude | lean | 30/30, 100% (89–100%) | 173.1k / 20.8k | 0 | $0.122 | |
+| Claude | lean + JEV | 30/30, 100% (89–100%) | 174.1k / 22.0k | 0 | $0.139 | 1.14 |
+| Codex | lean | 30/30, 100% (89–100%) | 92.8k / 5.7k | 0.07 | $0.045 | |
+| Codex | lean + JEV | 27/30, 90% (74–97%) | 113.4k / 9.5k | 0.10 | $0.065 | 1.44 |
+| OpenCode | lean | 27/30, 90% (74–97%) | 195.9k | 0 | $0.046 | |
+| OpenCode | lean + JEV | 29/30, 97% (83–99%) | 316.1k | 0.07 | $0.081 | 1.76 |
+
+Accepted per task, all hosts (n = 9):
+
+| Task | lean | lean + JEV |
+|---|---|---|
+| T1–T4, T7, T8, T10 | 63/63 | 63/63 |
+| T5 (red lint) | 6/9 | 8/9 |
+| T6 (multi-module bugfix) | 9/9 | 8/9 |
+| T11 (Kubernetes manifest) | 9/9 | 7/9 |
+
+What the cells show:
+- JEV picked a workflow in 24 of 30 `lean-jev` cells on every host (`debug-issue` 15, `develop-feature` 6,
+  `iac-change` 3, `native` 6). In round 4 it picked one in 3 of 21. The agent then follows the workflow file as a
+  checklist, so it takes more steps on tasks that lean already solves. This is where the extra tokens come from.
+  JEV itself made 1 call per cell and cost about $0.0015 per host in total.
+- T11 went to `iac-change` in 3 of 3 cells on every host. That workflow is for Terraform, OpenTofu and Ansible
+  (`areas/devops/infrastructure/workflows/iac-change.md`) and says to ask the user before `apply`. Claude and
+  OpenCode still accepted all 3 cells. On Codex, 2 of 3 cells (r1, r3) failed `hidden_check`: the agent asked for a
+  SHA-256 digest and a UID and delivered a partial manifest, without `runAsNonRoot`, `readOnlyRootFilesystem`,
+  `capabilities.drop`, `seccompProfile` and a ServiceAccount. Lean without JEV passed T11 in 9 of 9 cells.
+- Codex T6 `lean-jev` r1 failed `allowlist` (it changed `README.md`). The traces do not link this to JEV.
+- All OpenCode failures are T5 with `make lint` red: 3 on `lean`, 1 on `lean-jev`. The gate cannot continue a
+  one-shot `opencode run` (tech debt item 7). The difference is not an effect of JEV.
+- Lean + JEV costs more than lean on all three hosts (× 1.14, × 1.44, × 1.76). In round 4 it was × 1.02, × 1.43
+  and × 1.12. It had no measured quality gain: it lost 3 cells on Codex and gained 2 on OpenCode, both inside the
+  intervals.
+
+**Decision.** Lean + JEV stays opt-in. The lean default does not change. No savings are claimed. Follow-ups are
+in tech debt items 22 and 23: a JEV route for Kubernetes manifests, and workflows only at high confidence.
+
+Limitations: small fixture; n = 3 per task; API-equivalent prices; OpenCode dollars do not compare with other
+hosts; compare arms only inside one host.
 
 ## Round 6: rules H0, H4, H-clean, H-clean-devops (2026-10-27)
 
