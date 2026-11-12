@@ -679,7 +679,9 @@ def main():
         print(json.dumps({k: result.get(k) for k in ('host', 'task', 'mode', 'rep', 'status', 'elapsed_s', 'turns', 'subagents')}
                          | {'uncached': (result.get('tokens') or {}).get('uncached')}, ensure_ascii=False), flush=True)
         if result.get('status') == 'quota_exhausted':
-            stopped.add(host)  # Codex and OpenCode share one ChatGPT quota; rerun later with the same --out
+            # The quota stop is per host. Codex uses the ChatGPT quota; OpenCode only when it runs on an OpenAI
+            # model. Rerun later with the same --out.
+            stopped.add(host)
     return 0
 
 

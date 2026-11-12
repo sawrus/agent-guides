@@ -18,6 +18,7 @@ Status: v2.0.0 candidate, not shippable yet (see results.md). Scope: root layer 
 `software/backend`, installer profiles, and the quality gate. JEV was off in the measurements of rounds 1–3.
 Lean + JEV is installable since the Unreleased change (see [jev-integration](../jev-integration/README.md#lean--jev)).
 Round 4 (3 repetitions) measured it: same success as lean, 1.02–1.43 × its cost; it stays opt-in.
+Round 7 (10 tasks, 3 repetitions) measured it again: 1.14–1.76 × the cost of lean, still opt-in.
 
 ## Why
 

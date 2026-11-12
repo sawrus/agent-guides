@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.5.1
+
+- Docs: benchmark round 7 (lean vs lean + JEV, 180 cells, 3 hosts) in
+  [docs/agentic-v2-lean/results.md](docs/agentic-v2-lean/results.md). Lean + JEV cost 1.14 ×, 1.44 × and 1.76 × lean
+  on Claude, Codex and OpenCode, and JEV picked a workflow in 24 of 30 sessions. It stays opt-in. New tech debt
+  items 22 and 23 (JEV route for Kubernetes manifests; workflows only at high confidence).
+- `scripts/bench_sdlc.py`: a comment about the quota stop now says it is per host. No logic change.
+
 ## v8.5.0
 
 - OpenCode plugins no longer fail with "Duplicate plugin ID" when a parent directory has its own agentic install.
