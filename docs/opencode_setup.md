@@ -90,3 +90,9 @@ copies do not fail with "Duplicate plugin ID". At startup a plugin looks for a c
 `.opencode/plugins` of the project and of each parent directory. Only the nearest copy works; the others do
 nothing. A directory without its own copy uses the nearest parent copy. Plugins from agentic 8.4.0 and older use a
 fixed id: run `agentic upgrade` in the parent directory too, or the old parent copy runs next to the project copy.
+
+One background OpenCode service serves sessions from every directory. Its hooks and event stream also report
+sessions of other projects. So an agentic plugin also checks each session: it reads the session directory and
+acts only when it is the nearest copy for that directory. The gate does not run `make test` or check the
+CHANGELOG for a session in another project, and the guard, Telegram notices, `.agent/AGENTS.md`, and JEV do
+not apply there either. Plugins from agentic 8.5.1 and older act on every session of the service.

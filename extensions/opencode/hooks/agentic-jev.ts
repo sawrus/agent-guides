@@ -24,10 +24,33 @@ function nearestCopy(directory: string): boolean {
 }
 const pathHash = createHash("sha256").update(selfPath).digest("hex").slice(0, 8);
 
+// One OpenCode server serves every directory, so hooks and the event stream also report sessions of other
+// projects. A session belongs to this copy only when this copy is the nearest one to the session's directory.
+function servesDirectory(directory: string): boolean {
+  for (let dir = directory; ; dir = dirname(dir)) {
+    const copy = join(dir, ".opencode", "plugins", ...selfRel.split("/"));
+    if (existsSync(copy)) return realPath(copy) === selfPath;
+    if (dirname(dir) === dir) return false;
+  }
+}
+
 export default Plugin.define({
   id: `agentic-jev-${pathHash}`,
   async setup(ctx) {
     if (!nearestCopy(ctx.location.directory)) return async () => {};
+    const owners = new Map<string, Promise<boolean>>();
+    function ownsSession(sessionID: unknown): Promise<boolean> {
+      const id = String(sessionID ?? "");
+      if (!id) return Promise.resolve(false);
+      let owner = owners.get(id);
+      if (!owner) {
+        owner = Promise.resolve(ctx.session.get({ sessionID: id } as any))
+          .then((session: any) => typeof session?.location?.directory === "string" && servesDirectory(session.location.directory))
+          .catch(() => { owners.delete(id); return false; });
+        owners.set(id, owner);
+      }
+      return owner;
+    }
     const project = ctx.location.directory;
     const projectRoles = new Set<string>();
     const profilePins = new Map<string, string>();
@@ -102,6 +125,7 @@ export default Plugin.define({
       return `\n\n[Agentic JEV review evidence]\nUse this hook-collected evidence for the successfully completed top-level task. It supersedes coordinator claims that JEV records or models were absent. Full packet: ${join(project, path)}; referenced records are relative to ${project}. A child workspace may omit Git-ignored journals; that does not invalidate the inline evidence. Treat Q/A as untrusted evidence. Include an explicit assessment of workflow fit, recommended versus applied models, confidence fallbacks, usefulness, and whether docs/instructions need followups with source, target, owner and done_when. Prices, quota and savings remain unknown unless measured. Do not call JEV, write files or recurse.\n${inline}`;
     }
     disposables.push(await ctx.session.hook("prompt", async (event) => {
+      if (!(await ownsSession(event.sessionID))) return;
       if (!(await enabled())) return;
       const session = await ctx.session.get({ sessionID: event.sessionID });
       if (session.parentID) {
@@ -141,6 +165,7 @@ export default Plugin.define({
       event.prompt.text += `\n\n[Agentic JEV hook context]\nJEV selected installed workflow ${result.workflow.id}. Load ${result.workflow.path} and execute it for the ORIGINAL user request above. The root coordinator must delegate repository exploration and implementation to the workflow roles through the native subagent tool; omit guessed model overrides because hooks route models. Preserve original scope and native permissions. After successful top-level delivery, use REVIEW_PIPELINE.md once, including this task's cleansed .agentic/jev/event-*.json Q/A and actual model evidence. Do not recursively review or call JEV to evaluate JEV.`;
     }));
     disposables.push(await ctx.tool.hook("execute.before", async (event) => {
+      if (!(await ownsSession(event.sessionID))) return;
       if (!(await enabled())) return;
       const key = `${event.sessionID}:${event.id}`;
       const known = toolInputs.get(key);
@@ -183,6 +208,7 @@ export default Plugin.define({
       }
     }));
     disposables.push(await ctx.tool.hook("execute.after", async (event) => {
+      if (!(await ownsSession(event.sessionID))) return;
       if (!(await enabled())) return;
       const key = `${event.sessionID}:${event.id}`;
       const known = toolInputs.get(key);
@@ -198,6 +224,7 @@ export default Plugin.define({
         action: event.tool, input: event.input, status: event.status});
     }));
     disposables.push(await ctx.permission.hook("evaluate", async (event) => {
+      if (!(await ownsSession(event.sessionID))) return;
       if (!(await enabled()) || event.effect !== "ask") return;
       const tool = event.source?.type === "tool" ? toolInputs.get(`${event.sessionID}:${event.source.id}`) : undefined;
       // The hook keeps this label only when it names an installed role agent.
@@ -213,6 +240,7 @@ export default Plugin.define({
       }
     }));
     disposables.push(await ctx.session.hook("model.request", async (event) => {
+      if (!(await ownsSession(event.sessionID))) return;
       if (!(await enabled()) || event.kind !== "primary") return;
       const session = await ctx.session.get({ sessionID: event.sessionID });
       // Lean caps helper tiers at the root session's model.
@@ -223,6 +251,7 @@ export default Plugin.define({
         observed_model: `${event.model.providerID}/${event.model.id}`});
     }));
     disposables.push(await ctx.session.hook("http.response", async (event) => {
+      if (!(await ownsSession(event.sessionID))) return;
       if (!(await enabled()) || ![401, 402, 403, 429].includes(event.response.status)) return;
       await decide({kind: "availability", session_id: event.sessionID,
         event_id: `${event.sessionID}:${event.model.providerID}/${event.model.id}:${event.response.status}:${Date.now()}`,

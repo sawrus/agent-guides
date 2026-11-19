@@ -1,5 +1,15 @@
 # Changelog
 
+## v8.6.0
+
+- OpenCode plugins now act only on sessions of their own project. One background OpenCode service serves every
+  directory, and before, `agentic-gate`, `agentic-telegram`, `agentic-agents-md`, and `agentic-jev` handled
+  every session of that service. A session in another directory got "Agentic gate" prompts with the checks of
+  an unrelated project (for example a failed `make test`), its shell calls went through that project's guard,
+  and it got that project's notices and guidance. Now each plugin reads the session directory and skips the
+  session unless the plugin is the nearest copy for that directory. Run `agentic upgrade` in each project.
+  See [docs/opencode_setup.md](docs/opencode_setup.md#plugins-in-parent-directories).
+
 ## v8.5.1
 
 - Docs: benchmark round 7 (lean vs lean + JEV, 180 cells, 3 hosts) in

@@ -22,6 +22,16 @@ function nearestCopy(directory: string): boolean {
 }
 const pathHash = createHash("sha256").update(selfPath).digest("hex").slice(0, 8);
 
+// One OpenCode server serves every directory, so hooks and the event stream also report sessions of other
+// projects. A session belongs to this copy only when this copy is the nearest one to the session's directory.
+function servesDirectory(directory: string): boolean {
+  for (let dir = directory; ; dir = dirname(dir)) {
+    const copy = join(dir, ".opencode", "plugins", ...selfRel.split("/"));
+    if (existsSync(copy)) return realPath(copy) === selfPath;
+    if (dirname(dir) === dir) return false;
+  }
+}
+
 // With `agentic install --agents-md keep` the project owns root AGENTS.md, and the generated guidance lives in
 // .agent/AGENTS.md. OpenCode 2.0.x loads only the global and the project AGENTS.md as instructions and ignores
 // `instructions` in its config, so this plugin adds .agent/AGENTS.md as one system part to every request,
@@ -30,6 +40,19 @@ export default Plugin.define({
   id: `agentic-agents-md-${pathHash}`,
   async setup(ctx) {
     if (!nearestCopy(ctx.location.directory)) return async () => {};
+    const owners = new Map<string, Promise<boolean>>();
+    function ownsSession(sessionID: unknown): Promise<boolean> {
+      const id = String(sessionID ?? "");
+      if (!id) return Promise.resolve(false);
+      let owner = owners.get(id);
+      if (!owner) {
+        owner = Promise.resolve(ctx.session.get({ sessionID: id } as any))
+          .then((session: any) => typeof session?.location?.directory === "string" && servesDirectory(session.location.directory))
+          .catch(() => { owners.delete(id); return false; });
+        owners.set(id, owner);
+      }
+      return owner;
+    }
     const file = join(ctx.location.directory, ".agent", "AGENTS.md");
     let cached: { mtime: number; text: string } | undefined;
 
@@ -52,6 +75,7 @@ export default Plugin.define({
     }
 
     const disposable = await ctx.session.hook("context", async (event) => {
+      if (!(await ownsSession(event.sessionID))) return;
       const text = guidance();
       if (text) event.system.push({ type: "text", text: `Instructions from: ${file}\n${text}` });
     });
