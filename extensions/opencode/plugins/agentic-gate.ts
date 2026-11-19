@@ -23,6 +23,16 @@ function nearestCopy(directory: string): boolean {
 }
 const pathHash = createHash("sha256").update(selfPath).digest("hex").slice(0, 8);
 
+// One OpenCode server serves every directory, so hooks and the event stream also report sessions of other
+// projects. A session belongs to this copy only when this copy is the nearest one to the session's directory.
+function servesDirectory(directory: string): boolean {
+  for (let dir = directory; ; dir = dirname(dir)) {
+    const copy = join(dir, ".opencode", "plugins", ...selfRel.split("/"));
+    if (existsSync(copy)) return realPath(copy) === selfPath;
+    if (dirname(dir) === dir) return false;
+  }
+}
+
 // Forwards to the shared gate runtime (.agent/gate/gate.py), the same one Claude Code and Codex call
 // from native Stop and PreToolUse hooks. Stop: after a root turn succeeds, a failed check comes back as a
 // new prompt in the same session. Guard: permission evaluation turns a risky tool call into a denial, or into
@@ -36,6 +46,19 @@ export default Plugin.define({
   id: `agentic-gate-${pathHash}`,
   async setup(ctx) {
     if (!nearestCopy(ctx.location.directory)) return async () => {};
+    const owners = new Map<string, Promise<boolean>>();
+    function ownsSession(sessionID: unknown): Promise<boolean> {
+      const id = String(sessionID ?? "");
+      if (!id) return Promise.resolve(false);
+      let owner = owners.get(id);
+      if (!owner) {
+        owner = Promise.resolve(ctx.session.get({ sessionID: id } as any))
+          .then((session: any) => typeof session?.location?.directory === "string" && servesDirectory(session.location.directory))
+          .catch(() => { owners.delete(id); return false; });
+        owners.set(id, owner);
+      }
+      return owner;
+    }
     const project = ctx.location.directory;
     const script = join(project, ".agent", "gate", "gate.py");
     const python = process.platform === "win32" ? "python" : "python3";
@@ -62,13 +85,16 @@ export default Plugin.define({
     }
 
     disposables.push(await ctx.tool.hook("execute.before", async (event) => {
+      if (!(await ownsSession(event.sessionID))) return;
       toolInputs.set(`${event.sessionID}:${event.id}`, { tool: event.tool, agent: String(event.agent), input: event.input });
     }));
     disposables.push(await ctx.tool.hook("execute.after", async (event) => {
+      if (!(await ownsSession(event.sessionID))) return;
       toolInputs.delete(`${event.sessionID}:${event.id}`);
     }));
     const notices = new Map<string, Promise<string | undefined>>();
     disposables.push(await ctx.session.hook("context", async (event) => {
+      if (!(await ownsSession(event.sessionID))) return;
       let notice = notices.get(event.sessionID);
       if (!notice) {
         notice = gate("start", { session_id: event.sessionID })
@@ -79,6 +105,7 @@ export default Plugin.define({
       if (text) event.system.push({ type: "text", text });
     }));
     disposables.push(await ctx.permission.hook("evaluate", async (event) => {
+      if (!(await ownsSession(event.sessionID))) return;
       const tool = event.source?.type === "tool" ? toolInputs.get(`${event.sessionID}:${event.source.id}`) : undefined;
       const input = (tool?.input ?? {}) as Record<string, unknown>;
       const agent = String(event.agent ?? tool?.agent ?? "");
@@ -108,6 +135,7 @@ export default Plugin.define({
           if (type === "session.created" && data.parentID) parents.add(data.sessionID);
           // Subagent turns finish inside the root turn; only the root turn is gated.
           if (type !== "session.execution.succeeded" || parents.has(data.sessionID)) continue;
+          if (!(await ownsSession(data.sessionID))) continue;
           const result = await gate("stop", { session_id: data.sessionID });
           if (result?.decision === "block" && result.reason) {
             await (ctx.session as any).prompt({ sessionID: data.sessionID, text: result.reason });

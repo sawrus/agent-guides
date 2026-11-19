@@ -23,6 +23,16 @@ function nearestCopy(directory: string): boolean {
 }
 const pathHash = createHash("sha256").update(selfPath).digest("hex").slice(0, 8);
 
+// One OpenCode server serves every directory, so hooks and the event stream also report sessions of other
+// projects. A session belongs to this copy only when this copy is the nearest one to the session's directory.
+function servesDirectory(directory: string): boolean {
+  for (let dir = directory; ; dir = dirname(dir)) {
+    const copy = join(dir, ".opencode", "plugins", ...selfRel.split("/"));
+    if (existsSync(copy)) return realPath(copy) === selfPath;
+    if (dirname(dir) === dir) return false;
+  }
+}
+
 // Forwards OpenCode events to the shared Agentic notifier (.agent/notify/telegram.py).
 // The notifier owns enablement, credentials, Markdown rendering and delivery, so
 // OpenCode, Claude Code and Codex send the same messages.
@@ -30,6 +40,19 @@ export default Plugin.define({
   id: `agentic-telegram-${pathHash}`,
   async setup(ctx) {
     if (!nearestCopy(ctx.location.directory)) return async () => {};
+    const owners = new Map<string, Promise<boolean>>();
+    function ownsSession(sessionID: unknown): Promise<boolean> {
+      const id = String(sessionID ?? "");
+      if (!id) return Promise.resolve(false);
+      let owner = owners.get(id);
+      if (!owner) {
+        owner = Promise.resolve(ctx.session.get({ sessionID: id } as any))
+          .then((session: any) => typeof session?.location?.directory === "string" && servesDirectory(session.location.directory))
+          .catch(() => { owners.delete(id); return false; });
+        owners.set(id, owner);
+      }
+      return owner;
+    }
     const project = ctx.location.directory;
     const script = join(project, ".agent", "notify", "telegram.py");
     const python = process.platform === "win32" ? "python" : "python3";
@@ -144,7 +167,11 @@ export default Plugin.define({
 
     (async () => {
       for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
-        try { handle(String((event as any).type), (event as any).data ?? {}); } catch {}
+        try {
+          const data = (event as any).data ?? {};
+          if (data.sessionID && !(await ownsSession(data.sessionID))) continue;
+          handle(String((event as any).type), data);
+        } catch {}
       }
     })().catch(() => {});
 

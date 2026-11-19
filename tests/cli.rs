@@ -140,6 +140,11 @@ fn lean_jev_keeps_native_layout_on_each_host() {
                         text.contains("if (!nearestCopy(ctx.location.directory))"),
                         "{rel}: nearest-copy guard"
                     );
+                    // The shared server also reports sessions of other directories.
+                    assert!(
+                        text.contains("if (!(await ownsSession(event.sessionID))) return;"),
+                        "{rel}: session ownership guard"
+                    );
                 }
             }
         }
