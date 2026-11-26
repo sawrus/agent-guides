@@ -40,6 +40,7 @@ Example request: POST /orders returns 500 when the cart holds a discounted item;
 
 - **Do:** narrow the fault with evidence: bisect commits (`git bisect run <cmd>`), add temporary logging, or
   step through the failing path. Write down each hypothesis and the fact that confirms or rejects it.
+  If the `diagnosing-bugs` skill is installed, follow it for this step.
 - **Done when:** you can name the line or condition that causes the failure and explain why it was possible.
 
 ### 3. Write the regression test

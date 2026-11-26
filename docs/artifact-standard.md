@@ -93,6 +93,7 @@ but the workflow does not ask for that.
 | ART-W4 | ≤ 120 lines and ≤ 1,800 tokens. | auto |
 | ART-W5 | One workflow per kind of task in the whole pack. A variant for another stack is a step condition, not a new workflow. | review |
 | ART-W6 | Steps that touch production (deploy, data change, cluster access) say "ask the user first". | auto (keyword) + review |
+| ART-W7 | A step may hand its work to a skill of an optional external pack: "If the `<skill>` skill is installed, follow it for this step." The step stays valid without the skill, and its **Done when** stays mandatory. Such skills are named in the step text, not in `uses-skills`, which lists only skills of this pack (ART-C4). | review |
 
 ## Always-on budget
 
