@@ -29,6 +29,8 @@ const ROOT_DIRS: &[&str] = &[
     ".agent",
     // Codex skills (`.agents/skills`), also used by skill packs.
     ".agents",
+    // Project setup of the skill pack preset `pocock` (src/pocock_setup.rs).
+    "docs/agents",
     ".opencode",
     ".codex",
     ".claude",

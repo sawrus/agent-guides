@@ -476,6 +476,9 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
     if !app.skill_packs.is_empty() {
         data["settings"]["skill_packs"] = crate::skill_packs::to_settings(&app.skill_packs);
     }
+    if crate::pocock_setup::active(app) {
+        data["settings"]["issue_tracker"] = json!(crate::pocock_setup::tracker(app));
+    }
     if crate::agentsmd::keep_mode(app) {
         data["settings"]["agents_md"] = json!(crate::agentsmd::MODE_KEEP);
     }
@@ -638,6 +641,12 @@ pub fn load_install_settings_from_manifest(
     crate::agentsmd::load_saved_mode(app, &settings);
     if let Some(saved) = crate::company::from_settings(&settings["company_rules"]) {
         crate::company::merge_saved(app, saved);
+    }
+    if app.issue_tracker.is_none() {
+        app.issue_tracker = settings["issue_tracker"]
+            .as_str()
+            .filter(|t| crate::pocock_setup::TRACKERS.contains(t))
+            .map(str::to_string);
     }
     if let Some(saved) = crate::skill_packs::from_settings(&settings["skill_packs"]) {
         crate::skill_packs::merge_saved(app, saved);

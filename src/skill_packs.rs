@@ -35,10 +35,40 @@ pub struct Preset {
     pub url: &'static str,
     pub git_ref: &'static str,
     pub skills_root: &'static str,
+    /// Skills to install; empty installs every skill.
+    pub select: &'static [&'static str],
 }
 
 /// Built-in presets. Add an entry here to make a pack available by its id.
-pub const PRESETS: &[Preset] = &[];
+pub const PRESETS: &[Preset] = &[Preset {
+    id: "pocock",
+    url: "https://github.com/mattpocock/skills.git",
+    git_ref: "6f7f7831a625f040a8e06a0e7954826b87ce775a",
+    skills_root: "skills",
+    select: &[
+        "grilling",
+        "grill-me",
+        "grill-with-docs",
+        "to-spec",
+        "to-tickets",
+        "domain-modeling",
+        "tdd",
+        "implement",
+        "implement-spec",
+        "code-review",
+        "diagnosing-bugs",
+        "codebase-design",
+        "improve-codebase-architecture",
+        "prototype",
+        "research",
+        "handoff",
+        "wayfinder",
+        "retro",
+        "wizard",
+        "pr",
+        "writing-for-agents",
+    ],
+}];
 
 impl Preset {
     fn pack(&self) -> SkillPack {
@@ -50,9 +80,16 @@ impl Preset {
                 subdir: String::new(),
             },
             skills_root: self.skills_root.to_string(),
+            select: self.select.iter().map(|s| s.to_string()).collect(),
+            preset: self.id.to_string(),
             ..SkillPack::default()
         }
     }
+}
+
+/// The built-in preset `id`.
+pub fn preset(id: &str) -> Option<&'static Preset> {
+    PRESETS.iter().find(|p| p.id == id)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,6 +105,16 @@ pub struct SkillPack {
     pub exclude: Vec<String>,
     /// Lock: the resolved commit of a git pack; empty until the first fetch.
     pub commit: String,
+    /// Id of the built-in preset this pack comes from; empty for a pack from a URL or a directory.
+    /// `.agentic.json` keeps only the preset id, the user overrides, and the lock, so a newer agentic
+    /// brings the newer pin and `select` list of the preset.
+    pub preset: String,
+    /// The user set `ref` (`<preset>#<ref>`): the pin of the preset no longer moves the lock.
+    pub own_ref: bool,
+    /// The user set `select` (`--select`); otherwise the saved or preset list stays.
+    pub own_select: bool,
+    /// The user set `exclude` (`--exclude`); otherwise the saved list stays.
+    pub own_exclude: bool,
 }
 
 impl Default for SkillPack {
@@ -79,19 +126,40 @@ impl Default for SkillPack {
             select: Vec::new(),
             exclude: Vec::new(),
             commit: String::new(),
+            preset: String::new(),
+            own_ref: false,
+            own_select: false,
+            own_exclude: false,
         }
     }
 }
 
 impl SkillPack {
     fn same_origin(&self, other: &SkillPack) -> bool {
+        if !self.preset.is_empty() || !other.preset.is_empty() {
+            return self.preset == other.preset;
+        }
         self.source == other.source && self.skills_root == other.skills_root
+    }
+
+    /// True when the preset pin moved away from the lock in this agentic version.
+    fn preset_pin_moved(&self) -> bool {
+        !self.preset.is_empty()
+            && !self.own_ref
+            && !self.commit.is_empty()
+            && self.commit != self.git_ref()
     }
 
     fn git_ref(&self) -> &str {
         match &self.source {
             Source::Git { git_ref, .. } => git_ref,
             Source::Path(_) => "",
+        }
+    }
+
+    fn set_ref(&mut self, value: &str) {
+        if let Source::Git { git_ref, .. } = &mut self.source {
+            *git_ref = value.to_string();
         }
     }
 }
@@ -101,14 +169,20 @@ fn is_git_spec(spec: &str) -> bool {
     url.contains("://") || url.starts_with("git@") || url.ends_with(".git")
 }
 
-/// A preset id, a git spec `<url>[#ref][:skills_root]`, or a directory.
+/// A preset id (`<preset>[#ref]`), a git spec `<url>[#ref][:skills_root]`, or a directory.
 pub fn parse_spec(spec: &str) -> Result<SkillPack, String> {
     let spec = spec.trim();
     if spec.is_empty() {
         return Err("--skill-pack: empty value".into());
     }
-    if let Some(preset) = PRESETS.iter().find(|p| p.id == spec) {
-        return Ok(preset.pack());
+    let (name, git_ref) = spec.split_once('#').unwrap_or((spec, ""));
+    if let Some(preset) = preset(name) {
+        let mut pack = preset.pack();
+        if !git_ref.is_empty() {
+            pack.set_ref(git_ref);
+            pack.own_ref = true;
+        }
+        return Ok(pack);
     }
     let (source, skills_root) = if is_git_spec(spec) {
         match source::parse_git_spec(spec, "--skill-pack")? {
@@ -194,6 +268,9 @@ pub fn to_settings(packs: &[SkillPack]) -> Value {
         packs
             .iter()
             .map(|pack| {
+                if !pack.preset.is_empty() {
+                    return preset_settings(pack);
+                }
                 let mut v = source::to_json(&pack.source);
                 v["id"] = json!(pack.id);
                 v["skills_root"] = json!(pack.skills_root);
@@ -206,6 +283,60 @@ pub fn to_settings(packs: &[SkillPack]) -> Value {
             })
             .collect(),
     )
+}
+
+/// A preset pack in `.agentic.json`: the preset id, the user overrides, and the lock. The URL, the pin,
+/// `skills_root`, and the `select` list come from [`PRESETS`] of the running agentic.
+fn preset_settings(pack: &SkillPack) -> Value {
+    let mut v = json!({"preset": pack.preset, "id": pack.id});
+    if pack.own_ref {
+        v["ref"] = json!(pack.git_ref());
+    }
+    if pack.own_select {
+        v["select"] = json!(pack.select);
+    }
+    if pack.own_exclude {
+        v["exclude"] = json!(pack.exclude);
+    }
+    if !pack.commit.is_empty() {
+        v["commit"] = json!(pack.commit);
+    }
+    v
+}
+
+/// A saved preset pack with its fields resolved from [`PRESETS`]. An unknown preset id keeps the
+/// entry; `prepare` reports it.
+fn preset_from_settings(name: &str, item: &Value, list: impl Fn(&str) -> Vec<String>) -> SkillPack {
+    let mut pack = match preset(name) {
+        Some(preset) => preset.pack(),
+        None => SkillPack {
+            id: name.to_string(),
+            source: Source::Git {
+                url: String::new(),
+                git_ref: String::new(),
+                subdir: String::new(),
+            },
+            preset: name.to_string(),
+            ..SkillPack::default()
+        },
+    };
+    if let Some(id) = item["id"].as_str().filter(|id| !id.is_empty()) {
+        pack.id = id.to_string();
+    }
+    if let Some(git_ref) = item["ref"].as_str().filter(|r| !r.is_empty()) {
+        pack.set_ref(git_ref);
+        pack.own_ref = true;
+    }
+    if item["select"].is_array() {
+        pack.select = list("select");
+        pack.own_select = true;
+    }
+    if item["exclude"].is_array() {
+        pack.exclude = list("exclude");
+        pack.own_exclude = true;
+    }
+    pack.commit = item["commit"].as_str().unwrap_or_default().to_string();
+    pack
 }
 
 /// `settings.skill_packs`; None when the key is not a list.
@@ -225,6 +356,10 @@ pub fn from_settings(value: &Value) -> Option<Vec<SkillPack>> {
     };
     let mut packs = Vec::new();
     for item in items {
+        if let Some(name) = item["preset"].as_str().filter(|n| !n.is_empty()) {
+            packs.push(preset_from_settings(name, item, |key| list(item, key)));
+            continue;
+        }
         let Some(mut source) = source::from_json(item) else {
             continue;
         };
@@ -251,17 +386,34 @@ pub fn from_settings(value: &Value) -> Option<Vec<SkillPack>> {
             select: list(item, "select"),
             exclude: list(item, "exclude"),
             commit: item["commit"].as_str().unwrap_or_default().to_string(),
+            ..SkillPack::default()
         });
     }
     Some(packs)
 }
 
-/// Add or replace `pack` by id. The same source keeps its locked commit.
+/// Add or replace `pack` by id. For the same source, what the new entry does not set stays as saved:
+/// `select`, `exclude`, the own ref of a preset, and the locked commit of the same ref. So
+/// `skills add pocock --issue-tracker github` changes only the tracker.
 pub fn upsert(packs: &mut Vec<SkillPack>, mut pack: SkillPack) {
     match packs.iter_mut().find(|p| p.id == pack.id) {
         Some(old) => {
-            if old.same_origin(&pack) && pack.commit.is_empty() {
-                pack.commit = old.commit.clone();
+            if old.same_origin(&pack) {
+                if !pack.own_select {
+                    pack.select = old.select.clone();
+                    pack.own_select = old.own_select;
+                }
+                if !pack.own_exclude {
+                    pack.exclude = old.exclude.clone();
+                    pack.own_exclude = old.own_exclude;
+                }
+                if !pack.preset.is_empty() && !pack.own_ref && old.own_ref {
+                    pack.set_ref(old.git_ref());
+                    pack.own_ref = true;
+                }
+                if pack.commit.is_empty() && pack.git_ref() == old.git_ref() {
+                    pack.commit = old.commit.clone();
+                }
             }
             *old = pack;
         }
@@ -390,23 +542,48 @@ fn open_source(
         }
         Source::Git { url, git_ref, .. } => {
             let refresh = refresh_requested(app, id);
-            let dir = if pack.commit.is_empty() || refresh {
-                match source::fetch_ref(app, CACHE_KIND, LABEL, url, git_ref) {
+            // A newer agentic pins the preset to another commit: move the lock there, unless the
+            // user set the ref. Offline, the lock and the installed files stay.
+            let pin_moved = pack.preset_pin_moved();
+            if pin_moved {
+                ui::log(
+                    app,
+                    &format!(
+                        "Skill pack {id}: preset {} pins {git_ref}; moving the lock from {}",
+                        pack.preset, pack.commit
+                    ),
+                );
+            }
+            let fetched = if pack.commit.is_empty() || refresh || pin_moved {
+                source::fetch_ref(app, CACHE_KIND, LABEL, url, git_ref)
+            } else {
+                None
+            };
+            let dir = if let Some(dir) = fetched {
+                dir
+            } else if pin_moved && !refresh {
+                ui::warn(
+                    app,
+                    &format!(
+                        "Skill pack {id}: cannot fetch the new preset pin {git_ref}; the lock stays at {}",
+                        pack.commit
+                    ),
+                );
+                match source::checkout_commit(app, CACHE_KIND, LABEL, url, &pack.commit) {
                     Some(dir) => dir,
-                    None if pack.commit.is_empty() => {
-                        return Err(format!(
-                            "Skill pack {id}: cannot fetch {shown}; nothing was installed or saved"
-                        )
-                        .into())
-                    }
-                    None => {
-                        return Err(format!(
-                            "Skill pack {id}: cannot fetch {shown}; the lock stays at {}",
-                            pack.commit
-                        )
-                        .into())
-                    }
+                    None => return Ok(None),
                 }
+            } else if pack.commit.is_empty() {
+                return Err(format!(
+                    "Skill pack {id}: cannot fetch {shown}; nothing was installed or saved"
+                )
+                .into());
+            } else if refresh {
+                return Err(format!(
+                    "Skill pack {id}: cannot fetch {shown}; the lock stays at {}",
+                    pack.commit
+                )
+                .into());
             } else {
                 match source::checkout_commit(app, CACHE_KIND, LABEL, url, &pack.commit) {
                     Some(dir) => dir,
@@ -444,6 +621,22 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
     }
     let project = PathBuf::from(&app.project_dir);
     let mut owners = taken_names(app, company);
+    // The preset `pocock` installs agentic's own `setup-matt-pocock-skills` in place of the upstream
+    // one; no other skill may take that name.
+    if let Some(setup_id) = crate::pocock_setup::pack_id(app).map(str::to_string) {
+        let name = crate::pocock_setup::SETUP_SKILL;
+        if let Some(owner) = owners.get(name) {
+            return Err(format!(
+                "Skill pack {setup_id}: the preset installs the agentic skill `{name}`, but {owner} has \
+                 that name; rename or remove that skill"
+            )
+            .into());
+        }
+        owners.insert(
+            name.to_string(),
+            format!("the agentic setup skill of preset pocock (pack {setup_id})"),
+        );
+    }
     let mut ids = BTreeSet::new();
     for index in 0..app.skill_packs.len() {
         let pack = app.skill_packs[index].clone();
@@ -461,6 +654,14 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
             return Err(format!(
                 "Skill pack {id}: skills_root must be a relative path: `{}`",
                 pack.skills_root
+            )
+            .into());
+        }
+        if !pack.preset.is_empty() && preset(&pack.preset).is_none() {
+            return Err(format!(
+                "Skill pack {id}: unknown preset `{}`; this agentic version has {}",
+                pack.preset,
+                PRESETS.iter().map(|p| p.id).collect::<Vec<_>>().join(", ")
             )
             .into());
         }
@@ -542,6 +743,18 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
             if (!pack.select.is_empty() && !pack.select.contains(&name))
                 || pack.exclude.contains(&name)
             {
+                continue;
+            }
+            // The preset always gets agentic's stand-in, never the upstream setup skill.
+            if pack.preset == crate::pocock_setup::PACK_ID
+                && name == crate::pocock_setup::SETUP_SKILL
+            {
+                ui::log(
+                    app,
+                    &format!(
+                        "Skill pack {id}: upstream `{name}` skipped; agentic installs its own"
+                    ),
+                );
                 continue;
             }
             if let Some(first) = chosen.get(&name) {
@@ -645,6 +858,29 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
                 write(app, &text, &dest, &source)?;
             }
         }
+    }
+    if let Some(setup_id) = crate::pocock_setup::pack_id(app).map(str::to_string) {
+        let skill = crate::pocock_setup::SETUP_SKILL;
+        for (host, dir) in &dirs {
+            let text = adapt_for_host(
+                host,
+                skill,
+                "SKILL.md",
+                crate::pocock_setup::SETUP_SKILL_TEXT,
+            );
+            let dest = project_dir.join(dir).join(skill).join("SKILL.md");
+            desired.insert(app.project_rel_path(&dest));
+            let source = source_ref(&setup_id, &format!("{skill}/SKILL.md"));
+            write(app, &text, &dest, &source)?;
+        }
+    }
+    let setup_id = crate::pocock_setup::pack_id(app)
+        .unwrap_or_default()
+        .to_string();
+    for (rel, text, name) in crate::pocock_setup::files(app) {
+        let dest = project_dir.join(rel);
+        desired.insert(app.project_rel_path(&dest));
+        write(app, &text, &dest, &source_ref(&setup_id, name))?;
     }
     for (pack, name, text) in &prepared.licenses {
         let dest = project_dir.join(LICENSE_DIR).join(pack).join(name);
@@ -779,7 +1015,13 @@ fn remove_stale(
 pub fn prune_empty_dirs(project_dir: &Path, rel: &str) {
     let mut parts: Vec<&str> = rel.split('/').collect();
     parts.pop();
-    while parts.len() > 2 {
+    // Host directories (`.claude/skills`) stay; `docs/agents` and `docs` go when empty.
+    let keep = if parts.first().is_some_and(|p| p.starts_with('.')) {
+        2
+    } else {
+        0
+    };
+    while parts.len() > keep {
         let dir = project_dir.join(parts.join("/"));
         if !dir.is_dir() || std::fs::remove_dir(&dir).is_err() {
             break;
@@ -794,7 +1036,7 @@ pub fn usage() -> String {
     let name = crate::APP_NAME;
     format!(
         "Usage:
-  {name} skills add <git-url[#ref][:skills_root]|dir|preset> [--id <id>] [--select a,b] [--exclude x,y] [--skills-root <dir>]
+  {name} skills add <git-url[#ref][:skills_root]|dir|preset> [--id <id>] [--select a,b] [--exclude x,y] [--skills-root <dir>] [--issue-tracker local|github|gitlab]
   {name} skills list
   {name} skills remove <id>
   {name} skills update [<id>]
@@ -852,6 +1094,10 @@ pub fn run_cli(app: &mut App, args: &[String]) -> crate::Result<()> {
                 exclude = Some(csv_list(&value()?));
                 i += 1;
             }
+            "--issue-tracker" => {
+                app.issue_tracker = Some(crate::pocock_setup::parse_tracker(&value()?)?);
+                i += 1;
+            }
             "--skills-root" => {
                 skills_root = Some(value()?.trim_matches('/').to_string());
                 i += 1;
@@ -896,10 +1142,23 @@ pub fn run_cli(app: &mut App, args: &[String]) -> crate::Result<()> {
                 .into());
             }
             if let Some(root) = skills_root.filter(|r| !r.is_empty()) {
+                if !pack.preset.is_empty() {
+                    return Err(format!(
+                        "skills add: preset `{}` sets its own skills_root; --skills-root is for a URL or a directory",
+                        pack.preset
+                    )
+                    .into());
+                }
                 pack.skills_root = root;
             }
-            pack.select = select.unwrap_or_default();
-            pack.exclude = exclude.unwrap_or_default();
+            if let Some(select) = select {
+                pack.select = select;
+                pack.own_select = true;
+            }
+            if let Some(exclude) = exclude {
+                pack.exclude = exclude;
+                pack.own_exclude = true;
+            }
             ui::out(
                 app,
                 &format!(
@@ -978,6 +1237,9 @@ fn print_list(app: &mut App, packs: &[SkillPack], manifest: &Value) {
     }
     for pack in packs {
         let mut line = format!("{}  {}", pack.id, source::source_id(&pack.source));
+        if !pack.preset.is_empty() {
+            line.push_str(&format!("  preset={}", pack.preset));
+        }
         if pack.skills_root != DEFAULT_SKILLS_ROOT {
             line.push_str(&format!("  skills_root={}", pack.skills_root));
         }
@@ -1105,10 +1367,15 @@ mod tests {
         let mut again = packs[0].clone();
         again.commit.clear();
         again.select.clear();
-        app.skill_packs = vec![again];
+        app.skill_packs = vec![again.clone()];
         merge_saved(&mut app, packs.clone());
         assert_eq!(app.skill_packs.len(), 2);
         assert_eq!(app.skill_packs[0].commit, "abc");
+        // Without an explicit `select` the saved list stays; an explicit one replaces it.
+        assert_eq!(app.skill_packs[0].select, vec!["tdd"]);
+        again.own_select = true;
+        app.skill_packs = vec![again];
+        merge_saved(&mut app, packs.clone());
         assert!(app.skill_packs[0].select.is_empty());
         // The `skills` subcommands pass the full list.
         app.skill_packs = vec![];
@@ -1538,5 +1805,522 @@ mod tests {
             err.to_string().contains("nothing was installed or saved"),
             "{err}"
         );
+    }
+
+    // --- preset `pocock` and its project setup ---------------------------------------------------
+
+    fn pocock_preset() -> &'static Preset {
+        PRESETS.iter().find(|p| p.id == "pocock").unwrap()
+    }
+
+    /// A fixture with the preset's skills, plus skills that the preset must not select.
+    fn pocock_fixture(root: &Path) -> PathBuf {
+        let dir = root.join("pocock-src");
+        for name in pocock_preset().select {
+            write(
+                &dir.join(format!("skills/engineering/{name}/SKILL.md")),
+                SKILL,
+            );
+        }
+        for name in ["setup-matt-pocock-skills", "triage", "ask-matt", "teach"] {
+            write(&dir.join(format!("skills/misc/{name}/SKILL.md")), SKILL);
+        }
+        write(&dir.join("LICENSE"), "MIT License\n");
+        dir
+    }
+
+    fn pocock_app(project: &Path, dir: &Path, tracker: Option<&str>) -> App {
+        let mut app = app_for(project, dir);
+        let mut pack = parse_spec("pocock").unwrap();
+        pack.source = Source::Path(dir.to_string_lossy().to_string());
+        app.skill_packs = vec![pack];
+        app.issue_tracker = tracker.map(str::to_string);
+        app
+    }
+
+    #[test]
+    fn pocock_preset_resolves_and_pins_a_commit() {
+        let pack = parse_spec("pocock").unwrap();
+        assert_eq!(pack.id, "pocock");
+        assert_eq!(pack.skills_root, "skills");
+        assert_eq!(pack.select.len(), 21);
+        assert!(matches!(&pack.source, Source::Git { url, git_ref, .. }
+            if url == "https://github.com/mattpocock/skills.git"
+                && git_ref.len() == 40
+                && git_ref.chars().all(|c| c.is_ascii_hexdigit())));
+        for banned in [
+            "setup-matt-pocock-skills",
+            "triage",
+            "ask-matt",
+            "teach",
+            "wait-what",
+        ] {
+            assert!(!pack.select.iter().any(|n| n == banned), "{banned}");
+        }
+    }
+
+    #[test]
+    fn pocock_select_list_is_valid_against_the_fixture() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        let project = tmp.path().join("p");
+        let mut app = pocock_app(&project, &dir, None);
+        run_install(&mut app, &project).unwrap();
+        for name in pocock_preset().select {
+            assert!(
+                project
+                    .join(".claude/skills")
+                    .join(name)
+                    .join("SKILL.md")
+                    .is_file(),
+                "{name}"
+            );
+        }
+        assert!(!project.join(".claude/skills/triage").exists());
+        // The fixture's upstream setup skill is not selected; the installed one is agentic's own.
+        let own = std::fs::read_to_string(
+            project.join(".claude/skills/setup-matt-pocock-skills/SKILL.md"),
+        )
+        .unwrap();
+        assert!(own.contains("managed by agentic"));
+        // The setup files are not skills.
+        let packs = from_settings(&read_manifest(&project)["settings"]["skill_packs"]).unwrap();
+        let skills = installed_skills(&read_manifest(&project), &packs[0].id);
+        assert_eq!(skills.len(), 22, "{skills:?}");
+        assert!(skills.contains(&"setup-matt-pocock-skills".to_string()));
+        for dir in [".claude/skills", ".agents/skills", ".agent/skills"] {
+            let text = std::fs::read_to_string(
+                project.join(dir).join("setup-matt-pocock-skills/SKILL.md"),
+            )
+            .unwrap();
+            assert!(text.contains("disable-model-invocation: true"));
+            assert!(text.contains("agentic:"), "marker");
+        }
+    }
+
+    #[test]
+    fn pocock_setup_files_follow_the_tracker_choice() {
+        for (tracker, needle, section) in [
+            (
+                None,
+                ".scratch/<feature-slug>/",
+                "markdown files under `.scratch",
+            ),
+            (
+                Some("local"),
+                ".scratch/<feature-slug>/",
+                "markdown files under `.scratch",
+            ),
+            (Some("github"), "`gh` CLI", "GitHub Issues"),
+            (Some("gitlab"), "glab issue create", "GitLab Issues"),
+        ] {
+            let tmp = tempfile::tempdir().unwrap();
+            let dir = pocock_fixture(tmp.path());
+            let project = tmp.path().join("p");
+            let mut app = pocock_app(&project, &dir, tracker);
+            run_install(&mut app, &project).unwrap();
+            let doc =
+                std::fs::read_to_string(project.join("docs/agents/issue-tracker.md")).unwrap();
+            assert!(doc.contains(needle), "{tracker:?}");
+            assert!(doc.contains("agentic:"), "marker");
+            assert!(!doc.contains("company"), "no company data");
+            for f in ["triage-labels.md", "domain.md"] {
+                assert!(project.join("docs/agents").join(f).is_file(), "{f}");
+            }
+            let manifest = read_manifest(&project);
+            assert_eq!(
+                manifest["settings"]["issue_tracker"],
+                tracker.unwrap_or("local")
+            );
+            let setup = manifest_files(&manifest, Some("pocock"))
+                .into_iter()
+                .filter(|(path, _, _)| path.starts_with("docs/agents/"))
+                .count();
+            assert_eq!(setup, 3);
+            let section_text = crate::pocock_setup::agents_section(&app).unwrap();
+            assert!(section_text.starts_with(&format!(
+                "{}\n## Agent skills\n",
+                crate::pocock_setup::SECTION_BEGIN
+            )));
+            assert!(section_text.contains(section), "{section_text}");
+            assert!(section_text.len() < 900);
+        }
+    }
+
+    /// A full install (no packs) of `project`, then `skills add`-like synchronization with `packs`.
+    fn full_install(project: &Path, home: &Path) {
+        let mut app = App::new().unwrap();
+        app.project_dir = project.to_string_lossy().to_string();
+        app.config_home_override = Some(home.to_path_buf());
+        app.home = home.to_path_buf();
+        app.doctor_enabled_env = false;
+        app.selected_agent_os = vec!["claude".into(), "codex".into(), "opencode".into()];
+        app.selected_areas = vec!["software".into()];
+        app.selected_specs = vec!["software.backend".into()];
+        crate::install::run_install(&mut app).unwrap();
+    }
+
+    fn synchronize_with(
+        project: &Path,
+        home: &Path,
+        packs: Vec<SkillPack>,
+        tracker: Option<&str>,
+    ) -> (crate::Result<()>, App) {
+        let mut app = App::new().unwrap();
+        app.project_dir = project.to_string_lossy().to_string();
+        app.config_home_override = Some(home.to_path_buf());
+        app.home = home.to_path_buf();
+        app.doctor_enabled_env = false;
+        app.skill_packs = packs;
+        app.skill_packs_replace = true;
+        app.issue_tracker = tracker.map(str::to_string);
+        let result = crate::project_update::synchronize(&mut app);
+        (result, app)
+    }
+
+    #[test]
+    fn pocock_setup_keeps_a_user_file_in_docs_agents_on_upgrade() {
+        // docs/agents was not in the project inventory: a user file there (for example from the
+        // upstream /setup-matt-pocock-skills) made `skills add pocock` and every upgrade fail.
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        let project = tmp.path().join("p");
+        let home = tmp.path().join("home");
+        full_install(&project, &home);
+        let user = "# Domain\n\nOur own domain notes.\n";
+        write(&project.join("docs/agents/domain.md"), user);
+        let packs = pocock_app(&project, &dir, None).skill_packs;
+        let (result, app) = synchronize_with(&project, &home, packs.clone(), None);
+        result.unwrap();
+        assert_eq!(
+            std::fs::read_to_string(project.join("docs/agents/domain.md")).unwrap(),
+            user
+        );
+        assert!(app
+            .upgrade_actions
+            .iter()
+            .any(|a| a.contains("Preserved user file") && a.contains("docs/agents/domain.md")));
+        assert!(project.join("docs/agents/issue-tracker.md").is_file());
+        // The next upgrade works as well and still keeps the file.
+        let (result, _) = synchronize_with(&project, &home, packs, None);
+        result.unwrap();
+        assert_eq!(
+            std::fs::read_to_string(project.join("docs/agents/domain.md")).unwrap(),
+            user
+        );
+    }
+
+    #[test]
+    fn pocock_agents_section_merges_with_user_edits_at_the_end() {
+        // The section was appended at the end of AGENTS.md: with a user edit there the merge
+        // conflicted and the whole file was replaced (the edit only in the backup).
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        let project = tmp.path().join("p");
+        let home = tmp.path().join("home");
+        full_install(&project, &home);
+        let agents = project.join("AGENTS.md");
+        let mut text = std::fs::read_to_string(&agents).unwrap();
+        text.push_str("\n## Our team\n\nAlways run make check.\n");
+        std::fs::write(&agents, &text).unwrap();
+        let packs = pocock_app(&project, &dir, None).skill_packs;
+        for tracker in ["local", "github"] {
+            let (result, app) = synchronize_with(&project, &home, packs.clone(), Some(tracker));
+            result.unwrap();
+            let text = std::fs::read_to_string(&agents).unwrap();
+            assert!(text.contains("Always run make check."), "{tracker}");
+            assert_eq!(text.matches("## Agent skills").count(), 1, "{tracker}");
+            assert_eq!(
+                text.matches(crate::pocock_setup::SECTION_BEGIN).count(),
+                1,
+                "{tracker}"
+            );
+            assert!(
+                !app.upgrade_actions
+                    .iter()
+                    .any(|a| a.contains("Replaced conflict")),
+                "{tracker}: {:?}",
+                app.upgrade_actions
+            );
+        }
+        assert!(std::fs::read_to_string(&agents)
+            .unwrap()
+            .contains("GitHub Issues"));
+    }
+
+    #[test]
+    fn pocock_agents_section_is_not_added_next_to_the_users_own() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        let project = tmp.path().join("p");
+        let home = tmp.path().join("home");
+        full_install(&project, &home);
+        let agents = project.join("AGENTS.md");
+        let mut text = std::fs::read_to_string(&agents).unwrap();
+        text.push_str("\n## Agent skills\n\nIssues live in Jira.\n");
+        std::fs::write(&agents, &text).unwrap();
+        let packs = pocock_app(&project, &dir, None).skill_packs;
+        let (result, app) = synchronize_with(&project, &home, packs, None);
+        result.unwrap();
+        let text = std::fs::read_to_string(&agents).unwrap();
+        assert_eq!(text.matches("## Agent skills").count(), 1);
+        assert!(text.contains("Issues live in Jira."));
+        assert!(!text.contains(crate::pocock_setup::SECTION_BEGIN));
+        assert!(app
+            .warnings
+            .iter()
+            .any(|w| w.contains("has its own `## Agent skills` section")));
+        assert!(crate::pocock_setup::has_own_section(&text));
+        assert!(!crate::pocock_setup::has_own_section(&format!(
+            "{}\n## Agent skills\n{}\n",
+            crate::pocock_setup::SECTION_BEGIN,
+            crate::pocock_setup::SECTION_END
+        )));
+    }
+
+    #[test]
+    fn preset_settings_keep_only_the_preset_id_overrides_and_lock() {
+        // The pin and the select list were saved in full, so a newer agentic never reached them.
+        let mut pack = parse_spec("pocock").unwrap();
+        pack.commit = "a".repeat(40);
+        let saved = to_settings(std::slice::from_ref(&pack));
+        assert_eq!(
+            saved,
+            json!([{"preset": "pocock", "id": "pocock", "commit": "a".repeat(40)}])
+        );
+        let back = from_settings(&saved).unwrap();
+        assert_eq!(back, vec![pack.clone()]);
+        assert_eq!(back[0].select.len(), pocock_preset().select.len());
+        assert_eq!(back[0].git_ref(), pocock_preset().git_ref);
+
+        // User overrides stay; everything else comes from the preset.
+        let mut custom = parse_spec("pocock#v2").unwrap();
+        custom.id = "mp".into();
+        custom.select = vec!["tdd".into()];
+        custom.own_select = true;
+        custom.exclude = vec!["pr".into()];
+        custom.own_exclude = true;
+        let saved = to_settings(std::slice::from_ref(&custom));
+        assert_eq!(
+            saved,
+            json!([{"preset": "pocock", "id": "mp", "ref": "v2", "select": ["tdd"], "exclude": ["pr"]}])
+        );
+        assert_eq!(from_settings(&saved).unwrap(), vec![custom]);
+
+        // An unknown preset is an error, not a silent removal of its files.
+        let mut app = app_for(Path::new("/nonexistent"), Path::new("/nonexistent"));
+        app.skill_packs =
+            from_settings(&json!([{"preset": "gone", "commit": "b".repeat(40)}])).unwrap();
+        let err = prepare(&mut app, &crate::company::Prepared::default()).unwrap_err();
+        assert!(err.to_string().contains("unknown preset `gone`"), "{err}");
+    }
+
+    #[test]
+    fn a_new_preset_pin_moves_the_lock_unless_the_user_set_the_ref() {
+        if std::env::var_os("XDG_CACHE_HOME").is_some() {
+            return;
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        let work = pack_dir(tmp.path());
+        let git = init_repo(&work);
+        git(&["init", "-q", "-b", "main"]);
+        git(&["add", "-A"]);
+        git(&["commit", "-qm", "one"]);
+        let old = source::head_commit(&work).unwrap();
+        write(&work.join("skills/new-skill/SKILL.md"), SKILL);
+        git(&["add", "-A"]);
+        git(&["commit", "-qm", "two"]);
+        let pin = source::head_commit(&work).unwrap();
+        let project = tmp.path().join("p");
+        // A preset whose pin (`ref`) is `pin` while the saved lock is still `old`.
+        let preset_app = |own_ref: bool| {
+            let mut app = app_for(&project, &work);
+            app.home = tmp.path().join("home");
+            let mut pack = parse_spec("pocock").unwrap();
+            pack.source = Source::Git {
+                url: work.to_string_lossy().to_string(),
+                git_ref: pin.clone(),
+                subdir: String::new(),
+            };
+            pack.select.clear();
+            pack.commit = old.clone();
+            pack.own_ref = own_ref;
+            app.skill_packs = vec![pack];
+            app
+        };
+        let mut app = preset_app(true);
+        prepare(&mut app, &crate::company::Prepared::default()).unwrap();
+        assert_eq!(app.skill_packs[0].commit, old, "an own ref keeps the lock");
+        let mut app = preset_app(false);
+        let prepared = prepare(&mut app, &crate::company::Prepared::default()).unwrap();
+        assert_eq!(app.skill_packs[0].commit, pin);
+        assert!(prepared.skills.iter().any(|s| s.name == "new-skill"));
+    }
+
+    #[test]
+    fn adding_a_pack_again_keeps_the_saved_select_exclude_and_ref() {
+        // `skills add pocock --issue-tracker X` (what the stand-in skill recommends) reset them.
+        let mut saved = parse_spec("pocock#v2").unwrap();
+        saved.select = vec!["tdd".into()];
+        saved.own_select = true;
+        saved.exclude = vec!["pr".into()];
+        saved.own_exclude = true;
+        saved.commit = "c".repeat(40);
+        let mut packs = vec![saved.clone()];
+        upsert(&mut packs, parse_spec("pocock").unwrap());
+        assert_eq!(packs, vec![saved.clone()]);
+        // Explicit flags replace the saved values; a new ref drops the old lock.
+        let mut again = parse_spec("pocock#v3").unwrap();
+        again.select = vec!["grill-me".into()];
+        again.own_select = true;
+        upsert(&mut packs, again);
+        assert_eq!(packs[0].select, vec!["grill-me"]);
+        assert_eq!(packs[0].exclude, vec!["pr"]);
+        assert_eq!(packs[0].git_ref(), "v3");
+        assert!(packs[0].commit.is_empty());
+        // The same for a URL pack.
+        let mut url = parse_spec("https://example.com/team/skills.git#main").unwrap();
+        url.exclude = vec!["draft".into()];
+        let mut packs = vec![url.clone()];
+        upsert(
+            &mut packs,
+            parse_spec("https://example.com/team/skills.git#main").unwrap(),
+        );
+        assert_eq!(packs[0].exclude, vec!["draft"]);
+    }
+
+    #[test]
+    fn pocock_setup_follows_the_preset_not_the_id() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        // A pack from a directory with the id `pocock` is not the preset: no setup, no stand-in.
+        let project = tmp.path().join("p1");
+        let mut app = app_for(&project, &dir);
+        app.skill_packs[0].id = "pocock".into();
+        app.skill_packs[0].select = vec!["tdd".into()];
+        run_install(&mut app, &project).unwrap();
+        assert!(!crate::pocock_setup::active(&app));
+        assert!(!project.join("docs/agents").exists());
+        assert!(!project
+            .join(".claude/skills/setup-matt-pocock-skills")
+            .exists());
+        // The preset under another id gets the setup, with sources of that id.
+        let project = tmp.path().join("p2");
+        let mut app = pocock_app(&project, &dir, None);
+        app.skill_packs[0].id = "mp".into();
+        run_install(&mut app, &project).unwrap();
+        assert!(project.join("docs/agents/domain.md").is_file());
+        let manifest = read_manifest(&project);
+        assert!(installed_skills(&manifest, "mp").contains(&"setup-matt-pocock-skills".to_string()));
+        assert!(manifest_files(&manifest, Some("pocock")).is_empty());
+    }
+
+    #[test]
+    fn the_upstream_setup_skill_never_replaces_the_stand_in() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        write(
+            &dir.join("skills/misc/setup-matt-pocock-skills/refs/questions.md"),
+            "# upstream\n",
+        );
+        let project = tmp.path().join("p");
+        let mut app = pocock_app(&project, &dir, None);
+        app.skill_packs[0]
+            .select
+            .push("setup-matt-pocock-skills".into());
+        app.skill_packs[0].own_select = true;
+        run_install(&mut app, &project).unwrap();
+        for dir in [".claude/skills", ".agents/skills", ".opencode/skills"] {
+            let skill = project.join(dir).join("setup-matt-pocock-skills");
+            assert!(std::fs::read_to_string(skill.join("SKILL.md"))
+                .unwrap()
+                .contains("managed by agentic"));
+            assert!(!skill.join("refs").exists(), "{dir}");
+        }
+    }
+
+    #[test]
+    fn another_skill_named_like_the_stand_in_is_a_clear_error() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        let other = tmp.path().join("other");
+        write(
+            &other.join("skills/setup-matt-pocock-skills/SKILL.md"),
+            SKILL,
+        );
+        write(&other.join("skills/notes/SKILL.md"), SKILL);
+        let project = tmp.path().join("p");
+        let mut app = pocock_app(&project, &dir, None);
+        let mut pack = parse_spec(&other.to_string_lossy()).unwrap();
+        pack.id = "other".into();
+        app.skill_packs.push(pack);
+        let err = prepare(&mut app, &crate::company::Prepared::default()).unwrap_err();
+        let err = err.to_string();
+        assert!(
+            err.contains("Skill pack other: skill `setup-matt-pocock-skills`"),
+            "{err}"
+        );
+        assert!(
+            err.contains("agentic setup skill of preset pocock"),
+            "{err}"
+        );
+        assert!(err.contains("add it to the pack's `exclude`"), "{err}");
+        // The advice works.
+        app.skill_packs[1].exclude = vec!["setup-matt-pocock-skills".into()];
+        run_install(&mut app, &project).unwrap();
+        assert!(project.join(".claude/skills/notes/SKILL.md").is_file());
+
+        // A company skill with that name cannot be excluded from the preset: rename it.
+        let company = crate::company::Prepared {
+            skills: vec![crate::company::RuleFile {
+                source_id: "standards".into(),
+                rel: "setup-matt-pocock-skills/SKILL.md".into(),
+                content: SKILL.into(),
+                in_place: false,
+            }],
+            ..crate::company::Prepared::default()
+        };
+        let mut app = pocock_app(&project, &dir, None);
+        let err = prepare(&mut app, &company).unwrap_err().to_string();
+        assert!(err.contains("the company skill from standards"), "{err}");
+        assert!(err.contains("rename or remove that skill"), "{err}");
+    }
+
+    #[test]
+    fn pocock_setup_is_idempotent_keeps_user_edits_and_cleans_up() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        let project = tmp.path().join("p");
+        let mut app = pocock_app(&project, &dir, Some("github"));
+        run_install(&mut app, &project).unwrap();
+        let doc = project.join("docs/agents/issue-tracker.md");
+        let first = std::fs::read_to_string(&doc).unwrap();
+        let mut app = pocock_app(&project, &dir, Some("github"));
+        run_install(&mut app, &project).unwrap();
+        assert_eq!(std::fs::read_to_string(&doc).unwrap(), first);
+
+        // A user edit survives a switch of the tracker.
+        std::fs::write(&doc, format!("{first}\nMy own rule.\n")).unwrap();
+        let mut app = pocock_app(&project, &dir, Some("gitlab"));
+        run_install(&mut app, &project).unwrap();
+        assert!(std::fs::read_to_string(&doc)
+            .unwrap()
+            .contains("My own rule."));
+        std::fs::write(&doc, &first).unwrap();
+
+        // Removing the preset removes the setup files too.
+        let mut app = pocock_app(&project, &dir, None);
+        app.skill_packs.clear();
+        run_install(&mut app, &project).unwrap();
+        assert!(!project.join("docs/agents/issue-tracker.md").exists());
+        assert!(!project.join("docs/agents/domain.md").exists());
+        assert!(!project.join("docs/agents").exists());
+        assert!(!project
+            .join(".claude/skills/setup-matt-pocock-skills")
+            .exists());
+        assert!(manifest_files(&read_manifest(&project), None).is_empty());
+        assert!(read_manifest(&project)["settings"]
+            .get("issue_tracker")
+            .is_none());
     }
 }

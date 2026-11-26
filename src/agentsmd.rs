@@ -124,13 +124,37 @@ pub fn resolve_mode(app: &mut App) {
     load_saved_mode(app, &settings);
 }
 
-fn generated_content(app: &App) -> String {
+fn generated_content(app: &App, agent_skills: bool) -> String {
     let mut content = build_header(app);
+    // Right after the header, not at the end: project edits at the end of AGENTS.md then merge
+    // without a conflict when the section appears or changes.
+    if let Some(section) = crate::pocock_setup::agents_section(app).filter(|_| agent_skills) {
+        content.push_str(&section);
+        content.push_str("\n---\n\n");
+    }
     append_root_agents_template(app, &mut content);
     for spec_key in app.selected_specs.clone() {
         append_specialization_template(app, &mut content, &spec_key);
     }
     content
+}
+
+/// False when the project AGENTS.md already has its own `## Agent skills` section: agentic keeps it
+/// and does not add a second one.
+fn add_agent_skills_section(app: &mut App, project_dir: &Path) -> bool {
+    if !crate::pocock_setup::active(app) {
+        return true;
+    }
+    let own = std::fs::read_to_string(project_dir.join("AGENTS.md"))
+        .is_ok_and(|text| crate::pocock_setup::has_own_section(&text));
+    if own {
+        ui::warn(
+            app,
+            "AGENTS.md has its own `## Agent skills` section; agentic keeps it and does not add one. \
+             Point it to docs/agents/issue-tracker.md, triage-labels.md, and domain.md",
+        );
+    }
+    !own
 }
 
 /// The project's root `AGENTS.md` text that `keep` mode puts above the generated guidance.
@@ -194,7 +218,8 @@ pub fn generate_agents_md(app: &mut App, project_dir: &Path) -> crate::Result<()
             remove_generated(app, project_dir, CODEX_OVERRIDE)?;
         }
     }
-    let mut content = generated_content(app);
+    let agent_skills = add_agent_skills_section(app, project_dir);
+    let mut content = generated_content(app, agent_skills);
     if keep {
         if let Some(root) = project_agents_md(app, project_dir) {
             content = format!("{}\n\n---\n\n{content}", root.trim_end());

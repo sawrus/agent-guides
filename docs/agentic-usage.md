@@ -171,6 +171,16 @@ A skill is any directory with `SKILL.md` below `skills_root` (default `skills`);
 flattened. The manifest locks the commit of a git pack; `agentic skills update` moves the lock. A skill name that
 clashes with another skill is an error. See [skill packs](skill-packs.md).
 
+The built-in preset `pocock` installs 21 skills of mattpocock/skills (MIT, Matt Pocock) at a pinned commit and
+sets up the project for them. `--issue-tracker local|github|gitlab` (default `local`) writes
+`docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, `docs/agents/domain.md`, and an
+`## Agent skills` section in the generated AGENTS.md:
+
+```bash
+agentic install --project-dir . --skill-pack pocock --issue-tracker gitlab
+agentic skills add pocock --issue-tracker github
+```
+
 Start TUI:
 
 ```bash
