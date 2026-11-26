@@ -41,9 +41,10 @@ Example request: Review MR !87 "Add rate limiting to the public API".
 
 ### 3. Review the diff
 
-- **Do:** if the `code-review` skill is installed, follow it for this step; otherwise check each requirement (`met`, `partial`, `missing`). Look for wrong behaviour, missing tests for
+- **Do:** check each requirement (`met`, `partial`, `missing`). Look for wrong behaviour, missing tests for
   changed behaviour, broken contracts (API, schema, config, CLI), unsafe migrations, secrets, unbounded remote
   calls, and changed code without a matching docs page. Do not report what a linter or formatter enforces.
+  If the `code-review` skill is installed, follow it for this step.
 - **Done when:** every finding has a severity (`blocker`, `major`, `minor`, `info`), a file and line, and a fix.
 
 ### 4. Give the verdict

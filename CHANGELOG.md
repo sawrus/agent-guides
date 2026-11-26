@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v12.0.0
 
 - The workflows `develop-feature`, `debug-issue`, and `code-review-workflow` now delegate steps to skills from an
   optional external pack when the host has them installed: `grilling` or `to-spec` (criteria), `tdd` (tests and

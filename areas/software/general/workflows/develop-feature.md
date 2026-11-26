@@ -34,16 +34,16 @@ Example request: Add subscription cancellation: DELETE /subscriptions/{id} recor
 
 ### 1. Describe the current behaviour and the target
 
-- **Do:** if the `grilling` or `to-spec` skill is installed, use it to settle the criteria; otherwise read the
-  code paths the request touches and the docs page whose `covers:` matches them. Write
-  numbered acceptance criteria and an explicit out-of-scope list into `docs/<feature>/README.md`. Ask the user
-  only when a criterion has two plausible meanings.
+- **Do:** read the code paths the request touches and the docs page whose `covers:` matches them. If the
+  `grilling` or `to-spec` skill is installed, use it to settle the criteria with the user. Write numbered
+  acceptance criteria and an explicit out-of-scope list into `docs/<feature>/README.md`. Ask the user only when
+  a criterion has two plausible meanings.
 - **Done when:** each criterion maps to one planned test, and the feature page has a `covers:` key.
 
 ### 2. Write the failing tests
 
-- **Do:** if the `tdd` skill is installed, follow it for steps 2 and 3; otherwise add tests for every acceptance criterion at the lowest useful level (unit first, then API or
-  integration). Run them.
+- **Do:** add tests for every acceptance criterion at the lowest useful level (unit first, then API or
+  integration). Run them. If the `tdd` skill is installed, follow it for this step and the next.
 - **Done when:** the new tests fail for the expected reason and the existing tests still pass.
 
 ### 3. Implement
