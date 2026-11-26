@@ -37,7 +37,8 @@ agentic install --project-dir . --agent-os claude,codex,opencode --areas softwar
   --specializations software.backend --skill-pack 'https://github.com/mattpocock/skills#main'
 
 # Manage the packs of an installed project (default: the current directory).
-agentic skills add https://github.com/mattpocock/skills --id pocock --select tdd,grill-me
+agentic skills add https://github.com/mattpocock/skills --id mp --select tdd,grill-me
+agentic skills add pocock --issue-tracker github   # the preset; see Presets
 agentic skills add ./vendor/skills --skills-root . --exclude draft-skill
 agentic skills list
 agentic skills update            # every pack
@@ -47,7 +48,7 @@ agentic skills remove pocock
 
 | Command | Effect |
 |---|---|
-| `skills add <spec> [--id <id>] [--select a,b] [--exclude x,y] [--skills-root <dir>]` | Adds the pack, or replaces the pack with the same id. A pack with the same source and `skills_root` keeps its locked commit. |
+| `skills add <spec> [--id <id>] [--select a,b] [--exclude x,y] [--skills-root <dir>]` | Adds the pack, or replaces the pack with the same id. A pack with the same source and `skills_root` (for a preset: the same preset) keeps what the command does not set: `select` without `--select`, `exclude` without `--exclude`, the own `ref` of a preset, and the locked commit of the same ref. |
 | `skills list` | Prints each pack: id, source, `ref`, locked commit, `select`, `exclude`, and the installed skill names. |
 | `skills remove <id>` | Removes the pack from the settings and its files from the project. |
 | `skills update [<id>]` | Resolves the `ref` again and installs the new commit. Without an id: every pack. |
@@ -64,7 +65,8 @@ in a staging copy, with a backup in `.agentic-backups/`, and all or nothing.
 - The id of a built-in preset (see [Presets](#presets)).
 
 The default id is `<owner>-<repo>` of a git URL (`mattpocock-skills`) or the directory name of a path.
-`--skill-pack` on `agentic install` adds to the saved packs; a pack with the same id replaces the saved one.
+`--skill-pack` on `agentic install` adds to the saved packs; a pack with the same id replaces the saved one and
+keeps its saved `select` and `exclude` in the same way.
 
 TUI: after the "Company rules" step, the optional "Skill pack" step asks for one git spec or directory. An
 empty answer keeps the saved packs.

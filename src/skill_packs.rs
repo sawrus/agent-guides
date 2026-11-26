@@ -137,7 +137,7 @@ impl Default for SkillPack {
 impl SkillPack {
     fn same_origin(&self, other: &SkillPack) -> bool {
         if !self.preset.is_empty() || !other.preset.is_empty() {
-            return self.preset == other.preset && self.git_ref() == other.git_ref();
+            return self.preset == other.preset;
         }
         self.source == other.source && self.skills_root == other.skills_root
     }
@@ -392,12 +392,28 @@ pub fn from_settings(value: &Value) -> Option<Vec<SkillPack>> {
     Some(packs)
 }
 
-/// Add or replace `pack` by id. The same source keeps its locked commit.
+/// Add or replace `pack` by id. For the same source, what the new entry does not set stays as saved:
+/// `select`, `exclude`, the own ref of a preset, and the locked commit of the same ref. So
+/// `skills add pocock --issue-tracker github` changes only the tracker.
 pub fn upsert(packs: &mut Vec<SkillPack>, mut pack: SkillPack) {
     match packs.iter_mut().find(|p| p.id == pack.id) {
         Some(old) => {
-            if old.same_origin(&pack) && pack.commit.is_empty() {
-                pack.commit = old.commit.clone();
+            if old.same_origin(&pack) {
+                if !pack.own_select {
+                    pack.select = old.select.clone();
+                    pack.own_select = old.own_select;
+                }
+                if !pack.own_exclude {
+                    pack.exclude = old.exclude.clone();
+                    pack.own_exclude = old.own_exclude;
+                }
+                if !pack.preset.is_empty() && !pack.own_ref && old.own_ref {
+                    pack.set_ref(old.git_ref());
+                    pack.own_ref = true;
+                }
+                if pack.commit.is_empty() && pack.git_ref() == old.git_ref() {
+                    pack.commit = old.commit.clone();
+                }
             }
             *old = pack;
         }
@@ -1325,10 +1341,15 @@ mod tests {
         let mut again = packs[0].clone();
         again.commit.clear();
         again.select.clear();
-        app.skill_packs = vec![again];
+        app.skill_packs = vec![again.clone()];
         merge_saved(&mut app, packs.clone());
         assert_eq!(app.skill_packs.len(), 2);
         assert_eq!(app.skill_packs[0].commit, "abc");
+        // Without an explicit `select` the saved list stays; an explicit one replaces it.
+        assert_eq!(app.skill_packs[0].select, vec!["tdd"]);
+        again.own_select = true;
+        app.skill_packs = vec![again];
+        merge_saved(&mut app, packs.clone());
         assert!(app.skill_packs[0].select.is_empty());
         // The `skills` subcommands pass the full list.
         app.skill_packs = vec![];
@@ -2108,6 +2129,38 @@ mod tests {
         let prepared = prepare(&mut app, &crate::company::Prepared::default()).unwrap();
         assert_eq!(app.skill_packs[0].commit, pin);
         assert!(prepared.skills.iter().any(|s| s.name == "new-skill"));
+    }
+
+    #[test]
+    fn adding_a_pack_again_keeps_the_saved_select_exclude_and_ref() {
+        // `skills add pocock --issue-tracker X` (what the stand-in skill recommends) reset them.
+        let mut saved = parse_spec("pocock#v2").unwrap();
+        saved.select = vec!["tdd".into()];
+        saved.own_select = true;
+        saved.exclude = vec!["pr".into()];
+        saved.own_exclude = true;
+        saved.commit = "c".repeat(40);
+        let mut packs = vec![saved.clone()];
+        upsert(&mut packs, parse_spec("pocock").unwrap());
+        assert_eq!(packs, vec![saved.clone()]);
+        // Explicit flags replace the saved values; a new ref drops the old lock.
+        let mut again = parse_spec("pocock#v3").unwrap();
+        again.select = vec!["grill-me".into()];
+        again.own_select = true;
+        upsert(&mut packs, again);
+        assert_eq!(packs[0].select, vec!["grill-me"]);
+        assert_eq!(packs[0].exclude, vec!["pr"]);
+        assert_eq!(packs[0].git_ref(), "v3");
+        assert!(packs[0].commit.is_empty());
+        // The same for a URL pack.
+        let mut url = parse_spec("https://example.com/team/skills.git#main").unwrap();
+        url.exclude = vec!["draft".into()];
+        let mut packs = vec![url.clone()];
+        upsert(
+            &mut packs,
+            parse_spec("https://example.com/team/skills.git#main").unwrap(),
+        );
+        assert_eq!(packs[0].exclude, vec!["draft"]);
     }
 
     #[test]
