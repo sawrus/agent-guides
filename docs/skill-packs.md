@@ -11,6 +11,7 @@ covers:
   - src/markers.rs
   - src/project_inventory.rs
   - src/pocock_setup.rs
+  - src/pocock_setup/*.md
   - src/agentsmd.rs
 ---
 
