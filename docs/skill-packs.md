@@ -77,8 +77,9 @@ empty answer keeps the saved packs.
 {
   "settings": {
     "skill_packs": [
+      {"preset": "pocock", "id": "pocock", "commit": "<40-character commit id>"},
       {
-        "id": "pocock",
+        "id": "mattpocock-skills",
         "git": "https://github.com/mattpocock/skills",
         "ref": "main",
         "skills_root": "skills",
@@ -94,6 +95,7 @@ empty answer keeps the saved packs.
 
 | Key | Meaning |
 |---|---|
+| `preset` | A built-in preset (see [Presets](#presets)). The entry then holds only `id`, the overrides that you set (`ref`, `select`, `exclude`), and the lock. The URL, the pinned commit, `skills_root`, and the `select` list come from the preset of the running agentic. |
 | `id` | Pack id: letters, digits, `.`, `_`, `-`. Unique in the list. |
 | `git` or `path` | The source: a git URL, or a directory relative to the project or absolute. |
 | `ref` | Branch, tag, or commit of a git source. Default: the remote `HEAD`. |
@@ -202,7 +204,14 @@ parser, URL redaction, the git cache and fetch, and the file walk. `src/skill_pa
 | `pocock` | [mattpocock/skills](https://github.com/mattpocock/skills), pinned commit | 21 (see below) |
 
 `agentic skills add pocock` and `agentic install --skill-pack pocock` use a preset. `--select` and `--exclude`
-replace the list of the preset; without them the preset list stays.
+replace the list of the preset; without them the preset list stays. `pocock#<ref>` sets your own ref.
+`--skills-root` is not allowed for a preset.
+
+`.agentic.json` keeps a preset as `{"preset": "<id>", "id": ..., "commit": ...}` plus only the overrides that
+you set. So a newer agentic brings the newer pin and `select` list of the preset to the project. When the pin of
+the preset differs from the lock and you did not set `ref`, install and upgrade move the lock to the new pin
+and log it. If the new pin cannot be fetched, the lock and the installed files stay, with a warning. A preset id
+that the running agentic does not know is an error.
 
 ### Preset pocock
 
@@ -210,7 +219,7 @@ Attribution: the skills and the setup templates come from [mattpocock/skills](ht
 MIT license, author Matt Pocock. agentic copies the license to `.agent/skill-packs/pocock/LICENSE`.
 
 The preset pins a commit of `main` in `ref`, so every install gets the same text. `skills update` does not
-move a pinned commit; change the pin in a new agentic release.
+move a pinned commit; a new agentic release changes the pin, and the next install or upgrade moves the lock.
 
 Selected skills: `grilling`, `grill-me`, `grill-with-docs`, `to-spec`, `to-tickets`, `domain-modeling`, `tdd`,
 `implement`, `implement-spec`, `code-review`, `diagnosing-bugs`, `codebase-design`,

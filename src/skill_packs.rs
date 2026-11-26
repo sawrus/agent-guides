@@ -81,9 +81,15 @@ impl Preset {
             },
             skills_root: self.skills_root.to_string(),
             select: self.select.iter().map(|s| s.to_string()).collect(),
+            preset: self.id.to_string(),
             ..SkillPack::default()
         }
     }
+}
+
+/// The built-in preset `id`.
+pub fn preset(id: &str) -> Option<&'static Preset> {
+    PRESETS.iter().find(|p| p.id == id)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -99,6 +105,16 @@ pub struct SkillPack {
     pub exclude: Vec<String>,
     /// Lock: the resolved commit of a git pack; empty until the first fetch.
     pub commit: String,
+    /// Id of the built-in preset this pack comes from; empty for a pack from a URL or a directory.
+    /// `.agentic.json` keeps only the preset id, the user overrides, and the lock, so a newer agentic
+    /// brings the newer pin and `select` list of the preset.
+    pub preset: String,
+    /// The user set `ref` (`<preset>#<ref>`): the pin of the preset no longer moves the lock.
+    pub own_ref: bool,
+    /// The user set `select` (`--select`); otherwise the saved or preset list stays.
+    pub own_select: bool,
+    /// The user set `exclude` (`--exclude`); otherwise the saved list stays.
+    pub own_exclude: bool,
 }
 
 impl Default for SkillPack {
@@ -110,19 +126,40 @@ impl Default for SkillPack {
             select: Vec::new(),
             exclude: Vec::new(),
             commit: String::new(),
+            preset: String::new(),
+            own_ref: false,
+            own_select: false,
+            own_exclude: false,
         }
     }
 }
 
 impl SkillPack {
     fn same_origin(&self, other: &SkillPack) -> bool {
+        if !self.preset.is_empty() || !other.preset.is_empty() {
+            return self.preset == other.preset && self.git_ref() == other.git_ref();
+        }
         self.source == other.source && self.skills_root == other.skills_root
+    }
+
+    /// True when the preset pin moved away from the lock in this agentic version.
+    fn preset_pin_moved(&self) -> bool {
+        !self.preset.is_empty()
+            && !self.own_ref
+            && !self.commit.is_empty()
+            && self.commit != self.git_ref()
     }
 
     fn git_ref(&self) -> &str {
         match &self.source {
             Source::Git { git_ref, .. } => git_ref,
             Source::Path(_) => "",
+        }
+    }
+
+    fn set_ref(&mut self, value: &str) {
+        if let Source::Git { git_ref, .. } = &mut self.source {
+            *git_ref = value.to_string();
         }
     }
 }
@@ -132,14 +169,20 @@ fn is_git_spec(spec: &str) -> bool {
     url.contains("://") || url.starts_with("git@") || url.ends_with(".git")
 }
 
-/// A preset id, a git spec `<url>[#ref][:skills_root]`, or a directory.
+/// A preset id (`<preset>[#ref]`), a git spec `<url>[#ref][:skills_root]`, or a directory.
 pub fn parse_spec(spec: &str) -> Result<SkillPack, String> {
     let spec = spec.trim();
     if spec.is_empty() {
         return Err("--skill-pack: empty value".into());
     }
-    if let Some(preset) = PRESETS.iter().find(|p| p.id == spec) {
-        return Ok(preset.pack());
+    let (name, git_ref) = spec.split_once('#').unwrap_or((spec, ""));
+    if let Some(preset) = preset(name) {
+        let mut pack = preset.pack();
+        if !git_ref.is_empty() {
+            pack.set_ref(git_ref);
+            pack.own_ref = true;
+        }
+        return Ok(pack);
     }
     let (source, skills_root) = if is_git_spec(spec) {
         match source::parse_git_spec(spec, "--skill-pack")? {
@@ -225,6 +268,9 @@ pub fn to_settings(packs: &[SkillPack]) -> Value {
         packs
             .iter()
             .map(|pack| {
+                if !pack.preset.is_empty() {
+                    return preset_settings(pack);
+                }
                 let mut v = source::to_json(&pack.source);
                 v["id"] = json!(pack.id);
                 v["skills_root"] = json!(pack.skills_root);
@@ -237,6 +283,60 @@ pub fn to_settings(packs: &[SkillPack]) -> Value {
             })
             .collect(),
     )
+}
+
+/// A preset pack in `.agentic.json`: the preset id, the user overrides, and the lock. The URL, the pin,
+/// `skills_root`, and the `select` list come from [`PRESETS`] of the running agentic.
+fn preset_settings(pack: &SkillPack) -> Value {
+    let mut v = json!({"preset": pack.preset, "id": pack.id});
+    if pack.own_ref {
+        v["ref"] = json!(pack.git_ref());
+    }
+    if pack.own_select {
+        v["select"] = json!(pack.select);
+    }
+    if pack.own_exclude {
+        v["exclude"] = json!(pack.exclude);
+    }
+    if !pack.commit.is_empty() {
+        v["commit"] = json!(pack.commit);
+    }
+    v
+}
+
+/// A saved preset pack with its fields resolved from [`PRESETS`]. An unknown preset id keeps the
+/// entry; `prepare` reports it.
+fn preset_from_settings(name: &str, item: &Value, list: impl Fn(&str) -> Vec<String>) -> SkillPack {
+    let mut pack = match preset(name) {
+        Some(preset) => preset.pack(),
+        None => SkillPack {
+            id: name.to_string(),
+            source: Source::Git {
+                url: String::new(),
+                git_ref: String::new(),
+                subdir: String::new(),
+            },
+            preset: name.to_string(),
+            ..SkillPack::default()
+        },
+    };
+    if let Some(id) = item["id"].as_str().filter(|id| !id.is_empty()) {
+        pack.id = id.to_string();
+    }
+    if let Some(git_ref) = item["ref"].as_str().filter(|r| !r.is_empty()) {
+        pack.set_ref(git_ref);
+        pack.own_ref = true;
+    }
+    if item["select"].is_array() {
+        pack.select = list("select");
+        pack.own_select = true;
+    }
+    if item["exclude"].is_array() {
+        pack.exclude = list("exclude");
+        pack.own_exclude = true;
+    }
+    pack.commit = item["commit"].as_str().unwrap_or_default().to_string();
+    pack
 }
 
 /// `settings.skill_packs`; None when the key is not a list.
@@ -256,6 +356,10 @@ pub fn from_settings(value: &Value) -> Option<Vec<SkillPack>> {
     };
     let mut packs = Vec::new();
     for item in items {
+        if let Some(name) = item["preset"].as_str().filter(|n| !n.is_empty()) {
+            packs.push(preset_from_settings(name, item, |key| list(item, key)));
+            continue;
+        }
         let Some(mut source) = source::from_json(item) else {
             continue;
         };
@@ -282,6 +386,7 @@ pub fn from_settings(value: &Value) -> Option<Vec<SkillPack>> {
             select: list(item, "select"),
             exclude: list(item, "exclude"),
             commit: item["commit"].as_str().unwrap_or_default().to_string(),
+            ..SkillPack::default()
         });
     }
     Some(packs)
@@ -421,23 +526,48 @@ fn open_source(
         }
         Source::Git { url, git_ref, .. } => {
             let refresh = refresh_requested(app, id);
-            let dir = if pack.commit.is_empty() || refresh {
-                match source::fetch_ref(app, CACHE_KIND, LABEL, url, git_ref) {
+            // A newer agentic pins the preset to another commit: move the lock there, unless the
+            // user set the ref. Offline, the lock and the installed files stay.
+            let pin_moved = pack.preset_pin_moved();
+            if pin_moved {
+                ui::log(
+                    app,
+                    &format!(
+                        "Skill pack {id}: preset {} pins {git_ref}; moving the lock from {}",
+                        pack.preset, pack.commit
+                    ),
+                );
+            }
+            let fetched = if pack.commit.is_empty() || refresh || pin_moved {
+                source::fetch_ref(app, CACHE_KIND, LABEL, url, git_ref)
+            } else {
+                None
+            };
+            let dir = if let Some(dir) = fetched {
+                dir
+            } else if pin_moved && !refresh {
+                ui::warn(
+                    app,
+                    &format!(
+                        "Skill pack {id}: cannot fetch the new preset pin {git_ref}; the lock stays at {}",
+                        pack.commit
+                    ),
+                );
+                match source::checkout_commit(app, CACHE_KIND, LABEL, url, &pack.commit) {
                     Some(dir) => dir,
-                    None if pack.commit.is_empty() => {
-                        return Err(format!(
-                            "Skill pack {id}: cannot fetch {shown}; nothing was installed or saved"
-                        )
-                        .into())
-                    }
-                    None => {
-                        return Err(format!(
-                            "Skill pack {id}: cannot fetch {shown}; the lock stays at {}",
-                            pack.commit
-                        )
-                        .into())
-                    }
+                    None => return Ok(None),
                 }
+            } else if pack.commit.is_empty() {
+                return Err(format!(
+                    "Skill pack {id}: cannot fetch {shown}; nothing was installed or saved"
+                )
+                .into());
+            } else if refresh {
+                return Err(format!(
+                    "Skill pack {id}: cannot fetch {shown}; the lock stays at {}",
+                    pack.commit
+                )
+                .into());
             } else {
                 match source::checkout_commit(app, CACHE_KIND, LABEL, url, &pack.commit) {
                     Some(dir) => dir,
@@ -492,6 +622,14 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
             return Err(format!(
                 "Skill pack {id}: skills_root must be a relative path: `{}`",
                 pack.skills_root
+            )
+            .into());
+        }
+        if !pack.preset.is_empty() && preset(&pack.preset).is_none() {
+            return Err(format!(
+                "Skill pack {id}: unknown preset `{}`; this agentic version has {}",
+                pack.preset,
+                PRESETS.iter().map(|p| p.id).collect::<Vec<_>>().join(", ")
             )
             .into());
         }
@@ -962,13 +1100,22 @@ pub fn run_cli(app: &mut App, args: &[String]) -> crate::Result<()> {
                 .into());
             }
             if let Some(root) = skills_root.filter(|r| !r.is_empty()) {
+                if !pack.preset.is_empty() {
+                    return Err(format!(
+                        "skills add: preset `{}` sets its own skills_root; --skills-root is for a URL or a directory",
+                        pack.preset
+                    )
+                    .into());
+                }
                 pack.skills_root = root;
             }
             if let Some(select) = select {
                 pack.select = select;
+                pack.own_select = true;
             }
             if let Some(exclude) = exclude {
                 pack.exclude = exclude;
+                pack.own_exclude = true;
             }
             ui::out(
                 app,
@@ -1048,6 +1195,9 @@ fn print_list(app: &mut App, packs: &[SkillPack], manifest: &Value) {
     }
     for pack in packs {
         let mut line = format!("{}  {}", pack.id, source::source_id(&pack.source));
+        if !pack.preset.is_empty() {
+            line.push_str(&format!("  preset={}", pack.preset));
+        }
         if pack.skills_root != DEFAULT_SKILLS_ROOT {
             line.push_str(&format!("  skills_root={}", pack.skills_root));
         }
@@ -1879,6 +2029,85 @@ mod tests {
             crate::pocock_setup::SECTION_BEGIN,
             crate::pocock_setup::SECTION_END
         )));
+    }
+
+    #[test]
+    fn preset_settings_keep_only_the_preset_id_overrides_and_lock() {
+        // The pin and the select list were saved in full, so a newer agentic never reached them.
+        let mut pack = parse_spec("pocock").unwrap();
+        pack.commit = "a".repeat(40);
+        let saved = to_settings(std::slice::from_ref(&pack));
+        assert_eq!(
+            saved,
+            json!([{"preset": "pocock", "id": "pocock", "commit": "a".repeat(40)}])
+        );
+        let back = from_settings(&saved).unwrap();
+        assert_eq!(back, vec![pack.clone()]);
+        assert_eq!(back[0].select.len(), pocock_preset().select.len());
+        assert_eq!(back[0].git_ref(), pocock_preset().git_ref);
+
+        // User overrides stay; everything else comes from the preset.
+        let mut custom = parse_spec("pocock#v2").unwrap();
+        custom.id = "mp".into();
+        custom.select = vec!["tdd".into()];
+        custom.own_select = true;
+        custom.exclude = vec!["pr".into()];
+        custom.own_exclude = true;
+        let saved = to_settings(std::slice::from_ref(&custom));
+        assert_eq!(
+            saved,
+            json!([{"preset": "pocock", "id": "mp", "ref": "v2", "select": ["tdd"], "exclude": ["pr"]}])
+        );
+        assert_eq!(from_settings(&saved).unwrap(), vec![custom]);
+
+        // An unknown preset is an error, not a silent removal of its files.
+        let mut app = app_for(Path::new("/nonexistent"), Path::new("/nonexistent"));
+        app.skill_packs =
+            from_settings(&json!([{"preset": "gone", "commit": "b".repeat(40)}])).unwrap();
+        let err = prepare(&mut app, &crate::company::Prepared::default()).unwrap_err();
+        assert!(err.to_string().contains("unknown preset `gone`"), "{err}");
+    }
+
+    #[test]
+    fn a_new_preset_pin_moves_the_lock_unless_the_user_set_the_ref() {
+        if std::env::var_os("XDG_CACHE_HOME").is_some() {
+            return;
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        let work = pack_dir(tmp.path());
+        let git = init_repo(&work);
+        git(&["init", "-q", "-b", "main"]);
+        git(&["add", "-A"]);
+        git(&["commit", "-qm", "one"]);
+        let old = source::head_commit(&work).unwrap();
+        write(&work.join("skills/new-skill/SKILL.md"), SKILL);
+        git(&["add", "-A"]);
+        git(&["commit", "-qm", "two"]);
+        let pin = source::head_commit(&work).unwrap();
+        let project = tmp.path().join("p");
+        // A preset whose pin (`ref`) is `pin` while the saved lock is still `old`.
+        let preset_app = |own_ref: bool| {
+            let mut app = app_for(&project, &work);
+            app.home = tmp.path().join("home");
+            let mut pack = parse_spec("pocock").unwrap();
+            pack.source = Source::Git {
+                url: work.to_string_lossy().to_string(),
+                git_ref: pin.clone(),
+                subdir: String::new(),
+            };
+            pack.select.clear();
+            pack.commit = old.clone();
+            pack.own_ref = own_ref;
+            app.skill_packs = vec![pack];
+            app
+        };
+        let mut app = preset_app(true);
+        prepare(&mut app, &crate::company::Prepared::default()).unwrap();
+        assert_eq!(app.skill_packs[0].commit, old, "an own ref keeps the lock");
+        let mut app = preset_app(false);
+        let prepared = prepare(&mut app, &crate::company::Prepared::default()).unwrap();
+        assert_eq!(app.skill_packs[0].commit, pin);
+        assert!(prepared.skills.iter().any(|s| s.name == "new-skill"));
     }
 
     #[test]
