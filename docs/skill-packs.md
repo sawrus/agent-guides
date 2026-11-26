@@ -19,7 +19,8 @@ covers:
 
 Status: implemented. A skill pack is a set of ready-made skills in an external git repository or a local
 directory, for example [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). agentic installs the
-skills of a pack into the skills directory of every selected host. agentic does not rewrite the skills.
+skills of a pack into the skills directory of every selected host. agentic does not rewrite the skills. A
+user-invoked skill gets a user entry point on every host ([Hosts](#hosts)).
 
 ## Purpose
 
@@ -139,6 +140,41 @@ holds for `agentic skills` and `agentic upgrade`: every host skills directory (f
 Codex) is in the project inventory, so a skill of your own with the name of a pack skill stays unchanged and is
 reported as a preserved user file.
 
+## Hosts
+
+Every host gets the same skill set and the same upstream skill text. A skill is user-invoked when the top-level
+frontmatter of its `SKILL.md` has `disable-model-invocation: true` (quoted or with a trailing `# comment` as
+well; the Claude Code key; for example `grill-me`,
+`to-spec`, `handoff` of mattpocock/skills). The model does not start a user-invoked skill by itself; the user
+starts it. agentic gives each host the entry point that the host supports:
+
+| Host | Discovery | Model-invoked skill | User-invoked skill | What agentic adds |
+|---|---|---|---|---|
+| Claude Code | `.claude/skills/<name>/SKILL.md` | the model loads it; the user can type `/<name>` | `/<name>`; Claude reads `disable-model-invocation` | nothing |
+| OpenCode | `.opencode/skills/<name>/SKILL.md` (also `.claude/skills` and `.agents/skills`) | the model loads it with the `skill` tool; the user can write `@<name>` | `/<name>`; OpenCode reads `disable-model-invocation` (since anomalyco/opencode#52747, October 2026) and hides the skill from the model | `.opencode/commands/<name>.md`: "Load the skill `<name>` with the skill tool and follow its instructions", with `$ARGUMENTS` and the skill `description` |
+| Codex | `.agents/skills/<name>/SKILL.md`; ignores unknown frontmatter keys | the model loads it by its `description`; the user can type `$<name>` | `$<name>` or `/skills`; Codex does not read `disable-model-invocation` | `.agents/skills/<name>/agents/openai.yaml` with `policy: allow_implicit_invocation: false` |
+| other hosts, `.agent/skills` | the host skills directory | as the host does | as the host does | nothing |
+
+Rules:
+
+- agentic does not change the upstream files. Only the agentic marker goes into the frontmatter (see
+  [Layout](#layout)).
+- A skill that ships its own `agents/openai.yaml` keeps that file. When the file does not set
+  `allow_implicit_invocation`, install prints a warning: Codex can start the skill without `$<name>`.
+- The OpenCode command is Markdown and gets the agentic marker. `agents/openai.yaml` is written as it is,
+  without a marker; the manifest hash tracks it (only Markdown pack files get the marker).
+- The new files have `marker: skill-pack` and the sources `skill-pack:<id>/<name>/@opencode/command.md` and
+  `skill-pack:<id>/<name>/@codex/agents/openai.yaml`. `agentic skills list` counts them with their skill. Remove
+  and update remove them with the skill.
+- An OpenCode command with the same name that another agentic step installs (for example
+  `.opencode/commands/profile.md`) stops the install with an error. Add the skill to the `exclude` list.
+- An older OpenCode ignores `disable-model-invocation`: the model there can also start the skill. The
+  `/<name>` command works in both cases.
+
+Sources: [Codex skills](https://learn.chatgpt.com/docs/build-skills) (`agents/openai.yaml`, `policy`),
+[OpenCode skills](https://opencode.ai/docs/skills/) and [commands](https://opencode.ai/docs/commands/),
+[Claude Code skills](https://docs.claude.com/en/docs/claude-code/skills).
+
 ## Name conflicts
 
 A conflict stops the install with an error; agentic never overwrites one skill with another:
@@ -193,8 +229,8 @@ parser, URL redaction, the git cache and fetch, and the file walk. `src/skill_pa
 ## Extension points
 
 - Host adaptation: `skill_packs::adapt_for_host(host, skill, rel, content)` runs for every file and host before
-  the write. Today it returns the upstream text unchanged. Host-specific frontmatter (for example
-  `disable-model-invocation`) plugs in there.
+  the write and returns the upstream text unchanged. `skill_packs::host_entry_files(host, dir, skill)` returns
+  the files that a host needs in addition (see [Hosts](#hosts)).
 - Presets: `skill_packs::PRESETS` lists the built-in packs (`id`, `url`, `git_ref`, `skills_root`, `select`). An
   entry makes `agentic skills add <id>` and `--skill-pack <id>` work. `pocock` is the only entry; its project
   setup is in `src/pocock_setup.rs`.
@@ -255,7 +291,9 @@ agentic also installs its own small skill `setup-matt-pocock-skills` on every ho
 (`disable-model-invocation: true`, agentic marker, manifest source `skill-pack:pocock/setup-matt-pocock-skills/SKILL.md`).
 The upstream skills still say "run `/setup-matt-pocock-skills`"; the text stays unchanged. This skill tells the
 agent to read `docs/agents/*.md` and to run `agentic skills add pocock --issue-tracker ...` to change the setup.
-It is not the upstream skill, and `skills remove pocock` removes it. The upstream `setup-matt-pocock-skills` is
+It is not the upstream skill, and `skills remove pocock` removes it. Like a user-invoked pack skill, it gets the
+host entry points from [Hosts](#hosts): `.opencode/commands/setup-matt-pocock-skills.md` and
+`.agents/skills/setup-matt-pocock-skills/agents/openai.yaml`. The upstream `setup-matt-pocock-skills` is
 never installed, even when `--select` names it. Another pack skill or company skill with that name is an error:
 exclude it from the other pack, or rename the company skill.
 
@@ -275,6 +313,8 @@ has. The upstream multi-context layout (`GLOSSARY-MAP.md`) and other trackers ar
 ## Check
 
 - `cargo test --bin agentic skill_packs`: spec parsing and ids, settings and replay, flattening for every host,
+  host parity (the same skills on Claude Code, Codex, and OpenCode, a user entry point for each user-invoked
+  skill, nothing left after remove), the pack's own `agents/openai.yaml`, an OpenCode command clash,
   the license copy, `select` and `exclude`, every name conflict, removal on reinstall, the offline fallback, and
   the commit lock with a local git repository.
 - `cargo test --bin agentic source`: the shared source code and the checkout of a locked commit.
