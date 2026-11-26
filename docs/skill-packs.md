@@ -230,8 +230,8 @@ agentic skills add pocock --issue-tracker github
 ```
 
 `--issue-tracker` is `local` (default), `github`, or `gitlab`. The TUI asks for it after the skill pack step when
-the pack is `pocock`. `.agentic.json` keeps the choice in `settings.issue_tracker`; a later install or
-upgrade replays it.
+the pack is `pocock`; the cursor starts on the saved choice (`local` without one), so Enter keeps it.
+`.agentic.json` keeps the choice in `settings.issue_tracker`; a later install or upgrade replays it.
 
 | File | Content |
 |---|---|

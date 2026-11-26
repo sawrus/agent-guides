@@ -748,14 +748,11 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
         .iter()
         .any(|p| p.id == crate::pocock_setup::PACK_ID)
     {
-        let state = SelectState::new(
-            "Issue tracker for the pocock skills:",
-            crate::pocock_setup::TRACKERS
-                .iter()
-                .map(|s| s.to_string())
-                .collect(),
-            false,
-        );
+        let saved = app
+            .issue_tracker
+            .clone()
+            .or_else(|| saved_issue_tracker(&selections.project_dir));
+        let state = issue_tracker_state(saved.as_deref());
         let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
         if !state.cancelled {
             selections.issue_tracker = state.picked().first().cloned();
@@ -763,6 +760,32 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
     }
 
     Ok(selections)
+}
+
+/// The tracker step with the cursor on the saved choice (`local` without one), so Enter keeps it.
+pub fn issue_tracker_state(saved: Option<&str>) -> SelectState {
+    let options: Vec<String> = crate::pocock_setup::TRACKERS
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    let wanted = saved
+        .filter(|t| crate::pocock_setup::TRACKERS.contains(t))
+        .unwrap_or(crate::pocock_setup::DEFAULT_TRACKER);
+    let mut state = SelectState::new("Issue tracker for the pocock skills:", options, false);
+    state.cursor = state
+        .options
+        .iter()
+        .position(|o| o == wanted)
+        .unwrap_or_default();
+    state
+}
+
+fn saved_issue_tracker(project_dir: &str) -> Option<String> {
+    let path = std::path::Path::new(project_dir).join(crate::PROJECT_MANIFEST_NAME);
+    let data: serde_json::Value = serde_json::from_slice(&std::fs::read(path).ok()?).ok()?;
+    data["settings"]["issue_tracker"]
+        .as_str()
+        .map(str::to_string)
 }
 
 fn saved_skill_packs(project_dir: &str) -> Vec<crate::skill_packs::SkillPack> {
@@ -858,6 +881,22 @@ mod tests {
         state.handle_key(KeyCode::Down);
         state.handle_key(KeyCode::Enter);
         assert_eq!(state.picked(), vec!["y"]);
+    }
+
+    #[test]
+    fn issue_tracker_step_keeps_the_saved_choice() {
+        // Without a preselect, Enter reset a saved `github` or `gitlab` to `local`.
+        for (saved, want) in [
+            (Some("github"), "github"),
+            (Some("gitlab"), "gitlab"),
+            (Some("local"), "local"),
+            (None, "local"),
+            (Some("jira"), "local"),
+        ] {
+            let mut state = issue_tracker_state(saved);
+            state.handle_key(KeyCode::Enter);
+            assert_eq!(state.picked(), vec![want.to_string()], "{saved:?}");
+        }
     }
 
     #[test]
