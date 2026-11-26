@@ -53,7 +53,7 @@ when they are unchanged; edited copies stay in place.
 agent-guides/
 ├── areas/
 │   ├── software/              # Application development
-│   │   ├── general/           # Shared rules + develop-feature, debug-issue, refactor-module, code-review
+│   │   ├── general/           # Shared rules + develop-feature, debug-issue, new-project, refactor-module, code-review
 │   │   ├── backend/           # Python/Go/Java services: API contracts, data access, security, testing
 │   │   ├── frontend/          # Rules only: components, accessibility, performance
 │   │   ├── data-engineering/  # Rules only: pipelines, schemas, governance, PII

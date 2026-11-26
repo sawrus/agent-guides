@@ -1,5 +1,13 @@
 # Changelog
 
+## v10.0.0
+
+- New workflow `/new-project` (`software.general`): requirements interview, spec, domain model, minimal skeleton,
+  tickets, and `agentic install`. It uses `grilling`, `to-spec`, `domain-modeling`, and `to-tickets` if installed
+  and has a fallback for each.
+- ART-S5 now allows a minimal new-project skeleton (`Makefile` with `test` and `lint`, CI config, docs layout).
+  Framework and language app templates stay forbidden.
+
 ## v9.0.1
 
 - Tests: the MemPalace upgrade e2e test no longer queries GitHub releases (rate-limit flake on macOS CI).

@@ -76,7 +76,7 @@ A skill is an on-demand procedure: steps, commands, or a script that the agent w
 | ART-S2 | The body is a procedure: numbered steps, decision points, exact commands, or a bundled script. Not a topic overview. | review |
 | ART-S3 | ≤ 250 lines for `SKILL.md`; references and assets ≤ 400 lines in total. | auto |
 | ART-S4 | Code blocks ≤ 40 % of `SKILL.md` lines. Long templates belong in a script or are removed. | auto |
-| ART-S5 | No framework scaffolding templates (app generators, starter projects). | auto (deny list) + review |
+| ART-S5 | No framework or language scaffolding templates (app generators, starter projects). A minimal new-project skeleton is allowed: a `Makefile` with `test` and `lint`, a CI config, and the docs layout (`docs/`, `GLOSSARY.md`, `docs/adr/`). | auto (deny list) + review |
 | ART-S6 | At least one workflow or rule links the skill (`uses-skills` or a link), or the skill states a trigger that the host can match on its own. Orphans are removed. | auto |
 | ART-S7 | The skill adds something beyond the rule on the same topic. If it only restates the rule with code, keep the rule and delete the skill. | review |
 

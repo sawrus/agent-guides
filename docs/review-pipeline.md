@@ -16,7 +16,7 @@ read-only specialist reports: instruction effectiveness and documentation/memory
 hygiene. Recommendations help improve future SDLC work; they are not applied
 in the delivery task. Reviews do not replace acceptance, QA, or code review.
 
-Since the content cleanup no pack workflow carries the hook: the ten role-neutral workflows have no
+Since the content cleanup no pack workflow carries the hook: the eleven role-neutral workflows have no
 `roles` or `execution.initiator` (docs/artifact-standard.md, ART-W1), so the pipeline runs only for a project or
 company workflow that adds a `Post-task review` section with an initiator. `scripts/lint_review_pipeline.py`
 checks such hooks when they are registered in its `WORKFLOWS` table; the table is empty for the pack.

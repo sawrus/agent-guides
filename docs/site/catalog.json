@@ -1556,6 +1556,84 @@
           ]
         },
         {
+          "trigger": "/new-project",
+          "name": "new-project",
+          "description": "Start a new project from an idea to a spec, a domain model, a minimal skeleton, and a ticket list.",
+          "workflow_path": "areas/software/general/workflows/new-project.md",
+          "use_when": "The request starts a new project or a new repository from an idea and asks for requirements, a plan or a first structure, not a change to existing code.",
+          "avoid_when": "The repository already has code and the request adds a feature, fixes a bug, or restructures existing code.",
+          "inputs": [
+            "project_idea"
+          ],
+          "outputs": [
+            "spec",
+            "domain_model",
+            "project_skeleton",
+            "tickets"
+          ],
+          "related_rules": [
+            "docs-layout.md",
+            "makefile-guide.md"
+          ],
+          "rule_refs": [
+            {
+              "name": "docs-layout",
+              "path": "areas/software/general/rules/docs-layout.md"
+            },
+            {
+              "name": "makefile-guide",
+              "path": "areas/software/general/rules/makefile-guide.md"
+            }
+          ],
+          "uses_skills": [],
+          "skill_refs": [],
+          "checks": [
+            "make lint",
+            "make test"
+          ],
+          "artifacts": [
+            "docs/spec.md",
+            "GLOSSARY.md",
+            "Makefile"
+          ],
+          "steps": [
+            {
+              "title": "Interview for requirements",
+              "do": "if skill `grilling` or `grill-me` is installed, run it. Otherwise ask the user questions in rounds of at most five: goal, users, scope, out of scope, constraints, and success measures. Stop when each answer is clear.",
+              "done_when": "the goal, the scope, and the out-of-scope list are written down and the user confirmed them."
+            },
+            {
+              "title": "Write the spec",
+              "do": "if skill `to-spec` is installed, run it. Otherwise write `docs/spec.md` with the goal, users, requirements with ids, out-of-scope items, and open questions.",
+              "done_when": "`docs/spec.md` exists and every requirement has an id and one checkable acceptance line."
+            },
+            {
+              "title": "Model the domain",
+              "do": "if skill `domain-modeling` is installed, run it. Otherwise list the key terms and rules yourself. Write them to `GLOSSARY.md`. Write each hard-to-reverse decision as `docs/adr/0001-<slug>.md`.",
+              "done_when": "`GLOSSARY.md` defines each term of the spec and `docs/adr/` holds one ADR per decision."
+            },
+            {
+              "title": "Create the minimal skeleton",
+              "do": "create only a `Makefile` with `test` and `lint` targets, one CI config that runs both, and the docs layout (`docs/`, `GLOSSARY.md`, `docs/adr/`). Do not add a framework or language app template. Ask the user to choose the stack first; leave the stack setup to the first ticket.",
+              "done_when": "`make test` and `make lint` run and exit 0, and the CI config calls both."
+            },
+            {
+              "title": "Break the work into tickets",
+              "do": "if skill `to-tickets` is installed, run it. Otherwise write `docs/tickets.md`: one ticket per requirement id, each with a goal, an acceptance line, and its dependencies. Put the stack setup first.",
+              "done_when": "every requirement id appears in at least one ticket."
+            },
+            {
+              "title": "Install the rules and the gate",
+              "do": "run `agentic install` in the project root. Commit the skeleton and the docs.",
+              "done_when": "`agentic install` exits 0, the quality gate is in place, and all `checks` commands exit 0."
+            }
+          ],
+          "body": "",
+          "examples": [
+            "I want a service that stores customer notes and shows them in a web page; set up the project."
+          ]
+        },
+        {
           "trigger": "/refactor-module",
           "name": "refactor-module",
           "description": "Restructure a module without changing its observable behaviour, guarded by tests.",
@@ -1890,8 +1968,8 @@
   "stats": {
     "rules": 64,
     "skills": 14,
-    "workflows": 10,
-    "examples": 10,
+    "workflows": 11,
+    "examples": 11,
     "problems": 0
   }
 }

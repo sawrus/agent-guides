@@ -33,6 +33,7 @@ Triggers are unique across all areas; check `areas/devops/AGENTS.md` before you 
 |:---|:---|:---|
 | `/develop-feature` | general | Build or change behaviour (the general workflow) |
 | `/debug-issue` | general | Find the root cause of a bug and fix it |
+| `/new-project` | general | Start a project: spec, domain model, minimal skeleton, tickets |
 | `/refactor-module` | general | Restructure code without behaviour change |
 | `/code-review-workflow` | general | Review a merge request or diff |
 | `/add-migration` | backend | Add a backward-compatible schema migration |
