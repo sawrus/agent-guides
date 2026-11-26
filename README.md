@@ -133,7 +133,8 @@ Use ready-made skills from other repositories, for example
 `agentic install --skill-pack <spec>`) installs every skill of the pack, unchanged, into `.claude/skills`,
 `.agents/skills`, `.opencode/skills`, and the other host directories. The manifest locks the commit;
 `agentic skills update` moves it, `agentic skills list` shows the packs, and `agentic skills remove` removes the
-pack files and nothing else. See [skill packs](docs/skill-packs.md).
+pack files and nothing else. The preset `pocock` (`--skill-pack pocock --issue-tracker local|github|gitlab`)
+installs 21 of these skills and writes the project setup that they expect. See [skill packs](docs/skill-packs.md).
 
 ## Standards for the pack itself
 

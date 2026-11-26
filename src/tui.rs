@@ -483,6 +483,8 @@ pub struct WizardSelections {
     pub company_rules: Option<crate::company::CompanyRules>,
     /// Saved skill packs plus the one from the optional "Skill pack" step.
     pub skill_packs: Vec<crate::skill_packs::SkillPack>,
+    /// Issue tracker of the preset `pocock` setup; None keeps the saved one or `local`.
+    pub issue_tracker: Option<String>,
 }
 
 pub fn run_tui(app: &mut App) -> crate::Result<()> {
@@ -527,6 +529,9 @@ pub fn apply_selections(app: &mut App, selections: WizardSelections) {
     app.host_profiles = selections.profiles;
     app.company_rules = selections.company_rules;
     app.skill_packs = selections.skill_packs;
+    if selections.issue_tracker.is_some() {
+        app.issue_tracker = selections.issue_tracker;
+    }
     // One shared choice is also the install-wide profile; mixed choices stay per host.
     let mut ids: Vec<&String> = app.host_profiles.values().collect();
     ids.dedup();
@@ -737,6 +742,26 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
         }
     };
 
+    // 9. Issue tracker of the preset `pocock` setup (only when that preset is chosen).
+    if selections
+        .skill_packs
+        .iter()
+        .any(|p| p.id == crate::pocock_setup::PACK_ID)
+    {
+        let state = SelectState::new(
+            "Issue tracker for the pocock skills:",
+            crate::pocock_setup::TRACKERS
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+            false,
+        );
+        let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
+        if !state.cancelled {
+            selections.issue_tracker = state.picked().first().cloned();
+        }
+    }
+
     Ok(selections)
 }
 
@@ -924,6 +949,7 @@ mod tests {
             profiles: Default::default(),
             company_rules: None,
             skill_packs: vec![],
+            issue_tracker: None,
         };
         apply_selections(&mut app, selections);
         assert_eq!(app.theme, "light");
@@ -948,6 +974,7 @@ mod tests {
             profiles: Default::default(),
             company_rules: None,
             skill_packs: vec![],
+            issue_tracker: None,
         };
         apply_selections(&mut app, selections);
         assert_eq!(app.selected_agent_os, vec!["opencode"]);

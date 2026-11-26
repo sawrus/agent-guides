@@ -21,6 +21,7 @@ mod mapper;
 mod markers;
 mod mcp;
 mod notify;
+mod pocock_setup;
 mod profile;
 mod project_inventory;
 mod project_transaction;
@@ -99,6 +100,7 @@ Options:
   --company-rules-exclude
                         Pack rule <area>/<spec>/<rule> to skip (repeatable or comma-separated)
   --skill-pack          Skill pack: <git-url>[#ref][:skills_root] or a directory (repeatable; docs/skill-packs.md)
+  --issue-tracker       Issue tracker of the pocock skill pack setup: local (default) | github | gitlab
   --agents-md           Root AGENTS.md: generate (default) | keep (the project owns it; generated guidance goes
                         to .agent/AGENTS.md, AGENTS.override.md for Codex, an OpenCode plugin)
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)
@@ -377,6 +379,14 @@ fn cmd_install(app: &mut App, rest: &[String]) -> Result<()> {
                         }
                     }
                 }
+                i += 2;
+            }
+            "--issue-tracker" => {
+                let value = rest
+                    .get(i + 1)
+                    .filter(|v| !v.starts_with("--"))
+                    .ok_or("--issue-tracker requires local, github, or gitlab")?;
+                app.issue_tracker = Some(pocock_setup::parse_tracker(value)?);
                 i += 2;
             }
             "--skill-pack" => {

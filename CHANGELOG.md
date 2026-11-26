@@ -1,5 +1,17 @@
 # Changelog
 
+## v13.0.0
+
+- Preset `pocock`: `agentic skills add pocock` and `agentic install --skill-pack pocock` install 21 skills of
+  [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, Matt Pocock), pinned to a commit. The preset
+  leaves out `setup-matt-pocock-skills`, `triage`, and the experimental skills.
+- Project setup for the preset replaces the upstream skill `setup-matt-pocock-skills`. New option
+  `--issue-tracker local|github|gitlab` (default `local`; also on `agentic skills add`; TUI step) writes
+  `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, and `docs/agents/domain.md`, and adds an
+  `## Agent skills` section to the generated AGENTS.md. `settings.issue_tracker` keeps the choice. See
+  [docs/skill-packs.md](docs/skill-packs.md#preset-pocock).
+- `agentic skills add <preset>` keeps the `select` list of the preset unless `--select` is given.
+
 ## v12.0.0
 
 - The workflows `develop-feature`, `debug-issue`, and `code-review-workflow` now delegate steps to skills from an

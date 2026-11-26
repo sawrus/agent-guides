@@ -10,6 +10,8 @@ covers:
   - src/tui.rs
   - src/markers.rs
   - src/project_inventory.rs
+  - src/pocock_setup.rs
+  - src/agentsmd.rs
 ---
 
 # Skill packs
@@ -188,13 +190,61 @@ parser, URL redaction, the git cache and fetch, and the file walk. `src/skill_pa
 - Host adaptation: `skill_packs::adapt_for_host(host, skill, rel, content)` runs for every file and host before
   the write. Today it returns the upstream text unchanged. Host-specific frontmatter (for example
   `disable-model-invocation`) plugs in there.
-- Presets: `skill_packs::PRESETS` lists the built-in packs (`id`, `url`, `git_ref`, `skills_root`). An entry
-  makes `agentic skills add <id>` and `--skill-pack <id>` work. The list is empty today.
+- Presets: `skill_packs::PRESETS` lists the built-in packs (`id`, `url`, `git_ref`, `skills_root`, `select`). An
+  entry makes `agentic skills add <id>` and `--skill-pack <id>` work. `pocock` is the only entry; its project
+  setup is in `src/pocock_setup.rs`.
 
 ## Presets
 
-No built-in preset exists yet. Use the URL, for example
-`agentic skills add https://github.com/mattpocock/skills --id pocock`.
+| Id | Source | Skills |
+|---|---|---|
+| `pocock` | [mattpocock/skills](https://github.com/mattpocock/skills), pinned commit | 21 (see below) |
+
+`agentic skills add pocock` and `agentic install --skill-pack pocock` use a preset. `--select` and `--exclude`
+replace the list of the preset; without them the preset list stays.
+
+### Preset pocock
+
+Attribution: the skills and the setup templates come from [mattpocock/skills](https://github.com/mattpocock/skills),
+MIT license, author Matt Pocock. agentic copies the license to `.agent/skill-packs/pocock/LICENSE`.
+
+The preset pins a commit of `main` in `ref`, so every install gets the same text. `skills update` does not
+move a pinned commit; change the pin in a new agentic release.
+
+Selected skills: `grilling`, `grill-me`, `grill-with-docs`, `to-spec`, `to-tickets`, `domain-modeling`, `tdd`,
+`implement`, `implement-spec`, `code-review`, `diagnosing-bugs`, `codebase-design`,
+`improve-codebase-architecture`, `prototype`, `research`, `handoff`, `wayfinder`, `retro`, `wizard`, `pr`,
+`writing-for-agents`. Not selected: `setup-matt-pocock-skills` (agentic replaces it, see below), `triage`,
+`ask-matt`, `teach`, `wait-what`, `to-questionnaire`, and the `in-progress/` and `misc/` skills.
+
+#### Project setup
+
+The upstream skills `to-spec`, `to-tickets`, `implement-spec`, `code-review`, and `wayfinder` expect an issue
+tracker description, and `grill-with-docs` and `domain-modeling` expect the domain doc layout. Upstream, the
+prompt-driven skill `setup-matt-pocock-skills` writes these files. agentic writes them at install time instead:
+
+```bash
+agentic install --project-dir . --skill-pack pocock --issue-tracker gitlab
+agentic skills add pocock --issue-tracker github
+```
+
+`--issue-tracker` is `local` (default), `github`, or `gitlab`. The TUI asks for it after the skill pack step when
+the pack is `pocock`. `.agentic.json` keeps the choice in `settings.issue_tracker`; a later install or
+upgrade replays it.
+
+| File | Content |
+|---|---|
+| `docs/agents/issue-tracker.md` | `local`: markdown files under `.scratch/<feature>/`. `github`: the `gh` CLI. `gitlab`: the `glab` CLI (issues, notes, labels, merge requests). Each variant also has the wayfinder operations. |
+| `docs/agents/triage-labels.md` | The five default triage labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). `to-spec` and `to-tickets` apply `ready-for-agent`. |
+| `docs/agents/domain.md` | Single-context layout: `GLOSSARY.md` and `docs/adr/` at the root, and the rules for reading them. The skills create `GLOSSARY.md` and the ADRs when needed. |
+| `AGENTS.md` (generated section `## Agent skills`) | One line each for the tracker, the labels, and the domain docs, with links to the three files. About 150 tokens of always-on context. In `--agents-md keep` mode the section is in `.agent/AGENTS.md`. |
+
+The three `docs/agents/` files are skill pack files in the manifest (`marker: skill-pack`, source
+`skill-pack:pocock/setup.<name>`). The managed-file rules apply: install keeps a file that you edited, and
+`agentic skills remove pocock` removes the files that you did not edit. agentic does not run `gh label create`
+or `glab label create` and does not create the remote repository; the skills use the labels that the tracker
+has. The upstream multi-context layout (`GLOSSARY-MAP.md`) and other trackers are not set up: edit
+`docs/agents/*.md` by hand.
 
 ## Check
 
@@ -204,3 +254,5 @@ No built-in preset exists yet. Use the URL, for example
 - `cargo test --bin agentic source`: the shared source code and the checkout of a locked commit.
 - `cargo test --test cli skill_pack`: `install --skill-pack`, `skills add|list|update|remove` with a local bare
   repository, and the conflict error.
+- `cargo test --bin agentic pocock`: the preset, its `select` list against a fixture, the setup files for each
+  tracker, a repeated install, user edits, and removal.

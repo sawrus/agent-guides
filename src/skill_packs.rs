@@ -35,10 +35,40 @@ pub struct Preset {
     pub url: &'static str,
     pub git_ref: &'static str,
     pub skills_root: &'static str,
+    /// Skills to install; empty installs every skill.
+    pub select: &'static [&'static str],
 }
 
 /// Built-in presets. Add an entry here to make a pack available by its id.
-pub const PRESETS: &[Preset] = &[];
+pub const PRESETS: &[Preset] = &[Preset {
+    id: "pocock",
+    url: "https://github.com/mattpocock/skills.git",
+    git_ref: "6f7f7831a625f040a8e06a0e7954826b87ce775a",
+    skills_root: "skills",
+    select: &[
+        "grilling",
+        "grill-me",
+        "grill-with-docs",
+        "to-spec",
+        "to-tickets",
+        "domain-modeling",
+        "tdd",
+        "implement",
+        "implement-spec",
+        "code-review",
+        "diagnosing-bugs",
+        "codebase-design",
+        "improve-codebase-architecture",
+        "prototype",
+        "research",
+        "handoff",
+        "wayfinder",
+        "retro",
+        "wizard",
+        "pr",
+        "writing-for-agents",
+    ],
+}];
 
 impl Preset {
     fn pack(&self) -> SkillPack {
@@ -50,6 +80,7 @@ impl Preset {
                 subdir: String::new(),
             },
             skills_root: self.skills_root.to_string(),
+            select: self.select.iter().map(|s| s.to_string()).collect(),
             ..SkillPack::default()
         }
     }
@@ -646,6 +677,16 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
             }
         }
     }
+    for (rel, text, name) in crate::pocock_setup::files(app) {
+        let dest = project_dir.join(rel);
+        desired.insert(app.project_rel_path(&dest));
+        write(
+            app,
+            &text,
+            &dest,
+            &source_ref(crate::pocock_setup::PACK_ID, name),
+        )?;
+    }
     for (pack, name, text) in &prepared.licenses {
         let dest = project_dir.join(LICENSE_DIR).join(pack).join(name);
         desired.insert(app.project_rel_path(&dest));
@@ -779,7 +820,13 @@ fn remove_stale(
 pub fn prune_empty_dirs(project_dir: &Path, rel: &str) {
     let mut parts: Vec<&str> = rel.split('/').collect();
     parts.pop();
-    while parts.len() > 2 {
+    // Host directories (`.claude/skills`) stay; `docs/agents` and `docs` go when empty.
+    let keep = if parts.first().is_some_and(|p| p.starts_with('.')) {
+        2
+    } else {
+        0
+    };
+    while parts.len() > keep {
         let dir = project_dir.join(parts.join("/"));
         if !dir.is_dir() || std::fs::remove_dir(&dir).is_err() {
             break;
@@ -794,7 +841,7 @@ pub fn usage() -> String {
     let name = crate::APP_NAME;
     format!(
         "Usage:
-  {name} skills add <git-url[#ref][:skills_root]|dir|preset> [--id <id>] [--select a,b] [--exclude x,y] [--skills-root <dir>]
+  {name} skills add <git-url[#ref][:skills_root]|dir|preset> [--id <id>] [--select a,b] [--exclude x,y] [--skills-root <dir>] [--issue-tracker local|github|gitlab]
   {name} skills list
   {name} skills remove <id>
   {name} skills update [<id>]
@@ -852,6 +899,10 @@ pub fn run_cli(app: &mut App, args: &[String]) -> crate::Result<()> {
                 exclude = Some(csv_list(&value()?));
                 i += 1;
             }
+            "--issue-tracker" => {
+                app.issue_tracker = Some(crate::pocock_setup::parse_tracker(&value()?)?);
+                i += 1;
+            }
             "--skills-root" => {
                 skills_root = Some(value()?.trim_matches('/').to_string());
                 i += 1;
@@ -898,8 +949,12 @@ pub fn run_cli(app: &mut App, args: &[String]) -> crate::Result<()> {
             if let Some(root) = skills_root.filter(|r| !r.is_empty()) {
                 pack.skills_root = root;
             }
-            pack.select = select.unwrap_or_default();
-            pack.exclude = exclude.unwrap_or_default();
+            if let Some(select) = select {
+                pack.select = select;
+            }
+            if let Some(exclude) = exclude {
+                pack.exclude = exclude;
+            }
             ui::out(
                 app,
                 &format!(
@@ -1538,5 +1593,165 @@ mod tests {
             err.to_string().contains("nothing was installed or saved"),
             "{err}"
         );
+    }
+
+    // --- preset `pocock` and its project setup ---------------------------------------------------
+
+    fn pocock_preset() -> &'static Preset {
+        PRESETS.iter().find(|p| p.id == "pocock").unwrap()
+    }
+
+    /// A fixture with the preset's skills, plus skills that the preset must not select.
+    fn pocock_fixture(root: &Path) -> PathBuf {
+        let dir = root.join("pocock-src");
+        for name in pocock_preset().select {
+            write(
+                &dir.join(format!("skills/engineering/{name}/SKILL.md")),
+                SKILL,
+            );
+        }
+        for name in ["setup-matt-pocock-skills", "triage", "ask-matt", "teach"] {
+            write(&dir.join(format!("skills/misc/{name}/SKILL.md")), SKILL);
+        }
+        write(&dir.join("LICENSE"), "MIT License\n");
+        dir
+    }
+
+    fn pocock_app(project: &Path, dir: &Path, tracker: Option<&str>) -> App {
+        let mut app = app_for(project, dir);
+        let mut pack = parse_spec("pocock").unwrap();
+        pack.source = Source::Path(dir.to_string_lossy().to_string());
+        app.skill_packs = vec![pack];
+        app.issue_tracker = tracker.map(str::to_string);
+        app
+    }
+
+    #[test]
+    fn pocock_preset_resolves_and_pins_a_commit() {
+        let pack = parse_spec("pocock").unwrap();
+        assert_eq!(pack.id, "pocock");
+        assert_eq!(pack.skills_root, "skills");
+        assert_eq!(pack.select.len(), 21);
+        assert!(matches!(&pack.source, Source::Git { url, git_ref, .. }
+            if url == "https://github.com/mattpocock/skills.git"
+                && git_ref.len() == 40
+                && git_ref.chars().all(|c| c.is_ascii_hexdigit())));
+        for banned in [
+            "setup-matt-pocock-skills",
+            "triage",
+            "ask-matt",
+            "teach",
+            "wait-what",
+        ] {
+            assert!(!pack.select.iter().any(|n| n == banned), "{banned}");
+        }
+    }
+
+    #[test]
+    fn pocock_select_list_is_valid_against_the_fixture() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        let project = tmp.path().join("p");
+        let mut app = pocock_app(&project, &dir, None);
+        run_install(&mut app, &project).unwrap();
+        for name in pocock_preset().select {
+            assert!(
+                project
+                    .join(".claude/skills")
+                    .join(name)
+                    .join("SKILL.md")
+                    .is_file(),
+                "{name}"
+            );
+        }
+        assert!(!project.join(".claude/skills/triage").exists());
+        assert!(!project
+            .join(".claude/skills/setup-matt-pocock-skills")
+            .exists());
+        // The setup files are not skills.
+        let packs = from_settings(&read_manifest(&project)["settings"]["skill_packs"]).unwrap();
+        let skills = installed_skills(&read_manifest(&project), &packs[0].id);
+        assert_eq!(skills.len(), 21, "{skills:?}");
+    }
+
+    #[test]
+    fn pocock_setup_files_follow_the_tracker_choice() {
+        for (tracker, needle, section) in [
+            (
+                None,
+                ".scratch/<feature-slug>/",
+                "markdown files under `.scratch",
+            ),
+            (
+                Some("local"),
+                ".scratch/<feature-slug>/",
+                "markdown files under `.scratch",
+            ),
+            (Some("github"), "`gh` CLI", "GitHub Issues"),
+            (Some("gitlab"), "glab issue create", "GitLab Issues"),
+        ] {
+            let tmp = tempfile::tempdir().unwrap();
+            let dir = pocock_fixture(tmp.path());
+            let project = tmp.path().join("p");
+            let mut app = pocock_app(&project, &dir, tracker);
+            run_install(&mut app, &project).unwrap();
+            let doc =
+                std::fs::read_to_string(project.join("docs/agents/issue-tracker.md")).unwrap();
+            assert!(doc.contains(needle), "{tracker:?}");
+            assert!(doc.contains("agentic:"), "marker");
+            assert!(!doc.contains("company"), "no company data");
+            for f in ["triage-labels.md", "domain.md"] {
+                assert!(project.join("docs/agents").join(f).is_file(), "{f}");
+            }
+            let manifest = read_manifest(&project);
+            assert_eq!(
+                manifest["settings"]["issue_tracker"],
+                tracker.unwrap_or("local")
+            );
+            let setup = manifest_files(&manifest, Some("pocock"))
+                .into_iter()
+                .filter(|(path, _, _)| path.starts_with("docs/agents/"))
+                .count();
+            assert_eq!(setup, 3);
+            let section_text = crate::pocock_setup::agents_section(&app).unwrap();
+            assert!(section_text.starts_with("## Agent skills\n"));
+            assert!(section_text.contains(section), "{section_text}");
+            assert!(section_text.len() < 900);
+        }
+    }
+
+    #[test]
+    fn pocock_setup_is_idempotent_keeps_user_edits_and_cleans_up() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        let project = tmp.path().join("p");
+        let mut app = pocock_app(&project, &dir, Some("github"));
+        run_install(&mut app, &project).unwrap();
+        let doc = project.join("docs/agents/issue-tracker.md");
+        let first = std::fs::read_to_string(&doc).unwrap();
+        let mut app = pocock_app(&project, &dir, Some("github"));
+        run_install(&mut app, &project).unwrap();
+        assert_eq!(std::fs::read_to_string(&doc).unwrap(), first);
+
+        // A user edit survives a switch of the tracker.
+        std::fs::write(&doc, format!("{first}\nMy own rule.\n")).unwrap();
+        let mut app = pocock_app(&project, &dir, Some("gitlab"));
+        run_install(&mut app, &project).unwrap();
+        assert!(std::fs::read_to_string(&doc)
+            .unwrap()
+            .contains("My own rule."));
+        std::fs::write(&doc, &first).unwrap();
+
+        // Removing the preset removes the setup files too.
+        let mut app = pocock_app(&project, &dir, None);
+        app.skill_packs.clear();
+        run_install(&mut app, &project).unwrap();
+        assert!(!project.join("docs/agents/issue-tracker.md").exists());
+        assert!(!project.join("docs/agents/domain.md").exists());
+        assert!(!project.join("docs/agents").exists());
+        assert!(manifest_files(&read_manifest(&project), None).is_empty());
+        assert!(read_manifest(&project)["settings"]
+            .get("issue_tracker")
+            .is_none());
     }
 }

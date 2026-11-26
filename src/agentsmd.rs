@@ -130,6 +130,9 @@ fn generated_content(app: &App) -> String {
     for spec_key in app.selected_specs.clone() {
         append_specialization_template(app, &mut content, &spec_key);
     }
+    if let Some(section) = crate::pocock_setup::agents_section(app) {
+        content.push_str(&section);
+    }
     content
 }
 

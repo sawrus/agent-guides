@@ -90,6 +90,8 @@ pub struct App {
     pub skill_packs: Vec<crate::skill_packs::SkillPack>,
     /// `agentic skills add|remove|update` pass the complete list: the saved packs are not merged.
     pub skill_packs_replace: bool,
+    /// `--issue-tracker local|github|gitlab` (`settings.issue_tracker`) for the preset `pocock` setup.
+    pub issue_tracker: Option<String>,
     /// `agentic skills update [<id>]`: resolve the ref again; empty = every pack.
     pub skill_packs_update: Option<Vec<String>>,
     /// Manifest paths that this install removed (stale skill pack files); the manifest drops them.
@@ -174,6 +176,7 @@ impl App {
             agents_md_mode: None,
             skill_packs: Vec::new(),
             skill_packs_replace: false,
+            issue_tracker: None,
             skill_packs_update: None,
             dropped_records: Vec::new(),
         })
