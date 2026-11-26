@@ -27,6 +27,8 @@ mod project_transaction;
 mod project_update;
 mod prompt;
 mod selfinstall;
+mod skill_packs;
+mod source;
 mod theme;
 mod tomledit;
 mod tui;
@@ -66,6 +68,7 @@ Usage:
   {name} tui [--theme auto|dark|light]
   {name} upgrade [--project-dir <path>] [--force] [--dry-run]
   {name} profile list|show <id>|use <id> [--project DIR]|create <id> --from lean|team [--host claude|codex|opencode]
+  {name} skills add <git-url[#ref][:skills_root]|dir> [--id <id>] [--select a,b] [--exclude x] | list | remove <id> | update [<id>]
   {name} self-install [--bin-dir <dir>] [--force] [--dry-run]
   {name} --version
 
@@ -95,6 +98,7 @@ Options:
   --company-rules-git   Company rules git repository: <url>[#ref][:subdir] (repeatable; subdir without ref: <url>#:<subdir>)
   --company-rules-exclude
                         Pack rule <area>/<spec>/<rule> to skip (repeatable or comma-separated)
+  --skill-pack          Skill pack: <git-url>[#ref][:skills_root] or a directory (repeatable; docs/skill-packs.md)
   --agents-md           Root AGENTS.md: generate (default) | keep (the project owns it; generated guidance goes
                         to .agent/AGENTS.md, AGENTS.override.md for Codex, an OpenCode plugin)
   --bin-dir             Installation directory for self-install (default: ~/.local/bin)
@@ -168,6 +172,7 @@ fn run(args: Vec<String>) -> Result<()> {
         "tui" => cmd_tui(&mut app, rest),
         "upgrade" => cmd_upgrade(&mut app, rest),
         "profile" => profile::run_cli(&mut app, rest),
+        "skills" => skill_packs::run_cli(&mut app, rest),
         "__sync-project" => {
             app.upgrade_mode = true;
             cmd_upgrade(&mut app, rest)
@@ -374,6 +379,15 @@ fn cmd_install(app: &mut App, rest: &[String]) -> Result<()> {
                 }
                 i += 2;
             }
+            "--skill-pack" => {
+                let value = rest
+                    .get(i + 1)
+                    .filter(|v| !v.starts_with("--") && !v.trim().is_empty())
+                    .ok_or("--skill-pack requires a git URL or a directory")?;
+                let pack = skill_packs::parse_spec(value)?;
+                skill_packs::upsert(&mut app.skill_packs, pack);
+                i += 2;
+            }
             "-h" | "--help" => {
                 print_usage();
                 return Ok(());
@@ -563,6 +577,8 @@ mod tests {
             "tui",
             "upgrade",
             "profile",
+            "skills",
+            "--skill-pack",
             "self-install",
             "--version",
         ] {
@@ -591,6 +607,7 @@ mod tests {
         assert!(run(v(&["tui", "--help"])).is_ok());
         assert!(run(v(&["upgrade", "--help"])).is_ok());
         assert!(run(v(&["self-install", "--help"])).is_ok());
+        assert!(run(v(&["skills", "--help"])).is_ok());
     }
 
     #[test]
@@ -602,6 +619,10 @@ mod tests {
         assert!(run(v(&["tui", "--junk"])).is_err());
         assert!(run(v(&["upgrade", "--junk"])).is_err());
         assert!(run(v(&["self-install", "--junk"])).is_err());
+        assert!(run(v(&["skills"])).is_err());
+        assert!(run(v(&["skills", "bogus"])).is_err());
+        assert!(run(v(&["skills", "add", "--junk"])).is_err());
+        assert!(run(v(&["install", "--skill-pack"])).is_err());
     }
 
     #[test]

@@ -2662,3 +2662,260 @@ fn agents_md_keep_without_root_file_and_bad_value() {
         .failure()
         .stderr(predicate::str::contains("expected generate or keep"));
 }
+
+// --- skill packs (docs/skill-packs.md) ------------------------------------------------------------------
+
+const PACK_SKILL: &str = "---\nname: tdd\ndescription: Test-driven development. Use when the user asks for TDD.\n---\n\n# tdd\n";
+
+#[test]
+fn skill_packs_add_list_update_and_remove_cleanly() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let repos = tempfile::tempdir().unwrap();
+    let p = project.path();
+    let work = repos.path().join("work");
+    let bare = repos.path().join("skills.git");
+    std::fs::create_dir_all(&work).unwrap();
+    git(&work, &["init", "-q", "-b", "main"]);
+    write(&work.join("skills/engineering/tdd/SKILL.md"), PACK_SKILL);
+    write(
+        &work.join("skills/engineering/tdd/refs/notes.md"),
+        "# Notes\n",
+    );
+    write(&work.join("skills/writing/grill-me/SKILL.md"), PACK_SKILL);
+    write(&work.join("LICENSE"), "MIT License\n");
+    git(&work, &["add", "-A"]);
+    git(&work, &["commit", "-q", "-m", "one"]);
+    git(
+        repos.path(),
+        &["clone", "-q", "--bare", "work", "skills.git"],
+    );
+    let url = format!("file://{}", bare.display());
+    let skills = |args: &[&str]| {
+        let mut cmd = agentic(home.path());
+        cmd.arg("skills").args(args).arg("--project-dir").arg(p);
+        cmd
+    };
+
+    // Without a manifest the subcommands ask for an install first.
+    skills(&["add", &url])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No .agentic.json"));
+
+    company_install(
+        home.path(),
+        p,
+        &[
+            "--agent-os",
+            "claude,codex,opencode",
+            "--skill-pack",
+            &format!("{url}#main"),
+        ],
+    );
+    for dir in [
+        ".claude/skills",
+        ".agents/skills",
+        ".opencode/skills",
+        ".agent/skills",
+    ] {
+        assert!(p.join(dir).join("tdd/SKILL.md").is_file(), "{dir}");
+        assert!(p.join(dir).join("tdd/refs/notes.md").is_file(), "{dir}");
+        assert!(p.join(dir).join("grill-me/SKILL.md").is_file(), "{dir}");
+    }
+    let pack = &manifest_json(p)["settings"]["skill_packs"][0];
+    // The id is `<owner>-<repo>` of the URL: here `<temp dir>-skills`.
+    let id = pack["id"].as_str().unwrap().to_string();
+    assert!(id.ends_with("-skills"), "{id}");
+    assert!(p
+        .join(".agent/skill-packs")
+        .join(&id)
+        .join("LICENSE")
+        .is_file());
+    assert_eq!(pack["ref"], "main");
+    let first = pack["commit"].as_str().unwrap().to_string();
+    assert_eq!(first.len(), 40);
+
+    skills(&["list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("skills: grill-me, tdd"));
+
+    // `select` through `add` with the same id: grill-me goes, its empty directories too.
+    skills(&[
+        "add",
+        &format!("{url}#main"),
+        "--id",
+        &id,
+        "--select",
+        "tdd",
+    ])
+    .assert()
+    .success();
+    assert!(!p.join(".claude/skills/grill-me").exists());
+    assert!(p.join(".claude/skills/tdd/SKILL.md").is_file());
+    assert_eq!(
+        manifest_json(p)["settings"]["skill_packs"][0]["commit"],
+        first.as_str()
+    );
+
+    // A new upstream commit: upgrade keeps the lock, `skills update` moves it.
+    write(
+        &work.join("skills/engineering/tdd/refs/more.md"),
+        "# More\n",
+    );
+    git(&work, &["add", "-A"]);
+    git(&work, &["commit", "-q", "-m", "two"]);
+    git(&work, &["push", "-q", bare.to_str().unwrap(), "main"]);
+    company_sync(p, home.path());
+    assert!(!p.join(".claude/skills/tdd/refs/more.md").exists());
+    skills(&["update", &id]).assert().success();
+    assert!(p.join(".claude/skills/tdd/refs/more.md").is_file());
+    assert_ne!(
+        manifest_json(p)["settings"]["skill_packs"][0]["commit"],
+        first.as_str()
+    );
+
+    // Remove: no pack file, directory, license, or manifest entry stays; a user skill stays.
+    write(&p.join(".claude/skills/mine/SKILL.md"), "mine\n");
+    skills(&["remove", &id]).assert().success();
+    skills(&["remove", &id]).assert().failure();
+    for dir in [
+        ".claude/skills",
+        ".agents/skills",
+        ".opencode/skills",
+        ".agent/skills",
+    ] {
+        assert!(!p.join(dir).join("tdd").exists(), "{dir}");
+    }
+    assert!(!p.join(".agent/skill-packs").join(&id).exists());
+    assert!(p.join(".claude/skills/mine/SKILL.md").is_file());
+    let manifest = manifest_json(p);
+    assert!(manifest["settings"].get("skill_packs").is_none());
+    assert!(!manifest["managed_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|i| i["marker"] == "skill-pack"));
+}
+
+#[test]
+fn skill_pack_name_clash_with_a_pack_skill_fails_the_install() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let src = tempfile::tempdir().unwrap();
+    write(&src.path().join("skills/api-design/SKILL.md"), PACK_SKILL);
+    agentic(home.path())
+        .args(["install", "--project-dir"])
+        .arg(project.path())
+        .args([
+            "--agent-os",
+            "claude",
+            "--areas",
+            "software",
+            "--specializations",
+            "software.backend",
+            "--no-doctor",
+            "--skill-pack",
+        ])
+        .arg(src.path())
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "has the name of the agentic skill of software.backend",
+        ));
+}
+
+#[test]
+fn skills_add_with_an_unreachable_source_fails_and_saves_nothing() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let p = project.path();
+    company_install(home.path(), p, &[]);
+    let before = std::fs::read(p.join(".agentic.json")).unwrap();
+    let missing = format!("file://{}/missing.git", home.path().display());
+    agentic(home.path())
+        .args(["skills", "add", &missing, "--project-dir"])
+        .arg(p)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("nothing was installed or saved"));
+    assert_eq!(std::fs::read(p.join(".agentic.json")).unwrap(), before);
+    assert!(manifest_json(p)["settings"].get("skill_packs").is_none());
+    // An option-like ref never reaches git.
+    agentic(home.path())
+        .args([
+            "skills",
+            "add",
+            &format!("{missing}#--upload-pack=x"),
+            "--project-dir",
+        ])
+        .arg(p)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid ref"));
+}
+
+#[cfg(unix)]
+#[test]
+fn company_rules_git_subdir_symlink_is_not_followed() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let repos = tempfile::tempdir().unwrap();
+    let outside = repos.path().join("outside");
+    write(&outside.join("software/leak.md"), API_RULE);
+    let work = repos.path().join("work");
+    std::fs::create_dir_all(&work).unwrap();
+    git(&work, &["init", "-q", "-b", "main"]);
+    std::os::unix::fs::symlink(&outside, work.join("rules")).unwrap();
+    write(&work.join("README.md"), "# x\n");
+    git(&work, &["add", "-A"]);
+    git(&work, &["commit", "-q", "-m", "one"]);
+    let url = format!("file://{}", work.display());
+    company_install(
+        home.path(),
+        project.path(),
+        &["--company-rules-git", &format!("{url}#main:rules")],
+    )
+    .stdout(predicate::str::contains("'rules' not found"));
+    assert!(!project
+        .path()
+        .join(".agent/company/software/leak.md")
+        .exists());
+}
+
+#[test]
+fn skill_pack_keeps_a_user_skill_in_a_host_dir_outside_the_inventory() {
+    // `.agents/skills` (Codex) was not in the project inventory: a user skill there with a pack
+    // skill name made `skills add` and `upgrade` fail with "Project changed while preparing upgrade".
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let src = tempfile::tempdir().unwrap();
+    let p = project.path();
+    write(&src.path().join("skills/tdd/SKILL.md"), PACK_SKILL);
+    company_install(home.path(), p, &["--agent-os", "claude,codex"]);
+    let user = "---\nname: tdd\ndescription: My own TDD notes.\n---\n\n# mine\n";
+    write(&p.join(".agents/skills/tdd/SKILL.md"), user);
+    agentic(home.path())
+        .args(["skills", "add"])
+        .arg(src.path())
+        .arg("--project-dir")
+        .arg(p)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(".agents/skills/tdd/SKILL.md"));
+    assert_eq!(
+        std::fs::read_to_string(p.join(".agents/skills/tdd/SKILL.md")).unwrap(),
+        user
+    );
+    assert!(
+        std::fs::read_to_string(p.join(".claude/skills/tdd/SKILL.md"))
+            .unwrap()
+            .contains("generated_by: agentic")
+    );
+    company_sync(p, home.path());
+    assert_eq!(
+        std::fs::read_to_string(p.join(".agents/skills/tdd/SKILL.md")).unwrap(),
+        user
+    );
+}

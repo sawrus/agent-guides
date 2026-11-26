@@ -86,6 +86,14 @@ pub struct App {
     pub company_base_dir: Option<PathBuf>,
     /// `--agents-md generate|keep` (`settings.agents_md`); None = the saved mode or `generate`.
     pub agents_md_mode: Option<String>,
+    /// `settings.skill_packs` (docs/skill-packs.md); `--skill-pack` adds to the saved packs.
+    pub skill_packs: Vec<crate::skill_packs::SkillPack>,
+    /// `agentic skills add|remove|update` pass the complete list: the saved packs are not merged.
+    pub skill_packs_replace: bool,
+    /// `agentic skills update [<id>]`: resolve the ref again; empty = every pack.
+    pub skill_packs_update: Option<Vec<String>>,
+    /// Manifest paths that this install removed (stale skill pack files); the manifest drops them.
+    pub dropped_records: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -164,6 +172,10 @@ impl App {
             company_agents_lines: Vec::new(),
             company_base_dir: None,
             agents_md_mode: None,
+            skill_packs: Vec::new(),
+            skill_packs_replace: false,
+            skill_packs_update: None,
+            dropped_records: Vec::new(),
         })
     }
 

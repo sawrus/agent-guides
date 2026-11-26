@@ -481,6 +481,8 @@ pub struct WizardSelections {
     pub profiles: std::collections::BTreeMap<String, String>,
     /// Company rules from the optional "Company rules" step; None keeps the feature off.
     pub company_rules: Option<crate::company::CompanyRules>,
+    /// Saved skill packs plus the one from the optional "Skill pack" step.
+    pub skill_packs: Vec<crate::skill_packs::SkillPack>,
 }
 
 pub fn run_tui(app: &mut App) -> crate::Result<()> {
@@ -524,6 +526,7 @@ pub fn apply_selections(app: &mut App, selections: WizardSelections) {
     app.selected_specs = selections.specs;
     app.host_profiles = selections.profiles;
     app.company_rules = selections.company_rules;
+    app.skill_packs = selections.skill_packs;
     // One shared choice is also the install-wide profile; mixed choices stay per host.
     let mut ids: Vec<&String> = app.host_profiles.values().collect();
     ids.dedup();
@@ -700,13 +703,61 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
     } else {
         git.result()
     };
-    selections.company_rules = company_selection(saved, &path, &git).map_err(|e| {
-        drop(_guard);
-        ui::error(app, &e);
-        crate::exit1()
-    })?;
+    selections.company_rules = match company_selection(saved, &path, &git) {
+        Ok(rules) => rules,
+        Err(e) => {
+            drop(_guard);
+            ui::error(app, &e);
+            return Err(crate::exit1());
+        }
+    };
+
+    // 8. Skill pack (optional): one more pack; the saved packs stay.
+    let saved_packs = saved_skill_packs(&selections.project_dir);
+    let pack = run_input(
+        &mut terminal,
+        InputState::new(
+            "Skill pack: git repository <url>[#ref][:skills_root] or directory to add (empty = keep saved packs)",
+            "",
+        ),
+        &app.active_theme,
+        &subtitle,
+    )?;
+    let pack = if pack.cancelled {
+        String::new()
+    } else {
+        pack.result()
+    };
+    selections.skill_packs = match skill_pack_selection(saved_packs, &pack) {
+        Ok(packs) => packs,
+        Err(e) => {
+            drop(_guard);
+            ui::error(app, &e);
+            return Err(crate::exit1());
+        }
+    };
 
     Ok(selections)
+}
+
+fn saved_skill_packs(project_dir: &str) -> Vec<crate::skill_packs::SkillPack> {
+    let path = std::path::Path::new(project_dir).join(crate::PROJECT_MANIFEST_NAME);
+    std::fs::read(path)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+        .and_then(|data| crate::skill_packs::from_settings(&data["settings"]["skill_packs"]))
+        .unwrap_or_default()
+}
+
+/// The saved packs plus the step answer (same id: replaced).
+pub fn skill_pack_selection(
+    mut saved: Vec<crate::skill_packs::SkillPack>,
+    spec: &str,
+) -> Result<Vec<crate::skill_packs::SkillPack>, String> {
+    if !spec.trim().is_empty() {
+        crate::skill_packs::upsert(&mut saved, crate::skill_packs::parse_spec(spec)?);
+    }
+    Ok(saved)
 }
 
 fn saved_company_rules(project_dir: &str) -> Option<crate::company::CompanyRules> {
@@ -872,6 +923,7 @@ mod tests {
             specs: vec!["software.backend".to_string()],
             profiles: Default::default(),
             company_rules: None,
+            skill_packs: vec![],
         };
         apply_selections(&mut app, selections);
         assert_eq!(app.theme, "light");
@@ -895,6 +947,7 @@ mod tests {
             specs: vec!["devops.sre".to_string()],
             profiles: Default::default(),
             company_rules: None,
+            skill_packs: vec![],
         };
         apply_selections(&mut app, selections);
         assert_eq!(app.selected_agent_os, vec!["opencode"]);
@@ -902,6 +955,17 @@ mod tests {
         assert!(app.selected_mcps.is_empty());
         assert_eq!(app.enable_context7_env.as_deref(), Some("n"));
         assert_eq!(app.jev_enabled, Some(false));
+    }
+
+    #[test]
+    fn skill_pack_step_adds_to_saved_packs() {
+        let saved = vec![crate::skill_packs::parse_spec("vendor/skills").unwrap()];
+        assert_eq!(skill_pack_selection(saved.clone(), " ").unwrap(), saved);
+        let picked =
+            skill_pack_selection(saved, "https://github.com/mattpocock/skills#main").unwrap();
+        let ids: Vec<&str> = picked.iter().map(|p| p.id.as_str()).collect();
+        assert_eq!(ids, vec!["skills", "mattpocock-skills"]);
+        assert!(skill_pack_selection(vec![], "https://x.example.com/a.git#m:../up").is_err());
     }
 
     #[test]

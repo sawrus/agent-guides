@@ -47,9 +47,17 @@ fn markdown_with_marker(
         yaml_quote(&created_by),
         yaml_quote(version),
     );
-    if let Some(rest) = body.strip_prefix("---\n") {
-        if let Some(end) = rest.find("\n---") {
-            let end = end + 4;
+    // CRLF checkouts (Windows autocrlf) keep the frontmatter too; the block goes inside it.
+    let open = if body.starts_with("---\r\n") {
+        Some(5)
+    } else if body.starts_with("---\n") {
+        Some(4)
+    } else {
+        None
+    };
+    if let Some(open) = open {
+        if let Some(end) = body[open..].find("\n---") {
+            let end = open + end;
             return format!("{}{}{}", &body[..end + 1], block, &body[end + 1..]);
         }
     }
@@ -111,6 +119,18 @@ mod tests {
     use super::*;
 
     const REPO: &str = "https://github.com/sawrus/agent-guides";
+
+    #[test]
+    fn crlf_frontmatter_gets_the_block_inside() {
+        let body = "---\r\nname: x\r\ndescription: d\r\n---\r\n# T\r\n";
+        let out = add_marker(body, "SKILL.md", "s", REPO, "v1.0.0", None).unwrap();
+        assert!(
+            out.starts_with("---\r\nname: x\r\ndescription: d\r\nagentic:\n"),
+            "{out}"
+        );
+        assert!(out.ends_with("---\r\n# T\r\n"));
+        assert_eq!(out.matches("---").count(), 2);
+    }
 
     #[test]
     fn markdown_without_frontmatter_gets_new_block() {
