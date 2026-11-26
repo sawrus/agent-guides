@@ -1747,6 +1747,69 @@ mod tests {
         }
     }
 
+    /// A full install (no packs) of `project`, then `skills add`-like synchronization with `packs`.
+    fn full_install(project: &Path, home: &Path) {
+        let mut app = App::new().unwrap();
+        app.project_dir = project.to_string_lossy().to_string();
+        app.config_home_override = Some(home.to_path_buf());
+        app.home = home.to_path_buf();
+        app.doctor_enabled_env = false;
+        app.selected_agent_os = vec!["claude".into(), "codex".into(), "opencode".into()];
+        app.selected_areas = vec!["software".into()];
+        app.selected_specs = vec!["software.backend".into()];
+        crate::install::run_install(&mut app).unwrap();
+    }
+
+    fn synchronize_with(
+        project: &Path,
+        home: &Path,
+        packs: Vec<SkillPack>,
+        tracker: Option<&str>,
+    ) -> (crate::Result<()>, App) {
+        let mut app = App::new().unwrap();
+        app.project_dir = project.to_string_lossy().to_string();
+        app.config_home_override = Some(home.to_path_buf());
+        app.home = home.to_path_buf();
+        app.doctor_enabled_env = false;
+        app.skill_packs = packs;
+        app.skill_packs_replace = true;
+        app.issue_tracker = tracker.map(str::to_string);
+        let result = crate::project_update::synchronize(&mut app);
+        (result, app)
+    }
+
+    #[test]
+    fn pocock_setup_keeps_a_user_file_in_docs_agents_on_upgrade() {
+        // docs/agents was not in the project inventory: a user file there (for example from the
+        // upstream /setup-matt-pocock-skills) made `skills add pocock` and every upgrade fail.
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        let project = tmp.path().join("p");
+        let home = tmp.path().join("home");
+        full_install(&project, &home);
+        let user = "# Domain\n\nOur own domain notes.\n";
+        write(&project.join("docs/agents/domain.md"), user);
+        let packs = pocock_app(&project, &dir, None).skill_packs;
+        let (result, app) = synchronize_with(&project, &home, packs.clone(), None);
+        result.unwrap();
+        assert_eq!(
+            std::fs::read_to_string(project.join("docs/agents/domain.md")).unwrap(),
+            user
+        );
+        assert!(app
+            .upgrade_actions
+            .iter()
+            .any(|a| a.contains("Preserved user file") && a.contains("docs/agents/domain.md")));
+        assert!(project.join("docs/agents/issue-tracker.md").is_file());
+        // The next upgrade works as well and still keeps the file.
+        let (result, _) = synchronize_with(&project, &home, packs, None);
+        result.unwrap();
+        assert_eq!(
+            std::fs::read_to_string(project.join("docs/agents/domain.md")).unwrap(),
+            user
+        );
+    }
+
     #[test]
     fn pocock_setup_is_idempotent_keeps_user_edits_and_cleans_up() {
         let tmp = tempfile::tempdir().unwrap();

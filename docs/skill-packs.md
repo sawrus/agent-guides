@@ -248,7 +248,9 @@ It is not the upstream skill, and `skills remove pocock` removes it.
 
 The three `docs/agents/` files are skill pack files in the manifest (`marker: skill-pack`, source
 `skill-pack:pocock/setup.<name>`). The managed-file rules apply: install keeps a file that you edited, and
-`agentic skills remove pocock` removes the files that you did not edit. agentic does not run `gh label create`
+`agentic skills remove pocock` removes the files that you did not edit. A file of your own that is already in
+`docs/agents/` (for example from the upstream `/setup-matt-pocock-skills`) stays unchanged: install, `agentic
+skills`, and `agentic upgrade` report it as a preserved user file and write the other files. agentic does not run `gh label create`
 or `glab label create` and does not create the remote repository; the skills use the labels that the tracker
 has. The upstream multi-context layout (`GLOSSARY-MAP.md`) and other trackers are not set up: edit
 `docs/agents/*.md` by hand.
