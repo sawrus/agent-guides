@@ -39,7 +39,7 @@ not.
 - 🔁 **Install once, keep in sync.** `agentic install` writes the native files of each agent. `agentic upgrade`
   keeps them current and keeps your own edits.
 
-14 skills and 10 workflows help the agent meet the rules. Numbers come from the tree (`areas/*/*/`) and from
+14 skills and 11 workflows help the agent meet the rules. Numbers come from the tree (`areas/*/*/`) and from
 `python3 scripts/context_budget.py --all-selections`.
 
 ---

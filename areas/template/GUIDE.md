@@ -52,7 +52,8 @@ topic. File names must be unique across all specs of an area that can be install
 - Write a procedure: numbered steps, decision points, exact commands, or a bundled script.
 - State the trigger in `description` ("Use when ..."), or link the skill from a workflow or rule of the spec.
 - `SKILL.md` at most 250 lines; references and assets at most 400 lines; code at most 40 % of `SKILL.md`.
-- No framework scaffolding templates.
+- No framework or language scaffolding templates. A minimal new-project skeleton is allowed: a `Makefile` with
+  `test` and `lint`, a CI config, and the docs layout (`docs/`, `GLOSSARY.md`, `docs/adr/`).
 
 ### 5. Author workflows using `workflow.tmpl.md`
 
