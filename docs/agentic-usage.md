@@ -153,6 +153,24 @@ also gets `.claude/rules/company-*.md`), skips the excluded pack rules and the o
 prints the pack rules that company rules duplicate. `agentic upgrade` fetches the git source again. See
 [company rules](company-rules.md).
 
+### Skill packs
+
+Skill packs are ready-made skills from a git repository or a directory. agentic installs them unchanged on every
+selected host:
+
+```bash
+agentic install --project-dir . --agent-os claude,codex,opencode --areas software \
+  --specializations software.backend --skill-pack 'https://github.com/mattpocock/skills#main'
+agentic skills add https://github.com/mattpocock/skills --id pocock --select tdd,grill-me
+agentic skills list
+agentic skills update pocock
+agentic skills remove pocock
+```
+
+A skill is any directory with `SKILL.md` below `skills_root` (default `skills`); nested categories are
+flattened. The manifest locks the commit of a git pack; `agentic skills update` moves the lock. A skill name that
+clashes with another skill is an error. See [skill packs](skill-packs.md).
+
 Start TUI:
 
 ```bash

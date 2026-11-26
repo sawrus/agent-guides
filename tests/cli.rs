@@ -2662,3 +2662,166 @@ fn agents_md_keep_without_root_file_and_bad_value() {
         .failure()
         .stderr(predicate::str::contains("expected generate or keep"));
 }
+
+// --- skill packs (docs/skill-packs.md) ------------------------------------------------------------------
+
+const PACK_SKILL: &str = "---\nname: tdd\ndescription: Test-driven development. Use when the user asks for TDD.\n---\n\n# tdd\n";
+
+#[test]
+fn skill_packs_add_list_update_and_remove_cleanly() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let repos = tempfile::tempdir().unwrap();
+    let p = project.path();
+    let work = repos.path().join("work");
+    let bare = repos.path().join("skills.git");
+    std::fs::create_dir_all(&work).unwrap();
+    git(&work, &["init", "-q", "-b", "main"]);
+    write(&work.join("skills/engineering/tdd/SKILL.md"), PACK_SKILL);
+    write(
+        &work.join("skills/engineering/tdd/refs/notes.md"),
+        "# Notes\n",
+    );
+    write(&work.join("skills/writing/grill-me/SKILL.md"), PACK_SKILL);
+    write(&work.join("LICENSE"), "MIT License\n");
+    git(&work, &["add", "-A"]);
+    git(&work, &["commit", "-q", "-m", "one"]);
+    git(
+        repos.path(),
+        &["clone", "-q", "--bare", "work", "skills.git"],
+    );
+    let url = format!("file://{}", bare.display());
+    let skills = |args: &[&str]| {
+        let mut cmd = agentic(home.path());
+        cmd.arg("skills").args(args).arg("--project-dir").arg(p);
+        cmd
+    };
+
+    // Without a manifest the subcommands ask for an install first.
+    skills(&["add", &url])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No .agentic.json"));
+
+    company_install(
+        home.path(),
+        p,
+        &[
+            "--agent-os",
+            "claude,codex,opencode",
+            "--skill-pack",
+            &format!("{url}#main"),
+        ],
+    );
+    for dir in [
+        ".claude/skills",
+        ".agents/skills",
+        ".opencode/skills",
+        ".agent/skills",
+    ] {
+        assert!(p.join(dir).join("tdd/SKILL.md").is_file(), "{dir}");
+        assert!(p.join(dir).join("tdd/refs/notes.md").is_file(), "{dir}");
+        assert!(p.join(dir).join("grill-me/SKILL.md").is_file(), "{dir}");
+    }
+    let pack = &manifest_json(p)["settings"]["skill_packs"][0];
+    // The id is `<owner>-<repo>` of the URL: here `<temp dir>-skills`.
+    let id = pack["id"].as_str().unwrap().to_string();
+    assert!(id.ends_with("-skills"), "{id}");
+    assert!(p
+        .join(".agent/skill-packs")
+        .join(&id)
+        .join("LICENSE")
+        .is_file());
+    assert_eq!(pack["ref"], "main");
+    let first = pack["commit"].as_str().unwrap().to_string();
+    assert_eq!(first.len(), 40);
+
+    skills(&["list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("skills: grill-me, tdd"));
+
+    // `select` through `add` with the same id: grill-me goes, its empty directories too.
+    skills(&[
+        "add",
+        &format!("{url}#main"),
+        "--id",
+        &id,
+        "--select",
+        "tdd",
+    ])
+    .assert()
+    .success();
+    assert!(!p.join(".claude/skills/grill-me").exists());
+    assert!(p.join(".claude/skills/tdd/SKILL.md").is_file());
+    assert_eq!(
+        manifest_json(p)["settings"]["skill_packs"][0]["commit"],
+        first.as_str()
+    );
+
+    // A new upstream commit: upgrade keeps the lock, `skills update` moves it.
+    write(
+        &work.join("skills/engineering/tdd/refs/more.md"),
+        "# More\n",
+    );
+    git(&work, &["add", "-A"]);
+    git(&work, &["commit", "-q", "-m", "two"]);
+    git(&work, &["push", "-q", bare.to_str().unwrap(), "main"]);
+    company_sync(p, home.path());
+    assert!(!p.join(".claude/skills/tdd/refs/more.md").exists());
+    skills(&["update", &id]).assert().success();
+    assert!(p.join(".claude/skills/tdd/refs/more.md").is_file());
+    assert_ne!(
+        manifest_json(p)["settings"]["skill_packs"][0]["commit"],
+        first.as_str()
+    );
+
+    // Remove: no pack file, directory, license, or manifest entry stays; a user skill stays.
+    write(&p.join(".claude/skills/mine/SKILL.md"), "mine\n");
+    skills(&["remove", &id]).assert().success();
+    skills(&["remove", &id]).assert().failure();
+    for dir in [
+        ".claude/skills",
+        ".agents/skills",
+        ".opencode/skills",
+        ".agent/skills",
+    ] {
+        assert!(!p.join(dir).join("tdd").exists(), "{dir}");
+    }
+    assert!(!p.join(".agent/skill-packs").join(&id).exists());
+    assert!(p.join(".claude/skills/mine/SKILL.md").is_file());
+    let manifest = manifest_json(p);
+    assert!(manifest["settings"].get("skill_packs").is_none());
+    assert!(!manifest["managed_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|i| i["marker"] == "skill-pack"));
+}
+
+#[test]
+fn skill_pack_name_clash_with_a_pack_skill_fails_the_install() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let src = tempfile::tempdir().unwrap();
+    write(&src.path().join("skills/api-design/SKILL.md"), PACK_SKILL);
+    agentic(home.path())
+        .args(["install", "--project-dir"])
+        .arg(project.path())
+        .args([
+            "--agent-os",
+            "claude",
+            "--areas",
+            "software",
+            "--specializations",
+            "software.backend",
+            "--no-doctor",
+            "--skill-pack",
+        ])
+        .arg(src.path())
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "has the name of the agentic skill of software.backend",
+        ));
+}

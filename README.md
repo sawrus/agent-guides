@@ -126,6 +126,15 @@ Keep internal standards outside this public pack. `--company-rules-path <dir>` o
 `--company-rules-exclude` drops the pack rule, and a duplicate report lists the overlaps. See
 [company rules](docs/company-rules.md).
 
+## Skill packs
+
+Use ready-made skills from other repositories, for example
+[mattpocock/skills](https://github.com/mattpocock/skills). `agentic skills add <git-url|dir>` (or
+`agentic install --skill-pack <spec>`) installs every skill of the pack, unchanged, into `.claude/skills`,
+`.agents/skills`, `.opencode/skills`, and the other host directories. The manifest locks the commit;
+`agentic skills update` moves it, `agentic skills list` shows the packs, and `agentic skills remove` removes the
+pack files and nothing else. See [skill packs](docs/skill-packs.md).
+
 ## Standards for the pack itself
 
 - [Artifact standard](docs/artifact-standard.md): the acceptance contract for rules, skills, workflows and company
@@ -175,7 +184,7 @@ All numbers and earlier rounds: [round 6 results](docs/agentic-v2-lean/results.m
 - [Reference: layout, platform matrix, install options](docs/agentic-reference.md)
 - [Docs site: rules, skills and workflows per specialization](https://sawrus.github.io/agent-guides/)
 - [Artifact standard](docs/artifact-standard.md) · [Review regulation](docs/regulation.md) ·
-  [Company rules](docs/company-rules.md)
+  [Company rules](docs/company-rules.md) · [Skill packs](docs/skill-packs.md)
 - [Claude Code integration](docs/claude-code/README.md) · [Telegram notifications](docs/notifications/README.md)
 - [Review pipeline](docs/review-pipeline.md) · [JEV hooks and real CLI testing](docs/jev-integration/README.md)
 - [Smart upgrade](docs/agentic-upgrade/README.md)

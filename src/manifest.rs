@@ -109,7 +109,7 @@ pub fn write_file_with_agentic_marker(
     write_managed_file(app, src_content, dest, source_ref, "internal")
 }
 
-/// `write_file_with_agentic_marker` with the manifest marker kind (`internal`, `company`).
+/// `write_file_with_agentic_marker` with the manifest marker kind (`internal`, `company`, `skill-pack`).
 pub fn write_managed_file(
     app: &mut App,
     src_content: &str,
@@ -276,6 +276,9 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
         // The project owns root AGENTS.md in keep mode; the manifest stops tracking it.
         existing.remove("AGENTS.md");
     }
+    for path in &app.dropped_records {
+        existing.remove(path);
+    }
     let original_existing = existing.clone();
 
     for record in app.managed_records.clone() {
@@ -305,7 +308,7 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
                 "source": record.source,
                 "content_hash": record.content_hash,
                 "marker": record.marker,
-                "generated_hash": if matches!(record.marker.as_str(), "internal" | "company") {
+                "generated_hash": if matches!(record.marker.as_str(), "internal" | "company" | crate::skill_packs::MARKER) {
                     util::hash_file(&crate::project_update::baseline_path(project_dir, &record.path)).ok()
                 } else { None },
                 "updated_at": item_updated_at,
@@ -436,6 +439,9 @@ pub fn write_agentic_manifest(app: &mut App, project_dir: &Path) -> crate::Resul
     let mut data = data;
     if let Some(rules) = app.company_rules.as_ref().filter(|r| !r.is_empty()) {
         data["settings"]["company_rules"] = crate::company::to_settings(rules);
+    }
+    if !app.skill_packs.is_empty() {
+        data["settings"]["skill_packs"] = crate::skill_packs::to_settings(&app.skill_packs);
     }
     if crate::agentsmd::keep_mode(app) {
         data["settings"]["agents_md"] = json!(crate::agentsmd::MODE_KEEP);
@@ -599,6 +605,9 @@ pub fn load_install_settings_from_manifest(
     crate::agentsmd::load_saved_mode(app, &settings);
     if let Some(saved) = crate::company::from_settings(&settings["company_rules"]) {
         crate::company::merge_saved(app, saved);
+    }
+    if let Some(saved) = crate::skill_packs::from_settings(&settings["skill_packs"]) {
+        crate::skill_packs::merge_saved(app, saved);
     }
     if app.opencode_telegram_enabled.is_empty() {
         // Only an enabled flag needs replay; a saved `false` is preserved as-is.

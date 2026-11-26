@@ -2,12 +2,15 @@
 //! override pack rules. Install copies them into `.agent/company/` (every host) and, for Claude Code,
 //! into `.claude/rules/company-*.md`; `exclude` and `replaces:` drop pack rules. A source can also hold
 //! company skills (`skills/<name>/`) and workflows (`workflows/<id>.md`), installed like pack ones.
+//! Sources, the git cache, and the file walk are shared with skill packs (`crate::source`).
 
 use crate::app::App;
+use crate::source::{collect_all, source_id};
+pub use crate::source::{redact_url, Source};
 use crate::{manifest, ui, util};
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Project directory that holds company rules for every host.
@@ -23,18 +26,6 @@ pub const WORKFLOWS_DIR: &str = "workflows";
 static CHECK_ARTIFACTS_PY: &str = include_str!("../scripts/check_artifacts.py");
 static CONTEXT_BUDGET_PY: &str = include_str!("../scripts/context_budget.py");
 static CHECK_ARTIFACTS_TOML: &str = include_str!("../scripts/check_artifacts.toml");
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Source {
-    /// A directory, relative to the project or absolute.
-    Path(String),
-    /// A git repository; empty `git_ref` means the remote HEAD, empty `subdir` the repository root.
-    Git {
-        url: String,
-        git_ref: String,
-        subdir: String,
-    },
-}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CompanyRules {
@@ -58,26 +49,7 @@ pub fn configured(app: &App) -> bool {
 
 /// `<url>[#ref][:subdir]`. A subdir needs the `#`: `<url>#:<subdir>` keeps the default ref.
 pub fn parse_git_spec(spec: &str) -> Result<Source, String> {
-    let spec = spec.trim();
-    let (url, rest) = match spec.rsplit_once('#') {
-        Some((url, rest)) => (url, rest),
-        None => (spec, ""),
-    };
-    let (git_ref, subdir) = rest.split_once(':').unwrap_or((rest, ""));
-    if url.is_empty() {
-        return Err(format!("--company-rules-git: missing URL in '{spec}'"));
-    }
-    let subdir = subdir.trim_matches('/').to_string();
-    if !subdir.is_empty() && !is_relative_clean(&subdir) {
-        return Err(format!(
-            "--company-rules-git: subdir must be a relative path: '{subdir}'"
-        ));
-    }
-    Ok(Source::Git {
-        url: url.to_string(),
-        git_ref: git_ref.to_string(),
-        subdir,
-    })
+    crate::source::parse_git_spec(spec, "--company-rules-git")
 }
 
 /// `area/spec/rule` from `area/spec/rule`, `area/spec/rule.md`, or `areas/area/spec/rules/rule.md`.
@@ -91,60 +63,23 @@ pub fn normalize_rule_id(raw: &str) -> String {
     }
 }
 
-fn is_relative_clean(path: &str) -> bool {
-    let p = Path::new(path);
-    !path.is_empty() && p.components().all(|c| matches!(c, Component::Normal(_)))
-}
-
 pub fn to_settings(rules: &CompanyRules) -> Value {
-    let sources: Vec<Value> = rules
-        .sources
-        .iter()
-        .map(|s| match s {
-            Source::Path(path) => json!({ "path": path }),
-            Source::Git {
-                url,
-                git_ref,
-                subdir,
-            } => {
-                let mut v = json!({ "git": url });
-                if !git_ref.is_empty() {
-                    v["ref"] = json!(git_ref);
-                }
-                if !subdir.is_empty() {
-                    v["subdir"] = json!(subdir);
-                }
-                v
-            }
-        })
-        .collect();
+    let sources: Vec<Value> = rules.sources.iter().map(crate::source::to_json).collect();
     json!({ "sources": sources, "exclude": rules.exclude })
 }
 
 pub fn from_settings(value: &Value) -> Option<CompanyRules> {
     let obj = value.as_object()?;
-    let mut rules = CompanyRules::default();
-    for item in obj
-        .get("sources")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-    {
-        let text = |key: &str| item[key].as_str().unwrap_or_default().to_string();
-        if let Some(path) = item["path"].as_str().filter(|p| !p.is_empty()) {
-            rules.sources.push(Source::Path(path.to_string()));
-        } else if let Some(url) = item["git"].as_str().filter(|u| !u.is_empty()) {
-            let subdir = text("subdir").trim_matches('/').to_string();
-            if !subdir.is_empty() && !is_relative_clean(&subdir) {
-                continue;
-            }
-            rules.sources.push(Source::Git {
-                url: url.to_string(),
-                git_ref: text("ref"),
-                subdir,
-            });
-        }
-    }
+    let mut rules = CompanyRules {
+        sources: obj
+            .get("sources")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(crate::source::from_json)
+            .collect(),
+        exclude: Vec::new(),
+    };
     for id in obj
         .get("exclude")
         .and_then(Value::as_array)
@@ -165,39 +100,6 @@ pub fn merge_saved(app: &mut App, saved: CompanyRules) {
     }
     for id in saved.exclude {
         util::unique_append(&mut rules.exclude, &id);
-    }
-}
-
-/// Hide the user part of `https://user:token@host/...` in messages and in the manifest source ids.
-pub fn redact_url(url: &str) -> String {
-    if let Some((scheme, rest)) = url.split_once("://") {
-        let host_end = rest.find('/').unwrap_or(rest.len());
-        if let Some(at) = rest[..host_end].rfind('@') {
-            return format!("{scheme}://***@{}", &rest[at + 1..]);
-        }
-    }
-    url.to_string()
-}
-
-fn source_id(source: &Source) -> String {
-    match source {
-        Source::Path(path) => path.trim_end_matches('/').to_string(),
-        Source::Git {
-            url,
-            git_ref,
-            subdir,
-        } => {
-            let mut id = redact_url(url);
-            if !git_ref.is_empty() {
-                id.push('#');
-                id.push_str(git_ref);
-            }
-            if !subdir.is_empty() {
-                id.push(':');
-                id.push_str(subdir);
-            }
-            id
-        }
     }
 }
 
@@ -310,31 +212,6 @@ fn collect_md(root: &Path, dir: &Path, out: &mut Vec<(String, String)>) {
     }
 }
 
-/// Every file below `dir` (skills carry scripts and templates); dot entries are skipped.
-fn collect_all(root: &Path, dir: &Path, out: &mut Vec<(String, Option<String>)>) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    let mut entries: Vec<_> = entries.filter_map(|e| e.ok()).collect();
-    entries.sort_by_key(|e| e.file_name());
-    for entry in entries {
-        if entry.file_name().to_string_lossy().starts_with('.') {
-            continue;
-        }
-        let path = entry.path();
-        match entry.file_type() {
-            Ok(kind) if kind.is_dir() => collect_all(root, &path, out),
-            Ok(kind) if kind.is_file() => {
-                if let Ok(rel) = path.strip_prefix(root) {
-                    let rel = rel.to_string_lossy().replace('\\', "/");
-                    out.push((rel, std::fs::read_to_string(&path).ok()));
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
 /// Skills (`skills/<name>/**`) and workflows (`workflows/<id>.md`) of one source root.
 fn collect_assets(
     app: &mut App,
@@ -416,81 +293,15 @@ fn push_asset(
     });
 }
 
-pub fn cache_root(app: &App) -> PathBuf {
-    let base = std::env::var("XDG_CACHE_HOME")
-        .ok()
-        .filter(|v| !v.is_empty())
-        .map(PathBuf::from)
-        .unwrap_or_else(|| app.home.join(".cache"));
-    base.join("agentic/company")
-}
+const CACHE_KIND: &str = "company";
+const LABEL: &str = "Company rules";
 
-fn git(dir: &Path, args: &[&str]) -> bool {
-    let mut cmd = Command::new("git");
-    cmd.arg("-C")
-        .arg(dir)
-        .args(args)
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .env("GCM_INTERACTIVE", "never")
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null());
-    if std::env::var_os("GIT_SSH_COMMAND").is_none() {
-        cmd.env("GIT_SSH_COMMAND", "ssh -o BatchMode=yes");
-    }
-    cmd.status().is_ok_and(|s| s.success())
-}
-
-/// Fetch `url` at `git_ref` into the cache. Returns the checkout, the cached copy when the fetch fails,
-/// or None when there is no copy at all.
 fn fetch_git(app: &mut App, url: &str, git_ref: &str) -> Option<PathBuf> {
-    let dir = cache_root(app).join(util::sha256_hex(url.as_bytes()));
-    let shown = redact_url(url);
-    let has_checkout = |dir: &Path| git(dir, &["rev-parse", "--verify", "--quiet", "HEAD"]);
-    if !dir.join(".git").is_dir()
-        && (std::fs::create_dir_all(&dir).is_err()
-            || !git(&dir, &["init", "--quiet"])
-            || !git(&dir, &["remote", "add", "origin", url]))
-    {
-        ui::warn(
-            app,
-            &format!("Company rules: cannot prepare the git cache for {shown}"),
-        );
-        let _ = std::fs::remove_dir_all(&dir);
-        return None;
-    }
-    let wanted = if git_ref.is_empty() { "HEAD" } else { git_ref };
-    let fetched = git(
-        &dir,
-        &["fetch", "--quiet", "--depth", "1", "origin", wanted],
-    ) && git(&dir, &["checkout", "--quiet", "--force", "FETCH_HEAD"])
-        && git(&dir, &["clean", "--quiet", "-fdx"]);
-    if fetched {
-        ui::log(app, &format!("Company rules: fetched {shown} ({wanted})"));
-        return Some(dir);
-    }
-    if has_checkout(&dir) {
-        ui::warn(
-            app,
-            &format!(
-                "Company rules: cannot fetch {shown} ({wanted}); using the cached copy in {}",
-                dir.display()
-            ),
-        );
-        return Some(dir);
-    }
-    ui::warn(
-        app,
-        &format!("Company rules: cannot fetch {shown} ({wanted}) and no cached copy exists"),
-    );
-    let _ = std::fs::remove_dir_all(&dir);
-    None
+    crate::source::fetch_git(app, CACHE_KIND, LABEL, url, git_ref)
 }
 
 fn base_dir(app: &App) -> PathBuf {
-    app.company_base_dir
-        .clone()
-        .unwrap_or_else(|| PathBuf::from(&app.project_dir))
+    crate::source::base_dir(app)
 }
 
 fn same_dir(a: &Path, b: &Path) -> bool {

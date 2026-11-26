@@ -6,6 +6,7 @@ covers:
   - src/agentsmd.rs
   - src/project_update.rs
   - src/tui.rs
+  - src/source.rs
 ---
 
 # Company rules
@@ -103,6 +104,7 @@ workflows of the selected hosts, never as rules:
 | `workflows/<id>.md` | `.claude/commands/<id>.md`: a thin wrapper that runs `@.agent/workflows/<id>.md`, like pack workflows | `claude` |
 | both | `AGENTS.md`: `- Company skills: ...` and `- Company workflows: ...` lines with the `description:` of each, below the company rules line, so that Codex and OpenCode models find them | every host |
 
+- A [skill pack](skill-packs.md) skill with the name of a company skill stops the install with an error.
 - A skill or workflow with the name of a pack skill or workflow of the selected specializations replaces it on
   every host. When the source drops it, `agentic upgrade` restores the pack version.
 - Skills and workflows follow the [artifact standard](artifact-standard.md) (skills at most 250 lines,
@@ -176,6 +178,9 @@ agentic install --project-dir . --agent-os claude,codex,opencode --areas softwar
    the local `.agentic.json`.
 
 ## Git sources
+
+The source type, the git spec parser, the git cache, and the file walk live in `src/source.rs`. Company rules
+share them with [skill packs](skill-packs.md); company rules use the cache directory `company`.
 
 - Install fetches into `~/.cache/agentic/company/<sha256(url)>` (`$XDG_CACHE_HOME` when set) with the `git` CLI:
   `git fetch --depth 1 origin <ref>`, then a checkout of `FETCH_HEAD`. The project gets copies; the cache is only

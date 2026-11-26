@@ -815,8 +815,10 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     crate::mapper::configure_opencode_agent_model_mapper_if_needed(app)?;
     crate::profile::apply_opencode(app, &project_dir)?;
     let company = crate::company::prepare(app)?;
+    let skill_packs = crate::skill_packs::prepare(app, &company)?;
     copy_specialization_assets(app, &project_dir)?;
     crate::company::install(app, &project_dir, &company)?;
+    crate::skill_packs::install(app, &project_dir, &skill_packs)?;
     crate::claude::generate_commands(app, &project_dir)?;
     crate::profile::install_commands(app, &project_dir)?;
     agentsmd::generate_agents_md(app, &project_dir)?;

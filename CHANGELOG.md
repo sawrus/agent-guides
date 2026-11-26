@@ -1,5 +1,19 @@
 # Changelog
 
+## v11.0.0
+
+- Skill packs: agentic installs ready-made skills from an external git repository or a directory, for example
+  [mattpocock/skills](https://github.com/mattpocock/skills), into the skills directory of every selected host
+  (`.claude/skills`, `.agents/skills`, `.opencode/skills`, ...) and `.agent/skills`. agentic does not rewrite the
+  skills. New commands `agentic skills add|list|remove|update` and the install flag `--skill-pack <spec>`; new
+  optional TUI step "Skill pack". `settings.skill_packs` in `.agentic.json` holds `id`, the source, `ref`,
+  `skills_root`, `select`, `exclude`, and the locked `commit`. Nested layouts (`skills/<category>/<name>/`) are
+  flattened to `<name>/`. A duplicate skill name in a pack, or a name of an agentic, company, or other pack skill,
+  stops the install with an error. `skills update` moves the lock; `skills remove` removes only the pack's own
+  files. The pack license goes to `.agent/skill-packs/<id>/LICENSE`. Company rules and skill packs now share
+  the source, git cache, and file walk code (`src/source.rs`); company rules behave as before. See
+  [docs/skill-packs.md](docs/skill-packs.md).
+
 ## v10.0.0
 
 - New workflow `/new-project` (`software.general`): requirements interview, spec, domain model, minimal skeleton,

@@ -292,7 +292,8 @@ With `--agents-md keep`, root `AGENTS.md` belongs to the project and the generat
 project/.agent/
 ├── rules/       ← constraints active for every task in this project
 ├── company/     ← company rules (only with settings.company_rules)
-├── skills/      ← capabilities loaded on demand
+├── skill-packs/ ← <id>/LICENSE of each skill pack (only with settings.skill_packs)
+├── skills/      ← capabilities loaded on demand (pack, company, and skill pack skills)
 └── workflows/   ← processes triggered by slash commands
 
 project/.claude/                 ← with --agent-os claude
@@ -323,6 +324,18 @@ Company files in `managed_files` have `marker: company` and `source: company:<so
 workflows: `company:<source-id>/skills/<relpath>` and `company:<source-id>/workflows/<relpath>`). Install flags:
 `--company-rules-path <dir>`, `--company-rules-git <url>[#ref][:subdir]`, `--company-rules-exclude <id>`. See
 [company rules](company-rules.md).
+
+### Skill packs in the manifest
+
+`settings.skill_packs` is optional; without it the feature is off. Each entry has `id`, `git` (with `ref`) or
+`path`, `skills_root` (default `skills`), `select`, `exclude`, and, for a git pack, the locked `commit`.
+
+Install writes every skill (any directory with `SKILL.md` below `skills_root`, flattened to `<name>/`) into the
+skills directory of each selected host and `.agent/skills/`, and the pack license to
+`.agent/skill-packs/<id>/LICENSE`. Files in `managed_files` have `marker: skill-pack` and
+`source: skill-pack:<id>/<name>/<path>`. A skill name that clashes with a pack, company, or other skill pack skill
+is an error. Install flag: `--skill-pack <url>[#ref][:skills_root]|<dir>`. Commands: `agentic skills
+add|list|remove|update`. See [skill packs](skill-packs.md).
 
 ### Root AGENTS.md: generate or keep
 
