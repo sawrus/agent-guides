@@ -869,11 +869,47 @@ fn top_level_frontmatter(text: &str) -> Vec<(String, String)> {
             continue;
         }
         if let Some((key, value)) = line.split_once(':') {
-            let value = value.trim().trim_matches(|c| c == '\'' || c == '"');
-            out.push((key.trim().to_string(), value.to_string()));
+            out.push((key.trim().to_string(), yaml_scalar(value)));
         }
     }
     out
+}
+
+/// The text of a one-line YAML scalar: a quoted value without its quotes (`''` and `\"` unescaped),
+/// a plain value without a trailing ` # comment`.
+fn yaml_scalar(raw: &str) -> String {
+    let raw = raw.trim();
+    let mut chars = raw.chars();
+    match chars.next() {
+        Some(quote @ ('"' | '\'')) => {
+            let mut out = String::new();
+            let mut rest = chars.peekable();
+            while let Some(c) = rest.next() {
+                match c {
+                    '\\' if quote == '"' => {
+                        if let Some(next) = rest.next() {
+                            out.push(next);
+                        }
+                    }
+                    '\'' if quote == '\'' && rest.peek() == Some(&'\'') => {
+                        rest.next();
+                        out.push('\'');
+                    }
+                    c if c == quote => return out,
+                    c => out.push(c),
+                }
+            }
+            // No closing quote: not a valid quoted scalar; keep the text as it is.
+            raw.to_string()
+        }
+        _ => {
+            let end = raw
+                .char_indices()
+                .find(|(i, c)| *c == '#' && raw[..*i].ends_with([' ', '\t']))
+                .map_or(raw.len(), |(i, _)| i);
+            raw[..end].trim_end().to_string()
+        }
+    }
 }
 
 /// The OpenCode command text that starts user-invoked skill `name`.
@@ -1673,6 +1709,22 @@ mod tests {
             "---\nname: x\n---\ndisable-model-invocation: true\n"
         )));
         assert!(!user_invoked(&skill("disable-model-invocation: true\n")));
+        // Trailing comments and quotes.
+        assert!(user_invoked(&skill(
+            "---\nname: x\ndisable-model-invocation: true  # the user starts it\n---\n"
+        )));
+        assert!(user_invoked(&skill(
+            "---\nname: x\ndisable-model-invocation: 'true' # note\n---\n"
+        )));
+        assert!(!user_invoked(&skill(
+            "---\nname: x\ndisable-model-invocation: false # true\n---\n"
+        )));
+        assert!(!user_invoked(&skill(
+            "---\nname: x\ndisable-model-invocation: \"true # no\"\n---\n"
+        )));
+        assert_eq!(yaml_scalar(" 'it''s' # c"), "it's");
+        assert_eq!(yaml_scalar(r#" "a \"b\" c""#), "a \"b\" c");
+        assert_eq!(yaml_scalar(" Use C# here # note"), "Use C# here");
         let folded = skill("---\ndescription: >\n  long\ndisable-model-invocation: true\n---\n");
         assert!(opencode_command("x", &folded).contains("description: \"Run the x skill\""));
     }

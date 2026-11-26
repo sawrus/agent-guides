@@ -143,7 +143,8 @@ reported as a preserved user file.
 ## Hosts
 
 Every host gets the same skill set and the same upstream skill text. A skill is user-invoked when the top-level
-frontmatter of its `SKILL.md` has `disable-model-invocation: true` (the Claude Code key; for example `grill-me`,
+frontmatter of its `SKILL.md` has `disable-model-invocation: true` (quoted or with a trailing `# comment` as
+well; the Claude Code key; for example `grill-me`,
 `to-spec`, `handoff` of mattpocock/skills). The model does not start a user-invoked skill by itself; the user
 starts it. agentic gives each host the entry point that the host supports:
 
