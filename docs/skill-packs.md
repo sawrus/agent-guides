@@ -127,7 +127,10 @@ copied byte for byte; the manifest `content_hash` alone tracks them. Git checkou
 Manifest entries have `marker: skill-pack` and `source: skill-pack:<id>/<name>/<path>` (license:
 `skill-pack:<id>/LICENSE`). The managed-file rules apply: install skips a file that you edited, and upgrade
 merges your edits or keeps a backup ([upgrade behavior](agentic-upgrade/README.md)). Before the first install,
-an existing file without the agentic marker belongs to you; install keeps it and prints a warning.
+an existing file without the agentic marker belongs to you; install keeps it and prints a warning. The same
+holds for `agentic skills` and `agentic upgrade`: every host skills directory (for example `.agents/skills` of
+Codex) is in the project inventory, so a skill of your own with the name of a pack skill stays unchanged and is
+reported as a preserved user file.
 
 ## Name conflicts
 

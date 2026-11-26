@@ -2883,3 +2883,39 @@ fn company_rules_git_subdir_symlink_is_not_followed() {
         .join(".agent/company/software/leak.md")
         .exists());
 }
+
+#[test]
+fn skill_pack_keeps_a_user_skill_in_a_host_dir_outside_the_inventory() {
+    // `.agents/skills` (Codex) was not in the project inventory: a user skill there with a pack
+    // skill name made `skills add` and `upgrade` fail with "Project changed while preparing upgrade".
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let src = tempfile::tempdir().unwrap();
+    let p = project.path();
+    write(&src.path().join("skills/tdd/SKILL.md"), PACK_SKILL);
+    company_install(home.path(), p, &["--agent-os", "claude,codex"]);
+    let user = "---\nname: tdd\ndescription: My own TDD notes.\n---\n\n# mine\n";
+    write(&p.join(".agents/skills/tdd/SKILL.md"), user);
+    agentic(home.path())
+        .args(["skills", "add"])
+        .arg(src.path())
+        .arg("--project-dir")
+        .arg(p)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(".agents/skills/tdd/SKILL.md"));
+    assert_eq!(
+        std::fs::read_to_string(p.join(".agents/skills/tdd/SKILL.md")).unwrap(),
+        user
+    );
+    assert!(
+        std::fs::read_to_string(p.join(".claude/skills/tdd/SKILL.md"))
+            .unwrap()
+            .contains("generated_by: agentic")
+    );
+    company_sync(p, home.path());
+    assert_eq!(
+        std::fs::read_to_string(p.join(".agents/skills/tdd/SKILL.md")).unwrap(),
+        user
+    );
+}

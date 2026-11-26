@@ -23,8 +23,12 @@ const ROOT_FILES: &[&str] = &[
     // Written by releases before v9.0.0; kept in the inventory so an upgrade can remove it.
     ".mempalaceignore",
 ];
+/// Every directory agentic writes to. A file there that agentic does not own must be in the
+/// inventory, so the upgrade sees it and keeps it instead of failing on apply.
 const ROOT_DIRS: &[&str] = &[
     ".agent",
+    // Codex skills (`.agents/skills`), also used by skill packs.
+    ".agents",
     ".opencode",
     ".codex",
     ".claude",
@@ -180,6 +184,26 @@ mod tests {
         let files = inventory(root.path()).unwrap();
         assert!(files.contains_key(".opencode/opencode.json"));
         assert!(!files.keys().any(|k| k.contains("node_modules")));
+    }
+
+    #[test]
+    fn inventory_covers_every_host_skills_and_commands_dir() {
+        let hosts = crate::kb::STATIC_AGENT_OS.iter().copied().chain(["agents"]);
+        for host in hosts {
+            for bucket in ["skills", "workflows"] {
+                let dir = crate::agentsmd::get_dest_dir(host, bucket);
+                if dir == "-" {
+                    continue;
+                }
+                let top = dir.split('/').next().unwrap();
+                assert!(ROOT_DIRS.contains(&top), "{host} {bucket}: {dir}");
+            }
+        }
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(root.path().join(".agents/skills/mine")).unwrap();
+        std::fs::write(root.path().join(".agents/skills/mine/SKILL.md"), "# mine\n").unwrap();
+        let files = inventory(root.path()).unwrap();
+        assert!(files.contains_key(".agents/skills/mine/SKILL.md"));
     }
 
     #[test]

@@ -18,6 +18,9 @@
   or holds whitespace or control characters, accepts only full hex commit ids as a lock, and passes `--` before
   the remote and the ref. A symlinked company `subdir` is no longer followed. Git runs with
   `core.autocrlf=false`, and a Markdown frontmatter with CRLF line endings gets the agentic block inside it.
+- `agentic skills` and `agentic upgrade` keep a user skill in `.agents/skills` that has the name of a pack skill.
+  Before, they stopped with "Project changed while preparing upgrade", because `.agents/` was not in the project
+  inventory.
 
 ## v10.0.0
 
