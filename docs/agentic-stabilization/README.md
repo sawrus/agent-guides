@@ -17,9 +17,7 @@ covers:
 - `agent-model-mapper` uses `fzf` for install-time model dropdowns when available.
 - No runtime OpenCode plugin is shipped for `agent-model-mapper`, so OpenCode startup never opens `fzf`, asks questions, or writes project files.
 - Context7 offers an interactive key mode: configure without a key or enter `CONTEXT7_API_KEY` for the selected target configs.
-- OpenCode MemPalace setup writes `mempalace-mcp` config and initializes/mines project memory into a project-specific wing without LLM calls.
 - Telegram notification credentials are read from `$HOME/.config/agentic/config.json` when the plugin is enabled in project `.agentic.json`.
-- MemPalace-enabled installs create a managed `.mempalaceignore` unless the target project already has one.
 - `make test` runs the fast deterministic e2e suite; longer deterministic checks, real blackbox, and coverage checks are explicit targets.
 - `make test-all` runs the full local suite including longer deterministic checks, install/evidence blackbox, and coverage.
 - Real Codex, OpenCode, and Telegram blackbox install/evidence scenarios run through `make test-real-blackbox`.
@@ -39,7 +37,7 @@ covers:
 
 ## Operational Constraints
 
-- `make test` is deterministic, designed for a sub-minute local loop, and does not require real agent binaries, model auth, network access, Context7/MemPalace access, or Telegram credentials.
-- `AGENTIC_REAL_BLACKBOX_LIVE=1 make test-real-blackbox` requires real `codex` and `opencode` binaries, working model auth, network access, Context7/MemPalace access, and Telegram credentials for the Telegram case.
+- `make test` is deterministic, designed for a sub-minute local loop, and does not require real agent binaries, model auth, network access, Context7 access, or Telegram credentials.
+- `AGENTIC_REAL_BLACKBOX_LIVE=1 make test-real-blackbox` requires real `codex` and `opencode` binaries, working model auth, network access, Context7 access, and Telegram credentials for the Telegram case.
 - Telegram credentials must never be committed or written to Agentic config.
 - Coverage is line-based Bash trace coverage for the `agentic` script, not branch coverage.

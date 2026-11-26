@@ -20,6 +20,7 @@ const ROOT_FILES: &[&str] = &[
     ".agentic/codex-gate-hook-entries.json",
     ".mcp.json",
     "opencode.json",
+    // Written by releases before v9.0.0; kept in the inventory so an upgrade can remove it.
     ".mempalaceignore",
 ];
 const ROOT_DIRS: &[&str] = &[

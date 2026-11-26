@@ -45,6 +45,7 @@ deterministic checks.
 | Quality gate | Prose only | Stop hook runs `make test`/`make lint` when files changed and asks once for a CHANGELOG entry. PreToolUse guard denies secrets, force push, and `rm -rf` outside the project, asks before production access, and blocks write SQL on non-local databases |
 | Codex skills | `.agent/skills` (Codex does not read it) | `.agents/skills` |
 | Installed workflows | Include the mermaid diagram | Diagram removed (still in the source and docs site) |
+| `MEMORY.md` | Context7 and MemPalace | Context7 and the fallback order only; MemPalace removed in v9.0.0 ([UPGRADE.md](../../UPGRADE.md#migrating-to-v900)) |
 
 ### Profiles
 

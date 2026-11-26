@@ -511,7 +511,6 @@ pub fn apply_selections(app: &mut App, selections: WizardSelections) {
     };
     app.selected_mcps.clear();
     app.enable_context7_env = Some("n".to_string());
-    app.enable_mempalace_env = Some("n".to_string());
     for id in &selections.mcps {
         mcp::add_selected_mcp(app, id);
     }
@@ -838,7 +837,7 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let mut state = SelectState::new(
             "Select MCP servers to enable:",
-            vec!["[ ] context7".into(), "[x] mempalace".into()],
+            vec!["[ ] context7".into(), "[x] playwright".into()],
             true,
         );
         state.selected[1] = true;
@@ -865,7 +864,7 @@ mod tests {
             agent_os: vec![],
             mcps: vec![
                 "context7".to_string(),
-                "mempalace".to_string(),
+                "playwright".to_string(),
                 "bogus".to_string(),
             ],
             clear_mcps: false,
@@ -878,9 +877,8 @@ mod tests {
         assert_eq!(app.theme, "light");
         assert_eq!(app.selected_agent_os, vec!["default"]);
         assert_eq!(app.selected_areas, vec!["software"]);
-        assert_eq!(app.selected_mcps, vec!["context7", "mempalace"]);
+        assert_eq!(app.selected_mcps, vec!["context7", "playwright"]);
         assert_eq!(app.enable_context7_env.as_deref(), Some("y"));
-        assert_eq!(app.enable_mempalace_env.as_deref(), Some("y"));
         assert_eq!(app.selected_specs, vec!["software.backend"]);
     }
 

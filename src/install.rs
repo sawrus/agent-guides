@@ -8,7 +8,6 @@ use crate::doctor;
 use crate::manifest;
 use crate::markers;
 use crate::mcp;
-use crate::mempalace;
 use crate::prompt;
 use crate::tomledit;
 use crate::ui;
@@ -810,6 +809,7 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     crate::profile::prepare(app)?;
     crate::claude::configure_profile(app)?;
     crate::legacy::migrate_renamed_roles(app, &project_dir)?;
+    crate::legacy::remove_mempalace(app, &project_dir)?;
     copy_extensions(app, &project_dir)?;
     configure_opencode_profile_if_needed(app)?;
     crate::mapper::configure_opencode_agent_model_mapper_if_needed(app)?;
@@ -831,7 +831,6 @@ pub fn run_install(app: &mut App) -> crate::Result<()> {
     mcp::sync_selected_mcps_from_env(app);
     mcp::sync_legacy_mcp_env_from_selected(app);
     mcp::configure_context7_if_needed(app)?;
-    mempalace::configure_mempalace_if_needed(app)?;
     mcp::configure_selected_mcps_if_needed(app)?;
     crate::claude::write_settings(app, &project_dir)?;
     if !app.upgrade_mode {

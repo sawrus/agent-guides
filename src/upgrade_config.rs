@@ -55,8 +55,6 @@ pub fn record_text_keys(app: &mut App, dest: &Path, source: &str, content: &str)
     } else {
         let servers: Vec<_> = if source.contains("context7") {
             vec!["context7".to_string()]
-        } else if source.contains("mempalace") {
-            vec!["mempalace".to_string()]
         } else {
             app.selected_mcps
                 .iter()
@@ -175,10 +173,15 @@ pub fn clean(app: &App, path: &Path, manifest: &Value) -> crate::Result<()> {
                 && key != "mcp_servers.context7"
         });
     }
+    remove_keys(path, &keys)
+}
+
+/// Remove `keys` (JSON pointers or TOML `section` / `section.field` paths) from the config file at `path`.
+pub fn remove_keys(path: &Path, keys: &[String]) -> crate::Result<()> {
     let text = std::fs::read_to_string(path)?;
     if path.extension().and_then(|s| s.to_str()) == Some("json") {
         let mut value: Value = serde_json::from_str(&text)?;
-        for key in &keys {
+        for key in keys {
             remove_json_key(&mut value, key);
         }
         std::fs::write(path, crate::markers::to_pretty_json(&value))?;

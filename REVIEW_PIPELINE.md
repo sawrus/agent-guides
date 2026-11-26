@@ -23,7 +23,7 @@ Prepare one bounded packet for both specialists from evidence already collected:
   `.agent/**`, native environment guidance, roles, workflow, and `MEMORY.md`;
 - relevant diff excerpts/file list, changed or consulted docs, QA and sign-off links;
 - observed friction, repeated reads/searches, retries, and available tool telemetry;
-- available MemPalace queries/results/writes and durable facts with source links.
+- available memory lookups/entries and durable facts with source links.
 
 Name missing evidence explicitly. Do not attach the full transcript by default,
 scan all docs/memory, or collect fresh telemetry just to populate a report.
@@ -59,7 +59,6 @@ Specialists only return Markdown. They must not edit files, call memory-write
 or delete tools, or apply recommendations. The orchestrator saves reports.
 If a specialist fails, record `failed` and the reason, save the other report, and
 finish delivery. Do not retry automatically or block an accepted feature.
-This restriction does not revoke executor fact-writing rules in `MEMORY.md`.
 
 ## Report contract
 

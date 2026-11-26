@@ -43,7 +43,6 @@ pub struct App {
     pub context7_api_key: String,
     pub context7_api_key_mode: Option<String>,
     pub enable_context7_env: Option<String>,
-    pub enable_mempalace_env: Option<String>,
     pub jev_enabled: Option<bool>,
     /// `lean` or `team` (crate::profile); empty until the CLI, environment, or manifest sets it.
     pub install_profile: String,
@@ -132,9 +131,6 @@ impl App {
             context7_api_key: std::env::var("CONTEXT7_API_KEY").unwrap_or_default(),
             context7_api_key_mode: None,
             enable_context7_env: std::env::var("AGENTIC_ENABLE_CONTEXT7")
-                .ok()
-                .filter(|v| !v.is_empty()),
-            enable_mempalace_env: std::env::var("AGENTIC_ENABLE_MEMPALACE")
                 .ok()
                 .filter(|v| !v.is_empty()),
             jev_enabled: std::env::var("AGENTIC_ENABLE_JEV")

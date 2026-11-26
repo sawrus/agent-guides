@@ -90,35 +90,6 @@ pub fn ensure_bin_dir_in_shell_path(app: &mut App, bin_dir: &Path) {
     );
 }
 
-/// Used by the mempalace venv fallback to persist ~/.local/bin in PATH.
-pub fn append_path_export_to_shell_rc(app: &App, local_bin: &Path) {
-    let shell = std::env::var("SHELL").unwrap_or_default();
-    let shell_name = Path::new(&shell)
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_default();
-    let rc = if shell_name == "zsh" {
-        app.home.join(".zshrc")
-    } else {
-        app.home.join(".bashrc")
-    };
-    let line = "export PATH=\"$HOME/.local/bin:$PATH\"";
-    let already = std::fs::read_to_string(&rc)
-        .map(|c| c.lines().any(|l| l == line))
-        .unwrap_or(false);
-    if !already {
-        if let Ok(mut file) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&rc)
-        {
-            use std::io::Write;
-            let _ = writeln!(file, "{line}");
-        }
-    }
-    let _ = local_bin;
-}
-
 pub fn self_install(app: &mut App) -> crate::Result<()> {
     let source_path = std::env::current_exe().map_err(|e| -> crate::AnyError {
         format!("Cannot resolve installer source: {e}").into()

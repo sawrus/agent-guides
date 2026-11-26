@@ -1,5 +1,5 @@
 //! Real-run blackbox e2e tests: exercise the agentic binary with fake agent
-//! binaries on PATH (doctor smoke checks, MemPalace setup, upgrade re-sync).
+//! binaries on PATH (doctor smoke checks, MCP setup, upgrade re-sync).
 
 #![cfg(unix)]
 
@@ -35,7 +35,6 @@ fn agentic(home: &Path, fake_bin: &Path) -> Command {
         .env_remove("CLAUDE_CONFIG_DIR")
         .env_remove("AGENTIC_ENABLE_MCPS")
         .env_remove("AGENTIC_ENABLE_CONTEXT7")
-        .env_remove("AGENTIC_ENABLE_MEMPALACE")
         .env_remove("CONTEXT7_API_KEY");
     cmd
 }
@@ -252,105 +251,77 @@ fn doctor_reports_missing_binary() {
 }
 
 #[test]
-fn mempalace_setup_with_fake_binaries() {
+fn upgrade_removes_mempalace_left_by_older_releases() {
     let home = tempfile::tempdir().unwrap();
     let project = tempfile::tempdir().unwrap();
     let fake_bin = tempfile::tempdir().unwrap();
-    write_fake_bin(fake_bin.path(), "python3", "echo Python 3.12.0");
-    write_fake_bin(fake_bin.path(), "mempalace", "echo ok");
-    write_fake_bin(fake_bin.path(), "mempalace-mcp", "echo ok");
-
     let mut cmd = agentic(home.path(), fake_bin.path());
-    install_args(&mut cmd, project.path(), "opencode,codex")
+    install_args(&mut cmd, project.path(), "claude,codex")
         .env("AGENTIC_DOCTOR", "0")
-        .env("AGENTIC_ENABLE_MEMPALACE", "y")
         .assert()
-        .success()
-        .stdout(predicate::str::contains(
-            "MemPalace binaries already available",
-        ))
-        .stdout(predicate::str::contains("MemPalace init completed"))
-        .stdout(predicate::str::contains(
-            "MemPalace mine project wing completed",
-        ))
-        .stdout(predicate::str::contains(
-            "MemPalace MCP binary found: mempalace-mcp",
-        ));
+        .success();
 
-    // ignore file + configs
-    assert!(project.path().join(".mempalaceignore").is_file());
-    let opencode: Value = serde_json::from_str(
-        &std::fs::read_to_string(project.path().join("opencode.json")).unwrap(),
+    // Simulate a pre-v9.0.0 install that enabled MemPalace.
+    let root = project.path();
+    std::fs::write(
+        root.join(".mcp.json"),
+        r#"{"mcpServers":{"mempalace":{"command":"mempalace-mcp"},"mine":{"command":"mine"}}}"#,
     )
     .unwrap();
-    assert_eq!(opencode["mcp"]["mempalace"]["command"][0], "mempalace-mcp");
-    let toml = std::fs::read_to_string(project.path().join(".codex/config.toml")).unwrap();
-    assert!(toml.contains("[mcp_servers.mempalace]"));
-    // manifest carries the selection
-    let manifest: Value = serde_json::from_str(
-        &std::fs::read_to_string(project.path().join(".agentic.json")).unwrap(),
-    )
-    .unwrap();
-    assert!(manifest["settings"]["mcp_integrations"]
+    let codex = root.join(".codex/config.toml");
+    let mut toml = std::fs::read_to_string(&codex).unwrap_or_default();
+    toml.push_str(
+        "\n[mcp_servers.mempalace]\ncommand = \"mempalace-mcp\"\nstartup_timeout_sec = 30\n",
+    );
+    std::fs::write(&codex, toml).unwrap();
+    // An ignore file the manifest does not track is user data and stays.
+    std::fs::write(root.join(".mempalaceignore"), "target/\n").unwrap();
+    let manifest_path = root.join(".agentic.json");
+    let mut manifest: Value =
+        serde_json::from_str(&std::fs::read_to_string(&manifest_path).unwrap()).unwrap();
+    manifest["settings"]["mcp_integrations"] = serde_json::json!(["mempalace"]);
+    if !manifest["config_owned_keys"].is_object() {
+        manifest["config_owned_keys"] = serde_json::json!({});
+    }
+    manifest["config_owned_keys"][".mcp.json"] =
+        serde_json::json!(["/mcpServers/mempalace/command"]);
+    let mut codex_keys = manifest["config_owned_keys"][".codex/config.toml"]
         .as_array()
-        .unwrap()
-        .iter()
-        .any(|v| v == "mempalace"));
-}
+        .cloned()
+        .unwrap_or_default();
+    codex_keys.push(Value::from("mcp_servers.mempalace"));
+    manifest["config_owned_keys"][".codex/config.toml"] = Value::Array(codex_keys);
+    std::fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&manifest).unwrap(),
+    )
+    .unwrap();
 
-#[test]
-fn mempalace_init_timeout_prints_manual_instructions() {
-    let home = tempfile::tempdir().unwrap();
-    let project = tempfile::tempdir().unwrap();
-    let fake_bin = tempfile::tempdir().unwrap();
-    write_fake_bin(fake_bin.path(), "python3", "echo Python 3.12.0");
-    write_fake_bin(fake_bin.path(), "mempalace", "sleep 30");
-    write_fake_bin(fake_bin.path(), "mempalace-mcp", "echo ok");
-
-    let mut cmd = agentic(home.path(), fake_bin.path());
-    install_args(&mut cmd, project.path(), "claude")
+    agentic(home.path(), fake_bin.path())
+        .args(["upgrade", "--project-dir"])
+        .arg(root)
         .env("AGENTIC_DOCTOR", "0")
-        .env("AGENTIC_ENABLE_MEMPALACE", "y")
-        .env("AGENTIC_MEMPALACE_TIMEOUT_SECONDS", "1")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Timed out after 1s"))
-        .stdout(predicate::str::contains("pip install mempalace"));
-    // configs still written even after failed init
-    let claude: Value =
-        serde_json::from_str(&std::fs::read_to_string(project.path().join(".mcp.json")).unwrap())
-            .unwrap();
-    assert_eq!(
-        claude["mcpServers"]["mempalace"]["command"],
-        "mempalace-mcp"
-    );
-}
-
-#[test]
-fn mempalace_setup_skip_env() {
-    let home = tempfile::tempdir().unwrap();
-    let project = tempfile::tempdir().unwrap();
-    let fake_bin = tempfile::tempdir().unwrap();
-    write_fake_bin(fake_bin.path(), "mempalace-mcp", "echo ok");
-
-    let mut cmd = agentic(home.path(), fake_bin.path());
-    install_args(&mut cmd, project.path(), "cursor")
-        .env("AGENTIC_DOCTOR", "0")
-        .env("AGENTIC_ENABLE_MEMPALACE", "y")
-        .env("AGENTIC_MEMPALACE_SETUP", "skip")
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "skipped by AGENTIC_MEMPALACE_SETUP=skip",
+            "MemPalace integration was removed in agentic v9.0.0",
         ));
-    let cursor: Value = serde_json::from_str(
-        &std::fs::read_to_string(project.path().join(".cursor/mcp.json")).unwrap(),
-    )
-    .unwrap();
-    assert_eq!(
-        cursor["mcpServers"]["mempalace"]["command"],
-        "mempalace-mcp"
-    );
+
+    let mcp: Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join(".mcp.json")).unwrap()).unwrap();
+    assert!(mcp["mcpServers"].get("mempalace").is_none());
+    assert_eq!(mcp["mcpServers"]["mine"]["command"], "mine");
+    let toml = std::fs::read_to_string(&codex).unwrap();
+    assert!(!toml.contains("mempalace"));
+    let manifest: Value =
+        serde_json::from_str(&std::fs::read_to_string(&manifest_path).unwrap()).unwrap();
+    assert!(!manifest["config_owned_keys"]
+        .to_string()
+        .contains("mempalace"));
+    assert!(!manifest["settings"]["mcp_integrations"]
+        .to_string()
+        .contains("mempalace"));
+    assert!(root.join(".mempalaceignore").is_file());
 }
 
 #[test]

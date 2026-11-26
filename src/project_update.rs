@@ -268,7 +268,6 @@ pub fn synchronize(app: &mut App) -> crate::Result<()> {
     app.interactive_override = Some(false);
     // Replay must not import environment selections or write global credentials.
     app.enable_context7_env = Some("n".into());
-    app.enable_mempalace_env = Some("n".into());
     app.jev_enabled = None;
     app.jev_api_url = None;
     app.selected_mcps.clear();
@@ -293,14 +292,6 @@ pub fn synchronize(app: &mut App) -> crate::Result<()> {
     }
     app.enable_context7_env = Some(
         if app.selected_mcp_contains("context7") {
-            "y"
-        } else {
-            "n"
-        }
-        .into(),
-    );
-    app.enable_mempalace_env = Some(
-        if app.selected_mcp_contains("mempalace") {
             "y"
         } else {
             "n"
@@ -343,10 +334,6 @@ pub fn synchronize(app: &mut App) -> crate::Result<()> {
         crate::gate::write_baseline(app, &root)?;
         crate::company::report_duplicates(app, &root);
         crate::doctor::run_agentic_doctor(app);
-        if app.selected_mcp_contains("mempalace") {
-            crate::mempalace::setup_mempalace_for_agentic(app, true);
-            crate::mempalace::upgrade_mempalace_graph(app);
-        }
     }
     Ok(())
 }

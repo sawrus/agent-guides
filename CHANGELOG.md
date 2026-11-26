@@ -1,5 +1,15 @@
 # Changelog
 
+## v9.0.0
+
+- Breaking: removed the MemPalace integration. agentic no longer offers the `mempalace` MCP server, does not run
+  `pip install mempalace`, `mempalace init`, or `mempalace mine` on install and upgrade, and ignores
+  `AGENTIC_ENABLE_MEMPALACE`, `AGENTIC_MEMPALACE_SETUP`, and `AGENTIC_MEMPALACE_TIMEOUT_SECONDS`. `MEMORY.md`
+  keeps only Context7 and the fallback order; the `memory-curator` reviewer no longer calls `mempalace_search`.
+  `agentic install` and `agentic upgrade` remove the `mempalace` server entries that `.agentic.json` records as
+  agentic-owned and an unedited `.mempalaceignore`; a manifest that still selects `mempalace` gets a warning.
+  Context7 and the other MCP servers are unchanged. See [UPGRADE.md](UPGRADE.md#migrating-to-v900).
+
 ## v8.6.0
 
 - OpenCode plugins now act only on sessions of their own project. One background OpenCode service serves every

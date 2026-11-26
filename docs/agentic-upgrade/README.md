@@ -38,7 +38,7 @@ release instructions come from the new binary.
 - Reject escaping paths and symlink targets before any project mutation. The inventory skips nested
   symlinks inside agent directories; hosts own them, and agentic never writes through them.
 - Prepare the complete update in isolation, back up changes, and restore project
-  files if applying them fails. Doctor and MemPalace maintenance run after commit.
+  files if applying them fails. Doctor runs after commit.
 - Dry runs perform no release downloads or project writes and show the same file
   actions as real synchronization using the currently available payload.
 

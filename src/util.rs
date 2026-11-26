@@ -78,26 +78,42 @@ pub fn tmp_dir() -> PathBuf {
         .unwrap_or_else(std::env::temp_dir)
 }
 
-/// Sanitize a MemPalace wing name: lowercase, non-alnum -> `_`, collapse and
-/// trim underscores; empty -> `project`.
-pub fn mempalace_sanitize_wing_name(raw: &str) -> String {
-    let lowered = raw.to_lowercase();
-    let mut out = String::new();
-    let mut last_underscore = false;
-    for ch in lowered.chars() {
-        if ch.is_ascii_alphanumeric() {
-            out.push(ch);
-            last_underscore = false;
-        } else if !last_underscore {
-            out.push('_');
-            last_underscore = true;
+/// Run a command with a timeout, capturing stdout and stderr.
+///
+/// Returns `(timed_out, exit_code, output)`. A timed-out process is killed and
+/// reports exit code 124.
+pub fn run_with_timeout(
+    cmd: &mut std::process::Command,
+    timeout: std::time::Duration,
+) -> std::io::Result<(bool, i32, String)> {
+    use std::process::Stdio;
+    use std::time::{Duration, Instant};
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = cmd.spawn()?;
+    let start = Instant::now();
+    loop {
+        match child.try_wait()? {
+            Some(status) => {
+                let mut output = String::new();
+                if let Some(mut stdout) = child.stdout.take() {
+                    use std::io::Read;
+                    let _ = stdout.read_to_string(&mut output);
+                }
+                if let Some(mut stderr) = child.stderr.take() {
+                    use std::io::Read;
+                    let _ = stderr.read_to_string(&mut output);
+                }
+                return Ok((false, status.code().unwrap_or(-1), output));
+            }
+            None => {
+                if start.elapsed() >= timeout {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Ok((true, 124, String::new()));
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
         }
-    }
-    let trimmed = out.trim_matches('_').to_string();
-    if trimmed.is_empty() {
-        "project".to_string()
-    } else {
-        trimmed
     }
 }
 
@@ -129,14 +145,18 @@ mod tests {
     }
 
     #[test]
-    fn wing_name_sanitization() {
-        assert_eq!(
-            mempalace_sanitize_wing_name("My-Project 2!"),
-            "my_project_2"
-        );
-        assert_eq!(mempalace_sanitize_wing_name("___"), "project");
-        assert_eq!(mempalace_sanitize_wing_name(""), "project");
-        assert_eq!(mempalace_sanitize_wing_name("a__b"), "a_b");
+    fn run_with_timeout_kills_slow_process() {
+        use std::process::Command;
+        use std::time::Duration;
+        let mut cmd = Command::new("sleep");
+        cmd.arg("5");
+        let (timed_out, code, _) = run_with_timeout(&mut cmd, Duration::from_millis(200)).unwrap();
+        assert!(timed_out);
+        assert_eq!(code, 124);
+        let mut ok_cmd = Command::new("true");
+        let (timed_out, code, _) = run_with_timeout(&mut ok_cmd, Duration::from_secs(5)).unwrap();
+        assert!(!timed_out);
+        assert_eq!(code, 0);
     }
 
     #[test]

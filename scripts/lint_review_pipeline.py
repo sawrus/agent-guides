@@ -98,7 +98,7 @@ def validate(root: Path = ROOT) -> list[str]:
                 if token not in body:
                     issues.append(f'{path.relative_to(root)}: missing boundary: {token}')
     curator = profile_body(root / 'extensions/claude/agents/memory-curator.md')
-    for token in ('canonical home', 'at most two', '`limit: 3`', 'Do not scan all docs', 'memory-write or delete', 'unavailable'):
+    for token in ('canonical home', 'Do not scan all docs', 'memory-write or delete', 'unavailable'):
         if token not in curator:
             issues.append(f'memory-curator: missing docs/memory boundary: {token}')
     protocol = (root / 'REVIEW_PIPELINE.md').read_text()
