@@ -301,6 +301,7 @@ fn upgrade_removes_mempalace_left_by_older_releases() {
         .args(["upgrade", "--project-dir"])
         .arg(root)
         .env("AGENTIC_DOCTOR", "0")
+        .env("AGENTIC_SKIP_BINARY_UPGRADE", "1")
         .assert()
         .success()
         .stdout(predicate::str::contains(

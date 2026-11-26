@@ -1,5 +1,9 @@
 # Changelog
 
+## v9.0.1
+
+- Tests: the MemPalace upgrade e2e test no longer queries GitHub releases (rate-limit flake on macOS CI).
+
 ## v9.0.0
 
 - Breaking: removed the MemPalace integration. agentic no longer offers the `mempalace` MCP server, does not run
