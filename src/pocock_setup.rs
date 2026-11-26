@@ -89,3 +89,24 @@ pub fn agents_section(app: &App) -> Option<String> {
          ### Domain docs\n\nSingle-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.\n"
     ))
 }
+
+/// Name of the agentic-authored skill that stands in for the upstream `setup-matt-pocock-skills`.
+pub const SETUP_SKILL: &str = "setup-matt-pocock-skills";
+
+/// Text of that skill: upstream skills still say "run `/setup-matt-pocock-skills`".
+pub const SETUP_SKILL_TEXT: &str = "---
+name: setup-matt-pocock-skills
+description: Project setup for the pocock skill pack is managed by agentic.
+disable-model-invocation: true
+---
+
+# Setup of the pocock skills
+
+agentic configured this repo for the pocock skills. Do not set it up by hand.
+
+- Read `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, and `docs/agents/domain.md`.
+- To change the issue tracker, run `agentic skills add pocock --issue-tracker local|github|gitlab`
+  (or `agentic install` and the TUI).
+- `GLOSSARY.md` and `docs/adr/` do not need setup. The `domain-modeling` skill creates them when needed.
+- If a file in `docs/agents/` is missing, tell the user to run the command above. Do not create it by hand.
+";

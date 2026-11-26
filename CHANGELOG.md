@@ -9,7 +9,8 @@
   `--issue-tracker local|github|gitlab` (default `local`; also on `agentic skills add`; TUI step) writes
   `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, and `docs/agents/domain.md`, and adds an
   `## Agent skills` section to the generated AGENTS.md. `settings.issue_tracker` keeps the choice. See
-  [docs/skill-packs.md](docs/skill-packs.md#preset-pocock).
+  [docs/skill-packs.md](docs/skill-packs.md#preset-pocock). agentic also installs its own short skill
+  `setup-matt-pocock-skills`, which points to these files and to the agentic command.
 - `agentic skills add <preset>` keeps the `select` list of the preset unless `--select` is given.
 
 ## v12.0.0

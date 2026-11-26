@@ -677,6 +677,21 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
             }
         }
     }
+    if crate::pocock_setup::active(app) {
+        let skill = crate::pocock_setup::SETUP_SKILL;
+        for (host, dir) in &dirs {
+            let text = adapt_for_host(
+                host,
+                skill,
+                "SKILL.md",
+                crate::pocock_setup::SETUP_SKILL_TEXT,
+            );
+            let dest = project_dir.join(dir).join(skill).join("SKILL.md");
+            desired.insert(app.project_rel_path(&dest));
+            let source = source_ref(crate::pocock_setup::PACK_ID, &format!("{skill}/SKILL.md"));
+            write(app, &text, &dest, &source)?;
+        }
+    }
     for (rel, text, name) in crate::pocock_setup::files(app) {
         let dest = project_dir.join(rel);
         desired.insert(app.project_rel_path(&dest));
@@ -1665,13 +1680,25 @@ mod tests {
             );
         }
         assert!(!project.join(".claude/skills/triage").exists());
-        assert!(!project
-            .join(".claude/skills/setup-matt-pocock-skills")
-            .exists());
+        // The fixture's upstream setup skill is not selected; the installed one is agentic's own.
+        let own = std::fs::read_to_string(
+            project.join(".claude/skills/setup-matt-pocock-skills/SKILL.md"),
+        )
+        .unwrap();
+        assert!(own.contains("managed by agentic"));
         // The setup files are not skills.
         let packs = from_settings(&read_manifest(&project)["settings"]["skill_packs"]).unwrap();
         let skills = installed_skills(&read_manifest(&project), &packs[0].id);
-        assert_eq!(skills.len(), 21, "{skills:?}");
+        assert_eq!(skills.len(), 22, "{skills:?}");
+        assert!(skills.contains(&"setup-matt-pocock-skills".to_string()));
+        for dir in [".claude/skills", ".agents/skills", ".agent/skills"] {
+            let text = std::fs::read_to_string(
+                project.join(dir).join("setup-matt-pocock-skills/SKILL.md"),
+            )
+            .unwrap();
+            assert!(text.contains("disable-model-invocation: true"));
+            assert!(text.contains("agentic:"), "marker");
+        }
     }
 
     #[test]
@@ -1749,6 +1776,9 @@ mod tests {
         assert!(!project.join("docs/agents/issue-tracker.md").exists());
         assert!(!project.join("docs/agents/domain.md").exists());
         assert!(!project.join("docs/agents").exists());
+        assert!(!project
+            .join(".claude/skills/setup-matt-pocock-skills")
+            .exists());
         assert!(manifest_files(&read_manifest(&project), None).is_empty());
         assert!(read_manifest(&project)["settings"]
             .get("issue_tracker")

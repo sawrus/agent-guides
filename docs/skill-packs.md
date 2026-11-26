@@ -239,6 +239,12 @@ upgrade replays it.
 | `docs/agents/domain.md` | Single-context layout: `GLOSSARY.md` and `docs/adr/` at the root, and the rules for reading them. The skills create `GLOSSARY.md` and the ADRs when needed. |
 | `AGENTS.md` (generated section `## Agent skills`) | One line each for the tracker, the labels, and the domain docs, with links to the three files. About 150 tokens of always-on context. In `--agents-md keep` mode the section is in `.agent/AGENTS.md`. |
 
+agentic also installs its own small skill `setup-matt-pocock-skills` on every host, next to the pack skills
+(`disable-model-invocation: true`, agentic marker, manifest source `skill-pack:pocock/setup-matt-pocock-skills/SKILL.md`).
+The upstream skills still say "run `/setup-matt-pocock-skills`"; the text stays unchanged. This skill tells the
+agent to read `docs/agents/*.md` and to run `agentic skills add pocock --issue-tracker ...` to change the setup.
+It is not the upstream skill, and `skills remove pocock` removes it.
+
 The three `docs/agents/` files are skill pack files in the manifest (`marker: skill-pack`, source
 `skill-pack:pocock/setup.<name>`). The managed-file rules apply: install keeps a file that you edited, and
 `agentic skills remove pocock` removes the files that you did not edit. agentic does not run `gh label create`
