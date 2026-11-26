@@ -62,7 +62,7 @@ pub fn safe_path(root: &Path, rel: &str) -> crate::Result<PathBuf> {
 pub fn recognized(text: &str) -> bool {
     // Require metadata in the header, not a mention somewhere in a user's prose.
     let header: String = text.lines().take(20).collect::<Vec<_>>().join("\n");
-    (text.starts_with("---\n")
+    ((text.starts_with("---\n") || text.starts_with("---\r\n"))
         && header.contains("agentic:")
         && header.contains("generated_by: agentic")
         && header.contains(crate::APP_REPO_LINK))

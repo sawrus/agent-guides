@@ -13,6 +13,11 @@
   files. The pack license goes to `.agent/skill-packs/<id>/LICENSE`. Company rules and skill packs now share
   the source, git cache, and file walk code (`src/source.rs`); company rules behave as before. See
   [docs/skill-packs.md](docs/skill-packs.md).
+- Security: git `ref` and locked `commit` values from `.agentic.json` (company rules and skill packs) could reach
+  `git fetch` as options, for example `--upload-pack=<command>`. agentic now refuses a ref that starts with `-`
+  or holds whitespace or control characters, accepts only full hex commit ids as a lock, and passes `--` before
+  the remote and the ref. A symlinked company `subdir` is no longer followed. Git runs with
+  `core.autocrlf=false`, and a Markdown frontmatter with CRLF line endings gets the agentic block inside it.
 
 ## v10.0.0
 

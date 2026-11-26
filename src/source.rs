@@ -32,6 +32,12 @@ pub fn parse_git_spec(spec: &str, flag: &str) -> Result<Source, String> {
     if url.is_empty() {
         return Err(format!("{flag}: missing URL in '{spec}'"));
     }
+    if !valid_url(url) {
+        return Err(format!("{flag}: invalid URL '{url}'"));
+    }
+    if !valid_ref(git_ref) {
+        return Err(format!("{flag}: invalid ref '{git_ref}'"));
+    }
     let subdir = subdir.trim_matches('/').to_string();
     if !subdir.is_empty() && !is_relative_clean(&subdir) {
         return Err(format!(
@@ -134,10 +140,53 @@ pub fn cache_root(app: &App, kind: &str) -> PathBuf {
     base.join("agentic").join(kind)
 }
 
+/// A branch, tag, or commit for `git fetch`: empty (the remote HEAD) or a value that git cannot read
+/// as an option (no leading `-`, no whitespace or control characters).
+pub fn valid_ref(git_ref: &str) -> bool {
+    !git_ref.starts_with('-') && !git_ref.chars().any(|c| c.is_whitespace() || c.is_control())
+}
+
+/// A full commit id: 40 (SHA-1) or 64 (SHA-256) hex digits.
+pub fn valid_commit(commit: &str) -> bool {
+    matches!(commit.len(), 40 | 64) && commit.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+/// A git URL or path that git cannot read as an option.
+pub fn valid_url(url: &str) -> bool {
+    !url.is_empty() && !url.starts_with('-') && !url.chars().any(char::is_control)
+}
+
+/// Each component of `rel` below `root` is a real directory or file, not a symbolic link, so the
+/// path stays inside `root`.
+pub fn no_symlink_below(root: &Path, rel: &str) -> bool {
+    let mut path = root.to_path_buf();
+    for part in Path::new(rel).components() {
+        path.push(part);
+        match std::fs::symlink_metadata(&path) {
+            Ok(meta) if meta.file_type().is_symlink() => return false,
+            Ok(_) => {}
+            Err(_) => return false,
+        }
+    }
+    true
+}
+
+/// A regular file (not a symbolic link).
+pub fn is_plain_file(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_file())
+}
+
 fn git_command(dir: &Path, args: &[&str]) -> Command {
     let mut cmd = Command::new("git");
+    // Keep upstream line endings (frontmatter detection) and never run `ext::` transports.
     cmd.arg("-C")
         .arg(dir)
+        .args([
+            "-c",
+            "core.autocrlf=false",
+            "-c",
+            "protocol.ext.allow=never",
+        ])
         .args(args)
         .env("GIT_TERMINAL_PROMPT", "0")
         .env("GCM_INTERACTIVE", "never")
@@ -174,11 +223,18 @@ pub fn head_commit(dir: &Path) -> Option<String> {
 
 /// The cache repository of `url` below `cache_root(kind)`, created on first use.
 fn cache_repo(app: &mut App, kind: &str, label: &str, url: &str) -> Option<PathBuf> {
+    if !valid_url(url) {
+        ui::warn(
+            app,
+            &format!("{label}: invalid git URL `{}`", redact_url(url)),
+        );
+        return None;
+    }
     let dir = cache_root(app, kind).join(util::sha256_hex(url.as_bytes()));
     if !dir.join(".git").is_dir()
         && (std::fs::create_dir_all(&dir).is_err()
             || !git(&dir, &["init", "--quiet"])
-            || !git(&dir, &["remote", "add", "origin", url]))
+            || !git(&dir, &["remote", "add", "--", "origin", url]))
     {
         ui::warn(
             app,
@@ -194,7 +250,47 @@ fn cache_repo(app: &mut App, kind: &str, label: &str, url: &str) -> Option<PathB
 }
 
 fn checkout(dir: &Path, what: &str) -> bool {
-    git(dir, &["checkout", "--quiet", "--force", what]) && git(dir, &["clean", "--quiet", "-fdx"])
+    git(dir, &["checkout", "--quiet", "--force", what, "--"])
+        && git(dir, &["clean", "--quiet", "-fdx"])
+}
+
+/// `git fetch --depth 1 -- origin <wanted>` and a checkout of `FETCH_HEAD`. `--` keeps a value from
+/// being read as an option.
+fn fetch_into(dir: &Path, wanted: &str) -> bool {
+    git(
+        dir,
+        &["fetch", "--quiet", "--depth", "1", "--", "origin", wanted],
+    ) && checkout(dir, "FETCH_HEAD")
+}
+
+fn checked_ref<'a>(app: &mut App, label: &str, git_ref: &'a str) -> Option<&'a str> {
+    if valid_ref(git_ref) {
+        return Some(if git_ref.is_empty() { "HEAD" } else { git_ref });
+    }
+    ui::warn(
+        app,
+        &format!("{label}: invalid git ref `{}`", git_ref.escape_debug()),
+    );
+    None
+}
+
+/// Fetch `url` at `git_ref` into the cache. None when the fetch fails: no fallback to the cache.
+pub fn fetch_ref(
+    app: &mut App,
+    kind: &str,
+    label: &str,
+    url: &str,
+    git_ref: &str,
+) -> Option<PathBuf> {
+    let wanted = checked_ref(app, label, git_ref)?;
+    let dir = cache_repo(app, kind, label, url)?;
+    let shown = redact_url(url);
+    if fetch_into(&dir, wanted) {
+        ui::log(app, &format!("{label}: fetched {shown} ({wanted})"));
+        return Some(dir);
+    }
+    ui::warn(app, &format!("{label}: cannot fetch {shown} ({wanted})"));
+    None
 }
 
 /// Fetch `url` at `git_ref` into the cache. Returns the checkout, the cached copy when the fetch fails,
@@ -206,14 +302,10 @@ pub fn fetch_git(
     url: &str,
     git_ref: &str,
 ) -> Option<PathBuf> {
+    let wanted = checked_ref(app, label, git_ref)?;
     let dir = cache_repo(app, kind, label, url)?;
     let shown = redact_url(url);
-    let wanted = if git_ref.is_empty() { "HEAD" } else { git_ref };
-    let fetched = git(
-        &dir,
-        &["fetch", "--quiet", "--depth", "1", "origin", wanted],
-    ) && checkout(&dir, "FETCH_HEAD");
-    if fetched {
+    if fetch_into(&dir, wanted) {
         ui::log(app, &format!("{label}: fetched {shown} ({wanted})"));
         return Some(dir);
     }
@@ -236,7 +328,8 @@ pub fn fetch_git(
 }
 
 /// Check out the exact `commit` of `url`: from the cache when it has the commit, else by a shallow
-/// fetch of that commit. None when neither works (offline and not cached).
+/// fetch of that commit. None when neither works (offline and not cached) or `commit` is not a full
+/// commit id.
 pub fn checkout_commit(
     app: &mut App,
     kind: &str,
@@ -244,16 +337,20 @@ pub fn checkout_commit(
     url: &str,
     commit: &str,
 ) -> Option<PathBuf> {
+    if !valid_commit(commit) {
+        ui::warn(
+            app,
+            &format!("{label}: invalid locked commit `{}`", commit.escape_debug()),
+        );
+        return None;
+    }
     let dir = cache_repo(app, kind, label, url)?;
     let object = format!("{commit}^{{commit}}");
     let cached = git(&dir, &["cat-file", "-e", &object]);
     let ok = if cached {
         checkout(&dir, commit)
     } else {
-        git(
-            &dir,
-            &["fetch", "--quiet", "--depth", "1", "origin", commit],
-        ) && checkout(&dir, "FETCH_HEAD")
+        fetch_into(&dir, commit)
     };
     let shown = redact_url(url);
     if ok && head_commit(&dir).as_deref() == Some(commit) {
@@ -325,6 +422,52 @@ mod tests {
             .unwrap_err()
             .starts_with("--skill-pack:"));
         assert_eq!(source_id(&git), "<url>#main:rules");
+    }
+
+    #[test]
+    fn rejects_refs_commits_and_urls_that_git_could_read_as_options() {
+        assert!(valid_ref("") && valid_ref("main") && valid_ref("v1.2/x"));
+        for bad in ["--upload-pack=touch X;", "-x", "a b", "a\nb"] {
+            assert!(!valid_ref(bad), "{bad}");
+        }
+        assert!(valid_commit(&"a".repeat(40)) && valid_commit(&"0".repeat(64)));
+        assert!(!valid_commit("--upload-pack=touch X;") && !valid_commit(&"g".repeat(40)));
+        assert!(!valid_url("--upload-pack=x") && valid_url("/tmp/a b.git"));
+        assert!(parse_git_spec("<url>#--upload-pack=x", "--f").is_err());
+        assert!(parse_git_spec("--upload-pack=x#main", "--f").is_err());
+    }
+
+    #[test]
+    fn option_like_lock_or_ref_never_runs_a_command() {
+        if std::env::var_os("XDG_CACHE_HOME").is_some() {
+            return;
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        let mut app = App::new().unwrap();
+        app.home = tmp.path().join("home");
+        let flag = tmp.path().join("pwned");
+        let evil = format!("--upload-pack=touch {};", flag.display());
+        let url = tmp.path().join("none").to_string_lossy().to_string();
+        assert!(checkout_commit(&mut app, "test", "T", &url, &evil).is_none());
+        assert!(fetch_git(&mut app, "test", "T", &url, &evil).is_none());
+        assert!(fetch_ref(&mut app, "test", "T", &url, &evil).is_none());
+        assert!(fetch_git(&mut app, "test", "T", &evil, "main").is_none());
+        assert!(!flag.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlink_components_are_detected() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join("real/skills")).unwrap();
+        std::fs::write(tmp.path().join("real/LICENSE"), "x").unwrap();
+        std::os::unix::fs::symlink(tmp.path().join("real"), tmp.path().join("link")).unwrap();
+        assert!(no_symlink_below(tmp.path(), "real/skills"));
+        assert!(!no_symlink_below(tmp.path(), "link/skills"));
+        assert!(!no_symlink_below(tmp.path(), "missing"));
+        assert!(is_plain_file(&tmp.path().join("real/LICENSE")));
+        std::os::unix::fs::symlink(tmp.path().join("real/LICENSE"), tmp.path().join("L")).unwrap();
+        assert!(!is_plain_file(&tmp.path().join("L")));
     }
 
     #[test]

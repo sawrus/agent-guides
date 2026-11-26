@@ -117,6 +117,29 @@ pub fn write_managed_file(
     source_ref: &str,
     marker: &str,
 ) -> crate::Result<()> {
+    write_managed(app, src_content, dest, source_ref, marker, true)
+}
+
+/// `write_managed_file` without the in-file marker: the text is written as it is, and only the
+/// manifest (`content_hash`) tracks ownership. For upstream files that a comment line would break.
+pub fn write_managed_file_unmarked(
+    app: &mut App,
+    content: &str,
+    dest: &Path,
+    source_ref: &str,
+    marker: &str,
+) -> crate::Result<()> {
+    write_managed(app, content, dest, source_ref, marker, false)
+}
+
+fn write_managed(
+    app: &mut App,
+    src_content: &str,
+    dest: &Path,
+    source_ref: &str,
+    marker: &str,
+    add_marker: bool,
+) -> crate::Result<()> {
     if app.dry_run {
         ui::log(
             app,
@@ -132,6 +155,16 @@ pub fn write_managed_file(
         app.ensure_dir(parent);
     }
     let existing = std::fs::read_to_string(dest).ok();
+    if !add_marker {
+        let output =
+            crate::project_update::instruction_output(app, dest, src_content, existing.as_deref())?;
+        let copied = existing.as_deref() != Some(output.as_str());
+        if copied {
+            std::fs::write(dest, &output)?;
+        }
+        register_managed_file(app, dest, source_ref, marker, copied);
+        return Ok(());
+    }
     let generated = markers::add_marker(
         src_content,
         &dest

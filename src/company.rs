@@ -352,12 +352,14 @@ pub fn prepare(app: &mut App) -> crate::Result<Prepared> {
                 subdir,
             } => match fetch_git(app, url, git_ref) {
                 Some(dir) => {
+                    // A symlinked subdir would read files outside the checkout.
+                    let inside = subdir.is_empty() || crate::source::no_symlink_below(&dir, subdir);
                     let root = if subdir.is_empty() {
                         dir
                     } else {
                         dir.join(subdir)
                     };
-                    if root.is_dir() {
+                    if inside && root.is_dir() {
                         (Some(root), false)
                     } else {
                         ui::warn(

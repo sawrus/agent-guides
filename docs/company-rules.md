@@ -182,6 +182,11 @@ agentic install --project-dir . --agent-os claude,codex,opencode --areas softwar
 The source type, the git spec parser, the git cache, and the file walk live in `src/source.rs`. Company rules
 share them with [skill packs](skill-packs.md); company rules use the cache directory `company`.
 
+- A `ref` that starts with `-` or holds whitespace or control characters, and a URL that starts with `-`, are
+  refused before git runs. Git gets `--` before the remote and the ref.
+- A `subdir` that is a symbolic link (or has one in its path) is treated as not found, so files outside the
+  checkout never reach the project.
+
 - Install fetches into `~/.cache/agentic/company/<sha256(url)>` (`$XDG_CACHE_HOME` when set) with the `git` CLI:
   `git fetch --depth 1 origin <ref>`, then a checkout of `FETCH_HEAD`. The project gets copies; the cache is only
   read.

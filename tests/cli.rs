@@ -2825,3 +2825,61 @@ fn skill_pack_name_clash_with_a_pack_skill_fails_the_install() {
             "has the name of the agentic skill of software.backend",
         ));
 }
+
+#[test]
+fn skills_add_with_an_unreachable_source_fails_and_saves_nothing() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let p = project.path();
+    company_install(home.path(), p, &[]);
+    let before = std::fs::read(p.join(".agentic.json")).unwrap();
+    let missing = format!("file://{}/missing.git", home.path().display());
+    agentic(home.path())
+        .args(["skills", "add", &missing, "--project-dir"])
+        .arg(p)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("nothing was installed or saved"));
+    assert_eq!(std::fs::read(p.join(".agentic.json")).unwrap(), before);
+    assert!(manifest_json(p)["settings"].get("skill_packs").is_none());
+    // An option-like ref never reaches git.
+    agentic(home.path())
+        .args([
+            "skills",
+            "add",
+            &format!("{missing}#--upload-pack=x"),
+            "--project-dir",
+        ])
+        .arg(p)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid ref"));
+}
+
+#[cfg(unix)]
+#[test]
+fn company_rules_git_subdir_symlink_is_not_followed() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let repos = tempfile::tempdir().unwrap();
+    let outside = repos.path().join("outside");
+    write(&outside.join("software/leak.md"), API_RULE);
+    let work = repos.path().join("work");
+    std::fs::create_dir_all(&work).unwrap();
+    git(&work, &["init", "-q", "-b", "main"]);
+    std::os::unix::fs::symlink(&outside, work.join("rules")).unwrap();
+    write(&work.join("README.md"), "# x\n");
+    git(&work, &["add", "-A"]);
+    git(&work, &["commit", "-q", "-m", "one"]);
+    let url = format!("file://{}", work.display());
+    company_install(
+        home.path(),
+        project.path(),
+        &["--company-rules-git", &format!("{url}#main:rules")],
+    )
+    .stdout(predicate::str::contains("'rules' not found"));
+    assert!(!project
+        .path()
+        .join(".agent/company/software/leak.md")
+        .exists());
+}

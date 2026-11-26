@@ -317,7 +317,7 @@ pub fn find_skills(root: &Path) -> Vec<(String, PathBuf)> {
                 continue;
             }
             let path = entry.path();
-            if path.join("SKILL.md").is_file() {
+            if source::is_plain_file(&path.join("SKILL.md")) {
                 out.push((name, path));
             } else {
                 walk(&path, out);
@@ -361,41 +361,79 @@ fn refresh_requested(app: &App, id: &str) -> bool {
         .is_some_and(|ids| ids.is_empty() || ids.iter().any(|i| i == id))
 }
 
-/// The pack root, the directory to search for a license, and the resolved commit of a git pack.
-/// None when the source cannot be read now.
-fn open_source(app: &mut App, pack: &SkillPack) -> Option<(PathBuf, Option<String>)> {
+/// The pack root and the resolved commit of a git pack. `Ok(None)` when the source cannot be read now
+/// and the pack has installed files to keep. A failed fetch never changes the lock: `skills update`
+/// and a pack without a lock (`skills add`, first install) fail instead.
+fn open_source(
+    app: &mut App,
+    project: &Path,
+    pack: &SkillPack,
+) -> crate::Result<Option<(PathBuf, Option<String>)>> {
+    let id = &pack.id;
+    let shown = source::source_id(&pack.source);
     match &pack.source {
         Source::Path(path) => {
             let abs = source::resolve_path(app, path);
             if abs.is_dir() {
-                return Some((abs, None));
+                return Ok(Some((abs, None)));
+            }
+            if previous_files(project, id).is_empty() {
+                return Err(
+                    format!("Skill pack {id}: directory not found: {}", abs.display()).into(),
+                );
             }
             ui::warn(
                 app,
-                &format!(
-                    "Skill pack {}: directory not found: {}",
-                    pack.id,
-                    abs.display()
-                ),
+                &format!("Skill pack {id}: directory not found: {}", abs.display()),
             );
-            None
+            Ok(None)
         }
         Source::Git { url, git_ref, .. } => {
-            let dir = if pack.commit.is_empty() || refresh_requested(app, &pack.id) {
-                source::fetch_git(app, CACHE_KIND, LABEL, url, git_ref)?
+            let refresh = refresh_requested(app, id);
+            let dir = if pack.commit.is_empty() || refresh {
+                match source::fetch_ref(app, CACHE_KIND, LABEL, url, git_ref) {
+                    Some(dir) => dir,
+                    None if pack.commit.is_empty() => {
+                        return Err(format!(
+                            "Skill pack {id}: cannot fetch {shown}; nothing was installed or saved"
+                        )
+                        .into())
+                    }
+                    None => {
+                        return Err(format!(
+                            "Skill pack {id}: cannot fetch {shown}; the lock stays at {}",
+                            pack.commit
+                        )
+                        .into())
+                    }
+                }
             } else {
-                source::checkout_commit(app, CACHE_KIND, LABEL, url, &pack.commit)?
+                match source::checkout_commit(app, CACHE_KIND, LABEL, url, &pack.commit) {
+                    Some(dir) => dir,
+                    None => return Ok(None),
+                }
             };
-            let commit = source::head_commit(&dir)?;
+            let commit = source::head_commit(&dir)
+                .ok_or_else(|| format!("Skill pack {id}: no commit in the checkout of {shown}"))?;
             if !pack.commit.is_empty() && pack.commit != commit {
                 ui::log(
                     app,
-                    &format!("Skill pack {}: {} -> {commit}", pack.id, pack.commit),
+                    &format!("Skill pack {id}: {} -> {commit}", pack.commit),
                 );
             }
-            Some((dir, Some(commit)))
+            Ok(Some((dir, Some(commit))))
         }
     }
+}
+
+/// A skill directory name that every host accepts: letters, digits, `.`, `_`, `-`; not `.` or `..`.
+pub fn valid_skill_name(name: &str) -> bool {
+    !name.is_empty()
+        && name != "."
+        && name != ".."
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
 }
 
 /// Read every pack, check names, and record the resolved commits in `app.skill_packs`.
@@ -431,7 +469,14 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
             ui::log(app, &format!("DRY-RUN read skill pack {id} from {shown}"));
             continue;
         }
-        let Some((root, commit)) = open_source(app, &pack) else {
+        if !pack.commit.is_empty() && !source::valid_commit(&pack.commit) {
+            return Err(format!(
+                "Skill pack {id}: invalid locked commit `{}`",
+                pack.commit.escape_debug()
+            )
+            .into());
+        }
+        let Some((root, commit)) = open_source(app, &project, &pack)? else {
             prepared.kept.extend(previous_files(&project, id));
             continue;
         };
@@ -450,7 +495,25 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
             )
             .into());
         }
-        let found = find_skills(&skills_dir);
+        // A symlinked skills_root would copy files from outside the source into the project.
+        if pack.skills_root != "." && !source::no_symlink_below(&root, &pack.skills_root) {
+            return Err(format!(
+                "Skill pack {id}: `{}` in {shown} is a symbolic link",
+                pack.skills_root
+            )
+            .into());
+        }
+        let mut found = find_skills(&skills_dir);
+        for (name, _) in found.iter().filter(|(name, _)| !valid_skill_name(name)) {
+            ui::warn(
+                app,
+                &format!(
+                    "Skill pack {id}: skill directory `{}` has an invalid name; skipped",
+                    name.escape_debug()
+                ),
+            );
+        }
+        found.retain(|(name, _)| valid_skill_name(name));
         let known: BTreeSet<&str> = found.iter().map(|(name, _)| name.as_str()).collect();
         for name in &pack.select {
             if !known.contains(name.as_str()) {
@@ -521,7 +584,10 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
                 files,
             });
         }
-        if let Some(name) = LICENSE_NAMES.iter().find(|n| root.join(n).is_file()) {
+        if let Some(name) = LICENSE_NAMES
+            .iter()
+            .find(|n| source::is_plain_file(&root.join(n)))
+        {
             if let Ok(text) = std::fs::read_to_string(root.join(name)) {
                 prepared
                     .licenses
@@ -624,7 +690,16 @@ fn write(app: &mut App, content: &str, dest: &Path, source_ref: &str) -> crate::
         app.record_skipped(&rel);
         return Ok(());
     }
-    manifest::write_managed_file(app, content, dest, source_ref, MARKER)
+    // Only Markdown gets the in-file marker (frontmatter); a comment line would break JSON, SVG, CSV,
+    // or a shebang-less script. The manifest hash tracks the other files.
+    let markdown = dest
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("md"));
+    if markdown {
+        manifest::write_managed_file(app, content, dest, source_ref, MARKER)
+    } else {
+        manifest::write_managed_file_unmarked(app, content, dest, source_ref, MARKER)
+    }
 }
 
 fn read_manifest(project_dir: &Path) -> Value {
@@ -1253,5 +1328,215 @@ mod tests {
         let saved = from_settings(&read_manifest(&project)["settings"]["skill_packs"]).unwrap();
         assert_eq!(saved[0].commit, source::head_commit(&work).unwrap());
         assert_ne!(saved[0].commit, first);
+    }
+
+    fn init_repo(work: &Path) -> impl Fn(&[&str]) + '_ {
+        move |args: &[&str]| {
+            assert!(std::process::Command::new("git")
+                .current_dir(work)
+                .args(["-c", "user.name=t", "-c", "user.email=t@example.com"])
+                .args(args)
+                .env("GIT_CONFIG_NOSYSTEM", "1")
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .status()
+                .unwrap()
+                .success());
+        }
+    }
+
+    #[test]
+    fn option_like_locked_commit_is_rejected_before_git_runs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("p");
+        let flag = tmp.path().join("pwned");
+        let mut app = app_for(&project, tmp.path());
+        app.home = tmp.path().join("home");
+        app.skill_packs[0].source = Source::Git {
+            url: tmp.path().join("none").to_string_lossy().to_string(),
+            git_ref: String::new(),
+            subdir: String::new(),
+        };
+        app.skill_packs[0].commit = format!("--upload-pack=touch {};", flag.display());
+        let err = prepare(&mut app, &crate::company::Prepared::default()).unwrap_err();
+        assert!(err.to_string().contains("invalid locked commit"), "{err}");
+        // An option-like ref is refused as well.
+        app.skill_packs[0].commit.clear();
+        app.skill_packs[0].source = Source::Git {
+            url: tmp.path().join("none").to_string_lossy().to_string(),
+            git_ref: format!("--upload-pack=touch {};", flag.display()),
+            subdir: String::new(),
+        };
+        assert!(prepare(&mut app, &crate::company::Prepared::default()).is_err());
+        assert!(!flag.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinks_in_the_pack_are_not_followed() {
+        let tmp = tempfile::tempdir().unwrap();
+        let outside = tmp.path().join("outside");
+        write(&outside.join("secret/SKILL.md"), SKILL);
+        write(&outside.join("id_rsa"), "PRIVATE KEY\n");
+        let dir = tmp.path().join("pack");
+        write(&dir.join("skills/ok/SKILL.md"), SKILL);
+        std::os::unix::fs::symlink(outside.join("id_rsa"), dir.join("LICENSE")).unwrap();
+        std::os::unix::fs::symlink(&outside, dir.join("skills/linked")).unwrap();
+        std::fs::create_dir_all(dir.join("skills/fake")).unwrap();
+        std::os::unix::fs::symlink(
+            outside.join("secret/SKILL.md"),
+            dir.join("skills/fake/SKILL.md"),
+        )
+        .unwrap();
+        let project = tmp.path().join("p");
+        let mut app = app_for(&project, &dir);
+        run_install(&mut app, &project).unwrap();
+        assert!(project.join(".claude/skills/ok/SKILL.md").is_file());
+        assert!(!project.join(".claude/skills/secret").exists());
+        assert!(!project.join(".claude/skills/fake").exists());
+        assert!(!project.join(LICENSE_DIR).join("demo").exists());
+
+        // A symlinked skills_root is an error.
+        let other = tmp.path().join("pack2");
+        std::fs::create_dir_all(&other).unwrap();
+        std::os::unix::fs::symlink(&outside, other.join("skills")).unwrap();
+        let mut app = app_for(&project, &other);
+        let err = prepare(&mut app, &crate::company::Prepared::default()).unwrap_err();
+        assert!(err.to_string().contains("symbolic link"), "{err}");
+    }
+
+    #[test]
+    fn only_markdown_gets_the_marker() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("pack");
+        write(&dir.join("skills/tdd/SKILL.md"), SKILL);
+        let files = [
+            ("data.json", "[1, 2]\n"),
+            ("icon.svg", "<svg xmlns=\"http://www.w3.org/2000/svg\"/>\n"),
+            ("rows.csv", "a,b\n1,2\n"),
+            ("run.mjs", "export const x = 1;\n"),
+        ];
+        for (name, text) in files {
+            write(&dir.join("skills/tdd").join(name), text);
+        }
+        write(&dir.join("LICENSE"), "MIT License\n");
+        let project = tmp.path().join("p");
+        let mut app = app_for(&project, &dir);
+        run_install(&mut app, &project).unwrap();
+        for (name, text) in files {
+            let path = project.join(".claude/skills/tdd").join(name);
+            assert_eq!(std::fs::read_to_string(path).unwrap(), text, "{name}");
+        }
+        assert_eq!(
+            std::fs::read_to_string(project.join(LICENSE_DIR).join("demo/LICENSE")).unwrap(),
+            "MIT License\n"
+        );
+        let skill = std::fs::read_to_string(project.join(".claude/skills/tdd/SKILL.md")).unwrap();
+        assert!(skill.contains("generated_by: agentic"));
+        // Unmarked files are still owned: an unchanged reinstall and removal work by hash.
+        let mut app = app_for(&project, &dir);
+        run_install(&mut app, &project).unwrap();
+        assert!(
+            app.skipped_managed_paths.is_empty(),
+            "{:?}",
+            app.skipped_managed_paths
+        );
+        let mut app = app_for(&project, &dir);
+        app.skill_packs.clear();
+        run_install(&mut app, &project).unwrap();
+        assert!(!project.join(".claude/skills/tdd").exists());
+    }
+
+    #[test]
+    fn invalid_skill_names_are_skipped() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("pack");
+        write(&dir.join("skills/ok/SKILL.md"), SKILL);
+        write(&dir.join("skills/bad name/SKILL.md"), SKILL);
+        let project = tmp.path().join("p");
+        let mut app = app_for(&project, &dir);
+        let prepared = prepare(&mut app, &crate::company::Prepared::default()).unwrap();
+        let names: Vec<&str> = prepared.skills.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, vec!["ok"]);
+        assert!(app.warnings.iter().any(|w| w.contains("invalid name")));
+        assert!(valid_skill_name("a.b_c-1") && !valid_skill_name("..") && !valid_skill_name("a/b"));
+    }
+
+    #[test]
+    fn missing_new_source_is_an_error() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = tmp.path().join("p");
+        let mut app = app_for(&project, &tmp.path().join("missing"));
+        let err = prepare(&mut app, &crate::company::Prepared::default()).unwrap_err();
+        assert!(err.to_string().contains("directory not found"), "{err}");
+    }
+
+    #[test]
+    fn failed_fetch_never_moves_the_lock() {
+        if std::env::var_os("XDG_CACHE_HOME").is_some() {
+            return;
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        let work = pack_dir(tmp.path());
+        let git = init_repo(&work);
+        git(&["init", "-q", "-b", "main"]);
+        git(&["add", "-A"]);
+        git(&["commit", "-qm", "one"]);
+        let first = source::head_commit(&work).unwrap();
+        let project = tmp.path().join("p");
+        let pack_app = |update: Option<Vec<String>>| {
+            let mut app = app_for(&project, &work);
+            app.home = tmp.path().join("home");
+            app.skill_packs[0].source = Source::Git {
+                url: work.to_string_lossy().to_string(),
+                git_ref: "main".into(),
+                subdir: String::new(),
+            };
+            app.skill_packs_update = update;
+            crate::manifest::load_install_settings_from_manifest(
+                &mut app,
+                &project.join(crate::PROJECT_MANIFEST_NAME),
+            )
+            .unwrap();
+            app
+        };
+        let mut app = pack_app(None);
+        run_install(&mut app, &project).unwrap();
+        // A second commit lands in the shared cache through another pack id, then the remote goes away.
+        write(&work.join("skills/new-skill/SKILL.md"), SKILL);
+        git(&["add", "-A"]);
+        git(&["commit", "-qm", "two"]);
+        let mut other = pack_app(None);
+        other.skill_packs[0].id = "other".into();
+        other.skill_packs[0].commit.clear();
+        other.skill_packs[0].exclude = vec!["tdd".into(), "grill-me".into(), "new-skill".into()];
+        let prepared = prepare(&mut other, &crate::company::Prepared::default()).unwrap();
+        assert!(prepared.skills.is_empty());
+        std::fs::rename(&work, tmp.path().join("gone")).unwrap();
+
+        // `skills update` fails clearly and keeps the lock.
+        let mut app = pack_app(Some(vec![]));
+        let err = run_install(&mut app, &project).unwrap_err();
+        assert!(err.to_string().contains("the lock stays at"), "{err}");
+        let lock = |p: &Path| {
+            from_settings(&read_manifest(p)["settings"]["skill_packs"]).unwrap()[0]
+                .commit
+                .clone()
+        };
+        assert_eq!(lock(&project), first);
+        // A plain reinstall checks out the locked commit from the cache, not the cache HEAD.
+        let mut app = pack_app(None);
+        run_install(&mut app, &project).unwrap();
+        assert_eq!(lock(&project), first);
+        assert!(!project.join(".claude/skills/new-skill").exists());
+        assert!(project.join(".claude/skills/tdd/SKILL.md").is_file());
+        // A new pack without a lock cannot be added offline.
+        let mut app = pack_app(None);
+        app.skill_packs[0].id = "fresh".into();
+        app.skill_packs[0].commit.clear();
+        let err = prepare(&mut app, &crate::company::Prepared::default()).unwrap_err();
+        assert!(
+            err.to_string().contains("nothing was installed or saved"),
+            "{err}"
+        );
     }
 }
