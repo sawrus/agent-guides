@@ -238,7 +238,7 @@ upgrade replays it.
 | `docs/agents/issue-tracker.md` | `local`: markdown files under `.scratch/<feature>/`. `github`: the `gh` CLI. `gitlab`: the `glab` CLI (issues, notes, labels, merge requests). Each variant also has the wayfinder operations. |
 | `docs/agents/triage-labels.md` | The five default triage labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). `to-spec` and `to-tickets` apply `ready-for-agent`. |
 | `docs/agents/domain.md` | Single-context layout: `GLOSSARY.md` and `docs/adr/` at the root, and the rules for reading them. The skills create `GLOSSARY.md` and the ADRs when needed. |
-| `AGENTS.md` (generated section `## Agent skills`) | One line each for the tracker, the labels, and the domain docs, with links to the three files. About 150 tokens of always-on context. In `--agents-md keep` mode the section is in `.agent/AGENTS.md`. |
+| `AGENTS.md` (generated section `## Agent skills`) | One line each for the tracker, the labels, and the domain docs, with links to the three files. About 150 tokens of always-on context. The section sits right after the header, between `<!-- agentic:agent-skills:begin -->` and `<!-- agentic:agent-skills:end -->`, so your edits at the end of AGENTS.md merge without a conflict on upgrade. When AGENTS.md already has its own `## Agent skills` heading outside this block, agentic keeps yours, does not add a second one, and prints a warning. In `--agents-md keep` mode the section is in `.agent/AGENTS.md`. |
 
 agentic also installs its own small skill `setup-matt-pocock-skills` on every host, next to the pack skills
 (`disable-model-invocation: true`, agentic marker, manifest source `skill-pack:pocock/setup-matt-pocock-skills/SKILL.md`).

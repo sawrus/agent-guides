@@ -71,7 +71,31 @@ pub fn files(app: &App) -> Vec<(&'static str, String, &'static str)> {
     ]
 }
 
-/// The `## Agent skills` section of the generated AGENTS.md, in the shape of the upstream setup skill.
+/// First line of the managed `## Agent skills` block in the generated AGENTS.md.
+pub const SECTION_BEGIN: &str = "<!-- agentic:agent-skills:begin -->";
+/// Last line of that block.
+pub const SECTION_END: &str = "<!-- agentic:agent-skills:end -->";
+
+/// True when `text` has a `## Agent skills` heading outside the agentic block: the project wrote its
+/// own section, and agentic must not add a second one.
+pub fn has_own_section(text: &str) -> bool {
+    let mut inside = false;
+    for line in text.lines() {
+        let line = line.trim_end();
+        if line == SECTION_BEGIN {
+            inside = true;
+        } else if line == SECTION_END {
+            inside = false;
+        } else if !inside && line == "## Agent skills" {
+            return true;
+        }
+    }
+    false
+}
+
+/// The `## Agent skills` section of the generated AGENTS.md, in the shape of the upstream setup skill,
+/// between [`SECTION_BEGIN`] and [`SECTION_END`]. The generator puts it right after the header, so
+/// that project edits at the end of the file merge without a conflict.
 pub fn agents_section(app: &App) -> Option<String> {
     if !active(app) {
         return None;
@@ -82,11 +106,11 @@ pub fn agents_section(app: &App) -> Option<String> {
         _ => "Issues live as markdown files under `.scratch/<feature>/`.",
     };
     Some(format!(
-        "## Agent skills\n\n\
+        "{SECTION_BEGIN}\n## Agent skills\n\n\
          ### Issue tracker\n\n{summary} See `docs/agents/issue-tracker.md`.\n\n\
          ### Triage labels\n\nDefault vocabulary: needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix. \
          See `docs/agents/triage-labels.md`.\n\n\
-         ### Domain docs\n\nSingle-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.\n"
+         ### Domain docs\n\nSingle-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.\n{SECTION_END}\n"
     ))
 }
 

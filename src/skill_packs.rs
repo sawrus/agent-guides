@@ -1741,7 +1741,10 @@ mod tests {
                 .count();
             assert_eq!(setup, 3);
             let section_text = crate::pocock_setup::agents_section(&app).unwrap();
-            assert!(section_text.starts_with("## Agent skills\n"));
+            assert!(section_text.starts_with(&format!(
+                "{}\n## Agent skills\n",
+                crate::pocock_setup::SECTION_BEGIN
+            )));
             assert!(section_text.contains(section), "{section_text}");
             assert!(section_text.len() < 900);
         }
@@ -1808,6 +1811,74 @@ mod tests {
             std::fs::read_to_string(project.join("docs/agents/domain.md")).unwrap(),
             user
         );
+    }
+
+    #[test]
+    fn pocock_agents_section_merges_with_user_edits_at_the_end() {
+        // The section was appended at the end of AGENTS.md: with a user edit there the merge
+        // conflicted and the whole file was replaced (the edit only in the backup).
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        let project = tmp.path().join("p");
+        let home = tmp.path().join("home");
+        full_install(&project, &home);
+        let agents = project.join("AGENTS.md");
+        let mut text = std::fs::read_to_string(&agents).unwrap();
+        text.push_str("\n## Our team\n\nAlways run make check.\n");
+        std::fs::write(&agents, &text).unwrap();
+        let packs = pocock_app(&project, &dir, None).skill_packs;
+        for tracker in ["local", "github"] {
+            let (result, app) = synchronize_with(&project, &home, packs.clone(), Some(tracker));
+            result.unwrap();
+            let text = std::fs::read_to_string(&agents).unwrap();
+            assert!(text.contains("Always run make check."), "{tracker}");
+            assert_eq!(text.matches("## Agent skills").count(), 1, "{tracker}");
+            assert_eq!(
+                text.matches(crate::pocock_setup::SECTION_BEGIN).count(),
+                1,
+                "{tracker}"
+            );
+            assert!(
+                !app.upgrade_actions
+                    .iter()
+                    .any(|a| a.contains("Replaced conflict")),
+                "{tracker}: {:?}",
+                app.upgrade_actions
+            );
+        }
+        assert!(std::fs::read_to_string(&agents)
+            .unwrap()
+            .contains("GitHub Issues"));
+    }
+
+    #[test]
+    fn pocock_agents_section_is_not_added_next_to_the_users_own() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        let project = tmp.path().join("p");
+        let home = tmp.path().join("home");
+        full_install(&project, &home);
+        let agents = project.join("AGENTS.md");
+        let mut text = std::fs::read_to_string(&agents).unwrap();
+        text.push_str("\n## Agent skills\n\nIssues live in Jira.\n");
+        std::fs::write(&agents, &text).unwrap();
+        let packs = pocock_app(&project, &dir, None).skill_packs;
+        let (result, app) = synchronize_with(&project, &home, packs, None);
+        result.unwrap();
+        let text = std::fs::read_to_string(&agents).unwrap();
+        assert_eq!(text.matches("## Agent skills").count(), 1);
+        assert!(text.contains("Issues live in Jira."));
+        assert!(!text.contains(crate::pocock_setup::SECTION_BEGIN));
+        assert!(app
+            .warnings
+            .iter()
+            .any(|w| w.contains("has its own `## Agent skills` section")));
+        assert!(crate::pocock_setup::has_own_section(&text));
+        assert!(!crate::pocock_setup::has_own_section(&format!(
+            "{}\n## Agent skills\n{}\n",
+            crate::pocock_setup::SECTION_BEGIN,
+            crate::pocock_setup::SECTION_END
+        )));
     }
 
     #[test]
