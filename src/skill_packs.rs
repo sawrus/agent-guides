@@ -975,6 +975,15 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
     }
     if let Some(setup_id) = crate::pocock_setup::pack_id(app).map(str::to_string) {
         let skill = crate::pocock_setup::SETUP_SKILL;
+        // The stand-in skill is user-invoked, so it gets the same host entry points as pack skills.
+        let stub = PackSkill {
+            pack: setup_id.clone(),
+            name: skill.to_string(),
+            files: vec![(
+                "SKILL.md".to_string(),
+                crate::pocock_setup::SETUP_SKILL_TEXT.to_string(),
+            )],
+        };
         for (host, dir) in &dirs {
             let text = adapt_for_host(
                 host,
@@ -986,6 +995,16 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
             desired.insert(app.project_rel_path(&dest));
             let source = source_ref(&setup_id, &format!("{skill}/SKILL.md"));
             write(app, &text, &dest, &source)?;
+            for entry in host_entry_files(host, dir, &stub) {
+                let dest = project_dir.join(&entry.path);
+                desired.insert(app.project_rel_path(&dest));
+                write(
+                    app,
+                    &entry.content,
+                    &dest,
+                    &source_ref(&stub.pack, &entry.source),
+                )?;
+            }
         }
     }
     let setup_id = crate::pocock_setup::pack_id(app)
@@ -2182,6 +2201,17 @@ mod tests {
             assert!(text.contains("disable-model-invocation: true"));
             assert!(text.contains("agentic:"), "marker");
         }
+        // The stand-in skill is user-invoked: it gets the OpenCode command and the Codex policy.
+        let command =
+            std::fs::read_to_string(project.join(".opencode/commands/setup-matt-pocock-skills.md"))
+                .unwrap();
+        assert!(command.contains("Load the skill `setup-matt-pocock-skills`"));
+        assert!(command.contains("agentic:"), "marker");
+        let policy = std::fs::read_to_string(
+            project.join(".agents/skills/setup-matt-pocock-skills/agents/openai.yaml"),
+        )
+        .unwrap();
+        assert_eq!(policy, "policy:\n  allow_implicit_invocation: false\n");
     }
 
     #[test]
@@ -2603,6 +2633,12 @@ mod tests {
         assert!(!project.join("docs/agents").exists());
         assert!(!project
             .join(".claude/skills/setup-matt-pocock-skills")
+            .exists());
+        assert!(!project
+            .join(".opencode/commands/setup-matt-pocock-skills.md")
+            .exists());
+        assert!(!project
+            .join(".agents/skills/setup-matt-pocock-skills")
             .exists());
         assert!(manifest_files(&read_manifest(&project), None).is_empty());
         assert!(read_manifest(&project)["settings"]

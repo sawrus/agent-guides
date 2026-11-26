@@ -9,6 +9,8 @@
   only for `$<name>` or `/skills`. Claude Code and current OpenCode read the frontmatter key themselves. The
   upstream skill files stay unchanged; the manifest records the new files, and `skills remove|update` and
   `agentic upgrade` remove them with the skill. A skill that ships its own `agents/openai.yaml` keeps it.
+- The agentic skill `setup-matt-pocock-skills` of the `pocock` preset gets the same entry points: the OpenCode
+  command and the Codex `agents/openai.yaml`.
 
 ## v13.0.0
 

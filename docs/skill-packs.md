@@ -160,6 +160,8 @@ Rules:
   [Layout](#layout)).
 - A skill that ships its own `agents/openai.yaml` keeps that file. When the file does not set
   `allow_implicit_invocation`, install prints a warning: Codex can start the skill without `$<name>`.
+- The OpenCode command is Markdown and gets the agentic marker. `agents/openai.yaml` is written as it is,
+  without a marker; the manifest hash tracks it (only Markdown pack files get the marker).
 - The new files have `marker: skill-pack` and the sources `skill-pack:<id>/<name>/@opencode/command.md` and
   `skill-pack:<id>/<name>/@codex/agents/openai.yaml`. `agentic skills list` counts them with their skill. Remove
   and update remove them with the skill.
@@ -288,7 +290,9 @@ agentic also installs its own small skill `setup-matt-pocock-skills` on every ho
 (`disable-model-invocation: true`, agentic marker, manifest source `skill-pack:pocock/setup-matt-pocock-skills/SKILL.md`).
 The upstream skills still say "run `/setup-matt-pocock-skills`"; the text stays unchanged. This skill tells the
 agent to read `docs/agents/*.md` and to run `agentic skills add pocock --issue-tracker ...` to change the setup.
-It is not the upstream skill, and `skills remove pocock` removes it. The upstream `setup-matt-pocock-skills` is
+It is not the upstream skill, and `skills remove pocock` removes it. Like a user-invoked pack skill, it gets the
+host entry points from [Hosts](#hosts): `.opencode/commands/setup-matt-pocock-skills.md` and
+`.agents/skills/setup-matt-pocock-skills/agents/openai.yaml`. The upstream `setup-matt-pocock-skills` is
 never installed, even when `--select` names it. Another pack skill or company skill with that name is an error:
 exclude it from the other pack, or rename the company skill.
 
