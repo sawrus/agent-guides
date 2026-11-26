@@ -145,6 +145,69 @@ pub fn migrate_renamed_roles(app: &mut App, project: &Path) -> crate::Result<()>
     Ok(())
 }
 
+/// v9.0.0 removed the MemPalace integration. Earlier releases wrote a `mempalace` MCP server into host
+/// configs and a `.mempalaceignore` file. Remove the config keys the manifest records as agentic-owned and the
+/// ignore file when the user did not edit it. Unrecorded entries stay; `UPGRADE.md` lists them for manual removal.
+pub fn remove_mempalace(app: &mut App, project: &Path) -> crate::Result<()> {
+    if app.dry_run {
+        return Ok(());
+    }
+    let manifest: Value = std::fs::read_to_string(app.project_manifest_path())
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or(Value::Null);
+    if let Some(owned) = manifest["config_owned_keys"].as_object() {
+        for (rel, keys) in owned {
+            let keys: Vec<String> = keys
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .filter(|key| is_mempalace_key(key))
+                .map(str::to_owned)
+                .collect();
+            if keys.is_empty() {
+                continue;
+            }
+            // Global configs (absolute paths) and symlinked paths stay for manual removal.
+            let Ok(path) = crate::project_inventory::safe_path(project, rel) else {
+                continue;
+            };
+            if path.is_file() {
+                crate::upgrade_config::remove_keys(&path, &keys)?;
+                app.upgrade_actions
+                    .push(format!("Removed MemPalace MCP server from {rel}"));
+            }
+            app.config_owned_keys.entry(rel.clone()).or_default();
+            let released = app.config_released_keys.entry(rel.clone()).or_default();
+            for key in keys {
+                crate::util::unique_append(released, &key);
+            }
+        }
+    }
+    if crate::project_inventory::safe_path(project, MEMPALACE_IGNORE).is_ok_and(|p| p.is_file())
+        && manifest_item(app, MEMPALACE_IGNORE).is_some()
+    {
+        remove_if_unmodified(app, project, MEMPALACE_IGNORE, "MemPalace ignore file")?;
+    }
+    Ok(())
+}
+
+const MEMPALACE_IGNORE: &str = ".mempalaceignore";
+
+fn is_mempalace_key(key: &str) -> bool {
+    [
+        "/mcp/mempalace",
+        "/mcpServers/mempalace",
+        "mcp_servers.mempalace",
+    ]
+    .iter()
+    .any(|prefix| {
+        key.strip_prefix(prefix)
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with(['/', '.']))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -208,5 +271,60 @@ mod tests {
         assert!(app2
             .skipped_managed_paths
             .contains(&".claude/agents/memory_curator.md".to_string()));
+    }
+
+    #[test]
+    fn removed_mempalace_entries_are_cleaned() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        let mut app = App::new().unwrap();
+        app.project_dir = root.to_string_lossy().to_string();
+        std::fs::write(
+            root.join(".mcp.json"),
+            r#"{"mcpServers":{"mempalace":{"command":"mempalace-mcp"},"custom":{"command":"x"}}}"#,
+        )
+        .unwrap();
+        std::fs::create_dir_all(root.join(".codex")).unwrap();
+        std::fs::write(
+            root.join(".codex/config.toml"),
+            "[mcp_servers.mempalace]\ncommand = \"mempalace-mcp\"\nstartup_timeout_sec = 30\n\n[mcp_servers.mine]\ncommand = \"mine\"\n",
+        )
+        .unwrap();
+        let ignore = "target/\n";
+        std::fs::write(root.join(".mempalaceignore"), ignore).unwrap();
+        let manifest = json!({
+            "config_owned_keys": {
+                ".mcp.json": ["/mcpServers/mempalace/command"],
+                ".codex/config.toml": ["mcp_servers.mempalace"],
+                "/outside/mcp_config.json": ["/mcpServers/mempalace/command"]
+            },
+            "managed_files": [{
+                "path": ".mempalaceignore",
+                "content_hash": crate::util::sha256_hex(ignore.as_bytes()),
+                "marker": "config"
+            }]
+        });
+        std::fs::write(
+            root.join(crate::PROJECT_MANIFEST_NAME),
+            manifest.to_string(),
+        )
+        .unwrap();
+        remove_mempalace(&mut app, root).unwrap();
+        let mcp: Value =
+            serde_json::from_str(&std::fs::read_to_string(root.join(".mcp.json")).unwrap())
+                .unwrap();
+        assert_eq!(mcp, json!({"mcpServers": {"custom": {"command": "x"}}}));
+        let toml = std::fs::read_to_string(root.join(".codex/config.toml")).unwrap();
+        assert!(!toml.contains("mempalace"));
+        assert!(toml.contains("[mcp_servers.mine]"));
+        assert!(!root.join(".mempalaceignore").exists());
+        assert_eq!(
+            app.config_released_keys[".codex/config.toml"],
+            vec!["mcp_servers.mempalace"]
+        );
+        assert!(!app
+            .config_released_keys
+            .contains_key("/outside/mcp_config.json"));
+        assert!(!is_mempalace_key("/mcp/mempalace-other"));
     }
 }

@@ -178,3 +178,27 @@ points:
    The `team` profile is unchanged.
 4. **Core text.** `AGENTS.md` now asks for a reviewer subagent after a multi-module diff only when one is
    available (the host's native reviewer or an installed one).
+
+## Migrating to v9.0.0
+
+agentic no longer supports MemPalace. The `mempalace` MCP integration, its TUI row, its install and upgrade steps
+(`pip install mempalace`, `mempalace init`, `mempalace mine`), and the MemPalace section of `MEMORY.md` are gone.
+Context7 and the other MCP servers work as before. Run `agentic upgrade` in each project, then check these points:
+
+1. **Environment variables.** `AGENTIC_ENABLE_MEMPALACE`, `AGENTIC_MEMPALACE_SETUP`, and
+   `AGENTIC_MEMPALACE_TIMEOUT_SECONDS` have no effect. `AGENTIC_ENABLE_MCPS=mempalace` prints a warning and is
+   ignored. Remove them from scripts and CI.
+2. **Manifest.** A `.agentic.json` that lists `mempalace` in `settings.mcp_integrations` prints
+   `MemPalace integration was removed in agentic v9.0.0`. The upgrade drops the entry and keeps the other settings.
+3. **MCP server entries.** The upgrade removes the `mempalace` server that agentic wrote, when `.agentic.json`
+   records it in `config_owned_keys`: `mcp.mempalace` in `opencode.json` and `.opencode/opencode.json`,
+   `mcpServers.mempalace` in `.mcp.json`, `.cursor/mcp.json`, `.gemini/settings.json`, and `.kilocode/mcp.json`,
+   and `[mcp_servers.mempalace]` in `.codex/config.toml`. Other servers and your own keys stay. Remove an entry by
+   hand when the manifest does not record it (installs from releases before key ownership tracking) and in
+   `~/.gemini/antigravity/mcp_config.json`.
+4. **`.mempalaceignore`.** The upgrade removes the file when agentic wrote it and you did not edit it. An edited
+   or unmanaged file stays; delete it if you no longer use MemPalace.
+5. **MemPalace data.** agentic never deletes the MemPalace package or its stored memory. Uninstall it yourself
+   (for example `pip uninstall mempalace`) if you do not use it elsewhere.
+6. **`memory-curator`.** The post-task reviewer stays. It no longer calls `mempalace_search`; it assesses docs and
+   the memory evidence in the review packet only.

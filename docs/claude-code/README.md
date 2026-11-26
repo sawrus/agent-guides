@@ -25,7 +25,7 @@ agentic install --project-dir <dir> --agent-os claude --areas software \
 | `.claude/skills/<name>/SKILL.md` | Specialization skills | Each `name` matches its directory; Claude loads a skill by its description |
 | `.claude/commands/<id>.md` | Thin wrapper per workflow (`description`, `argument-hint`) | Runs `.agent/workflows/<id>.md`, which stays the single source. A company workflow gets the same wrapper and replaces the pack command with the same id. A role-neutral workflow (no `roles`, no `execution.initiator`) runs in the main session: `lean` does every step itself; `team` sends each step to the installed role agent that fits it (`developer` for code, `qa` for verification, `devops-engineer` for infrastructure), one subagent per step at most |
 | `.claude/settings.json` | `agent: product-owner`, `enabledMcpjsonServers`, optional JEV and Telegram hooks | Each entry is ownership-tracked (see below) |
-| `.mcp.json` | Selected MCP servers (Context7, MemPalace, Playwright, …) | Same registry as OpenCode and Codex |
+| `.mcp.json` | Selected MCP servers (Context7, Playwright, …) | Same registry as OpenCode and Codex |
 | `.agent/{rules,skills,workflows}` | Shared copies for every host | Workflows are read from here |
 
 ## SDLC team

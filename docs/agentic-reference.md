@@ -108,8 +108,7 @@ agent-guides/
 knowledge base (areas, extensions) is embedded into the binary.
 
 - required: nothing (the binary works standalone)
-- optional: `python3` + `pip` (only for the MemPalace integration), agent
-  binaries such as `codex`, `opencode`, `claude`, `gemini` (for doctor smoke
+- optional: agent binaries such as `codex`, `opencode`, `claude`, `gemini` (for doctor smoke
   checks and actual agent work)
 
 Build from source (Rust toolchain required):
@@ -243,8 +242,8 @@ make blackbox-claude   # paid real-CLI check; also blackbox-codex, blackbox-open
 | Rules (auto-loaded) | ☑️ | ☑️ ¹ | ✅ | ☑️ ¹ | ☑️ |
 | Skills | ☑️ | ☑️ ¹ | ✅ | ☑️ ¹ | ☑️ |
 | Workflows as commands | ✅ | ✅ ¹ | ✅ | ☑️ ¹ | ☑️ ¹ |
-| MCP servers (Context7, MemPalace, Playwright, …) | ☑️ | ☑️ | ☑️ | ☑️ | ☑️ (Cursor, Kilocode) |
-| Memory guidance (`MEMORY.md`, MemPalace) | ☑️ | ☑️ | ✅ | ☑️ | ☑️ |
+| MCP servers (Context7, Playwright, …) | ☑️ | ☑️ | ☑️ | ☑️ | ☑️ (Cursor, Kilocode) |
+| Memory guidance (`MEMORY.md`) | ☑️ | ☑️ | ✅ | ☑️ | ☑️ |
 | Post-task review (`instruction-reviewer` + `memory-curator`) | ✅ | ✅ | ✅ | ☑️ | ➖ |
 | Model profiles per role | ☑️ (openai, githubcopilot, user) | ☑️ (TOML defaults) | ☑️ (`anthropic`) | ➖ | ➖ |
 | Telegram: task finished | ✅ (plugin) ² | ✅ (hooks) | ✅ (hooks) | ➖ | ➖ |
@@ -389,7 +388,6 @@ After a `keep` install, agentic prints the generated paths that the project usua
 - `youtube-transcript` (safe): adds YouTube transcript lookup through a local MCP server.
 - `docker-mcp` (dangerous): adds Docker MCP Gateway as the generated `docker` MCP server.
 - `context7` (safe): adds a remote MCP server for up-to-date framework, library, SDK, and API documentation.
-- `mempalace` (sensitive): adds a local memory MCP server for project context discovery and reuse.
 - `anydb` (dangerous): adds database access through AnyDB MCP.
 
 ### Telegram notifications (OpenCode, Claude Code, Codex)

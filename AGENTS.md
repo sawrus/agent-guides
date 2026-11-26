@@ -48,6 +48,6 @@ workflows.
 
 ## Optional layers
 
-- Memory providers (Context7, MemPalace): read `MEMORY.md` only when those MCP tools are available.
+- Memory provider (Context7): read `MEMORY.md` only when its MCP tools are available.
 - Post-task review: read `REVIEW_PIPELINE.md` only for a workflow with a Post-task review hook, after successful
   delivery.

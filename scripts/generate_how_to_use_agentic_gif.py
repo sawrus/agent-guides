@@ -95,7 +95,7 @@ def record_tui(agentic: str, work: Path, project: Path) -> list[tuple[Image.Imag
     pid, fd = pty.fork()
     if pid == 0:
         env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"), "TERM": "xterm-256color",
-               "AGENTIC_DOCTOR": "0", "AGENTIC_MEMPALACE_SETUP": "skip", "AGENTIC_TELEGRAM": "off"}
+               "AGENTIC_DOCTOR": "0", "AGENTIC_TELEGRAM": "off"}
         os.chdir(work)
         os.execve(agentic, [agentic, "tui"], env)
     fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", ROWS, COLS, 0, 0))

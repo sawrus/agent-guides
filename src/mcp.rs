@@ -8,7 +8,7 @@ use crate::util;
 use serde_json::{json, Map, Value};
 use std::path::{Path, PathBuf};
 
-pub const MCP_REGISTRY_IDS: [&str; 9] = [
+pub const MCP_REGISTRY_IDS: [&str; 8] = [
     "opencode-docs",
     "playwright",
     "kubernetes",
@@ -16,7 +16,6 @@ pub const MCP_REGISTRY_IDS: [&str; 9] = [
     "docker-mcp",
     "context7",
     "jev",
-    "mempalace",
     "anydb",
 ];
 pub const MCP_NONE_OPTION: &str = "None / skip";
@@ -106,16 +105,6 @@ pub fn registry_entry(id: &str) -> Option<McpEntry> {
             codex_startup_timeout_sec: None,
             codex_tool_timeout_sec: Some(60),
         },
-        "mempalace" => McpEntry {
-            id: "mempalace",
-            server: "mempalace",
-            command: "mempalace-mcp",
-            args: &[],
-            remote: None,
-            codex_network: false,
-            codex_startup_timeout_sec: Some(30),
-            codex_tool_timeout_sec: None,
-        },
         "anydb" => McpEntry {
             id: "anydb",
             server: "anydb",
@@ -140,7 +129,6 @@ pub fn mcp_description(id: &str) -> &'static str {
         "docker-mcp" => "Docker MCP Gateway",
         "context7" => "Fresh library documentation",
         "jev" => "JEV decisions (native hooks)",
-        "mempalace" => "Persistent project memory",
         "anydb" => "Database access MCP",
         _ => "MCP server",
     }
@@ -164,6 +152,13 @@ pub fn mcp_id_from_display_row(row: &str) -> String {
 }
 
 pub fn add_selected_mcp(app: &mut App, id: &str) {
+    if id == "mempalace" {
+        ui::warn(
+            app,
+            "MemPalace integration was removed in agentic v9.0.0; ignoring it (see UPGRADE.md)",
+        );
+        return;
+    }
     if registry_entry(id).is_none() {
         ui::warn(app, &format!("Ignoring unknown MCP integration '{id}'"));
         return;
@@ -187,13 +182,6 @@ pub fn sync_selected_mcps_from_env(app: &mut App) {
             add_selected_mcp(app, "context7");
         }
     }
-    let mp = app.enable_mempalace_env.clone();
-    if let Some(value) = mp {
-        let v = value.trim().to_lowercase();
-        if v == "y" || v == "yes" {
-            add_selected_mcp(app, "mempalace");
-        }
-    }
     if app.jev_enabled == Some(false) {
         app.selected_mcps.retain(|id| id != "jev");
     }
@@ -204,11 +192,6 @@ pub fn sync_legacy_mcp_env_from_selected(app: &mut App) {
         app.enable_context7_env = Some("y".to_string());
     } else if app.enable_context7_env.is_none() {
         app.enable_context7_env = Some("n".to_string());
-    }
-    if app.selected_mcp_contains("mempalace") {
-        app.enable_mempalace_env = Some("y".to_string());
-    } else if app.enable_mempalace_env.is_none() {
-        app.enable_mempalace_env = Some("n".to_string());
     }
 }
 
@@ -222,7 +205,6 @@ pub fn detect_configured_mcps(project_dir: &Path, home: &Path) -> Vec<String> {
         ("docker", "docker-mcp"),
         ("MCP_DOCKER", "docker-mcp"),
         ("context7", "context7"),
-        ("mempalace", "mempalace"),
         ("anydb", "anydb"),
     ];
     let mut found: Vec<String> = Vec::new();
@@ -491,7 +473,7 @@ pub fn configure_selected_mcps_if_needed(app: &mut App) -> crate::Result<()> {
     let generic: Vec<String> = app
         .selected_mcps
         .iter()
-        .filter(|id| !matches!(id.as_str(), "context7" | "mempalace" | "jev"))
+        .filter(|id| !matches!(id.as_str(), "context7" | "jev"))
         .cloned()
         .collect();
     if generic.is_empty() {
@@ -850,7 +832,6 @@ mod tests {
         app.selected_mcps = vec!["context7".into()];
         sync_legacy_mcp_env_from_selected(&mut app);
         assert_eq!(app.enable_context7_env.as_deref(), Some("y"));
-        assert_eq!(app.enable_mempalace_env.as_deref(), Some("n"));
     }
 
     #[test]

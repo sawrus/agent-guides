@@ -15,7 +15,6 @@ fn agentic(home: &Path) -> Command {
         .env("AGENTIC_DOCTOR", "0")
         .env_remove("AGENTIC_ENABLE_MCPS")
         .env_remove("AGENTIC_ENABLE_CONTEXT7")
-        .env_remove("AGENTIC_ENABLE_MEMPALACE")
         .env_remove("AGENTIC_FORCE_INTERACTIVE")
         .env_remove("CONTEXT7_API_KEY");
     cmd
@@ -852,7 +851,6 @@ fn install_upgrade_fixture(project: &std::path::Path, home: &std::path::Path, ag
         .env("HOME", home)
         .env("XDG_CONFIG_HOME", home.join(".config"))
         .env("AGENTIC_ENABLE_CONTEXT7", "n")
-        .env("AGENTIC_ENABLE_MEMPALACE", "n")
         .env_remove("AGENTIC_FORCE_INTERACTIVE")
         .env_remove("AGENTIC_ENABLE_MCPS")
         .assert()

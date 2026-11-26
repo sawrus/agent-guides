@@ -33,7 +33,6 @@ self-contained cross-platform Rust binary.
 | Hashing | `shasum`/`sha256sum` | `sha2` crate |
 | TUI | `fzf` menus with numbered fallback | fullscreen `ratatui` + `crossterm`, same wizard steps |
 | Doctor timeouts | hand-rolled `kill` loops | native `try_wait` polling with kill |
-| MemPalace | pip install + venv fallback | same, optional feature: python3/pip checked only when enabled |
 | Version | package.json via `sed` | `CARGO_PKG_VERSION` (kept in sync with package.json) |
 
 ## Module map (`src/`)
@@ -44,7 +43,7 @@ self-contained cross-platform Rust binary.
 - `kb.rs` — knowledge base abstraction (Embedded / Checkout).
 - `theme.rs` — dark/light/auto (`COLORFGBG`), `NO_COLOR`, ANSI palettes.
 - `ui.rs` — `log/warn/error/out`, run log file, changed-paths report.
-- `util.rs` — csv split, sha256, path normalization, wing sanitizer.
+- `util.rs` — csv split, sha256, path normalization, `run_with_timeout`.
 - `config.rs` — `~/.config/agentic/{config,config.json,opencode-plugins.json}`.
 - `markers.rs` — marker injection (md frontmatter with `created_by`
   preservation, JSON reserialize, `//`/`#` comments, shebang handling).
@@ -56,12 +55,12 @@ self-contained cross-platform Rust binary.
   `enable_codex_memories` (byte-compatible with Python output).
 - `mcp.rs` — 8-entry registry, detection of configured MCPs, per-agent JSON and
   codex TOML writers, context7 writers, legacy `mcpServers`→`mcp` migration,
-  env sync (`AGENTIC_ENABLE_MCPS`/`_CONTEXT7`/`_MEMPALACE`).
+  env sync (`AGENTIC_ENABLE_MCPS`/`_CONTEXT7`).
 - `agentsmd.rs` — dest-dir mapping per agent OS, AGENTS.md/MEMORY.md generation.
 - `install.rs` — 12-step `run_install` pipeline, validation, opencode
   plugins/profile config, report, missing-binary guides, changelog section.
-- `mempalace.rs` — optional integration: pip install, PEP 668 venv fallback,
-  init/mine with timeout, config writers, `.mempalaceignore`.
+- `legacy.rs` — migration of artifacts from earlier releases (renamed roles, npm plugin refs, the MemPalace
+  entries removed in v9.0.0).
 - `mapper.rs` — agent-model-mapper: frontmatter roles, model discovery from
   opencode config/auth/models-cache, mapping writer + state file.
 - `doctor.rs` — smoke checks for codex/opencode/claude/gemini, isolated
@@ -74,7 +73,7 @@ self-contained cross-platform Rust binary.
 - `selfinstall.rs` — copy binary to `~/.local/bin`, PATH export in shell rc,
 - `upgrade.rs` — GitHub Releases latest → version compare → download asset
   `agentic-<arch>-<os>.{tar.gz,zip}` → executable/version validation → replace → new-process project re-sync
-  (replay install + mempalace graph refresh).
+  (replay install).
 
 ## Behavior parity contracts
 
@@ -84,9 +83,9 @@ self-contained cross-platform Rust binary.
 2. No args: interactive TTY (or `AGENTIC_FORCE_INTERACTIVE=1`) → TUI; else
    usage + exit 1.
 3. Env vars honored: `CONTEXT7_API_KEY`, `AGENTIC_ENABLE_MCPS`,
-   `AGENTIC_ENABLE_CONTEXT7`, `AGENTIC_ENABLE_MEMPALACE`, `AGENTIC_DOCTOR`,
+   `AGENTIC_ENABLE_CONTEXT7`, `AGENTIC_DOCTOR`,
    `AGENTIC_DOCTOR_KEEP_TMP`, `AGENTIC_DOCTOR_TIMEOUT_SECONDS`,
-   `AGENTIC_MEMPALACE_*`, `AGENTIC_OPENCODE_PROFILE`,
+   `AGENTIC_OPENCODE_PROFILE`,
    `AGENTIC_PLATFORM_OVERRIDE`, `NO_COLOR`, `COLORFGBG`, `XDG_*`.
 4. Install pipeline order identical to bash `run_install`.
 5. Manifest: same JSON shape, sorted `managed_files`, `created_at`/`created_by`
@@ -150,7 +149,7 @@ self-contained cross-platform Rust binary.
 - [x] copy_dir_contents, extensions, specialization assets
 - [x] AGENTS.md/MEMORY.md generation, dest mapping
 - [x] MCP registry/writers, context7, codex TOML editing
-- [x] MemPalace optional integration
+- [x] MemPalace optional integration (removed in v9.0.0)
 - [x] agent-model-mapper
 - [x] Doctor smoke checks
 - [x] self-install
@@ -160,7 +159,7 @@ self-contained cross-platform Rust binary.
 - [x] Integration tests (`tests/cli.rs`)
 - [x] Real-run blackbox e2e (`tests/e2e_blackbox.rs`, `make e2e`): fake agent
       binaries on PATH exercise doctor pass/timeout/failure/fatal paths,
-      MemPalace setup/skip/timeout, replay, profiles, manifest hash integrity
+      replay, profiles, manifest hash integrity, removal of MemPalace entries
 - [x] Coverage 81.5% lines / 83.3% regions, gate via `make test-coverage`
 - [x] Makefile rewrite (`build/test/e2e/test-coverage/lint/fmt/install` +
       preserved content tooling)

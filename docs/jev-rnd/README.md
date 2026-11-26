@@ -313,7 +313,7 @@ follow-up; полная схема summary и выбор отдельных acti
 
 В существующий registry `src/mcp.rs` добавить `jev` как sensitive outbound
 integration, выключенный по умолчанию. TUI использует этот registry и показывает
-JEV рядом с Context7/MemPalace. После включения выбрать:
+JEV рядом с Context7. После включения выбрать:
 
 1. Provider: hosted / official TypeSafe.
 2. Mode: observe (решения логируются) / assist (advisory) / auto (только
@@ -451,7 +451,7 @@ acceptance. Official provider пока без оплаченных real calls: �
 - Skill/workflow routing из короткого локального shortlist, включая none/clarify;
   не читать весь каталог на каждый prompt.
   [Skill suggestion](https://docs.typesafe.ai/cookbooks/skill_suggestion).
-- Rerank Context7/MemPalace результатов по relevance/contradiction, сохраняя
+- Rerank Context7 результатов по relevance/contradiction, сохраняя
   обязательные guidance и conflicts. Это фильтр поверх retrieval, не замена поиска.
   [RAG passage classification](https://docs.typesafe.ai/cookbooks/classifying_rag_passages).
 - Durable-fact triage/canonical-home для memory-curator; executor сохраняет

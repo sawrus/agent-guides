@@ -20,7 +20,6 @@ mod manifest;
 mod mapper;
 mod markers;
 mod mcp;
-mod mempalace;
 mod notify;
 mod profile;
 mod project_inventory;

@@ -15,7 +15,7 @@ the canonical documentation; no additional memory copy is recommended.
    docs/subscriptions/README.md.” Keep this reference only if its retrieval benefit
    is confirmed; otherwise list the duplicate as a delete candidate for later review.
 
-## MemPalace assessment
+## Memory assessment
 
 The supplied lookup found the relevant contract but duplicated docs content.
 No additional search was needed. No memory writes or deletions were performed.

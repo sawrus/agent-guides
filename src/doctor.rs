@@ -2,8 +2,8 @@
 
 use crate::app::App;
 use crate::install::get_agent_binary_name;
-use crate::mempalace::run_with_timeout;
 use crate::ui;
+use crate::util::run_with_timeout;
 use regex::Regex;
 use std::path::{Path, PathBuf};
 use std::process::Command;

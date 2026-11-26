@@ -47,7 +47,7 @@ or unavailable provider does not block accepted delivery or trigger retries.
 
 Both specialists receive the same bounded packet built from existing task
 evidence: objectives/result, instructions actually used, relevant diff and docs,
-QA/sign-off, observed friction, and available tool/MemPalace activity. Missing
+QA/sign-off, observed friction, and available tool and memory activity. Missing
 evidence is named explicitly. No full transcript, repository scan, or memory
 inventory is required.
 
@@ -58,12 +58,11 @@ Useful security, acceptance, and operational constraints must be preserved.
 
 `memory-curator` checks changed/consulted docs for sufficiency, freshness,
 duplication, contradictions, and retrieval. It assigns each durable fact a
-canonical home and evaluates observed MemPalace use. Existing docs should not
-be copied into memory without a specific retrieval benefit. At most two extra
-narrow searches (`limit: 3`, known project wing) may verify concrete findings;
-unavailable MCP and missing history are limitations, not evidence of clean memory.
-The curator never writes/deletes memory; executor fact-writing under
-[MEMORY.md](../MEMORY.md) continues to apply.
+canonical home and evaluates observed memory use from the packet. Existing docs
+should not be copied into memory without a specific retrieval benefit. The
+curator does not call memory tools; unavailable memory and missing history are
+limitations, not evidence of clean memory.
+The curator never writes/deletes memory.
 
 ## Reports and acceptance criteria
 
@@ -99,7 +98,7 @@ Acceptance scenarios:
 - Failed/deferred delivery does not run the success hook.
 - One failed/unavailable specialist leaves the other report intact and does not
   invalidate delivery; the summary records the limitation without automatic retry.
-- Without MemPalace, docs are still assessed and memory availability is explicit.
+- Without memory evidence, docs are still assessed and memory availability is explicit.
 - Without telemetry, reports do not invent token counts or savings.
 - Duplicate docs/memory generate a canonical-source recommendation, not automatic
   consolidation, deletion, or another memory copy.

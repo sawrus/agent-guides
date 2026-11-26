@@ -4,8 +4,8 @@
 //! forgets its sessions there (Codex threads, OpenCode sessions, Claude Code project transcripts).
 
 use crate::app::App;
-use crate::mempalace::run_with_timeout;
 use crate::ui;
+use crate::util::run_with_timeout;
 use rusqlite::{Connection, OpenFlags};
 use std::ffi::OsString;
 use std::path::{Component, Path, PathBuf};

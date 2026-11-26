@@ -45,8 +45,7 @@ Default behavior:
 ## Requirements
 
 The core installer is a self-contained Rust binary. Unix release upgrades use `tar`.
-Python and pip are needed only for optional MemPalace setup; selected integrations
-may require their own runtimes. No Git checkout is required for installed use.
+Selected integrations may require their own runtimes. No Git checkout is required for installed use.
 
 Optional tools:
 
@@ -296,16 +295,6 @@ For selected Kubernetes and Docker MCP integrations, `agentic` performs non-fata
 For `opencode`, `codex`, `claude`, `cursor`, `gemini`, `kilocode`, and `antigravity`, interactive installs ask whether to add Context7 MCP configuration. If enabled, a follow-up menu chooses either keyless mode or entering `CONTEXT7_API_KEY`. The selected key is written to all selected target configs for the current project. Most targets use project-level files, while `antigravity` is written to the global user path `~/.gemini/antigravity/mcp_config.json`.
 
 Non-interactive installs enable Context7 when either `AGENTIC_ENABLE_CONTEXT7=y` or `CONTEXT7_API_KEY` is set. Agents are instructed to use Context7 for framework, library, SDK, API, and setup documentation when the project config is present.
-
-## MemPalace
-
-For `opencode`, `codex`, `claude`, `cursor`, `gemini`, `kilocode`, and `antigravity`, MemPalace MCP is configured as a local Python module instead of a hosted MCP URL. When MemPalace is enabled, `agentic` attempts to install it automatically with `pip install mempalace`.
-
-Generated configs run `mempalace-mcp` without arguments for all supported agent targets. Runtime startup and MCP tool errors are checked by the post-install doctor stage.
-
-During install, if MemPalace is enabled, `agentic` writes a managed `.mempalaceignore` when the target project does not already have one. It initializes the project with `mempalace init --yes --no-llm`, then mines project knowledge into a wing named from the target project basename. If `docs/` exists, those files are also mined into the shared `shared_docs` wing for cross-project Markdown knowledge. MemPalace commands time out after `60` seconds by default; override with `AGENTIC_MEMPALACE_TIMEOUT_SECONDS`. If auto-install, initialization, mining, timeout, or runtime checks fail, install continues, manual setup instructions are printed, and agents fall back to standard context discovery. If `pip install mempalace` fails, `agentic` prints the pip exit status, a temporary pip output log path, and the first non-empty pip output line as the likely reason; the full pip output is also copied into the main Agentic run log.
-
-For environments that already provide `mempalace-mcp` and need a fast install path, set `AGENTIC_MEMPALACE_SETUP=skip`. This writes the same MCP configuration and `.mempalaceignore` but skips Python package installation and project indexing.
 
 ## Real agent blackbox E2E
 

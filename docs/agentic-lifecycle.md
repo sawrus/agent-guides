@@ -83,18 +83,3 @@ When `.agentic.json` exists in the target project, `agentic install` treats the 
 - skipped paths are recorded in `.agentic.json`.
 
 Every copied or generated file carries an internal marker. Markdown uses YAML front matter, comment-capable formats use comments, and JSON ownership is recorded in the manifest.
-
-## MemPalace install and validation logs
-
-When MemPalace MCP is enabled during interactive install, TUI install, or through `AGENTIC_ENABLE_MEMPALACE=y`, `agentic` now reports setup progress in explicit steps so users can see what succeeded or failed:
-
-1. Python availability check
-2. pip availability check
-3. `pip install mempalace`
-4. Project memory initialization with `mempalace init --yes --no-llm`
-5. Project mining with `mempalace mine <project> --wing <project-basename>`
-6. Optional shared docs mining with `mempalace mine <project>/docs --wing shared_docs`
-
-If auto-install, initialization, mining, or runtime checks fail, `agentic` prints manual setup instructions and continues. When `pip install mempalace` fails, the warning includes the pip exit status, a temporary pip output log path, and the first non-empty pip output line as the likely reason. The full pip output is also copied into the main Agentic run log. After setup, install checks that `mempalace-mcp` is present and leaves runtime startup/tool validation to the post-install doctor smoke check. Generated MCP configs invoke `mempalace-mcp` without arguments for all supported agent targets.
-
-Each MemPalace init/mine command has a timeout controlled by `AGENTIC_MEMPALACE_TIMEOUT_SECONDS` and defaults to `60` seconds. Timeouts are reported as warnings and do not block MCP config generation.
