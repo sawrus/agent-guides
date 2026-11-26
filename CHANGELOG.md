@@ -1,5 +1,13 @@
 # Changelog
 
+## v14.0.1
+
+- Added benchmark round 8 tasks and an arm for the optional `pocock` skill pack (`make bench`; no change to
+  installed files). T12 is a vague requirement: it is graded by hidden property tests and by written assumptions
+  and acceptance criteria. T13 starts a new project from an empty seed. A task may carry a scripted user `reply`
+  for the follow-up turn. The `lean-pocock` arm installs with `--skill-pack pocock` and is skipped with a message
+  when `agentic install` has no such flag. The plan is in `docs/agentic-v2-lean/results.md`; it has no results yet.
+
 ## v14.0.0
 
 - Skill packs work the same on Claude Code, Codex, and OpenCode. A user-invoked skill (`disable-model-invocation:
