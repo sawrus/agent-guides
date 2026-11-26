@@ -226,9 +226,18 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
   `devops.infrastructure,devops.kubernetes,devops.sre`.
 - Seeds: a task with `seed` in `tasks.json` copies `tests/bench/<seed>` over the fixture before the first
   commit. T5, T6, and T8 use it, so the other tasks keep the base fixture.
+- Round 8 tasks: T12 (vague requirement on the base fixture) and T13 (new project from `tests/bench/fixture-empty`).
+  A task with `reply` in `tasks.json` gets that scripted user reply as the single follow-up instead of the generic
+  confirmation, when the agent stops without changing a file (for example to ask a question). T12 also grades the
+  `assumptions` check: assumptions and acceptance criteria appear in the agent's messages or in a changed Markdown
+  file. T13 has no allowlist; its grader `tests/bench/hidden/T13/check_t13.py` checks the spec, `GLOSSARY.md`, an
+  ADR, at least 3 tests, and the `python3 -m wordfreq` output. The plan is in
+  [results.md](results.md#round-8-lean-vs-lean--pocock-skill-pack-planned).
 - Allowlists include the version file and `docs/`, because the pack's own completion contract requires them.
 - Arms (`--modes`): `plain`, `lean`, `lean-jev`, `team-jev` by default; also `lean-noreviewer`, `team`, and `v1`
-  (v1.6 binary from `make bench-v1`). A `-jev` arm installs with `--enable-jev`; `JEV_API_URL` overrides the
+  (v1.6 binary from `make bench-v1`). `lean-pocock` installs `lean` plus the optional `pocock` skill pack
+  (`agentic install --skill-pack pocock`; the flag name is `BENCH_SKILL_PACK_FLAG`). When the installed agentic has
+  no such flag, the run prints a message and skips the pack arms. A `-jev` arm installs with `--enable-jev`; `JEV_API_URL` overrides the
   endpoint. `lean-noreviewer` installs `lean` and then deletes the reviewer agent (`.claude/agents/reviewer.md`,
   `.codex/agents/reviewer.toml`, `.opencode/agents/reviewer.md`, the `reviewer` entry in `.opencode/opencode.json`,
   and an `[agents.reviewer]` table in `.codex/config.toml` if one exists) before the install commit. The core

@@ -24,6 +24,43 @@ class BenchArms(unittest.TestCase):
         self.assertEqual(bench_sdlc.install_flags('lean-noreviewer'), ['--profile', 'lean'])
         self.assertTrue(set(bench_sdlc.DEFAULT_MODES) <= set(bench_sdlc.MODES))
 
+    def test_pocock_arm_installs_lean_plus_the_skill_pack(self):
+        self.assertEqual(bench_sdlc.install_flags('lean-pocock'), ['--profile', 'lean', bench_sdlc.SKILL_PACK_FLAG, 'pocock'])
+        self.assertEqual(bench_sdlc.pack_of('lean-pocock'), 'pocock')
+        self.assertIsNone(bench_sdlc.pack_of('lean-jev'))
+        self.assertNotIn('lean-pocock', bench_sdlc.DEFAULT_MODES)
+
+    def test_pack_arms_are_skipped_when_agentic_has_no_skill_pack_flag(self):
+        modes = ['lean', 'lean-pocock']
+        self.assertEqual(bench_sdlc.unsupported_pack_modes(modes, '--profile <P>\n--agent-os <A>'), ['lean-pocock'])
+        self.assertEqual(bench_sdlc.unsupported_pack_modes(modes, f'{bench_sdlc.SKILL_PACK_FLAG} <PACK>'), [])
+
+    def test_scripted_reply_replaces_the_generic_followup(self):
+        self.assertEqual(bench_sdlc.scripted_reply((['claude', '--resume', 's'], 'generic'), 'mine'),
+                         (['claude', '--resume', 's'], 'mine'))
+        self.assertEqual(bench_sdlc.scripted_reply((['codex', 'exec', 'resume', 's', 'generic'], None), 'mine'),
+                         (['codex', 'exec', 'resume', 's', 'mine'], None))
+
+    def test_round8_tasks_are_defined(self):
+        vague, new = bench_sdlc.TASKS['T12'], bench_sdlc.TASKS['T13']
+        self.assertEqual((vague['kind'], new['kind']), ('vague-requirement', 'new-project'))
+        self.assertIn('assumptions', vague['checks'])
+        self.assertTrue(vague['reply'] and new['reply'])
+        self.assertFalse(any(list((bench_sdlc.BENCH / new['fixture']).rglob('*.py'))))  # starts empty
+        # A task that gets a follow-up reply is never a question task (those must not change files).
+        self.assertFalse(vague['kind'].startswith('question') or new['kind'].startswith('question'))
+
+    def test_assumptions_check_needs_assumptions_and_criteria(self):
+        with tempfile.TemporaryDirectory() as temp:
+            project = Path(temp)
+            (project / 'tests').mkdir()
+            (project / 'CHANGELOG.md').write_text('## Unreleased\n- feature\n')
+            bench_sdlc.git(project, 'init', '-q')
+            for text, expected in (('Допущения: 5 заказов. Критерии приёмки: цена не растёт.', True),
+                                   ('Assumptions: 5 orders.', False), ('Критерии приёмки: ok.', False), ('', False)):
+                verdict = bench_sdlc.grade('T12', project, text)
+                self.assertEqual(verdict['checks']['assumptions'], expected, text)
+
     def test_noreviewer_removes_the_reviewer_agent_and_its_config_entries(self):
         with tempfile.TemporaryDirectory() as temp:
             project = Path(temp)

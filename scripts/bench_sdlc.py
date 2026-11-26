@@ -34,7 +34,12 @@ TASKS = json.loads((BENCH / 'tasks.json').read_text())
 # `<profile>-jev` arms install the profile with JEV hooks; `lean-noreviewer` is lean without the reviewer agent (since
 # round 6 lean installs no reviewer, so the arm equals `lean`; it stays for older binaries and saved results);
 # `v1` is the frozen v1.6 binary (`make bench-v1`).
-MODES = ('plain', 'v1', 'lean', 'lean-noreviewer', 'lean-jev', 'team', 'team-jev')
+# `<profile>-<pack>` arms (`lean-pocock`) install the profile plus an optional external skill pack (round 8).
+MODES = ('plain', 'v1', 'lean', 'lean-noreviewer', 'lean-jev', 'team', 'team-jev', 'lean-pocock')
+SKILL_PACKS = ('pocock',)
+# `agentic install` flag that selects a skill pack. Configurable until the feature is released; an installed agentic
+# without the flag skips the pack arms with a message (see `unsupported_pack_modes`).
+SKILL_PACK_FLAG = os.environ.get('BENCH_SKILL_PACK_FLAG', '--skill-pack')
 DEFAULT_MODES = ('plain', 'lean', 'lean-jev', 'team-jev')
 HOSTS = ('claude', 'codex', 'opencode')
 # Default install selection; a task may set its own `areas` and `specializations` (T11: devops).
@@ -49,6 +54,8 @@ RUN_UNCACHED_TOKENS = 80_000
 EDIT_TOOLS = {'edit', 'write', 'multiedit', 'notebookedit', 'patch', 'apply_patch'}
 SPAWN_TOOLS = {'agent', 'task', 'subagent'}
 CHECK_COMMAND = re.compile(r'make (test|lint)|unittest|pytest|tools/lint\.py')
+ASSUMPTIONS = re.compile(r'допущен|предполож|assumption|assuming|assume', re.I)
+CRITERIA = re.compile(r'критери[ийя]\w* приёмки|критери[ийя]\w* приемки|acceptance criteri', re.I)
 IGNORED = ('.agentic/', '.agentic-blackbox/', '.reviews/', '.review/')
 AUTHOR = ['-c', 'user.name=Agentic Bench', '-c', 'user.email=bench@localhost']
 
@@ -95,7 +102,29 @@ def install_flags(mode):
     if mode in ('plain', 'v1'):
         return []
     profile, _, variant = mode.partition('-')
-    return ['--profile', profile, *(['--enable-jev', '--jev-api-url', JEV_API_URL] if variant == 'jev' else [])]
+    flags = ['--profile', profile]
+    if variant == 'jev':
+        flags += ['--enable-jev', '--jev-api-url', JEV_API_URL]
+    elif variant in SKILL_PACKS:
+        flags += [SKILL_PACK_FLAG, variant]
+    return flags
+
+
+def pack_of(mode):
+    """The skill pack an arm installs, or None."""
+    variant = mode.partition('-')[2]
+    return variant if variant in SKILL_PACKS else None
+
+
+def unsupported_pack_modes(modes, install_help):
+    """Pack arms among `modes` that the installed agentic cannot run: its `install --help` lacks SKILL_PACK_FLAG."""
+    return [] if SKILL_PACK_FLAG in install_help else [m for m in modes if pack_of(m)]
+
+
+def scripted_reply(followup, text):
+    """Replace the generic follow-up text of `blackbox_jev.followup_turn` with a task's scripted user reply."""
+    command, stdin = followup
+    return (command, text) if stdin is not None else ([*command[:-1], text], None)
 
 
 def remove_reviewer(project):
@@ -183,6 +212,12 @@ def grade(task, project, final_text):
             checks[check] = all(word.split('/')[-1] in final_text for word in spec['answer'])
         elif check == 'no_changes':
             checks[check] = not scoped
+        elif check == 'assumptions':
+            # Vague requirement: assumptions and acceptance criteria are written down (a changed Markdown file or the
+            # agent's messages), whether the agent asked first, got the scripted reply, or decided alone.
+            prose = final_text + '\n'.join((project / f).read_text(errors='replace') for f in scoped
+                                          if f.endswith('.md') and (project / f).is_file())
+            checks[check] = bool(ASSUMPTIONS.search(prose) and CRITERIA.search(prose))
         elif check == 'hidden_check':
             # A grader script outside the project (T11 manifest rules); it reads the project and never changes it.
             result = subprocess.run([sys.executable, '-I', str(BENCH / spec['hidden_check']), str(project)],
@@ -354,6 +389,8 @@ def run_cell(host, task, mode, rep, args):
         # The coordinator stopped for approval without changing anything; answer it once.
         followup = blackbox_jev.followup_turn(host, shutil.which(host), argv, trace)
         if followup:
+            if TASKS[task].get('reply'):
+                followup = scripted_reply(followup, TASKS[task]['reply'])
             if host == 'codex':
                 # Without -m, resume falls back to the config model, which the account may not serve.
                 followup = ([followup[0][0], 'exec', 'resume', '--json', '--skip-git-repo-check',
@@ -650,6 +687,20 @@ def main():
         sys.exit(f'[bench] unknown modes or tasks: {unknown}')
     if 'v1' in modes and not args.v1_binary.is_file():
         sys.exit(f'[bench] missing v1 binary {args.v1_binary}; run `make bench-v1`')
+    packs = [m for m in modes if pack_of(m)]
+    if packs:
+        try:
+            probe = subprocess.run([str(binary('lean', args)), 'install', '--help'], capture_output=True, text=True)
+            install_help = probe.stdout + probe.stderr
+        except OSError:
+            install_help = ''  # no binary: `make bench` builds it first; without it the pack arms cannot run
+        skipped = unsupported_pack_modes(modes, install_help)
+        if skipped:
+            print(f'[bench] skipping {",".join(skipped)}: this agentic has no `{SKILL_PACK_FLAG}` option for '
+                  '`install` (build the branch with the skill-pack feature, or set BENCH_SKILL_PACK_FLAG).', file=sys.stderr)
+            modes = [m for m in modes if m not in skipped]
+        if not modes:
+            return 0
     if args.prepare_only:
         # One project per install selection among the chosen tasks (T11 adds `<host>-<mode>-<slug>`).
         firsts = list({selection(task): task for task in reversed(tasks)}.values())[::-1]

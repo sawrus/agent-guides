@@ -4,6 +4,60 @@ Protocol: [README.md](README.md). Total: 36 paid cells, 1 run each (A0 plain, A1
 × 3 hosts × 4 tasks). Models: Claude `sonnet`, Codex `gpt-6.1-sol`, OpenCode `openai/gpt-6-luna`. Every cell
 was graded again with the final `tasks.json` (`make bench-regrade`). Codex lean ran with the gate hooks trusted.
 
+## Round 8: lean vs lean + pocock skill pack (planned)
+
+Status: planned. Not run. This section holds no results.
+
+Question. Does the optional external skill pack `pocock` (skills from `github.com/mattpocock/skills`: grilling,
+to-spec, to-tickets, domain-modeling, tdd, code-review, diagnosing-bugs, codebase-design) raise quality on two kinds
+of work that T1–T11 do not cover, and at what cost?
+
+Method. Copy round 7: 3 hosts (Claude `sonnet`, Codex `gpt-6.1-terra`, OpenCode with the same private model and
+`--cap 3000000`), 3 repetitions, seed 8, a fresh `--out` per host, Git-ignored. Compare arms only inside one host.
+The pack is installed with `agentic install --skill-pack pocock` (arm `lean-pocock`); the control is `lean`.
+Both arms use the same binary, so the flag must exist before the run (the harness skips the pack arm and says so
+if it does not).
+
+| Task | Kind | What good looks like | Grader |
+|---|---|---|---|
+| T12 | Vague requirement: "add a loyalty discount" with only a function name | The agent asks, or states assumptions and acceptance criteria before code, then delivers | Hidden tests of properties true under any reasonable reading (cents, no discount at 0 orders, bounded, monotonic, `ValueError` on negative); `suite`, `lint`, `allowlist`; `assumptions` (assumption and acceptance-criteria wording in the messages or a changed Markdown file) |
+| T13 | New project from an empty seed: `wordfreq` CLI | Spec, `GLOSSARY.md`, ADR, `Makefile` with `test` and `lint`, tests, working code | `check_t13.py` (docs present, at least 3 tests, exact CLI output), `suite`, `lint` |
+
+Non-interactive questions. A run has one user turn. If an agent stops without changing a file (it asked a
+question), the harness resumes the same session once with the task's scripted `reply` in `tasks.json`: no further
+questions, choose reasonable values, and for T12 write the assumptions and criteria down. An agent that decides
+alone passes through unchanged. So asking and assuming both lead to a gradable result, and the grader does not
+reward one style. The reply is the same for both arms.
+
+Cells: 2 arms × 3 hosts × 2 tasks × 3 repetitions = 36 paid cells.
+
+Metrics per host and arm: accepted cells (Wilson 95% interval), per-check failures, share of cells that needed the scripted
+reply (`turns` = 2, the agent stopped to ask), full and uncached tokens (median), subagents, cost per success.
+Cost is `total_cost_usd` on Claude and an API-equivalent estimate from `tests/bench/prices.json` elsewhere.
+Round 7 gave the cost baselines of the lean arm (Claude $0.122, Codex $0.045, OpenCode $0.046 per success on
+T1–T11); the new tasks are larger, so the comparison is `lean-pocock` ÷ `lean` on the same tasks.
+
+Decision rule, fixed before the run. The pack goes into the lean default only if, on at least two of the three
+hosts, both hold:
+1. Quality: `lean-pocock` accepts at least 2 more cells than `lean` of the 18 per host, and no host loses accepted
+   cells.
+2. Cost: cost per success `lean-pocock` ÷ `lean` is at most 1.15. Round 7 accepted × 1.14 (Claude, JEV) only as an
+   opt-in with no quality gain; a pack in the default needs a quality gain and may not go above 1.15.
+
+If quality improves on one host only, or cost exceeds 1.15, the pack stays opt-in (a preset the user chooses). If
+`lean-pocock` accepts fewer cells than `lean` on any host, record the failing checks as root causes. Limitations
+are those of round 7, plus: the `assumptions` check is a text proxy, and n = 9 per task, host and arm.
+
+Run (after building the agentic that has `--skill-pack`):
+
+```
+make bench BENCH_OUT=.agentic-blackbox/bench-r8-claude \
+  BENCH_ARGS="--hosts claude --tasks T12,T13 --modes lean,lean-pocock --reps 3 --seed 8 --seconds 900 --cap 300000"
+```
+
+Repeat with `--hosts codex` (own `--out`; trust Codex hooks first with `make bench-prepare`) and
+`--hosts opencode --cap 3000000`. Then `make bench-report BENCH_OUT=<out>` for each host.
+
 ## Round 7: lean vs lean + JEV, 10 tasks, 3 repetitions (2026-11-12)
 
 180 paid cells: 2 arms (`lean`, `lean-jev`) × 3 hosts × T1–T8, T10, T11 × 3 repetitions, seed 7. Every cell is

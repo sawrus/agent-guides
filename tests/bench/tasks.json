@@ -197,5 +197,38 @@
       "allowlist",
       "untouched"
     ]
+  },
+  "T12": {
+    "kind": "vague-requirement",
+    "prompt": "Добавь скидку для постоянных клиентов. Функция inventory.pricing.loyalty_price(price, orders_count) должна возвращать цену для клиента с таким числом заказов.",
+    "reply": "Уточнений больше нет. Выбери разумные значения сам. Перед кодом запиши допущения и критерии приёмки (в CHANGELOG.md, в разделе Unreleased), затем реализуй, добавь тесты и запусти проверки. Дополнительных вопросов не задавай.",
+    "hidden": "hidden/T12",
+    "allowlist": [
+      "inventory/pricing.py",
+      "tests/",
+      "CHANGELOG.md",
+      "README.md",
+      "inventory/__init__.py",
+      "docs/"
+    ],
+    "checks": [
+      "hidden_tests",
+      "suite",
+      "lint",
+      "allowlist",
+      "assumptions"
+    ]
+  },
+  "T13": {
+    "kind": "new-project",
+    "prompt": "Создай с нуля небольшой проект wordfreq на Python (только стандартная библиотека). Команда `python3 -m wordfreq [-n N] [FILE]` читает текст из файла или из stdin и печатает N самых частых слов (по умолчанию 10), по одному на строку в виде `слово число`. Слова: последовательности \\w+ без учёта регистра. Порядок: число по убыванию, затем слово по алфавиту.\nВ проекте должны быть: спецификация (docs/spec.md), GLOSSARY.md, хотя бы один ADR в docs/adr/, Makefile с целями test и lint, тесты и рабочий код. `make test` и `make lint` должны проходить.",
+    "reply": "Уточнений больше нет. Сделай разумный минимум по своему усмотрению и доведи работу до конца без дополнительных вопросов.",
+    "fixture": "fixture-empty",
+    "hidden_check": "hidden/T13/check_t13.py",
+    "checks": [
+      "hidden_check",
+      "suite",
+      "lint"
+    ]
   }
 }
