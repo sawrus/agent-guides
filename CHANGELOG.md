@@ -1,5 +1,15 @@
 # Changelog
 
+## v14.0.0
+
+- Skill packs work the same on Claude Code, Codex, and OpenCode. A user-invoked skill (`disable-model-invocation:
+  true` in its `SKILL.md`, for example `grill-me` or `to-spec` of mattpocock/skills) gets a user entry point on
+  every host: on OpenCode a command `.opencode/commands/<name>.md` (`/<name>`) that loads the skill; on Codex
+  `.agents/skills/<name>/agents/openai.yaml` with `allow_implicit_invocation: false`, so Codex starts the skill
+  only for `$<name>` or `/skills`. Claude Code and current OpenCode read the frontmatter key themselves. The
+  upstream skill files stay unchanged; the manifest records the new files, and `skills remove|update` and
+  `agentic upgrade` remove them with the skill. A skill that ships its own `agents/openai.yaml` keeps it.
+
 ## v13.0.0
 
 - Preset `pocock`: `agentic skills add pocock` and `agentic install --skill-pack pocock` install 21 skills of

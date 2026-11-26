@@ -2666,6 +2666,7 @@ fn agents_md_keep_without_root_file_and_bad_value() {
 // --- skill packs (docs/skill-packs.md) ------------------------------------------------------------------
 
 const PACK_SKILL: &str = "---\nname: tdd\ndescription: Test-driven development. Use when the user asks for TDD.\n---\n\n# tdd\n";
+const USER_PACK_SKILL: &str = "---\nname: grill-me\ndescription: Interview the user about a plan.\ndisable-model-invocation: true\n---\n\n# grill-me\n";
 
 #[test]
 fn skill_packs_add_list_update_and_remove_cleanly() {
@@ -2682,7 +2683,10 @@ fn skill_packs_add_list_update_and_remove_cleanly() {
         &work.join("skills/engineering/tdd/refs/notes.md"),
         "# Notes\n",
     );
-    write(&work.join("skills/writing/grill-me/SKILL.md"), PACK_SKILL);
+    write(
+        &work.join("skills/writing/grill-me/SKILL.md"),
+        USER_PACK_SKILL,
+    );
     write(&work.join("LICENSE"), "MIT License\n");
     git(&work, &["add", "-A"]);
     git(&work, &["commit", "-q", "-m", "one"]);
@@ -2723,6 +2727,18 @@ fn skill_packs_add_list_update_and_remove_cleanly() {
         assert!(p.join(dir).join("tdd/refs/notes.md").is_file(), "{dir}");
         assert!(p.join(dir).join("grill-me/SKILL.md").is_file(), "{dir}");
     }
+    // The user-invoked grill-me gets an entry point on OpenCode and Codex.
+    assert!(
+        std::fs::read_to_string(p.join(".opencode/commands/grill-me.md"))
+            .unwrap()
+            .contains("Load the skill `grill-me` with the skill tool")
+    );
+    assert!(
+        std::fs::read_to_string(p.join(".agents/skills/grill-me/agents/openai.yaml"))
+            .unwrap()
+            .contains("allow_implicit_invocation: false")
+    );
+    assert!(!p.join(".opencode/commands/tdd.md").exists());
     let pack = &manifest_json(p)["settings"]["skill_packs"][0];
     // The id is `<owner>-<repo>` of the URL: here `<temp dir>-skills`.
     let id = pack["id"].as_str().unwrap().to_string();
@@ -2753,6 +2769,8 @@ fn skill_packs_add_list_update_and_remove_cleanly() {
     .assert()
     .success();
     assert!(!p.join(".claude/skills/grill-me").exists());
+    assert!(!p.join(".agents/skills/grill-me").exists());
+    assert!(!p.join(".opencode/commands/grill-me.md").exists());
     assert!(p.join(".claude/skills/tdd/SKILL.md").is_file());
     assert_eq!(
         manifest_json(p)["settings"]["skill_packs"][0]["commit"],

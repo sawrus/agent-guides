@@ -829,10 +829,111 @@ pub fn host_skill_dirs(app: &App) -> Vec<(String, String)> {
 }
 
 /// Per-host adaptation of one pack skill file before it is written to that host's skills directory.
-/// Hook point for host-specific frontmatter (for example `disable-model-invocation`); today every
-/// host gets the upstream text unchanged.
+/// Every host gets the upstream text unchanged: Claude Code and OpenCode read
+/// `disable-model-invocation` themselves, and Codex ignores unknown frontmatter keys. The files that a
+/// host needs in addition come from [`host_entry_files`].
 pub fn adapt_for_host(_host: &str, _skill: &str, _rel: &str, content: &str) -> String {
     content.to_string()
+}
+
+/// Path of the Codex skill metadata file below a skill directory.
+pub const CODEX_METADATA: &str = "agents/openai.yaml";
+const CODEX_POLICY: &str = "policy:\n  allow_implicit_invocation: false\n";
+
+/// A user-invoked skill: the top-level frontmatter of its `SKILL.md` has
+/// `disable-model-invocation: true` (the Claude Code key that upstream packs use).
+pub fn user_invoked(skill: &PackSkill) -> bool {
+    let Some((_, text)) = skill.files.iter().find(|(rel, _)| rel == "SKILL.md") else {
+        return false;
+    };
+    top_level_frontmatter(text)
+        .iter()
+        .any(|(key, value)| key == "disable-model-invocation" && value.eq_ignore_ascii_case("true"))
+}
+
+/// `key: value` pairs of the unindented lines of the leading frontmatter block.
+fn top_level_frontmatter(text: &str) -> Vec<(String, String)> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let Some(rest) = text
+        .strip_prefix("---\n")
+        .or_else(|| text.strip_prefix("---\r\n"))
+    else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for line in rest.lines() {
+        if line.trim_end() == "---" {
+            break;
+        }
+        if line.starts_with([' ', '\t']) {
+            continue;
+        }
+        if let Some((key, value)) = line.split_once(':') {
+            let value = value.trim().trim_matches(|c| c == '\'' || c == '"');
+            out.push((key.trim().to_string(), value.to_string()));
+        }
+    }
+    out
+}
+
+/// The OpenCode command text that starts user-invoked skill `name`.
+fn opencode_command(name: &str, skill: &PackSkill) -> String {
+    let description = skill
+        .files
+        .iter()
+        .find(|(rel, _)| rel == "SKILL.md")
+        .and_then(|(_, text)| {
+            top_level_frontmatter(text)
+                .into_iter()
+                .find(|(key, _)| key == "description")
+                .map(|(_, value)| value)
+        })
+        .filter(|value| !value.is_empty() && !value.starts_with(['>', '|']))
+        .unwrap_or_else(|| format!("Run the {name} skill"));
+    format!(
+        "---\ndescription: {}\n---\n\nLoad the skill `{name}` with the skill tool and follow its instructions.\n\nArguments: $ARGUMENTS\n",
+        serde_json::to_string(&description).unwrap_or_default()
+    )
+}
+
+/// One file that a host needs besides the upstream skill files.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntryFile {
+    /// Path relative to the project.
+    pub path: String,
+    pub content: String,
+    /// `<skill>/@<host>/<file>`: the manifest source below `skill-pack:<id>/`.
+    pub source: String,
+}
+
+/// The user entry point of a user-invoked skill on `host`, whose skills directory is `dir`:
+/// - Claude Code: none; the skill is the `/<name>` command, and Claude reads the frontmatter key.
+/// - OpenCode: `.opencode/commands/<name>.md`, the `/<name>` command that loads the skill.
+/// - Codex: `agents/openai.yaml` with `allow_implicit_invocation: false`; the user starts the skill
+///   with `$<name>` or `/skills`. A skill that ships its own `agents/openai.yaml` keeps it.
+pub fn host_entry_files(host: &str, dir: &str, skill: &PackSkill) -> Vec<EntryFile> {
+    if !user_invoked(skill) {
+        return Vec::new();
+    }
+    let name = &skill.name;
+    match host {
+        "opencode" => vec![EntryFile {
+            path: format!(
+                "{}/{name}.md",
+                crate::agentsmd::get_dest_dir("opencode", "workflows")
+            ),
+            content: opencode_command(name, skill),
+            source: format!("{name}/@opencode/command.md"),
+        }],
+        "codex" if !skill.files.iter().any(|(rel, _)| rel == CODEX_METADATA) => {
+            vec![EntryFile {
+                path: format!("{dir}/{name}/{CODEX_METADATA}"),
+                content: CODEX_POLICY.to_string(),
+                source: format!("{name}/@codex/{CODEX_METADATA}"),
+            }]
+        }
+        _ => Vec::new(),
+    }
 }
 
 fn source_ref(pack: &str, rel: &str) -> String {
@@ -856,6 +957,19 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
                 desired.insert(app.project_rel_path(&dest));
                 let source = source_ref(&skill.pack, &format!("{}/{rel}", skill.name));
                 write(app, &text, &dest, &source)?;
+            }
+            if host == "codex" && user_invoked(skill) {
+                warn_own_codex_metadata(app, skill);
+            }
+            for entry in host_entry_files(host, dir, skill) {
+                let dest = project_dir.join(&entry.path);
+                desired.insert(app.project_rel_path(&dest));
+                write(
+                    app,
+                    &entry.content,
+                    &dest,
+                    &source_ref(&skill.pack, &entry.source),
+                )?;
             }
         }
     }
@@ -897,6 +1011,25 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
         remove_stale(app, project_dir, &desired)?;
     }
     Ok(())
+}
+
+/// An upstream `agents/openai.yaml` stays unchanged; say so when it does not turn implicit
+/// invocation off.
+fn warn_own_codex_metadata(app: &mut App, skill: &PackSkill) {
+    let own = skill
+        .files
+        .iter()
+        .find(|(rel, _)| rel == CODEX_METADATA)
+        .map(|(_, text)| text);
+    if own.is_some_and(|text| !text.contains("allow_implicit_invocation")) {
+        ui::warn(
+            app,
+            &format!(
+                "Skill pack {}: {}/{CODEX_METADATA} is the pack's own file; Codex may start the skill without `${}`",
+                skill.pack, skill.name, skill.name
+            ),
+        );
+    }
 }
 
 /// Never overwrite a file that another installer step wrote in this run; before the first install a
@@ -1415,6 +1548,159 @@ mod tests {
             .iter()
             .any(|(path, source, _)| path == ".claude/skills/tdd/SKILL.md"
                 && source == "skill-pack:demo/tdd/SKILL.md"));
+    }
+
+    const USER_SKILL: &str = "---\nname: to-spec\ndescription: Turn the talk into a \"spec\".\ndisable-model-invocation: true\n---\n\n# To spec\n\nUse $ARGUMENTS as the topic.\n";
+
+    fn skill_names(dir: &Path) -> Vec<String> {
+        find_skills(dir).into_iter().map(|(name, _)| name).collect()
+    }
+
+    /// The text below the frontmatter block.
+    fn body(text: &str) -> &str {
+        let rest = text.strip_prefix("---\n").unwrap();
+        &rest[rest.find("\n---\n").unwrap() + 5..]
+    }
+
+    #[test]
+    fn hosts_get_the_same_skills_and_a_user_entry_point() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("pack");
+        write(&dir.join("skills/engineering/tdd/SKILL.md"), SKILL);
+        write(&dir.join("skills/planning/to-spec/SKILL.md"), USER_SKILL);
+        let project = tmp.path().join("p");
+        let mut app = app_for(&project, &dir);
+        run_install(&mut app, &project).unwrap();
+
+        let hosts = [
+            ("claude", ".claude/skills"),
+            ("codex", ".agents/skills"),
+            ("opencode", ".opencode/skills"),
+        ];
+        for (host, skills_dir) in hosts {
+            assert_eq!(
+                skill_names(&project.join(skills_dir)),
+                vec!["tdd", "to-spec"],
+                "{host}"
+            );
+            for (name, upstream) in [("tdd", SKILL), ("to-spec", USER_SKILL)] {
+                let text =
+                    std::fs::read_to_string(project.join(skills_dir).join(name).join("SKILL.md"))
+                        .unwrap();
+                assert_eq!(body(&text), body(upstream), "{host} {name}");
+                for line in upstream.lines().skip(1).take_while(|l| *l != "---") {
+                    assert!(text.lines().any(|l| l == line), "{host} {name}: {line}");
+                }
+            }
+        }
+        // Claude Code: the skill itself is `/to-spec`, and Claude reads the frontmatter key.
+        // OpenCode: a `/to-spec` command loads the skill.
+        let command =
+            std::fs::read_to_string(project.join(".opencode/commands/to-spec.md")).unwrap();
+        assert!(command.contains("description: \"Turn the talk into a \\\"spec\\\".\""));
+        assert!(command.contains("Load the skill `to-spec` with the skill tool"));
+        assert!(command.contains("Arguments: $ARGUMENTS"));
+        // Codex: implicit invocation off; the user starts it with `$to-spec`.
+        let policy =
+            std::fs::read_to_string(project.join(".agents/skills/to-spec/agents/openai.yaml"))
+                .unwrap();
+        assert!(policy.contains("policy:\n  allow_implicit_invocation: false\n"));
+        // A model-invoked skill gets no extra file.
+        assert!(!project.join(".opencode/commands/tdd.md").exists());
+        assert!(!project.join(".agents/skills/tdd/agents").exists());
+        assert!(!project.join(".claude/skills/to-spec/agents").exists());
+        assert!(!project.join(".opencode/skills/to-spec/agents").exists());
+        let manifest = read_manifest(&project);
+        assert_eq!(installed_skills(&manifest, "demo"), vec!["tdd", "to-spec"]);
+        let sources: Vec<String> = manifest_files(&manifest, None)
+            .into_iter()
+            .map(|(path, source, _)| format!("{path} {source}"))
+            .collect();
+        assert!(sources.contains(
+            &".opencode/commands/to-spec.md skill-pack:demo/to-spec/@opencode/command.md".into()
+        ));
+        assert!(sources.contains(
+            &".agents/skills/to-spec/agents/openai.yaml skill-pack:demo/to-spec/@codex/agents/openai.yaml"
+                .into()
+        ));
+
+        // Remove: nothing of the pack stays on any host.
+        let mut app = app_for(&project, &dir);
+        app.skill_packs.clear();
+        run_install(&mut app, &project).unwrap();
+        for (_, skills_dir) in hosts {
+            assert!(skill_names(&project.join(skills_dir)).is_empty());
+        }
+        assert!(!project.join(".opencode/commands/to-spec.md").exists());
+        assert!(manifest_files(&read_manifest(&project), None).is_empty());
+    }
+
+    #[test]
+    fn user_invoked_reads_only_the_top_level_key() {
+        let skill = |text: &str| PackSkill {
+            pack: "demo".into(),
+            name: "x".into(),
+            files: vec![("SKILL.md".into(), text.into())],
+        };
+        assert!(user_invoked(&skill(USER_SKILL)));
+        assert!(user_invoked(&skill(
+            "---\r\nname: x\r\ndisable-model-invocation: \"True\"\r\n---\r\n"
+        )));
+        assert!(!user_invoked(&skill(SKILL)));
+        assert!(!user_invoked(&skill(
+            "---\nmetadata:\n  disable-model-invocation: true\n---\n"
+        )));
+        assert!(!user_invoked(&skill(
+            "---\nname: x\n---\ndisable-model-invocation: true\n"
+        )));
+        assert!(!user_invoked(&skill("disable-model-invocation: true\n")));
+        let folded = skill("---\ndescription: >\n  long\ndisable-model-invocation: true\n---\n");
+        assert!(opencode_command("x", &folded).contains("description: \"Run the x skill\""));
+    }
+
+    #[test]
+    fn codex_keeps_the_pack_metadata_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("pack");
+        write(&dir.join("skills/to-spec/SKILL.md"), USER_SKILL);
+        write(
+            &dir.join("skills/to-spec/agents/openai.yaml"),
+            "interface:\n  display_name: \"To spec\"\n",
+        );
+        let project = tmp.path().join("p");
+        let mut app = app_for(&project, &dir);
+        run_install(&mut app, &project).unwrap();
+        let text =
+            std::fs::read_to_string(project.join(".agents/skills/to-spec/agents/openai.yaml"))
+                .unwrap();
+        assert!(text.contains("display_name") && !text.contains("allow_implicit_invocation"));
+        assert!(app
+            .warnings
+            .iter()
+            .any(|w| w.contains("to-spec/agents/openai.yaml is the pack's own file")));
+        assert!(project.join(".opencode/commands/to-spec.md").is_file());
+    }
+
+    #[test]
+    fn a_command_name_taken_by_agentic_is_an_error() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("pack");
+        write(&dir.join("skills/profile/SKILL.md"), USER_SKILL);
+        let project = tmp.path().join("p");
+        let mut app = app_for(&project, &dir);
+        manifest::register_managed_file(
+            &mut app,
+            &project.join(".opencode/commands/profile.md"),
+            "extensions/opencode/commands/profile.md",
+            "extension",
+            false,
+        );
+        let err = run_install(&mut app, &project).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains(".opencode/commands/profile.md clashes with"),
+            "{err}"
+        );
     }
 
     #[test]
