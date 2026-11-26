@@ -621,6 +621,22 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
     }
     let project = PathBuf::from(&app.project_dir);
     let mut owners = taken_names(app, company);
+    // The preset `pocock` installs agentic's own `setup-matt-pocock-skills` in place of the upstream
+    // one; no other skill may take that name.
+    if let Some(setup_id) = crate::pocock_setup::pack_id(app).map(str::to_string) {
+        let name = crate::pocock_setup::SETUP_SKILL;
+        if let Some(owner) = owners.get(name) {
+            return Err(format!(
+                "Skill pack {setup_id}: the preset installs the agentic skill `{name}`, but {owner} has \
+                 that name; rename or remove that skill"
+            )
+            .into());
+        }
+        owners.insert(
+            name.to_string(),
+            format!("the agentic setup skill of preset pocock (pack {setup_id})"),
+        );
+    }
     let mut ids = BTreeSet::new();
     for index in 0..app.skill_packs.len() {
         let pack = app.skill_packs[index].clone();
@@ -729,6 +745,18 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
             {
                 continue;
             }
+            // The preset always gets agentic's stand-in, never the upstream setup skill.
+            if pack.preset == crate::pocock_setup::PACK_ID
+                && name == crate::pocock_setup::SETUP_SKILL
+            {
+                ui::log(
+                    app,
+                    &format!(
+                        "Skill pack {id}: upstream `{name}` skipped; agentic installs its own"
+                    ),
+                );
+                continue;
+            }
             if let Some(first) = chosen.get(&name) {
                 return Err(format!(
                     "Skill pack {id}: two skills are named `{name}`: {} and {}; add one to `exclude`",
@@ -831,7 +859,7 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
             }
         }
     }
-    if crate::pocock_setup::active(app) {
+    if let Some(setup_id) = crate::pocock_setup::pack_id(app).map(str::to_string) {
         let skill = crate::pocock_setup::SETUP_SKILL;
         for (host, dir) in &dirs {
             let text = adapt_for_host(
@@ -842,19 +870,17 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
             );
             let dest = project_dir.join(dir).join(skill).join("SKILL.md");
             desired.insert(app.project_rel_path(&dest));
-            let source = source_ref(crate::pocock_setup::PACK_ID, &format!("{skill}/SKILL.md"));
+            let source = source_ref(&setup_id, &format!("{skill}/SKILL.md"));
             write(app, &text, &dest, &source)?;
         }
     }
+    let setup_id = crate::pocock_setup::pack_id(app)
+        .unwrap_or_default()
+        .to_string();
     for (rel, text, name) in crate::pocock_setup::files(app) {
         let dest = project_dir.join(rel);
         desired.insert(app.project_rel_path(&dest));
-        write(
-            app,
-            &text,
-            &dest,
-            &source_ref(crate::pocock_setup::PACK_ID, name),
-        )?;
+        write(app, &text, &dest, &source_ref(&setup_id, name))?;
     }
     for (pack, name, text) in &prepared.licenses {
         let dest = project_dir.join(LICENSE_DIR).join(pack).join(name);
@@ -2161,6 +2187,103 @@ mod tests {
             parse_spec("https://example.com/team/skills.git#main").unwrap(),
         );
         assert_eq!(packs[0].exclude, vec!["draft"]);
+    }
+
+    #[test]
+    fn pocock_setup_follows_the_preset_not_the_id() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        // A pack from a directory with the id `pocock` is not the preset: no setup, no stand-in.
+        let project = tmp.path().join("p1");
+        let mut app = app_for(&project, &dir);
+        app.skill_packs[0].id = "pocock".into();
+        app.skill_packs[0].select = vec!["tdd".into()];
+        run_install(&mut app, &project).unwrap();
+        assert!(!crate::pocock_setup::active(&app));
+        assert!(!project.join("docs/agents").exists());
+        assert!(!project
+            .join(".claude/skills/setup-matt-pocock-skills")
+            .exists());
+        // The preset under another id gets the setup, with sources of that id.
+        let project = tmp.path().join("p2");
+        let mut app = pocock_app(&project, &dir, None);
+        app.skill_packs[0].id = "mp".into();
+        run_install(&mut app, &project).unwrap();
+        assert!(project.join("docs/agents/domain.md").is_file());
+        let manifest = read_manifest(&project);
+        assert!(installed_skills(&manifest, "mp").contains(&"setup-matt-pocock-skills".to_string()));
+        assert!(manifest_files(&manifest, Some("pocock")).is_empty());
+    }
+
+    #[test]
+    fn the_upstream_setup_skill_never_replaces_the_stand_in() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        write(
+            &dir.join("skills/misc/setup-matt-pocock-skills/refs/questions.md"),
+            "# upstream\n",
+        );
+        let project = tmp.path().join("p");
+        let mut app = pocock_app(&project, &dir, None);
+        app.skill_packs[0]
+            .select
+            .push("setup-matt-pocock-skills".into());
+        app.skill_packs[0].own_select = true;
+        run_install(&mut app, &project).unwrap();
+        for dir in [".claude/skills", ".agents/skills", ".opencode/skills"] {
+            let skill = project.join(dir).join("setup-matt-pocock-skills");
+            assert!(std::fs::read_to_string(skill.join("SKILL.md"))
+                .unwrap()
+                .contains("managed by agentic"));
+            assert!(!skill.join("refs").exists(), "{dir}");
+        }
+    }
+
+    #[test]
+    fn another_skill_named_like_the_stand_in_is_a_clear_error() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = pocock_fixture(tmp.path());
+        let other = tmp.path().join("other");
+        write(
+            &other.join("skills/setup-matt-pocock-skills/SKILL.md"),
+            SKILL,
+        );
+        write(&other.join("skills/notes/SKILL.md"), SKILL);
+        let project = tmp.path().join("p");
+        let mut app = pocock_app(&project, &dir, None);
+        let mut pack = parse_spec(&other.to_string_lossy()).unwrap();
+        pack.id = "other".into();
+        app.skill_packs.push(pack);
+        let err = prepare(&mut app, &crate::company::Prepared::default()).unwrap_err();
+        let err = err.to_string();
+        assert!(
+            err.contains("Skill pack other: skill `setup-matt-pocock-skills`"),
+            "{err}"
+        );
+        assert!(
+            err.contains("agentic setup skill of preset pocock"),
+            "{err}"
+        );
+        assert!(err.contains("add it to the pack's `exclude`"), "{err}");
+        // The advice works.
+        app.skill_packs[1].exclude = vec!["setup-matt-pocock-skills".into()];
+        run_install(&mut app, &project).unwrap();
+        assert!(project.join(".claude/skills/notes/SKILL.md").is_file());
+
+        // A company skill with that name cannot be excluded from the preset: rename it.
+        let company = crate::company::Prepared {
+            skills: vec![crate::company::RuleFile {
+                source_id: "standards".into(),
+                rel: "setup-matt-pocock-skills/SKILL.md".into(),
+                content: SKILL.into(),
+                in_place: false,
+            }],
+            ..crate::company::Prepared::default()
+        };
+        let mut app = pocock_app(&project, &dir, None);
+        let err = prepare(&mut app, &company).unwrap_err().to_string();
+        assert!(err.contains("the company skill from standards"), "{err}");
+        assert!(err.contains("rename or remove that skill"), "{err}");
     }
 
     #[test]

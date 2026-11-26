@@ -255,7 +255,13 @@ agentic also installs its own small skill `setup-matt-pocock-skills` on every ho
 (`disable-model-invocation: true`, agentic marker, manifest source `skill-pack:pocock/setup-matt-pocock-skills/SKILL.md`).
 The upstream skills still say "run `/setup-matt-pocock-skills`"; the text stays unchanged. This skill tells the
 agent to read `docs/agents/*.md` and to run `agentic skills add pocock --issue-tracker ...` to change the setup.
-It is not the upstream skill, and `skills remove pocock` removes it.
+It is not the upstream skill, and `skills remove pocock` removes it. The upstream `setup-matt-pocock-skills` is
+never installed, even when `--select` names it. Another pack skill or company skill with that name is an error:
+exclude it from the other pack, or rename the company skill.
+
+The setup (the `docs/agents/` files, the AGENTS.md section, and this skill) follows the preset, not the id:
+`skills add pocock --id mp` gets the setup with sources `skill-pack:mp/...`, and a pack from a URL with
+`--id pocock` gets none.
 
 The three `docs/agents/` files are skill pack files in the manifest (`marker: skill-pack`, source
 `skill-pack:pocock/setup.<name>`). The managed-file rules apply: install keeps a file that you edited, and

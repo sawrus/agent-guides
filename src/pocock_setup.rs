@@ -29,9 +29,18 @@ pub fn parse_tracker(value: &str) -> crate::Result<String> {
     }
 }
 
-/// True when the preset `pocock` is installed in this run.
+/// True when the preset `pocock` is installed in this run. The preset identity counts, not the id: a
+/// pack from a URL with `--id pocock` gets no setup, and the preset with another `--id` does.
 pub fn active(app: &App) -> bool {
-    app.skill_packs.iter().any(|p| p.id == PACK_ID)
+    pack_id(app).is_some()
+}
+
+/// Id of the pack that comes from the preset `pocock`.
+pub fn pack_id(app: &App) -> Option<&str> {
+    app.skill_packs
+        .iter()
+        .find(|p| p.preset == PACK_ID)
+        .map(|p| p.id.as_str())
 }
 
 /// The chosen issue tracker; `local` without a choice.

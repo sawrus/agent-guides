@@ -746,7 +746,7 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
     if selections
         .skill_packs
         .iter()
-        .any(|p| p.id == crate::pocock_setup::PACK_ID)
+        .any(|p| p.preset == crate::pocock_setup::PACK_ID)
     {
         let saved = app
             .issue_tracker
