@@ -38,7 +38,7 @@ Example request: POST /orders returns 500 when the cart holds a discounted item;
 
 ### 2. Locate the cause
 
-- **Do:** narrow the fault with evidence: bisect commits (`git bisect run <cmd>`), add temporary logging, or
+- **Do:** if the `diagnosing-bugs` skill is installed, follow it for this step; otherwise narrow the fault with evidence: bisect commits (`git bisect run <cmd>`), add temporary logging, or
   step through the failing path. Write down each hypothesis and the fact that confirms or rejects it.
 - **Done when:** you can name the line or condition that causes the failure and explain why it was possible.
 

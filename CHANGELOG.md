@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- The workflows `develop-feature`, `debug-issue`, and `code-review-workflow` now delegate steps to skills from an
+  optional external pack when the host has them installed: `grilling` or `to-spec` (criteria), `tdd` (tests and
+  implementation), `diagnosing-bugs` (root cause), and `code-review` (review). Without those skills the steps
+  work as before. `uses-skills` is unchanged, because it lists only skills of this repository.
+
 ## v11.0.0
 
 - Skill packs: agentic installs ready-made skills from an external git repository or a directory, for example
