@@ -11,7 +11,19 @@
   `## Agent skills` section to the generated AGENTS.md. `settings.issue_tracker` keeps the choice. See
   [docs/skill-packs.md](docs/skill-packs.md#preset-pocock). agentic also installs its own short skill
   `setup-matt-pocock-skills`, which points to these files and to the agentic command.
-- `agentic skills add <preset>` keeps the `select` list of the preset unless `--select` is given.
+- `agentic skills add <preset>` keeps the `select` list of the preset unless `--select` is given. Adding a pack
+  again keeps its saved `select`, `exclude`, and own `ref` unless the command sets them, so
+  `agentic skills add pocock --issue-tracker github` changes only the tracker.
+- `.agentic.json` keeps a preset pack as `{"preset": "pocock", "id": ..., "commit": ...}` plus only the user
+  overrides (`ref` via `pocock#<ref>`, `select`, `exclude`). A newer agentic with a new pin moves the lock to it
+  on install or upgrade, unless the user set `ref`.
+- The setup follows the preset, not the id `pocock`. The upstream `setup-matt-pocock-skills` is never installed,
+  and another skill with that name is an error with advice that works.
+- The `## Agent skills` section is a block between `<!-- agentic:agent-skills:begin -->` and
+  `<!-- agentic:agent-skills:end -->` right after the AGENTS.md header, so edits at the end of AGENTS.md merge
+  on upgrade. A project `## Agent skills` section of its own stays, and agentic does not add a second one.
+- A user file in `docs/agents/` stays unchanged and is reported; install, `agentic skills`, and upgrade no longer
+  stop with "Project changed while preparing upgrade". The TUI tracker step starts on the saved choice.
 
 ## v12.0.0
 
