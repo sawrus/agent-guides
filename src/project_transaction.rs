@@ -5,6 +5,18 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 type Files = BTreeMap<String, Vec<u8>>;
+/// Execute bits (`0o111` mask) by path; a missing path has none.
+pub type ExecBits = BTreeMap<String, u32>;
+
+/// The execute bits of `rels` below `root` (empty outside Unix).
+pub fn exec_bits<'a>(root: &Path, rels: impl IntoIterator<Item = &'a String>) -> ExecBits {
+    rels.into_iter()
+        .filter_map(|rel| {
+            let bits = crate::util::exec_bits(&safe_path(root, rel).ok()?);
+            (bits != 0).then(|| (rel.clone(), bits))
+        })
+        .collect()
+}
 
 fn private_dir(path: &Path) -> crate::Result<()> {
     std::fs::create_dir_all(path)?;
@@ -32,15 +44,37 @@ fn private_dir(path: &Path) -> crate::Result<()> {
     Ok(())
 }
 
-fn write_file(path: &Path, bytes: &[u8]) -> crate::Result<()> {
+/// Write `bytes` atomically. An existing file keeps its permissions; a new file gets the umask mode
+/// of a normal file (`0o666 & !umask`). `exec` (when given) sets the execute bits exactly: they come
+/// from the staging copy, where the install already applied the umask.
+fn write_file(path: &Path, bytes: &[u8], exec: Option<u32>) -> crate::Result<()> {
     std::fs::create_dir_all(path.parent().ok_or("Missing parent directory")?)?;
     // Atomic replacement avoids exposing partially written configurations.
     let mut tmp = tempfile::NamedTempFile::new_in(path.parent().unwrap())?;
     use std::io::Write;
     tmp.write_all(bytes)?;
     tmp.as_file().sync_all()?;
-    if let Ok(meta) = std::fs::metadata(path) {
-        tmp.as_file().set_permissions(meta.permissions())?;
+    let existing = std::fs::metadata(path).ok().map(|m| m.permissions());
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let allowed = crate::util::umask_allowed();
+        let base = existing
+            .as_ref()
+            .map_or(0o666 & allowed, |p| p.mode() & 0o7777);
+        let mode = match exec {
+            Some(bits) => (base & 0o666) | (bits & 0o111),
+            None => base,
+        };
+        tmp.as_file()
+            .set_permissions(std::fs::Permissions::from_mode(mode))?;
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = exec;
+        if let Some(permissions) = existing {
+            tmp.as_file().set_permissions(permissions)?;
+        }
     }
     tmp.persist(path).map_err(|e| e.error)?;
     Ok(())
@@ -56,7 +90,7 @@ fn restore(
     for rel in changed.iter().rev() {
         let path = safe_path(root, rel)?;
         if let Some(bytes) = before.get(rel) {
-            write_file(&path, bytes)?;
+            write_file(&path, bytes, None)?;
             if let Some(mode) = permissions.get(rel) {
                 std::fs::set_permissions(&path, mode.clone())?;
             }
@@ -72,8 +106,16 @@ fn restore(
     Ok(())
 }
 
-pub fn apply(app: &App, root: &Path, before: &Files, after: &Files) -> crate::Result<()> {
-    apply_with(app, root, before, after, |_, _| Ok(()))
+/// Apply `after` to `root`. `exec` holds the execute bits of the `after` files: a file whose bits
+/// differ from the project file is written too, so scripts stay executable.
+pub fn apply(
+    app: &App,
+    root: &Path,
+    before: &Files,
+    after: &Files,
+    exec: &ExecBits,
+) -> crate::Result<()> {
+    apply_with(app, root, before, after, exec, |_, _| Ok(()))
 }
 
 fn apply_with<F: Fn(usize, &Path) -> crate::Result<()>>(
@@ -81,12 +123,17 @@ fn apply_with<F: Fn(usize, &Path) -> crate::Result<()>>(
     root: &Path,
     before: &Files,
     after: &Files,
+    exec: &ExecBits,
     check: F,
 ) -> crate::Result<()> {
     let all: BTreeSet<_> = before.keys().chain(after.keys()).cloned().collect();
+    let current = exec_bits(root, before.keys());
     let changed: Vec<_> = all
         .into_iter()
-        .filter(|p| before.get(p) != after.get(p))
+        .filter(|p| {
+            before.get(p) != after.get(p)
+                || (after.contains_key(p) && current.get(p) != exec.get(p))
+        })
         .collect();
     for rel in &changed {
         let path = safe_path(root, rel)?;
@@ -177,7 +224,7 @@ fn apply_with<F: Fn(usize, &Path) -> crate::Result<()>>(
             let path = safe_path(root, rel)?;
             check(index, &path)?;
             if let Some(bytes) = after.get(rel) {
-                write_file(&path, bytes)?;
+                write_file(&path, bytes, Some(exec.get(rel).copied().unwrap_or(0)))?;
             } else {
                 std::fs::remove_file(&path)?;
             }
@@ -243,13 +290,20 @@ mod tests {
             ("nested/new.md".into(), b"created".to_vec()),
         ]);
         let app = App::new().unwrap();
-        let result = apply_with(&app, root.path(), &before, &after, |index, _| {
-            if index == 3 {
-                Err("injected failure".into())
-            } else {
-                Ok(())
-            }
-        });
+        let result = apply_with(
+            &app,
+            root.path(),
+            &before,
+            &after,
+            &ExecBits::new(),
+            |index, _| {
+                if index == 3 {
+                    Err("injected failure".into())
+                } else {
+                    Ok(())
+                }
+            },
+        );
         assert!(result.unwrap_err().to_string().contains("project restored"));
         assert_eq!(
             std::fs::read_to_string(root.path().join("old.md")).unwrap(),
@@ -273,5 +327,36 @@ mod tests {
                 0o750
             );
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn new_files_get_the_umask_mode_and_the_given_execute_bits() {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o7777;
+        let allowed = crate::util::umask_allowed();
+        let root = tempfile::tempdir().unwrap();
+        let old = root.path().join("old.sh");
+        std::fs::write(&old, "x").unwrap();
+        std::fs::set_permissions(&old, std::fs::Permissions::from_mode(0o640)).unwrap();
+        let before = BTreeMap::from([("old.sh".to_string(), b"x".to_vec())]);
+        let after = BTreeMap::from([
+            ("old.sh".to_string(), b"x".to_vec()),
+            ("new.md".to_string(), b"doc".to_vec()),
+            ("bin/run".to_string(), b"#!/bin/sh\n".to_vec()),
+        ]);
+        let exec = ExecBits::from([
+            ("old.sh".to_string(), 0o100),
+            ("bin/run".to_string(), 0o111),
+        ]);
+        let app = App::new().unwrap();
+        apply(&app, root.path(), &before, &after, &exec).unwrap();
+        assert_eq!(mode(&root.path().join("new.md")), 0o666 & allowed);
+        assert_eq!(
+            mode(&root.path().join("bin/run")),
+            (0o666 & allowed) | 0o111
+        );
+        // Same bytes, new bits: the mode changes and the rest of the mode stays.
+        assert_eq!(mode(&old), 0o740);
     }
 }

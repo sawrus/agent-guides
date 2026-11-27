@@ -312,10 +312,15 @@ pub fn synchronize(app: &mut App) -> crate::Result<()> {
         &format!("Agent OS targets: {}", app.selected_agent_os.join(", ")),
     );
     let staging = tempfile::tempdir()?;
+    // The staging copy keeps the execute bits, so that only a real change reaches the project.
+    let before_exec = crate::project_transaction::exec_bits(&root, before.keys());
     for (rel, bytes) in &before {
         let path = safe_path(staging.path(), rel)?;
         std::fs::create_dir_all(path.parent().unwrap())?;
-        std::fs::write(path, bytes)?;
+        std::fs::write(&path, bytes)?;
+        if let Some(bits) = before_exec.get(rel) {
+            util::copy_exec_bits(&path, *bits)?;
+        }
     }
     app.project_dir = staging.path().to_string_lossy().to_string();
     app.company_base_dir = Some(root.clone());
@@ -325,10 +330,11 @@ pub fn synchronize(app: &mut App) -> crate::Result<()> {
     app.project_dir = root.to_string_lossy().to_string();
     app.dry_run = dry_run;
     let after = result?;
+    let after_exec = crate::project_transaction::exec_bits(staging.path(), after.keys());
     for action in &app.upgrade_actions {
         ui::log(app, action);
     }
-    crate::project_transaction::apply(app, &root, &before, &after)?;
+    crate::project_transaction::apply(app, &root, &before, &after, &after_exec)?;
     crate::gitstate::report(app, &root);
     if !dry_run {
         crate::gate::write_baseline(app, &root)?;

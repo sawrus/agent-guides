@@ -133,8 +133,15 @@ Use ready-made skills from other repositories, for example
 `agentic install --skill-pack <spec>`) installs every skill of the pack, unchanged, into `.claude/skills`,
 `.agents/skills`, `.opencode/skills`, and the other host directories. The manifest locks the commit;
 `agentic skills update` moves it, `agentic skills list` shows the packs, and `agentic skills remove` removes the
-pack files and nothing else. The preset `pocock` (`--skill-pack pocock --issue-tracker local|github|gitlab`)
-installs 21 of these skills and writes the project setup that they expect. See [skill packs](docs/skill-packs.md).
+pack files and nothing else. Built-in presets install a pinned, curated set by name:
+
+| Preset | Source | License | Skills |
+|---|---|---|---|
+| `pocock` | [mattpocock/skills](https://github.com/mattpocock/skills) | MIT | 21, plus the project setup (`--issue-tracker local\|github\|gitlab`) |
+| `superpowers` | [obra/superpowers](https://github.com/obra/superpowers) | MIT | 13 |
+| `anthropic` | [anthropics/skills](https://github.com/anthropics/skills) | Apache-2.0 | 8 |
+
+The TUI offers them in the "Skills" step, right after the integrations step. See [skill packs](docs/skill-packs.md).
 
 ## Standards for the pack itself
 

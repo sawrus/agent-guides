@@ -117,6 +117,74 @@ pub fn run_with_timeout(
     }
 }
 
+/// The permission bits that the process umask allows (`0o777 & !umask`), probed once with a file in
+/// the temp directory; `0o755` when the probe fails. Always `0o777` outside Unix.
+pub fn umask_allowed() -> u32 {
+    static ALLOWED: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
+    *ALLOWED.get_or_init(|| {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+            let probe = std::env::temp_dir().join(format!(
+                ".agentic-umask-{}-{:?}",
+                std::process::id(),
+                std::thread::current().id()
+            ));
+            let _ = std::fs::remove_file(&probe);
+            let mode = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o777)
+                .open(&probe)
+                .and_then(|f| f.metadata())
+                .map(|m| m.permissions().mode() & 0o777);
+            let _ = std::fs::remove_file(&probe);
+            mode.unwrap_or(0o755)
+        }
+        #[cfg(not(unix))]
+        {
+            0o777
+        }
+    })
+}
+
+/// The execute bits (`0o111` mask) of a file; 0 for a missing file and outside Unix.
+pub fn exec_bits(path: &Path) -> u32 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::metadata(path).map_or(0, |m| m.permissions().mode() & 0o111)
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+        0
+    }
+}
+
+/// Set the execute bits of an existing file to exactly `bits & 0o111`, limited by the umask. Read and
+/// write bits stay; setuid, setgid, and sticky bits are cleared.
+pub fn set_exec_bits(path: &Path, bits: u32) -> std::io::Result<()> {
+    copy_exec_bits(path, bits & umask_allowed())
+}
+
+/// Set the execute bits of an existing file to exactly `bits & 0o111` (no umask limit): a copy of
+/// the bits of another file.
+pub fn copy_exec_bits(path: &Path, bits: u32) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(path)?.permissions().mode() & 0o7777;
+        let wanted = (mode & 0o666) | (bits & 0o111);
+        if wanted != mode {
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(wanted))?;
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = (path, bits);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
