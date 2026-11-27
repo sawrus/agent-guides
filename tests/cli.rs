@@ -13,6 +13,7 @@ fn agentic(home: &Path) -> Command {
         .env("XDG_DATA_HOME", home.join(".local/share"))
         .env("XDG_CACHE_HOME", home.join(".cache"))
         .env("AGENTIC_DOCTOR", "0")
+        .env("AGENTIC_UPDATE_CHECK", "0")
         .env_remove("AGENTIC_ENABLE_MCPS")
         .env_remove("AGENTIC_ENABLE_CONTEXT7")
         .env_remove("AGENTIC_FORCE_INTERACTIVE")
@@ -82,6 +83,13 @@ fn lean_jev_keeps_native_layout_on_each_host() {
         assert_eq!(manifest["settings"]["jev"]["enabled"], true, "{host}");
         assert!(p.join(".agent/jev/hook.py").is_file(), "{host}");
         assert!(p.join(".agent/gate/gate.py").is_file(), "{host}");
+        // The one shared session-start runtime carries the upgrade reminder for every host.
+        assert!(
+            std::fs::read_to_string(p.join(".agent/gate/gate.py"))
+                .unwrap()
+                .contains("__update-check"),
+            "{host}"
+        );
         assert!(
             p.join(agents).join(format!("explorer.{suffix}")).is_file(),
             "{host} explorer"
@@ -2935,5 +2943,91 @@ fn skill_pack_keeps_a_user_skill_in_a_host_dir_outside_the_inventory() {
     assert_eq!(
         std::fs::read_to_string(p.join(".agents/skills/tdd/SKILL.md")).unwrap(),
         user
+    );
+}
+
+fn update_check(home: &Path, format: &str, envs: &[(&str, &str)]) -> (String, Value) {
+    let mut cmd = agentic(home);
+    cmd.args(["__update-check", "--format", format])
+        .env_remove("AGENTIC_UPDATE_CHECK")
+        .env_remove("AGENTIC_UPDATE_CHECK_LATEST");
+    for (k, v) in envs {
+        cmd.env(k, v);
+    }
+    let out = cmd.assert().success().get_output().stdout.clone();
+    let text = String::from_utf8(out).unwrap();
+    let value = serde_json::from_str(&text).unwrap_or(Value::Null);
+    (text, value)
+}
+
+#[test]
+fn update_check_reminds_once_per_interval_without_network() {
+    let home = tempfile::tempdir().unwrap();
+    let latest = [("AGENTIC_UPDATE_CHECK_LATEST", "v999.0.0")];
+    let (_, first) = update_check(home.path(), "claude", &latest);
+    assert!(first["systemMessage"]
+        .as_str()
+        .unwrap()
+        .contains("v999.0.0"));
+    assert!(first["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .unwrap()
+        .contains("never upgrade on your own"));
+    let state: Value = serde_json::from_str(
+        &std::fs::read_to_string(home.path().join(".cache/agentic/update-check.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(state["latest_seen"], "999.0.0");
+    // Snoozed: the next sessions in the interval stay silent, on every host.
+    for format in ["claude", "codex", "opencode"] {
+        assert_eq!(update_check(home.path(), format, &latest).0, "");
+    }
+}
+
+#[test]
+fn update_check_formats_off_switches_and_errors() {
+    let latest = [("AGENTIC_UPDATE_CHECK_LATEST", "v999.0.0")];
+    for format in ["codex", "opencode"] {
+        let home = tempfile::tempdir().unwrap();
+        let (_, v) = update_check(home.path(), format, &latest);
+        assert_eq!(v.get("systemMessage").is_some(), format == "codex");
+        assert!(v["hookSpecificOutput"]["additionalContext"].is_string());
+    }
+    let home = tempfile::tempdir().unwrap();
+    let off_env = [("AGENTIC_UPDATE_CHECK", "0"), latest[0]];
+    assert_eq!(update_check(home.path(), "claude", &off_env).0, "");
+    assert!(!home
+        .path()
+        .join(".cache/agentic/update-check.json")
+        .exists());
+    let config = home.path().join(".config/agentic");
+    std::fs::create_dir_all(&config).unwrap();
+    std::fs::write(
+        config.join("config.json"),
+        r#"{"update_check":{"interval_days":0}}"#,
+    )
+    .unwrap();
+    assert_eq!(update_check(home.path(), "claude", &latest).0, "");
+    // Same version and a junk tag stay silent and exit 0.
+    let home = tempfile::tempdir().unwrap();
+    let same = format!("v{}", env!("CARGO_PKG_VERSION"));
+    assert_eq!(
+        update_check(
+            home.path(),
+            "claude",
+            &[("AGENTIC_UPDATE_CHECK_LATEST", &same)]
+        )
+        .0,
+        ""
+    );
+    let home = tempfile::tempdir().unwrap();
+    assert_eq!(
+        update_check(
+            home.path(),
+            "claude",
+            &[("AGENTIC_UPDATE_CHECK_LATEST", "v999.0.0-rc.1")]
+        )
+        .0,
+        ""
     );
 }

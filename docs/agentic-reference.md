@@ -136,6 +136,10 @@ using manifest settings or `default + software.general` when settings are unavai
 `AGENTIC_SKIP_BINARY_UPGRADE=1` skips the GitHub release query and the binary replacement: `upgrade` only
 refreshes the project (offline machines, CI, a pinned binary).
 
+At most once per interval (default 7 days) an agent session start reminds you of a newer release and offers
+`agentic upgrade`; it never upgrades by itself. Set `update_check.interval_days` in
+`~/.config/agentic/config.json` (`0` = off) or `AGENTIC_UPDATE_CHECK=0`. See [upgrade reminder](upgrade-reminder.md).
+
 - **No `.agentic.json`.** When the project has Agentic files but no `.agentic.json`, `upgrade` stops with an
   error: the install settings are unknown. Run `agentic install --project-dir <dir> --agent-os ... --areas ...
   --specializations ...` (or `agentic tui`) with the intended settings. `--force` keeps the old behaviour and

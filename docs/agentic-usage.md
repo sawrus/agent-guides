@@ -269,6 +269,9 @@ once per run. Agent sessions get the same line once at session start through the
 (`gate.py --event start`): a `SessionStart` hook in Claude Code and Codex, and the `context` hook of the OpenCode
 gate plugin. See [quality gate](agentic-v2-lean/README.md#quality-gate).
 
+The same session-start hook also reminds you, at most once per interval (default 7 days), when a newer agentic
+release exists, and offers `agentic upgrade`. See [upgrade reminder](upgrade-reminder.md).
+
 List available options:
 
 ```bash

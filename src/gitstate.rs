@@ -262,6 +262,8 @@ pub(crate) mod tests {
                 .args(["--event", "start", "--project-dir"])
                 .arg(clone)
                 .env("PYTHONDONTWRITEBYTECODE", "1")
+                // No upgrade lookup, no touch of the real cache.
+                .env("AGENTIC_UPDATE_CHECK", "0")
                 .output()
                 .unwrap();
             assert!(out.status.success());

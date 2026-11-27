@@ -27,6 +27,7 @@ fn agentic(home: &Path, fake_bin: &Path) -> Command {
         .env("XDG_CACHE_HOME", home.join(".cache"))
         .env("XDG_STATE_HOME", home.join(".local/state"))
         .env("TMPDIR", &tmp)
+        .env("AGENTIC_UPDATE_CHECK", "0")
         .env("PATH", path)
         .env_remove("CODEX_HOME")
         .env_remove("AGENTIC_DOCTOR_OPENCODE_MODEL")

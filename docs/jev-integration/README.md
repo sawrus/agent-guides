@@ -610,3 +610,5 @@ modules, the way OpenCode imports them, so `import.meta.url` is allowed.
 Since 1.6.0, coordinators can submit open goal/scope/complexity before encrypted spawn through the [local prepare-spawn interface](epic/preselection.md). It reuses the shared runtime and preserves profile restrictions. Restricted profiles retain the canonical role name with unconfirmed application; simple profiles support unique one-use correlation.
 
 See the [epic contract](epic/epic_plan.md) and [gated comparative pilot](epic/pilot.md). No pilot measurements have been made.
+
+Pilot and benchmark cells run with `AGENTIC_UPDATE_CHECK=0` (`host_env` in `scripts/pilot_jev.py`), so the [upgrade reminder](../upgrade-reminder.md) adds no context and uses no snooze.

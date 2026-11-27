@@ -14,7 +14,9 @@ Settings: optional `.agent/gate.json` {"commands": ["make test"], "changelog": t
 "guard": {"defaults": true, "confirm": [...], "prod_context_pattern": "prod", "prod_hosts": [],
 "db": {"mode": "ask", "write": "deny"}}}.
 `--event start`: when the checkout is older than the origin default branch (local refs only, no fetch), add one
-line of SessionStart `additionalContext`; the rule and text match `src/gitstate.rs`. Standard library only.
+line of SessionStart `additionalContext`; the rule and text match `src/gitstate.rs`. It also asks the agentic binary
+(`agentic __update-check`, `src/update_check.rs`) whether a newer release exists; at most once per interval the
+answer adds a user notice (`systemMessage` on Claude Code and Codex) and one more context line. Standard library only.
 """
 import argparse
 import hashlib
@@ -23,6 +25,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -629,12 +632,40 @@ def stale_warning(state):
             f'and is {commits(behind)} behind origin/{default}, so the code here may be outdated. {hint}')
 
 
+def update_notice(host, payload=None):
+    """Upgrade reminder from `agentic __update-check`; {} when off, missing, slow, or on any error.
+
+    Sessions without a human skip it so they do not use up the machine-wide snooze: subagents (`agent_id` in the
+    hook input, `subagent` from the OpenCode plugin for child sessions) and CI. Neither Claude Code nor Codex
+    documents a field for `claude -p` or `codex exec`; harnesses set AGENTIC_UPDATE_CHECK=0.
+    """
+    if os.environ.get('AGENTIC_UPDATE_CHECK', '').strip().lower() in ('0', 'off', 'false', 'no'):
+        return {}
+    if os.environ.get('CI') or (isinstance(payload, dict) and (payload.get('agent_id') or payload.get('subagent'))):
+        return {}
+    exe = os.environ.get('AGENTIC_BIN') or shutil.which('agentic') or str(Path.home() / '.local' / 'bin' / 'agentic')
+    fmt = host if host in ('claude', 'codex') else 'opencode'
+    try:
+        result = subprocess.run([exe, '__update-check', '--format', fmt], capture_output=True, text=True, timeout=4)
+        data = json.loads(result.stdout) if result.returncode == 0 and result.stdout.strip() else {}
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def start(project, payload, host=None):
     state = git_state(project)
-    text = stale_warning(state) if state else None
-    if not text:
+    lines = [t for t in (stale_warning(state) if state else None,) if t]
+    notice = update_notice(host, payload)
+    extra = notice.get('hookSpecificOutput', {}).get('additionalContext')
+    if isinstance(extra, str) and extra:
+        lines.append(extra)
+    if not lines:
         return {}
-    return {'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': text}}
+    result = {'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': '\n'.join(lines)}}
+    if isinstance(notice.get('systemMessage'), str) and notice['systemMessage']:
+        result['systemMessage'] = notice['systemMessage']
+    return result
 
 
 EVENTS = {'stop': stop, 'guard': guard, 'start': start}

@@ -183,7 +183,7 @@ def scrub(text: str, project: Path) -> str:
 def host_run(host: str, project: Path, out: Path) -> None:
     """One short real answer of the native main session per host (lean profile); raw output is kept for re-rendering."""
     # OpenCode resolves the project from PWD, which Popen(cwd=...) does not update.
-    env = {**os.environ, "AGENTIC_TELEGRAM": "off", "PWD": str(project)}
+    env = {**os.environ, "AGENTIC_TELEGRAM": "off", "AGENTIC_UPDATE_CHECK": "0", "PWD": str(project)}
     for name in ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID",
                  "CLAUDE_CODE_SESSION_ACCESS_TOKEN", "CODEX_THREAD_ID", "CODEX_SESSION_ID"):
         env.pop(name, None)
