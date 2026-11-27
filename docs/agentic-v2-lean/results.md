@@ -4,6 +4,61 @@ Protocol: [README.md](README.md). Total: 36 paid cells, 1 run each (A0 plain, A1
 × 3 hosts × 4 tasks). Models: Claude `sonnet`, Codex `gpt-6.1-sol`, OpenCode `openai/gpt-6-luna`. Every cell
 was graded again with the final `tasks.json` (`make bench-regrade`). Codex lean ran with the gate hooks trusted.
 
+## Round 8: lean vs lean + pocock skill pack (planned)
+
+Status: planned. Not run. This section holds no results.
+
+Question. Does the optional external skill pack `pocock` (skills from `github.com/mattpocock/skills`: grilling,
+to-spec, to-tickets, domain-modeling, tdd, code-review, diagnosing-bugs, codebase-design) raise quality on two kinds
+of work that T1–T11 do not cover, and at what cost?
+
+Scope. Round 8 runs on the Claude host only (model `sonnet`), because only Claude is available for this round.
+The result applies to Claude. Codex and OpenCode stay unmeasured; the pack goes into lean for them only after a
+separate check on those hosts. The harness still supports all three hosts.
+
+Method. Copy round 7 on one host: 9 repetitions per task (a smaller n would leave 2 cells of difference inside the
+noise), seed 8, `--out` Git-ignored. The pack is installed with `agentic install --skill-pack pocock` (arm
+`lean-pocock`); the control is `lean`. Both arms use the same binary, so the flag must exist before the run (the
+harness skips the pack arm and says so if it does not).
+
+| Task | Kind | What good looks like | Grader |
+|---|---|---|---|
+| T12 | Vague requirement: "add a loyalty discount" with only a function name | The agent asks, or states assumptions and acceptance criteria before code, then delivers | Hidden tests of properties true under any reasonable reading (cents, no discount at 0 orders, bounded, monotonic, `ValueError` on negative); `suite`, `lint`, `allowlist`; `assumptions` (assumption and acceptance-criteria wording in the messages or a changed Markdown file) |
+| T13 | New project from an empty seed: `wordfreq` CLI | Spec, `GLOSSARY.md`, ADR, `Makefile` with `test` and `lint`, tests, working code | `check_t13.py` (docs present, at least 3 tests, exact CLI output), `suite`, `lint` |
+
+Non-interactive questions. A run has one user turn. If an agent stops without changing a file (it asked a
+question), the harness resumes the same session once with the task's scripted `reply` in `tasks.json`: no further
+questions, choose reasonable values, and for T12 write the assumptions and criteria down. An agent that decides
+alone passes through unchanged. So asking and assuming both lead to a gradable result, and the grader does not
+reward one style. The reply is the same for both arms.
+
+Cells: 2 arms × 1 host × 2 tasks × 9 repetitions = 36 paid cells, 18 per arm.
+
+Metrics per arm: accepted cells (Wilson 95% interval), per-check failures, share of cells that needed the scripted
+reply (`turns` = 2, the agent stopped to ask), full and uncached tokens (median), subagents, cost per success.
+Cost is `total_cost_usd`. Round 7 gave the Claude cost baseline of the lean arm ($0.122 per success on T1–T11);
+the new tasks are larger, so the comparison is `lean-pocock` ÷ `lean` on the same tasks.
+
+Decision rule, fixed before the run. The pack goes into the lean default for Claude only if both hold:
+1. Quality: `lean-pocock` accepts at least 2 more cells than `lean` of the 18 per arm, and loses none that `lean`
+   accepts on the same task and repetition.
+2. Cost: cost per success `lean-pocock` ÷ `lean` is at most 1.15. Round 7 accepted × 1.14 (Claude, JEV) only as an
+   opt-in with no quality gain; a pack in the default needs a quality gain and may not go above 1.15.
+
+If either fails, the pack stays opt-in (a preset the user chooses). If `lean-pocock` accepts fewer cells than
+`lean`, record the failing checks as root causes. Even when both hold, the verdict covers Claude only: for Codex
+and OpenCode the pack enters lean only after the same check on those hosts. Limitations are those of round 7, plus:
+one host, the `assumptions` check is a text proxy, and a 2-cell gain of 18 is inside the interval, so a pass is a
+weak signal.
+
+Run (after building the agentic that has `--skill-pack`):
+
+```
+make bench BENCH_OUT=.agentic-blackbox/bench-r8-claude \
+  BENCH_ARGS="--hosts claude --tasks T12,T13 --modes lean,lean-pocock --reps 9 --seed 8 --seconds 900 --cap 300000"
+make bench-report BENCH_OUT=.agentic-blackbox/bench-r8-claude
+```
+
 ## Round 7: lean vs lean + JEV, 10 tasks, 3 repetitions (2026-11-12)
 
 180 paid cells: 2 arms (`lean`, `lean-jev`) × 3 hosts × T1–T8, T10, T11 × 3 repetitions, seed 7. Every cell is
