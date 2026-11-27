@@ -10,6 +10,9 @@ import unittest
 
 import gate
 
+# The start event asks the agentic binary for upgrade reminders; tests never reach it or the network.
+os.environ['AGENTIC_UPDATE_CHECK'] = '0'
+
 AUTHOR = ['-c', 'user.name=t', '-c', 'user.email=t@localhost']
 
 
@@ -365,6 +368,65 @@ class Start(unittest.TestCase):
         out = subprocess.run(['python3', gate.__file__, '--event', 'start', '--project-dir', str(clone)],
                              input='{"source": "startup"}', capture_output=True, text=True, check=True).stdout
         self.assertEqual(json.loads(out)['hookSpecificOutput']['hookEventName'], 'SessionStart')
+
+
+FAKE_AGENTIC = """#!/bin/sh
+[ "$1" = __update-check ] || exit 3
+case "$3" in
+  claude|codex) printf '{"systemMessage":"agentic v9.0.0 is available","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"update line %s"}}' "$3" ;;
+  *) printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"update line opencode"}}' ;;
+esac
+"""
+
+
+class UpdateReminder(unittest.TestCase):
+    def setUp(self):
+        self.old = dict(os.environ)
+        os.environ['AGENTIC_UPDATE_CHECK'] = '1'
+        self.dir = Path(tempfile.mkdtemp(prefix='gate-update-'))
+        self.fake = self.dir / 'agentic'
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.old)
+
+    def use(self, body):
+        self.fake.write_text(body)
+        self.fake.chmod(0o755)
+        os.environ['AGENTIC_BIN'] = str(self.fake)
+
+    def test_claude_and_codex_get_user_message_and_agent_line(self):
+        self.use(FAKE_AGENTIC)
+        for host in ('claude', 'codex'):
+            result = gate.start(self.dir, {}, host)
+            self.assertEqual(result['systemMessage'], 'agentic v9.0.0 is available')
+            self.assertEqual(result['hookSpecificOutput']['additionalContext'], f'update line {host}')
+            self.assertEqual(result['hookSpecificOutput']['hookEventName'], 'SessionStart')
+
+    def test_opencode_gets_only_the_agent_line(self):
+        self.use(FAKE_AGENTIC)
+        result = gate.start(self.dir, {}, 'opencode')
+        self.assertNotIn('systemMessage', result)
+        self.assertEqual(result['hookSpecificOutput']['additionalContext'], 'update line opencode')
+
+    def test_notice_joins_the_stale_warning(self):
+        self.use(FAKE_AGENTIC)
+        clone = stale_clone(3)
+        git(clone, 'switch', '-q', '-c', 'main', 'origin/main')
+        text = gate.start(clone, {}, 'claude')['hookSpecificOutput']['additionalContext']
+        self.assertTrue(text.startswith('Stale checkout:'))
+        self.assertTrue(text.endswith('update line claude'))
+
+    def test_off_missing_failing_and_junk_stay_silent(self):
+        self.use(FAKE_AGENTIC)
+        os.environ['AGENTIC_UPDATE_CHECK'] = '0'
+        self.assertEqual(gate.start(self.dir, {}, 'claude'), {})
+        os.environ['AGENTIC_UPDATE_CHECK'] = '1'
+        os.environ['AGENTIC_BIN'] = str(self.dir / 'missing')
+        self.assertEqual(gate.start(self.dir, {}, 'claude'), {})
+        for body in ('#!/bin/sh\nexit 1\n', '#!/bin/sh\necho not-json\n', '#!/bin/sh\necho "[1]"\n'):
+            self.use(body)
+            self.assertEqual(gate.start(self.dir, {}, 'claude'), {})
 
 
 FIELD_SCRIPT = '''import psycopg

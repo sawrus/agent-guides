@@ -35,6 +35,7 @@ mod theme;
 mod tomledit;
 mod tui;
 mod ui;
+mod update_check;
 mod upgrade;
 mod upgrade_config;
 mod util;
@@ -153,6 +154,11 @@ pub fn exit1() -> AnyError {
 }
 
 fn run(args: Vec<String>) -> Result<()> {
+    // Hidden hook command: quiet, fast, never fails (docs/upgrade-reminder.md).
+    if args.first().map(String::as_str) == Some("__update-check") {
+        update_check::run_hook(&args[1..]);
+        return Ok(());
+    }
     let mut app = App::new()?;
     app.load_user_config();
     app.set_theme_colors();

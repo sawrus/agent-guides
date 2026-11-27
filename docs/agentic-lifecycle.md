@@ -73,6 +73,9 @@ applying files fails. The successfully updated binary remains installed. Dry run
 show project actions using the available payload without downloading a release or
 changing the target project. See [the full upgrade contract](agentic-upgrade/README.md).
 
+The session-start hook of the quality gate reminds about new releases once per interval and only offers the
+upgrade; see [upgrade reminder](upgrade-reminder.md).
+
 ## Managed reruns
 
 When `.agentic.json` exists in the target project, `agentic install` treats the project as already managed:

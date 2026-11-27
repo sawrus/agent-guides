@@ -41,7 +41,9 @@ function servesDirectory(directory: string): boolean {
 // effect is "allow"; the shell tool checks the `shell` permission for every command except plain `cd`. So the
 // guard sees every shell call, also under an agent that auto-allows shell (build).
 // Start: once per session the runtime checks for a stale checkout (local refs only); a warning becomes
-// one extra system line in that session's requests, like SessionStart additionalContext elsewhere.
+// one extra system line in that session's requests, like SessionStart additionalContext elsewhere. The same
+// line carries the upgrade reminder (`agentic __update-check`); a server plugin has no user-visible toast, so
+// the line asks the agent to tell the user.
 export default Plugin.define({
   id: `agentic-gate-${pathHash}`,
   async setup(ctx) {

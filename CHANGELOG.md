@@ -1,5 +1,15 @@
 # Changelog
 
+## v16.0.0
+
+- Upgrade reminder. At most once per interval (default 7 days, per machine), a session start in Claude Code, Codex,
+  or OpenCode tells you that a newer agentic release exists and offers `agentic upgrade`. Claude Code and Codex
+  show it to you (`systemMessage` of the `SessionStart` hook); OpenCode has no user-visible channel for a server
+  plugin, so its gate plugin asks the agent to say it in the first reply. The agent runs the upgrade only after you
+  agree. The gate session-start runtime calls the new hidden command `agentic __update-check`; the lookup has a 2 s
+  limit, and any error stays silent. Set `update_check.interval_days` in `~/.config/agentic/config.json` (`0` =
+  off) or `AGENTIC_UPDATE_CHECK=0`. State: `~/.cache/agentic/update-check.json`. See `docs/upgrade-reminder.md`.
+
 ## v15.0.0
 
 - TUI: a new "Skills" step right after the integrations step (where you choose JEV) replaces the free-text
