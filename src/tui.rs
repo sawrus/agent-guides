@@ -1,6 +1,7 @@
 //! Fullscreen ratatui wizard for `agentic tui` (and no-args interactive runs).
-//! The flow mirrors the bash TUI: theme -> banner -> project dir -> agent OS ->
-//! MCP servers (with detection checkboxes) -> areas -> per-area specs -> install.
+//! The flow: theme -> project dir -> agent OS -> role profiles -> MCP servers and JEV (with detection
+//! checkboxes) -> Skills (one skill pack) -> issue tracker (pocock only) -> areas -> per-area specs ->
+//! company rules -> install.
 
 use crate::app::App;
 use crate::config;
@@ -14,6 +15,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph};
 use ratatui::{Frame, Terminal};
+use std::collections::BTreeMap;
 
 pub const ASCII_BANNER: &str = r#"    _    ____ _____ _   _ _____ ___ ____
    / \  / ___| ____| \ | |_   _|_ _/ ___|
@@ -324,15 +326,32 @@ fn wait_key() -> crate::Result<Option<KeyCode>> {
     }
 }
 
+/// The next key of a screen with the title `title`; None on Ctrl-C. The wizard tests script it.
+pub type Keys<'a> = dyn FnMut(&str) -> crate::Result<Option<KeyCode>> + 'a;
+
+fn terminal_keys(_title: &str) -> crate::Result<Option<KeyCode>> {
+    wait_key()
+}
+
 fn run_select<B: Backend>(
+    terminal: &mut Terminal<B>,
+    state: SelectState,
+    active_theme: &str,
+    subtitle: &str,
+) -> crate::Result<SelectState> {
+    run_select_with(terminal, state, active_theme, subtitle, &mut terminal_keys)
+}
+
+fn run_select_with<B: Backend>(
     terminal: &mut Terminal<B>,
     mut state: SelectState,
     active_theme: &str,
     subtitle: &str,
+    keys: &mut Keys,
 ) -> crate::Result<SelectState> {
     while !state.done {
         terminal.draw(|frame| render_select(frame, &state, active_theme, subtitle))?;
-        match wait_key()? {
+        match keys(&state.title)? {
             Some(code) => state.handle_key(code),
             None => {
                 state.cancelled = true;
@@ -345,13 +364,23 @@ fn run_select<B: Backend>(
 
 fn run_input<B: Backend>(
     terminal: &mut Terminal<B>,
-    mut state: InputState,
+    state: InputState,
     active_theme: &str,
     subtitle: &str,
 ) -> crate::Result<InputState> {
+    run_input_with(terminal, state, active_theme, subtitle, &mut terminal_keys)
+}
+
+fn run_input_with<B: Backend>(
+    terminal: &mut Terminal<B>,
+    mut state: InputState,
+    active_theme: &str,
+    subtitle: &str,
+    keys: &mut Keys,
+) -> crate::Result<InputState> {
     while !state.done {
         terminal.draw(|frame| render_input(frame, &state, active_theme, subtitle))?;
-        match wait_key()? {
+        match keys(&state.title)? {
             Some(code) => state.handle_key(code),
             None => {
                 state.cancelled = true;
@@ -360,6 +389,24 @@ fn run_input<B: Backend>(
         }
     }
     Ok(state)
+}
+
+/// The wizard screens on one terminal with one key source.
+struct Screens<'a, 'k, B: Backend> {
+    terminal: &'a mut Terminal<B>,
+    theme: String,
+    subtitle: String,
+    keys: &'a mut Keys<'k>,
+}
+
+impl<B: Backend> Screens<'_, '_, B> {
+    fn select(&mut self, state: SelectState) -> crate::Result<SelectState> {
+        run_select_with(self.terminal, state, &self.theme, &self.subtitle, self.keys)
+    }
+
+    fn input(&mut self, state: InputState) -> crate::Result<InputState> {
+        run_input_with(self.terminal, state, &self.theme, &self.subtitle, self.keys)
+    }
 }
 
 struct TerminalGuard;
@@ -481,7 +528,7 @@ pub struct WizardSelections {
     pub profiles: std::collections::BTreeMap<String, String>,
     /// Company rules from the optional "Company rules" step; None keeps the feature off.
     pub company_rules: Option<crate::company::CompanyRules>,
-    /// Saved skill packs plus the one from the optional "Skill pack" step.
+    /// The complete pack list after the "Skills" step (one pack, none, or the saved packs).
     pub skill_packs: Vec<crate::skill_packs::SkillPack>,
     /// Issue tracker of the preset `pocock` setup; None keeps the saved one or `local`.
     pub issue_tracker: Option<String>,
@@ -529,6 +576,9 @@ pub fn apply_selections(app: &mut App, selections: WizardSelections) {
     app.host_profiles = selections.profiles;
     app.company_rules = selections.company_rules;
     app.skill_packs = selections.skill_packs;
+    // The "Skills" step gives the complete list: the install does not add the saved packs back, and
+    // it removes the files of packs that are gone.
+    app.skill_packs_replace = true;
     if selections.issue_tracker.is_some() {
         app.issue_tracker = selections.issue_tracker;
     }
@@ -554,11 +604,38 @@ pub fn profile_step(app: &App, host: &str) -> (String, Vec<String>, Vec<String>)
 }
 
 fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
-    let _guard = TerminalGuard::enter()?;
+    // GitHub answers while the user goes through the steps before "Skills".
+    let stars = crate::github_stars::Prefetch::start(app);
+    let guard = TerminalGuard::enter()?;
     let backend = ratatui::backend::CrosstermBackend::new(std::io::stdout());
     let mut terminal = Terminal::new(backend)?;
-    let subtitle = format!("{} {}", crate::APP_TUI_TITLE, crate::app_version_label());
+    let result = wizard_steps(
+        app,
+        &mut terminal,
+        &mut terminal_keys,
+        Box::new(move || stars.wait()),
+    )?;
+    drop(guard);
+    result.map_err(|e| {
+        ui::error(app, &e);
+        crate::exit1()
+    })
+}
 
+/// The wizard steps; `Ok(Err(message))` stops the wizard with that error. `stars` gives the star
+/// counts of the presets when the "Skills" step opens.
+fn wizard_steps<B: Backend>(
+    app: &mut App,
+    terminal: &mut Terminal<B>,
+    keys: &mut Keys,
+    stars: Box<dyn FnOnce() -> BTreeMap<String, crate::github_stars::Stars> + '_>,
+) -> crate::Result<Result<WizardSelections, String>> {
+    let mut screens = Screens {
+        terminal,
+        theme: app.active_theme.clone(),
+        subtitle: format!("{} {}", crate::APP_TUI_TITLE, crate::app_version_label()),
+        keys,
+    };
     let mut selections = WizardSelections::default();
 
     // 1. Theme picker (skipped when explicit or loaded from config)
@@ -568,30 +645,29 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
             crate::THEME_CHOICES.iter().map(|s| s.to_string()).collect(),
             false,
         );
-        let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
+        let state = screens.select(state)?;
         if !state.cancelled {
             if let Some(theme) = state.picked().first() {
                 selections.theme = Some(theme.clone());
                 app.theme = theme.clone();
                 let (active, _) = crate::theme::resolve(&app.theme, false);
                 app.active_theme = active;
+                screens.theme = app.active_theme.clone();
             }
         }
     }
 
     // 2. Project directory
     let input = InputState::new("Target project directory", "/tmp/agentic-project");
-    let input = run_input(&mut terminal, input, &app.active_theme, &subtitle)?;
+    let input = screens.input(input)?;
     if input.cancelled {
-        drop(_guard);
-        ui::error(app, "Directory input canceled");
-        return Err(crate::exit1());
+        return Ok(Err("Directory input canceled".into()));
     }
     selections.project_dir = input.result();
 
     // 3. Agent OS multi-select
     let state = SelectState::new("Select Agent OS target(s):", app.kb.agentos_choices(), true);
-    let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
+    let state = screens.select(state)?;
     selections.agent_os = state.picked();
 
     // 3b. Role profile per selected host
@@ -604,7 +680,7 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
         }
         let (prompt, ids, labels) = profile_step(app, host);
         let state = SelectState::new(&prompt, labels.clone(), false);
-        let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
+        let state = screens.select(state)?;
         let picked = state.picked();
         if let Some(index) = picked
             .first()
@@ -616,7 +692,7 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
         }
     }
 
-    // 4. MCP servers with detections
+    // 4. MCP servers with detections (JEV is chosen here)
     let detected =
         mcp::detect_configured_mcps(std::path::Path::new(&selections.project_dir), &app.home);
     let mut mcp_options: Vec<String> = vec![mcp::MCP_NONE_OPTION.to_string()];
@@ -630,7 +706,7 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
     }
     let mut state = SelectState::new("Select integrations (MCP / skills):", mcp_options, true);
     state.preselect(&preselected);
-    let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
+    let state = screens.select(state)?;
     let picked = state.picked();
     if state.cancelled {
         selections.mcps = detected;
@@ -648,9 +724,58 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
         }
     }
 
+    // 4b. Skills: one skill pack (single select) right below the JEV choice.
+    let saved_packs = saved_skill_packs(&selections.project_dir);
+    let (state, choices) = skills_step(&saved_packs, &stars());
+    let state = screens.select(state)?;
+    let choice = if state.cancelled {
+        SkillsChoice::Keep
+    } else {
+        state
+            .options
+            .iter()
+            .position(|o| state.picked().first() == Some(o))
+            .map(|i| choices[i].clone())
+            .unwrap_or(SkillsChoice::Keep)
+    };
+    let custom = if choice == SkillsChoice::Custom {
+        let input = screens.input(InputState::new(
+            "Custom skill pack: git repository <url>[#ref][:skills_root] or directory (empty = keep the saved choice)",
+            "",
+        ))?;
+        if input.cancelled {
+            String::new()
+        } else {
+            input.result()
+        }
+    } else {
+        String::new()
+    };
+    selections.skill_packs = match skills_selection(saved_packs, &choice, &custom) {
+        Ok(packs) => packs,
+        Err(e) => return Ok(Err(e)),
+    };
+
+    // 4c. Issue tracker of the preset `pocock` setup (only when that preset is chosen).
+    if selections
+        .skill_packs
+        .iter()
+        .any(|p| p.preset == crate::pocock_setup::PACK_ID)
+    {
+        let saved = app
+            .issue_tracker
+            .clone()
+            .or_else(|| saved_issue_tracker(&selections.project_dir));
+        let state = issue_tracker_state(saved.as_deref());
+        let state = screens.select(state)?;
+        if !state.cancelled {
+            selections.issue_tracker = state.picked().first().cloned();
+        }
+    }
+
     // 5. Areas
     let state = SelectState::new("Select area(s):", app.kb.list_areas(), true);
-    let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
+    let state = screens.select(state)?;
     selections.areas = state.picked();
     let areas = if selections.areas.is_empty() {
         vec!["software".to_string()]
@@ -665,12 +790,10 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
             app.kb.list_specs(area),
             true,
         );
-        let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
+        let state = screens.select(state)?;
         let chosen = state.picked();
         if chosen.is_empty() {
-            drop(_guard);
-            ui::error(app, &format!("No specialization selected for {area}"));
-            return Err(crate::exit1());
+            return Ok(Err(format!("No specialization selected for {area}")));
         }
         for spec in chosen {
             selections.specs.push(format!("{area}.{spec}"));
@@ -680,24 +803,14 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
     // 7. Company rules (optional): a directory and/or a git repository.
     let saved = saved_company_rules(&selections.project_dir);
     let (path_default, git_default) = company_defaults(saved.as_ref());
-    let path = run_input(
-        &mut terminal,
-        InputState::new(
-            "Company rules: directory (relative to the project or absolute; empty = none)",
-            &path_default,
-        ),
-        &app.active_theme,
-        &subtitle,
-    )?;
-    let git = run_input(
-        &mut terminal,
-        InputState::new(
-            "Company rules: git repository <url>[#ref][:subdir] (empty = none)",
-            &git_default,
-        ),
-        &app.active_theme,
-        &subtitle,
-    )?;
+    let path = screens.input(InputState::new(
+        "Company rules: directory (relative to the project or absolute; empty = none)",
+        &path_default,
+    ))?;
+    let git = screens.input(InputState::new(
+        "Company rules: git repository <url>[#ref][:subdir] (empty = none)",
+        &git_default,
+    ))?;
     let path = if path.cancelled {
         String::new()
     } else {
@@ -710,56 +823,123 @@ fn run_wizard_screens(app: &mut App) -> crate::Result<WizardSelections> {
     };
     selections.company_rules = match company_selection(saved, &path, &git) {
         Ok(rules) => rules,
-        Err(e) => {
-            drop(_guard);
-            ui::error(app, &e);
-            return Err(crate::exit1());
-        }
+        Err(e) => return Ok(Err(e)),
     };
 
-    // 8. Skill pack (optional): one more pack; the saved packs stay.
-    let saved_packs = saved_skill_packs(&selections.project_dir);
-    let pack = run_input(
-        &mut terminal,
-        InputState::new(
-            "Skill pack: git repository <url>[#ref][:skills_root] or directory to add (empty = keep saved packs)",
-            "",
-        ),
-        &app.active_theme,
-        &subtitle,
-    )?;
-    let pack = if pack.cancelled {
-        String::new()
-    } else {
-        pack.result()
-    };
-    selections.skill_packs = match skill_pack_selection(saved_packs, &pack) {
-        Ok(packs) => packs,
-        Err(e) => {
-            drop(_guard);
-            ui::error(app, &e);
-            return Err(crate::exit1());
-        }
-    };
+    Ok(Ok(selections))
+}
 
-    // 9. Issue tracker of the preset `pocock` setup (only when that preset is chosen).
-    if selections
-        .skill_packs
-        .iter()
-        .any(|p| p.preset == crate::pocock_setup::PACK_ID)
-    {
-        let saved = app
-            .issue_tracker
-            .clone()
-            .or_else(|| saved_issue_tracker(&selections.project_dir));
-        let state = issue_tracker_state(saved.as_deref());
-        let state = run_select(&mut terminal, state, &app.active_theme, &subtitle)?;
-        if !state.cancelled {
-            selections.issue_tracker = state.picked().first().cloned();
-        }
+/// One row of the "Skills" step.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SkillsChoice {
+    /// The saved packs stay as they are (also Esc).
+    Keep,
+    /// No skill pack: the saved packs are removed.
+    None,
+    /// The preset with this id replaces the saved packs.
+    Preset(&'static str),
+    /// A source from the text input replaces the saved packs.
+    Custom,
+}
+
+pub const SKILLS_TITLE: &str =
+    "Skills: choose one skill pack (Enter selects, Esc keeps the saved choice):";
+pub const SKILLS_CUSTOM_ROW: &str = "Custom source… (git <url>[#ref][:skills_root] or directory)";
+
+/// `mattpocock/skills — grilling, spec, tickets, TDD, ADR · 21 skills · MIT · ★ 333.8k`.
+pub fn preset_row(
+    preset: &crate::skill_packs::Preset,
+    stars: Option<&crate::github_stars::Stars>,
+) -> String {
+    let mut row = format!(
+        "{} — {} · {} skills · {}",
+        preset.repo,
+        preset.summary,
+        preset.select.len(),
+        preset.license
+    );
+    let stars = stars.cloned().unwrap_or(crate::github_stars::Stars {
+        count: preset.stars,
+        date: Some(preset.stars_date.to_string()),
+    });
+    row.push_str(" · ");
+    row.push_str(&stars.label());
+    row
+}
+
+/// The single-select "Skills" step and the choice of each row. Rows: `Keep saved: …` (only for saved
+/// packs that are not one preset), `None`, the presets, `Custom source…`. The cursor starts on the
+/// saved choice, so Enter keeps it.
+pub fn skills_step(
+    saved: &[crate::skill_packs::SkillPack],
+    stars: &BTreeMap<String, crate::github_stars::Stars>,
+) -> (SelectState, Vec<SkillsChoice>) {
+    let saved_preset = match saved {
+        [one] if crate::skill_packs::preset(&one.preset).is_some() => Some(one.preset.as_str()),
+        _ => None,
+    };
+    let mut rows = Vec::new();
+    let mut choices = Vec::new();
+    if !saved.is_empty() && saved_preset.is_none() {
+        let names: Vec<String> = saved
+            .iter()
+            .map(|p| format!("{} ({})", p.id, crate::source::source_id(&p.source)))
+            .collect();
+        rows.push(format!("Keep saved: {}", names.join(", ")));
+        choices.push(SkillsChoice::Keep);
     }
+    rows.push(if saved.is_empty() {
+        "None — no skill pack".to_string()
+    } else {
+        "None — remove the saved skill pack".to_string()
+    });
+    choices.push(SkillsChoice::None);
+    for preset in crate::skill_packs::PRESETS {
+        let mut row = preset_row(preset, stars.get(preset.id));
+        if saved_preset == Some(preset.id) {
+            row.push_str(" · saved");
+        }
+        rows.push(row);
+        choices.push(SkillsChoice::Preset(preset.id));
+    }
+    rows.push(SKILLS_CUSTOM_ROW.to_string());
+    choices.push(SkillsChoice::Custom);
+    let mut state = SelectState::new(SKILLS_TITLE, rows, false);
+    state.cursor = choices
+        .iter()
+        .position(|c| match (c, saved_preset) {
+            (SkillsChoice::Preset(id), Some(saved)) => *id == saved,
+            (SkillsChoice::Keep, None) => true,
+            _ => false,
+        })
+        .unwrap_or_default();
+    (state, choices)
+}
 
-    Ok(selections)
+/// The packs after the "Skills" step: one pack at most, unless the saved packs stay. The saved entry of
+/// the chosen pack keeps its lock and overrides; every other saved pack goes (the install removes its
+/// files). An empty custom source keeps the saved packs.
+pub fn skills_selection(
+    saved: Vec<crate::skill_packs::SkillPack>,
+    choice: &SkillsChoice,
+    custom: &str,
+) -> Result<Vec<crate::skill_packs::SkillPack>, String> {
+    use crate::skill_packs::{parse_spec, upsert};
+    let pick = |pack: crate::skill_packs::SkillPack, saved: Vec<crate::skill_packs::SkillPack>| {
+        let mut out: Vec<_> = saved.into_iter().filter(|p| p.id == pack.id).collect();
+        upsert(&mut out, pack);
+        out
+    };
+    Ok(match choice {
+        SkillsChoice::Keep => saved,
+        SkillsChoice::None => Vec::new(),
+        SkillsChoice::Preset(id) => match saved.iter().find(|p| p.preset == *id) {
+            Some(own) => vec![own.clone()],
+            None => pick(parse_spec(id)?, saved),
+        },
+        SkillsChoice::Custom if custom.trim().is_empty() => saved,
+        SkillsChoice::Custom => pick(parse_spec(custom)?, saved),
+    })
 }
 
 /// The tracker step with the cursor on the saved choice (`local` without one), so Enter keeps it.
@@ -795,17 +975,6 @@ fn saved_skill_packs(project_dir: &str) -> Vec<crate::skill_packs::SkillPack> {
         .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
         .and_then(|data| crate::skill_packs::from_settings(&data["settings"]["skill_packs"]))
         .unwrap_or_default()
-}
-
-/// The saved packs plus the step answer (same id: replaced).
-pub fn skill_pack_selection(
-    mut saved: Vec<crate::skill_packs::SkillPack>,
-    spec: &str,
-) -> Result<Vec<crate::skill_packs::SkillPack>, String> {
-    if !spec.trim().is_empty() {
-        crate::skill_packs::upsert(&mut saved, crate::skill_packs::parse_spec(spec)?);
-    }
-    Ok(saved)
 }
 
 fn saved_company_rules(project_dir: &str) -> Option<crate::company::CompanyRules> {
@@ -1023,15 +1192,300 @@ mod tests {
         assert_eq!(app.jev_enabled, Some(false));
     }
 
+    fn rendered(state: &SelectState) -> String {
+        let mut terminal = Terminal::new(TestBackend::new(140, 30)).unwrap();
+        terminal
+            .draw(|f| render_select(f, state, "dark", "test"))
+            .unwrap();
+        let buffer = terminal.backend().buffer().clone();
+        let mut out = String::new();
+        for y in 0..buffer.area.height {
+            for x in 0..buffer.area.width {
+                out.push_str(buffer[(x, y)].symbol());
+            }
+            out.push('\n');
+        }
+        out
+    }
+
+    fn saved_preset(id: &str) -> crate::skill_packs::SkillPack {
+        let mut pack = crate::skill_packs::parse_spec(id).unwrap();
+        pack.commit = "a".repeat(40);
+        pack
+    }
+
     #[test]
-    fn skill_pack_step_adds_to_saved_packs() {
-        let saved = vec![crate::skill_packs::parse_spec("vendor/skills").unwrap()];
-        assert_eq!(skill_pack_selection(saved.clone(), " ").unwrap(), saved);
-        let picked =
-            skill_pack_selection(saved, "https://github.com/mattpocock/skills#main").unwrap();
-        let ids: Vec<&str> = picked.iter().map(|p| p.id.as_str()).collect();
-        assert_eq!(ids, vec!["skills", "mattpocock-skills"]);
-        assert!(skill_pack_selection(vec![], "https://x.example.com/a.git#m:../up").is_err());
+    fn skills_step_lists_none_presets_and_custom() {
+        let stars: BTreeMap<String, crate::github_stars::Stars> = [(
+            "pocock".to_string(),
+            crate::github_stars::Stars {
+                count: 333_841,
+                date: None,
+            },
+        )]
+        .into();
+        let (state, choices) = skills_step(&[], &stars);
+        assert_eq!(
+            choices,
+            vec![
+                SkillsChoice::None,
+                SkillsChoice::Preset("pocock"),
+                SkillsChoice::Preset("superpowers"),
+                SkillsChoice::Preset("anthropic"),
+                SkillsChoice::Custom,
+            ]
+        );
+        assert_eq!(state.cursor, 0);
+        assert!(!state.multi);
+        assert_eq!(state.options[0], "None — no skill pack");
+        assert_eq!(
+            state.options[1],
+            "mattpocock/skills — grilling, spec, tickets, TDD, ADR · 21 skills · MIT · ★ 333.8k"
+        );
+        assert_eq!(
+            state.options[2],
+            "obra/superpowers — brainstorm, plans, TDD, debugging, code review · 13 skills · MIT · ★ 327.8k (2026-11-27)"
+        );
+        assert_eq!(
+            state.options[3],
+            "anthropics/skills — skill & MCP builders, webapp testing, docx/pdf/pptx/xlsx · 9 skills · Apache-2.0 · ★ 201.2k (2026-11-27)"
+        );
+        assert_eq!(state.options[4], SKILLS_CUSTOM_ROW);
+        let screen = rendered(&state);
+        assert!(screen.contains("Skills: choose one skill pack"), "{screen}");
+        assert!(screen.contains("obra/superpowers — brainstorm"), "{screen}");
+    }
+
+    #[test]
+    fn skills_step_preselects_the_saved_pack() {
+        let none = BTreeMap::new();
+        // One saved preset: its row carries the cursor and the `saved` mark; Enter keeps its lock.
+        let saved = vec![saved_preset("superpowers")];
+        let (mut state, choices) = skills_step(&saved, &none);
+        assert_eq!(choices[state.cursor], SkillsChoice::Preset("superpowers"));
+        assert!(state.options[state.cursor].ends_with(" · saved"));
+        assert_eq!(state.options[0], "None — remove the saved skill pack");
+        state.handle_key(KeyCode::Enter);
+        let picked = skills_selection(saved.clone(), &choices[state.cursor], "").unwrap();
+        assert_eq!(picked, saved);
+        // A saved pack from a URL: a `Keep saved` row comes first and is the default.
+        let custom =
+            vec![
+                crate::skill_packs::parse_spec("https://git.example.com/team/skills.git").unwrap(),
+            ];
+        let (state, choices) = skills_step(&custom, &none);
+        assert_eq!(state.cursor, 0);
+        assert_eq!(choices[0], SkillsChoice::Keep);
+        assert!(state.options[0].starts_with("Keep saved: team-skills ("));
+        assert_eq!(choices.len(), 6);
+        // A preset with a user id is still that preset.
+        let mut renamed = saved_preset("pocock");
+        renamed.id = "mp".into();
+        let (state, choices) = skills_step(&[renamed], &none);
+        assert_eq!(choices[state.cursor], SkillsChoice::Preset("pocock"));
+    }
+
+    #[test]
+    fn skills_selection_is_single_and_replaces_the_saved_pack() {
+        let saved = vec![saved_preset("pocock")];
+        assert_eq!(
+            skills_selection(saved.clone(), &SkillsChoice::Keep, "").unwrap(),
+            saved
+        );
+        assert!(skills_selection(saved.clone(), &SkillsChoice::None, "")
+            .unwrap()
+            .is_empty());
+        let other =
+            skills_selection(saved.clone(), &SkillsChoice::Preset("anthropic"), "").unwrap();
+        assert_eq!(other.len(), 1);
+        assert_eq!(other[0].preset, "anthropic");
+        assert!(other[0].commit.is_empty(), "a new pack has no lock yet");
+        // Custom source: replaces; empty keeps; invalid stops with the error.
+        let custom = skills_selection(
+            saved.clone(),
+            &SkillsChoice::Custom,
+            "https://github.com/obra/superpowers#main",
+        )
+        .unwrap();
+        let ids: Vec<&str> = custom.iter().map(|p| p.id.as_str()).collect();
+        assert_eq!(ids, vec!["obra-superpowers"]);
+        assert_eq!(
+            skills_selection(saved.clone(), &SkillsChoice::Custom, " ").unwrap(),
+            saved
+        );
+        assert!(skills_selection(
+            saved.clone(),
+            &SkillsChoice::Custom,
+            "https://x.example.com/a.git#m:../up"
+        )
+        .is_err());
+        // A typed preset id is the preset; several saved packs become one.
+        let many = vec![
+            saved_preset("pocock"),
+            crate::skill_packs::parse_spec("vendor/skills").unwrap(),
+        ];
+        let one = skills_selection(many, &SkillsChoice::Custom, "superpowers").unwrap();
+        assert_eq!(one.len(), 1);
+        assert_eq!(one[0].preset, "superpowers");
+        let mut app = App::new().unwrap();
+        apply_selections(
+            &mut app,
+            WizardSelections {
+                skill_packs: one.clone(),
+                ..Default::default()
+            },
+        );
+        assert_eq!(app.skill_packs, one);
+        assert!(
+            app.skill_packs_replace,
+            "the install must not add saved packs back"
+        );
+    }
+
+    /// Drive the whole wizard with scripted keys; return the screen titles in order and the result.
+    fn run_scripted(
+        app: &mut App,
+        project: &str,
+        skills_keys: Vec<KeyCode>,
+    ) -> (Vec<String>, Result<WizardSelections, String>) {
+        let mut terminal = Terminal::new(TestBackend::new(160, 40)).unwrap();
+        let mut titles: Vec<String> = Vec::new();
+        let mut queue: std::collections::VecDeque<KeyCode> = Default::default();
+        let mut keys = |title: &str| -> crate::Result<Option<KeyCode>> {
+            if titles.last().map(String::as_str) != Some(title) {
+                titles.push(title.to_string());
+                queue.clear();
+                if title == "Target project directory" {
+                    queue.extend(project.chars().map(KeyCode::Char));
+                } else if title == SKILLS_TITLE {
+                    queue.extend(skills_keys.iter().copied());
+                } else if title.starts_with("Select specialization(s)") {
+                    queue.push_back(KeyCode::Char(' '));
+                }
+                queue.push_back(KeyCode::Enter);
+            }
+            Ok(Some(queue.pop_front().unwrap_or(KeyCode::Enter)))
+        };
+        let result = wizard_steps(app, &mut terminal, &mut keys, Box::new(BTreeMap::new)).unwrap();
+        (titles, result)
+    }
+
+    fn wizard_app(home: &std::path::Path) -> App {
+        let mut app = App::new().unwrap();
+        app.home = home.to_path_buf();
+        app.config_home_override = Some(home.join(".config"));
+        app.theme_explicit = true;
+        app.issue_tracker = None;
+        app
+    }
+
+    #[test]
+    fn wizard_puts_skills_right_below_the_jev_choice() {
+        let home = tempfile::tempdir().unwrap();
+        let project = tempfile::tempdir().unwrap();
+        let dir = project.path().to_string_lossy().to_string();
+        let mut app = wizard_app(home.path());
+        // Down, Down: the second preset (superpowers).
+        let (titles, result) = run_scripted(&mut app, &dir, vec![KeyCode::Down, KeyCode::Down]);
+        let at = |t: &str| titles.iter().position(|x| x == t).unwrap();
+        assert_eq!(
+            at(SKILLS_TITLE),
+            at("Select integrations (MCP / skills):") + 1
+        );
+        assert_eq!(
+            at("Select area(s):"),
+            at(SKILLS_TITLE) + 1,
+            "no tracker step: {titles:?}"
+        );
+        assert!(
+            !titles.iter().any(|t| t.starts_with("Skill pack:")),
+            "old step is gone"
+        );
+        let selections = result.unwrap();
+        assert_eq!(selections.project_dir, dir);
+        assert_eq!(selections.skill_packs.len(), 1);
+        assert_eq!(selections.skill_packs[0].preset, "superpowers");
+        // pocock: the issue tracker step follows the Skills step.
+        let mut app = wizard_app(home.path());
+        let (titles, result) = run_scripted(&mut app, &dir, vec![KeyCode::Down]);
+        assert_eq!(
+            titles[titles.iter().position(|t| t == SKILLS_TITLE).unwrap() + 1],
+            "Issue tracker for the pocock skills:"
+        );
+        assert_eq!(result.unwrap().skill_packs[0].preset, "pocock");
+        // Custom source: the text input opens; Esc on the Skills step keeps the (empty) saved list.
+        let mut app = wizard_app(home.path());
+        let (titles, result) = run_scripted(&mut app, &dir, vec![KeyCode::Up]);
+        assert!(
+            titles.iter().any(|t| t.starts_with("Custom skill pack:")),
+            "{titles:?}"
+        );
+        assert!(result.unwrap().skill_packs.is_empty());
+        let mut app = wizard_app(home.path());
+        let (_, result) = run_scripted(&mut app, &dir, vec![KeyCode::Down, KeyCode::Esc]);
+        assert!(result.unwrap().skill_packs.is_empty());
+    }
+
+    #[test]
+    fn tui_pack_change_replaces_and_none_removes_cleanly() {
+        let home = tempfile::tempdir().unwrap();
+        let project = tempfile::tempdir().unwrap();
+        let src = tempfile::tempdir().unwrap();
+        for (pack, skill) in [("a", "alpha"), ("b", "beta")] {
+            let file = src
+                .path()
+                .join(pack)
+                .join("skills")
+                .join(skill)
+                .join("SKILL.md");
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(
+                &file,
+                "---\nname: x\ndescription: A test skill.\n---\nBody.\n",
+            )
+            .unwrap();
+        }
+        let dir = project.path().to_string_lossy().to_string();
+        let install_with = |choice: SkillsChoice, custom: &str| {
+            let mut app = App::new().unwrap();
+            app.home = home.path().to_path_buf();
+            app.config_home_override = Some(home.path().join(".config"));
+            app.interactive_override = Some(false);
+            app.doctor_enabled_env = false;
+            let packs = skills_selection(saved_skill_packs(&dir), &choice, custom).unwrap();
+            apply_selections(
+                &mut app,
+                WizardSelections {
+                    project_dir: dir.clone(),
+                    agent_os: vec!["claude".into(), "codex".into(), "opencode".into()],
+                    specs: vec!["software.general".into()],
+                    skill_packs: packs,
+                    ..Default::default()
+                },
+            );
+            install::run_install(&mut app).unwrap();
+        };
+        let a = src.path().join("a").to_string_lossy().to_string();
+        let b = src.path().join("b").to_string_lossy().to_string();
+        install_with(SkillsChoice::Custom, &a);
+        let skill = |name: &str| project.path().join(".claude/skills").join(name);
+        assert!(skill("alpha").join("SKILL.md").is_file());
+        install_with(SkillsChoice::Keep, "");
+        assert!(skill("alpha").join("SKILL.md").is_file());
+        install_with(SkillsChoice::Custom, &b);
+        assert!(!skill("alpha").exists(), "the replaced pack is removed");
+        assert!(skill("beta").join("SKILL.md").is_file());
+        assert_eq!(saved_skill_packs(&dir).len(), 1);
+        install_with(SkillsChoice::None, "");
+        for host in [
+            ".claude/skills",
+            ".agents/skills",
+            ".opencode/skills",
+            ".agent/skills",
+        ] {
+            assert!(!project.path().join(host).join("beta").exists(), "{host}");
+        }
+        assert!(saved_skill_packs(&dir).is_empty());
     }
 
     #[test]

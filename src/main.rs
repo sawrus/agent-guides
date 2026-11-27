@@ -9,6 +9,7 @@ mod copydir;
 mod doctor;
 mod doctor_cleanup;
 mod gate;
+mod github_stars;
 mod gitstate;
 mod hookmerge;
 mod install;

@@ -32,43 +32,113 @@ const RESERVED_SKILLS: [&str; 1] = ["agentic-profile"];
 /// A built-in pack that `agentic skills add <id>` and `--skill-pack <id>` accept by name.
 pub struct Preset {
     pub id: &'static str,
+    /// `owner/repo` on GitHub: the TUI name of the preset and the star count source.
+    pub repo: &'static str,
+    /// One line for the TUI "Skills" step.
+    pub summary: &'static str,
+    /// SPDX id of the upstream license.
+    pub license: &'static str,
     pub url: &'static str,
     pub git_ref: &'static str,
     pub skills_root: &'static str,
     /// Skills to install; empty installs every skill.
     pub select: &'static [&'static str],
+    /// Star count snapshot for the TUI when GitHub does not answer, and its date.
+    pub stars: u64,
+    pub stars_date: &'static str,
 }
 
-/// Built-in presets. Add an entry here to make a pack available by its id.
-pub const PRESETS: &[Preset] = &[Preset {
-    id: "pocock",
-    url: "https://github.com/mattpocock/skills.git",
-    git_ref: "6f7f7831a625f040a8e06a0e7954826b87ce775a",
-    skills_root: "skills",
-    select: &[
-        "grilling",
-        "grill-me",
-        "grill-with-docs",
-        "to-spec",
-        "to-tickets",
-        "domain-modeling",
-        "tdd",
-        "implement",
-        "implement-spec",
-        "code-review",
-        "diagnosing-bugs",
-        "codebase-design",
-        "improve-codebase-architecture",
-        "prototype",
-        "research",
-        "handoff",
-        "wayfinder",
-        "retro",
-        "wizard",
-        "pr",
-        "writing-for-agents",
-    ],
-}];
+/// Built-in presets, in the order of the TUI "Skills" step. Add an entry here to make a pack
+/// available by its id. docs/skill-packs.md explains each `select` list.
+pub const PRESETS: &[Preset] = &[
+    Preset {
+        id: "pocock",
+        repo: "mattpocock/skills",
+        summary: "grilling, spec, tickets, TDD, ADR",
+        license: "MIT",
+        url: "https://github.com/mattpocock/skills.git",
+        git_ref: "6f7f7831a625f040a8e06a0e7954826b87ce775a",
+        skills_root: "skills",
+        select: &[
+            "grilling",
+            "grill-me",
+            "grill-with-docs",
+            "to-spec",
+            "to-tickets",
+            "domain-modeling",
+            "tdd",
+            "implement",
+            "implement-spec",
+            "code-review",
+            "diagnosing-bugs",
+            "codebase-design",
+            "improve-codebase-architecture",
+            "prototype",
+            "research",
+            "handoff",
+            "wayfinder",
+            "retro",
+            "wizard",
+            "pr",
+            "writing-for-agents",
+        ],
+        stars: 333_800,
+        stars_date: "2026-11-27",
+    },
+    Preset {
+        id: "superpowers",
+        repo: "obra/superpowers",
+        summary: "brainstorm, plans, TDD, debugging, code review",
+        license: "MIT",
+        url: "https://github.com/obra/superpowers.git",
+        git_ref: "22f0b463e7a5e579904dd6211a520321035526f7",
+        skills_root: "skills",
+        // Not `using-superpowers` (the plugin's SessionStart hook injects it; it orders a skill
+        // check before every answer) and not `diagnosing-superpowers` (bug reports on plugin sessions).
+        select: &[
+            "brainstorming",
+            "writing-plans",
+            "executing-plans",
+            "subagent-driven-development",
+            "dispatching-parallel-agents",
+            "test-driven-development",
+            "systematic-debugging",
+            "verification-before-completion",
+            "requesting-code-review",
+            "receiving-code-review",
+            "using-git-worktrees",
+            "finishing-a-development-branch",
+            "writing-skills",
+        ],
+        stars: 327_800,
+        stars_date: "2026-11-27",
+    },
+    Preset {
+        id: "anthropic",
+        repo: "anthropics/skills",
+        summary: "skill & MCP builders, webapp testing, docx/pdf/pptx/xlsx",
+        license: "Apache-2.0",
+        url: "https://github.com/anthropics/skills.git",
+        git_ref: "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+        skills_root: "skills",
+        // Each skill has its own LICENSE.txt (installed with the skill); the repository has no root
+        // license. Not `web-artifacts-builder` (needs a binary tarball), not `doc-coauthoring` (no
+        // license file), and no brand or organization skills.
+        select: &[
+            "skill-creator",
+            "mcp-builder",
+            "webapp-testing",
+            "frontend-design",
+            "claude-api",
+            "docx",
+            "pdf",
+            "pptx",
+            "xlsx",
+        ],
+        stars: 201_200,
+        stars_date: "2026-11-27",
+    },
+];
 
 impl Preset {
     fn pack(&self) -> SkillPack {
@@ -440,6 +510,8 @@ pub struct PackSkill {
     pub pack: String,
     pub name: String,
     pub files: Vec<(String, String)>,
+    /// Paths of `files` that are executable upstream (scripts that a skill runs by path).
+    pub executable: Vec<String>,
 }
 
 #[derive(Debug, Default)]
@@ -782,9 +854,15 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
             let mut all = Vec::new();
             source::collect_all(&dir, &dir, &mut all);
             let mut files = Vec::new();
+            let mut executable = Vec::new();
             for (rel, text) in all {
                 match text {
-                    Some(text) => files.push((rel, text)),
+                    Some(text) => {
+                        if is_executable(&dir.join(&rel)) {
+                            executable.push(rel.clone());
+                        }
+                        files.push((rel, text))
+                    }
                     None => ui::warn(
                         app,
                         &format!("Skill pack {id}: {name}/{rel} is not UTF-8 text; skipped"),
@@ -795,6 +873,7 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
                 pack: id.to_string(),
                 name,
                 files,
+                executable,
             });
         }
         if let Some(name) = LICENSE_NAMES
@@ -993,6 +1072,11 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
                 desired.insert(app.project_rel_path(&dest));
                 let source = source_ref(&skill.pack, &format!("{}/{rel}", skill.name));
                 write(app, &text, &dest, &source)?;
+                let rel_path = app.project_rel_path(&dest);
+                if skill.executable.contains(rel) && !app.skipped_managed_paths.contains(&rel_path)
+                {
+                    set_executable(&dest);
+                }
             }
             if host == "codex" && user_invoked(skill) {
                 warn_own_codex_metadata(app, skill);
@@ -1019,6 +1103,7 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
                 "SKILL.md".to_string(),
                 crate::pocock_setup::SETUP_SKILL_TEXT.to_string(),
             )],
+            executable: Vec::new(),
         };
         for (host, dir) in &dirs {
             let text = adapt_for_host(
@@ -1085,6 +1170,38 @@ fn warn_own_codex_metadata(app: &mut App, skill: &PackSkill) {
             ),
         );
     }
+}
+
+/// True for a file with an execute bit (always false on Windows).
+fn is_executable(path: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::metadata(path).is_ok_and(|m| m.permissions().mode() & 0o111 != 0)
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+        false
+    }
+}
+
+/// Add the execute bits (where the read bits are) to an installed pack script, so that a skill can
+/// run it by its path as upstream does. A file that the user kept is not changed.
+fn set_executable(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(meta) = std::fs::metadata(path) {
+            let mode = meta.permissions().mode();
+            let wanted = mode | ((mode & 0o444) >> 2);
+            if wanted != mode {
+                let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(wanted));
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = path;
 }
 
 /// Never overwrite a file that another installer step wrote in this run; before the first install a
@@ -1696,6 +1813,7 @@ mod tests {
             pack: "demo".into(),
             name: "x".into(),
             files: vec![("SKILL.md".into(), text.into())],
+            executable: Vec::new(),
         };
         assert!(user_invoked(&skill(USER_SKILL)));
         assert!(user_invoked(&skill(
@@ -2264,6 +2382,209 @@ mod tests {
         )
         .unwrap();
         assert_eq!(policy, "policy:\n  allow_implicit_invocation: false\n");
+    }
+
+    // --- presets `superpowers` and `anthropic` ---------------------------------------------------
+
+    #[test]
+    fn presets_resolve_with_pins_and_tui_fields() {
+        let ids: Vec<&str> = PRESETS.iter().map(|p| p.id).collect();
+        assert_eq!(ids, ["pocock", "superpowers", "anthropic"], "TUI order");
+        for (id, url, count) in [
+            ("superpowers", "https://github.com/obra/superpowers.git", 13),
+            ("anthropic", "https://github.com/anthropics/skills.git", 9),
+        ] {
+            let pack = parse_spec(id).unwrap();
+            assert_eq!(pack.id, id);
+            assert_eq!(pack.preset, id);
+            assert_eq!(pack.skills_root, "skills");
+            assert_eq!(pack.select.len(), count, "{id}");
+            assert!(matches!(&pack.source, Source::Git { url: u, git_ref, .. }
+                if u == url && source::valid_commit(git_ref) && git_ref.len() == 40));
+            let pinned = parse_spec(&format!("{id}#v1")).unwrap();
+            assert!(pinned.own_ref);
+        }
+        for preset in PRESETS {
+            assert!(preset.repo.contains('/') && preset.url.contains(preset.repo));
+            assert!(!preset.summary.is_empty() && !preset.license.is_empty());
+            assert!(preset.stars > 0 && preset.stars_date.len() == 10);
+            let mut names: Vec<&str> = preset.select.to_vec();
+            names.sort();
+            names.dedup();
+            assert_eq!(
+                names.len(),
+                preset.select.len(),
+                "{} has duplicates",
+                preset.id
+            );
+            for name in preset.select {
+                assert!(valid_skill_name(name) && !RESERVED_SKILLS.contains(name));
+            }
+        }
+        let superpowers = preset("superpowers").unwrap().select;
+        for banned in ["using-superpowers", "diagnosing-superpowers"] {
+            assert!(!superpowers.contains(&banned), "{banned}");
+        }
+        let anthropic = preset("anthropic").unwrap().select;
+        for banned in [
+            "brand-guidelines",
+            "internal-comms",
+            "slack-gif-creator",
+            "academy-guide",
+            "discernment-nudge",
+            "theme-factory",
+            "algorithmic-art",
+            "canvas-design",
+            "web-artifacts-builder",
+            "doc-coauthoring",
+            "template",
+        ] {
+            assert!(!anthropic.contains(&banned), "{banned}");
+        }
+    }
+
+    /// The upstream layout of preset `id`: its skills, the skills it leaves out, and the licenses.
+    fn preset_fixture(root: &Path, id: &str, extra: &[&str], root_license: bool) -> PathBuf {
+        let dir = root.join(format!("{id}-src"));
+        for name in preset(id).unwrap().select.iter().chain(extra) {
+            write(&dir.join(format!("skills/{name}/SKILL.md")), SKILL);
+            if !root_license {
+                write(
+                    &dir.join(format!("skills/{name}/LICENSE.txt")),
+                    "Apache License\n",
+                );
+            }
+        }
+        if root_license {
+            write(&dir.join("LICENSE"), "MIT License\n");
+        }
+        // Outside skills_root: never a skill of the pack.
+        write(&dir.join("template/SKILL.md"), SKILL);
+        dir
+    }
+
+    fn preset_app(project: &Path, dir: &Path, id: &str) -> App {
+        let mut app = app_for(project, dir);
+        let mut pack = parse_spec(id).unwrap();
+        pack.source = Source::Path(dir.to_string_lossy().to_string());
+        app.skill_packs = vec![pack];
+        app
+    }
+
+    #[test]
+    fn superpowers_select_list_is_valid_against_the_fixture() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = preset_fixture(
+            tmp.path(),
+            "superpowers",
+            &["using-superpowers", "diagnosing-superpowers"],
+            true,
+        );
+        let script = dir.join("skills/executing-plans/scripts/task-start");
+        write(&script, "#!/usr/bin/env bash\necho ok\n");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        let project = tmp.path().join("p");
+        let mut app = preset_app(&project, &dir, "superpowers");
+        run_install(&mut app, &project).unwrap();
+        for host in [".claude/skills", ".agents/skills", ".opencode/skills"] {
+            for name in preset("superpowers").unwrap().select {
+                assert!(
+                    project.join(host).join(name).join("SKILL.md").is_file(),
+                    "{host} {name}"
+                );
+            }
+            for name in ["using-superpowers", "diagnosing-superpowers", "template"] {
+                assert!(!project.join(host).join(name).exists(), "{host} {name}");
+            }
+            // Upstream runs this script by its path: the execute bit stays.
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mode = std::fs::metadata(
+                    project
+                        .join(host)
+                        .join("executing-plans/scripts/task-start"),
+                )
+                .unwrap()
+                .permissions()
+                .mode();
+                assert_ne!(mode & 0o100, 0, "{host}: {mode:o}");
+                let doc = std::fs::metadata(project.join(host).join("executing-plans/SKILL.md"))
+                    .unwrap()
+                    .permissions()
+                    .mode();
+                assert_eq!(doc & 0o111, 0, "{host}: only scripts get the bit");
+            }
+        }
+        assert!(project
+            .join(".agent/skill-packs/superpowers/LICENSE")
+            .is_file());
+        assert!(!crate::pocock_setup::active(&app));
+        assert!(!project.join("docs/agents").exists(), "no pocock setup");
+    }
+
+    #[test]
+    fn anthropic_select_list_is_valid_and_needs_no_root_license() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = preset_fixture(
+            tmp.path(),
+            "anthropic",
+            &[
+                "brand-guidelines",
+                "web-artifacts-builder",
+                "doc-coauthoring",
+            ],
+            false,
+        );
+        let project = tmp.path().join("p");
+        let mut app = preset_app(&project, &dir, "anthropic");
+        run_install(&mut app, &project).unwrap();
+        for host in [".claude/skills", ".agents/skills", ".opencode/skills"] {
+            for name in preset("anthropic").unwrap().select {
+                let skill = project.join(host).join(name);
+                assert!(skill.join("SKILL.md").is_file(), "{host} {name}");
+                // The per-skill license travels with the skill.
+                assert!(skill.join("LICENSE.txt").is_file(), "{host} {name}");
+            }
+            for name in [
+                "brand-guidelines",
+                "web-artifacts-builder",
+                "doc-coauthoring",
+            ] {
+                assert!(!project.join(host).join(name).exists(), "{host} {name}");
+            }
+        }
+        assert!(
+            !project.join(".agent/skill-packs/anthropic").exists(),
+            "no root license"
+        );
+        let manifest = read_manifest(&project);
+        assert_eq!(
+            manifest["settings"]["skill_packs"][0]["preset"],
+            "anthropic"
+        );
+        assert_eq!(installed_skills(&manifest, "anthropic").len(), 9);
+    }
+
+    #[test]
+    fn presets_side_by_side_have_no_name_clash() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut packs = Vec::new();
+        for id in ["pocock", "superpowers", "anthropic"] {
+            let dir = preset_fixture(tmp.path(), id, &[], id != "anthropic");
+            let mut pack = parse_spec(id).unwrap();
+            pack.source = Source::Path(dir.to_string_lossy().to_string());
+            packs.push(pack);
+        }
+        let project = tmp.path().join("p");
+        let mut app = app_for(&project, tmp.path());
+        app.skill_packs = packs;
+        let prepared = prepare(&mut app, &crate::company::Prepared::default()).unwrap();
+        assert_eq!(prepared.skills.len(), 21 + 13 + 9);
     }
 
     #[test]

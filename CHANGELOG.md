@@ -1,5 +1,28 @@
 # Changelog
 
+## v15.0.0
+
+- TUI: a new "Skills" step right after the integrations step (where you choose JEV) replaces the free-text
+  "Skill pack" step. It is a single select: `None`, the presets mattpocock/skills, obra/superpowers, and
+  anthropics/skills, or `Custom source…` (the text input for `<url>[#ref][:skills_root]` or a directory). Each
+  preset row shows a short description, the skill count, the license, and the GitHub stars, for example
+  `mattpocock/skills — grilling, spec, tickets, TDD, ADR · 21 skills · MIT · ★ 333.8k`. The cursor starts on the
+  saved pack, so Enter keeps it; another choice replaces the saved packs, and `None` removes them. The install
+  removes the files of the old pack. The issue tracker step follows only for `pocock`.
+- GitHub stars in the TUI: one background request per preset to the GitHub REST API (unauthenticated;
+  `GITHUB_TOKEN` or `GH_TOKEN` when set), one 2-second deadline, 24-hour cache in
+  `~/.cache/agentic/github-stars.json`. Offline or rate-limited, the row shows the cached or snapshot count with
+  its date. `AGENTIC_NO_GITHUB_STARS=1` turns the requests off. Non-interactive commands never ask GitHub.
+- Preset `superpowers`: 13 skills of [obra/superpowers](https://github.com/obra/superpowers) (MIT, Jesse
+  Vincent), pinned to a commit. It leaves out `using-superpowers` (loaded by the upstream plugin hook) and
+  `diagnosing-superpowers`.
+- Preset `anthropic`: 9 developer skills of [anthropics/skills](https://github.com/anthropics/skills)
+  (Apache-2.0 per skill, Anthropic), pinned to a commit: `skill-creator`, `mcp-builder`, `webapp-testing`,
+  `frontend-design`, `claude-api`, `docx`, `pdf`, `pptx`, `xlsx`. Each skill keeps its own `LICENSE.txt`; the
+  pack needs no root license.
+- Skill pack files with an execute bit upstream (scripts that a skill runs by path) keep the execute bits on
+  install (Unix).
+
 ## v14.0.1
 
 - Added benchmark round 8 tasks and an arm for the optional `pocock` skill pack (`make bench`; no change to
