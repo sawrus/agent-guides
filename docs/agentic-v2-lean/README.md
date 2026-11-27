@@ -232,8 +232,9 @@ Ship rule: K1, K3, K4, and K7 are mandatory; K2 applies to Claude and Codex.
   `assumptions` check: assumptions and acceptance criteria appear in the agent's messages or in a changed Markdown
   file. T13 has no allowlist; its grader `tests/bench/hidden/T13/check_t13.py` checks the spec, `GLOSSARY.md`, an
   ADR, at least 3 tests, and the `python3 -m wordfreq` output. Round 8 runs on the Claude host only (the harness
-  stays multi-host); the plan is in
-  [results.md](results.md#round-8-lean-vs-lean--pocock-skill-pack-planned).
+  stays multi-host); the results are in
+  [results.md](results.md#round-8-lean-vs-lean--pocock-skill-pack-2026-11-27): both arms accepted 18 of 18, so the
+  pack stays opt-in.
 - Allowlists include the version file and `docs/`, because the pack's own completion contract requires them.
 - Arms (`--modes`): `plain`, `lean`, `lean-jev`, `team-jev` by default; also `lean-noreviewer`, `team`, and `v1`
   (v1.6 binary from `make bench-v1`). `lean-pocock` installs `lean` plus the optional `pocock` skill pack

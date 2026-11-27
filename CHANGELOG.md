@@ -1,5 +1,11 @@
 # Changelog
 
+## v14.0.2
+
+- Recorded benchmark round 8 (Claude host, T12 and T13, `lean` vs `lean-pocock`, 9 repetitions): both arms accepted
+  18 of 18, cost per success ratio 1.14, so the `pocock` pack stays opt-in and does not enter the lean default.
+  Docs only; see `docs/agentic-v2-lean/results.md`.
+
 ## v14.0.1
 
 - Added benchmark round 8 tasks and an arm for the optional `pocock` skill pack (`make bench`; no change to
