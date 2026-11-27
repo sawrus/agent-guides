@@ -383,6 +383,7 @@ class UpdateReminder(unittest.TestCase):
     def setUp(self):
         self.old = dict(os.environ)
         os.environ['AGENTIC_UPDATE_CHECK'] = '1'
+        os.environ.pop('CI', None)
         self.dir = Path(tempfile.mkdtemp(prefix='gate-update-'))
         self.fake = self.dir / 'agentic'
 
@@ -416,6 +417,13 @@ class UpdateReminder(unittest.TestCase):
         text = gate.start(clone, {}, 'claude')['hookSpecificOutput']['additionalContext']
         self.assertTrue(text.startswith('Stale checkout:'))
         self.assertTrue(text.endswith('update line claude'))
+
+    def test_subagents_and_ci_skip_the_reminder(self):
+        self.use(FAKE_AGENTIC)
+        self.assertEqual(gate.start(self.dir, {'agent_id': 'a1'}, 'claude'), {})
+        self.assertEqual(gate.start(self.dir, {'subagent': True}, 'opencode'), {})
+        os.environ['CI'] = 'true'
+        self.assertEqual(gate.start(self.dir, {}, 'claude'), {})
 
     def test_off_missing_failing_and_junk_stay_silent(self):
         self.use(FAKE_AGENTIC)

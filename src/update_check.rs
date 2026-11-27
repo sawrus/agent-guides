@@ -44,16 +44,27 @@ fn read_state(path: &Path) -> State {
     }
 }
 
-fn write_state(path: &Path, state: &State) {
+/// Atomic write (temp file in the same directory, then rename) so concurrent sessions never read half a file.
+/// Returns false when the state cannot be saved.
+fn write_state(path: &Path, state: &State) -> bool {
     let body = json!({
         "last_check_at": state.last_check_at,
         "last_notified_at": state.last_notified_at,
         "latest_seen": state.latest_seen,
     });
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
+    let Some(parent) = path.parent() else {
+        return false;
+    };
+    if std::fs::create_dir_all(parent).is_err() {
+        return false;
     }
-    let _ = std::fs::write(path, body.to_string());
+    let tmp = parent.join(format!(".update-check.{}.tmp", std::process::id()));
+    let saved =
+        std::fs::write(&tmp, body.to_string()).is_ok() && std::fs::rename(&tmp, path).is_ok();
+    if !saved {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    saved
 }
 
 /// `~/.cache/agentic/update-check.json`, or under `$XDG_CACHE_HOME`.
@@ -125,14 +136,17 @@ pub fn check(
         }
     }
     state.last_check_at = Some(now);
-    write_state(state_path, &state);
+    // Without a saved attempt the next session would query again: stay offline and silent.
+    if !write_state(state_path, &state) {
+        return None;
+    }
     let latest = release_version(&fetch()?)?;
     state.latest_seen = Some(latest.clone());
     let newer = crate::upgrade::is_newer_version(installed, &latest);
     if newer {
         state.last_notified_at = Some(now);
     }
-    write_state(state_path, &state);
+    let _ = write_state(state_path, &state);
     newer.then(|| Notice {
         latest,
         installed: installed.to_string(),
@@ -151,15 +165,27 @@ fn release_fetcher() -> Option<String> {
         .connect_timeout(FETCH_TIMEOUT)
         .build()
         .ok()?;
-    let mut request = client.get(crate::upgrade::RELEASES_LATEST_API);
-    // Optional auth against the API rate limit; the value is never printed or stored.
-    if let Some(token) = ["GITHUB_TOKEN", "GH_TOKEN"]
+    // Optional auth against the API rate limit; the value is never printed or stored. It goes only to
+    // github.com (not with another GH_HOST), and a 401/403 with a token retries once without it.
+    let host_ok = std::env::var("GH_HOST")
+        .map(|h| h.is_empty() || h == "github.com")
+        .unwrap_or(true);
+    let token = ["GITHUB_TOKEN", "GH_TOKEN"]
         .iter()
         .find_map(|k| std::env::var(k).ok().filter(|v| !v.is_empty()))
-    {
-        request = request.bearer_auth(token);
+        .filter(|_| host_ok);
+    let get = |token: Option<&String>| {
+        let mut request = client.get(crate::upgrade::RELEASES_LATEST_API);
+        if let Some(token) = token {
+            request = request.bearer_auth(token);
+        }
+        request.send().ok()
+    };
+    let mut response = get(token.as_ref())?;
+    if token.is_some() && matches!(response.status().as_u16(), 401 | 403) {
+        response = get(None)?;
     }
-    let release: Value = request.send().ok()?.error_for_status().ok()?.json().ok()?;
+    let release: Value = response.error_for_status().ok()?.json().ok()?;
     latest_from_release(&release).map(|v| format!("v{v}"))
 }
 
@@ -178,13 +204,14 @@ pub fn render(notice: &Notice, format: &str) -> Value {
     let seen = matches!(format, "claude" | "codex");
     let context = if seen {
         format!(
-            "Agentic update: {text} The user already saw this notice. Run `agentic upgrade` only if the user \
-             agrees (for example, answers \"yes\"); never upgrade on your own. If the user declines, drop it."
+            "Agentic update: {text} Claude Code and Codex may have shown this to the user. If the user did not \
+             see it, mention it briefly in your first reply. Run `agentic upgrade` only after the user agrees \
+             (for example, answers \"yes\"); never upgrade on your own. If the user declines, drop it."
         )
     } else {
         format!(
             "Agentic update: {text} At the start of your first reply, tell the user this in one sentence and \
-             offer to run `agentic upgrade`. Run it only if the user agrees; never upgrade on your own. If \
+             offer to run `agentic upgrade`. Run it only after the user agrees; never upgrade on your own. If \
              the user declines, drop it."
         )
     };
@@ -320,6 +347,29 @@ mod tests {
     }
 
     #[test]
+    fn unwritable_state_means_no_lookup() {
+        let dir = tempfile::tempdir().unwrap();
+        // The state path lies below a regular file, so it cannot be created.
+        let blocker = dir.path().join("file");
+        std::fs::write(&blocker, "x").unwrap();
+        let path = blocker.join("sub/u.json");
+        let panics = || -> Option<String> { panic!("no lookup without a saved attempt") };
+        assert!(check(&path, "1.0.0", 1, 7, &panics).is_none());
+    }
+
+    #[test]
+    fn state_write_leaves_no_temp_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("u.json");
+        assert!(check(&path, "1.0.0", 1, 7, &fixed("v2.0.0")).is_some());
+        let names: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, ["u.json"]);
+    }
+
+    #[test]
     fn interval_comes_from_config_and_env() {
         let dir = tempfile::tempdir().unwrap();
         let cfg = dir.path().join("config.json");
@@ -356,9 +406,10 @@ mod tests {
                 .as_str()
                 .unwrap();
             assert!(
-                ctx.contains("only if the user agrees")
+                ctx.contains("only after the user agrees")
                     && ctx.contains("never upgrade on your own")
             );
+            assert!(!ctx.contains("already saw"));
             assert_eq!(v["hookSpecificOutput"]["hookEventName"], "SessionStart");
         }
         let v = render(&n, "opencode");

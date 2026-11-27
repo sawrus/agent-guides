@@ -158,6 +158,9 @@ deterministic checks.
   it from a native `SessionStart` hook (matcher `startup|resume`, output
   `hookSpecificOutput.additionalContext`; Codex 0.153 accepts this event and field). OpenCode runs it once per
   session from the `session.hook("context")` callback and appends the line to the request system parts.
+- Upgrade reminder (same `--event start`): the runtime asks `agentic __update-check` and adds a user notice and one
+  context line, at most once per interval, never for subagents. OpenCode child sessions pass `subagent` and skip
+  it. See [upgrade reminder](../upgrade-reminder.md).
 - `--disable-gate` removes the managed hook groups and the runtime. `--enable-gate` restores them.
 
 ## Acceptance criteria

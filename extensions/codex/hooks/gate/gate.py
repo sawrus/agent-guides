@@ -632,9 +632,16 @@ def stale_warning(state):
             f'and is {commits(behind)} behind origin/{default}, so the code here may be outdated. {hint}')
 
 
-def update_notice(host):
-    """Upgrade reminder from `agentic __update-check`; {} when off, missing, slow, or on any error."""
+def update_notice(host, payload=None):
+    """Upgrade reminder from `agentic __update-check`; {} when off, missing, slow, or on any error.
+
+    Sessions without a human skip it so they do not use up the machine-wide snooze: subagents (`agent_id` in the
+    hook input, `subagent` from the OpenCode plugin for child sessions) and CI. Neither Claude Code nor Codex
+    documents a field for `claude -p` or `codex exec`; harnesses set AGENTIC_UPDATE_CHECK=0.
+    """
     if os.environ.get('AGENTIC_UPDATE_CHECK', '').strip().lower() in ('0', 'off', 'false', 'no'):
+        return {}
+    if os.environ.get('CI') or (isinstance(payload, dict) and (payload.get('agent_id') or payload.get('subagent'))):
         return {}
     exe = os.environ.get('AGENTIC_BIN') or shutil.which('agentic') or str(Path.home() / '.local' / 'bin' / 'agentic')
     fmt = host if host in ('claude', 'codex') else 'opencode'
@@ -649,7 +656,7 @@ def update_notice(host):
 def start(project, payload, host=None):
     state = git_state(project)
     lines = [t for t in (stale_warning(state) if state else None,) if t]
-    notice = update_notice(host)
+    notice = update_notice(host, payload)
     extra = notice.get('hookSpecificOutput', {}).get('additionalContext')
     if isinstance(extra, str) and extra:
         lines.append(extra)

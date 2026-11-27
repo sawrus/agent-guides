@@ -13,6 +13,7 @@ fn agentic(home: &Path) -> Command {
         .env("XDG_DATA_HOME", home.join(".local/share"))
         .env("XDG_CACHE_HOME", home.join(".cache"))
         .env("AGENTIC_DOCTOR", "0")
+        .env("AGENTIC_UPDATE_CHECK", "0")
         .env_remove("AGENTIC_ENABLE_MCPS")
         .env_remove("AGENTIC_ENABLE_CONTEXT7")
         .env_remove("AGENTIC_FORCE_INTERACTIVE")

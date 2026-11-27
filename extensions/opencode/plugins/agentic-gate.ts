@@ -99,7 +99,10 @@ export default Plugin.define({
       if (!(await ownsSession(event.sessionID))) return;
       let notice = notices.get(event.sessionID);
       if (!notice) {
-        notice = gate("start", { session_id: event.sessionID })
+        // Child sessions (subagents) have no human: they must not use up the machine-wide upgrade snooze.
+        const child = Promise.resolve(ctx.session.get({ sessionID: event.sessionID } as any))
+          .then((session: any) => Boolean(session?.parentID) || parents.has(event.sessionID)).catch(() => false);
+        notice = child.then((subagent) => gate("start", { session_id: event.sessionID, subagent }))
           .then((result) => result?.hookSpecificOutput?.additionalContext as string | undefined);
         notices.set(event.sessionID, notice);
       }

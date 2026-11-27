@@ -228,6 +228,8 @@ def opencode_children(trace, server, env, meter):
 def host_env(host, project):
     env = os.environ.copy()
     env['PWD'] = str(project)
+    # A benchmark cell has no human: the upgrade reminder must not use up the snooze or add context.
+    env['AGENTIC_UPDATE_CHECK'] = '0'
     for name in ('CODEX_REMOTE_PAYLOAD', 'CODEX_THREAD_ID', 'CODEX_SESSION_ID', *blackbox_jev.CLAUDE_SESSION_ENV):
         env.pop(name, None)
     for key in ('JEV_API_KEY', 'TYPESAFE_API_KEY'):
