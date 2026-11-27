@@ -4,54 +4,78 @@ Protocol: [README.md](README.md). Total: 36 paid cells, 1 run each (A0 plain, A1
 × 3 hosts × 4 tasks). Models: Claude `sonnet`, Codex `gpt-6.1-sol`, OpenCode `openai/gpt-6-luna`. Every cell
 was graded again with the final `tasks.json` (`make bench-regrade`). Codex lean ran with the gate hooks trusted.
 
-## Round 8: lean vs lean + pocock skill pack (planned)
+## Round 8: lean vs lean + pocock skill pack (2026-11-27)
 
-Status: planned. Not run. This section holds no results.
+Result: the pack does not enter the lean default for Claude. Both arms accepted every cell, so the quality gain
+is 0 of the 2 cells the rule requires. The pack stays opt-in (`--skill-pack pocock`).
 
 Question. Does the optional external skill pack `pocock` (skills from `github.com/mattpocock/skills`: grilling,
 to-spec, to-tickets, domain-modeling, tdd, code-review, diagnosing-bugs, codebase-design) raise quality on two kinds
 of work that T1–T11 do not cover, and at what cost?
 
-Scope. Round 8 runs on the Claude host only (model `sonnet`), because only Claude is available for this round.
+Scope. Round 8 ran on the Claude host only (model `sonnet`), because only Claude was available for this round.
 The result applies to Claude. Codex and OpenCode stay unmeasured; the pack goes into lean for them only after a
 separate check on those hosts. The harness still supports all three hosts.
 
-Method. Copy round 7 on one host: 9 repetitions per task (a smaller n would leave 2 cells of difference inside the
-noise), seed 8, `--out` Git-ignored. The pack is installed with `agentic install --skill-pack pocock` (arm
-`lean-pocock`); the control is `lean`. Both arms use the same binary, so the flag must exist before the run (the
-harness skips the pack arm and says so if it does not).
+Run. 36 paid cells: 2 arms (`lean`, `lean-pocock`) × 1 host × T12, T13 × 9 repetitions, seed 8, `--out`
+`.agentic-blackbox/bench-r8-claude` (Git-ignored). The run was split by a stop: a first pass was aborted early (a
+few cells finished), and the main pass ended when the shared 5-hour Claude quota ran out (1 cell
+`quota_exhausted`, 1 cell `harness_error`: a missing temporary project directory). After the quota reset, the same
+command ran again with the same `--out`. The harness keeps finished cells and retries those two statuses, so the
+cells of all passes are pooled. Final count: 36 of 36 valid, 0 `harness_error`, 0 `quota_exhausted`. A sanity check
+before the run confirmed that `lean-pocock` projects hold the pack skills in `.claude/skills` and `lean` projects do
+not.
 
 | Task | Kind | What good looks like | Grader |
 |---|---|---|---|
-| T12 | Vague requirement: "add a loyalty discount" with only a function name | The agent asks, or states assumptions and acceptance criteria before code, then delivers | Hidden tests of properties true under any reasonable reading (cents, no discount at 0 orders, bounded, monotonic, `ValueError` on negative); `suite`, `lint`, `allowlist`; `assumptions` (assumption and acceptance-criteria wording in the messages or a changed Markdown file) |
-| T13 | New project from an empty seed: `wordfreq` CLI | Spec, `GLOSSARY.md`, ADR, `Makefile` with `test` and `lint`, tests, working code | `check_t13.py` (docs present, at least 3 tests, exact CLI output), `suite`, `lint` |
+| T12 | Vague requirement: "add a loyalty discount" with only a function name | The agent asks, or states assumptions and acceptance criteria before code, then delivers | Hidden property tests (cents, no discount at 0 orders, bounded, monotonic, `ValueError` on negative); `suite`, `lint`, `allowlist`; `assumptions` |
+| T13 | New project from an empty seed: `wordfreq` CLI | Spec, `GLOSSARY.md`, ADR, `Makefile` with `test` and `lint`, tests, working code | `check_t13.py`, `suite`, `lint` |
 
-Non-interactive questions. A run has one user turn. If an agent stops without changing a file (it asked a
-question), the harness resumes the same session once with the task's scripted `reply` in `tasks.json`: no further
-questions, choose reasonable values, and for T12 write the assumptions and criteria down. An agent that decides
-alone passes through unchanged. So asking and assuming both lead to a gradable result, and the grader does not
-reward one style. The reply is the same for both arms.
+Non-interactive questions. A run has one user turn. If an agent stops without changing a file, the harness resumes
+the same session once with the task's scripted `reply` (`turns` = 2). The reply is the same for both arms.
 
-Cells: 2 arms × 1 host × 2 tasks × 9 repetitions = 36 paid cells, 18 per arm.
+Per task and arm, n = 9. Full and uncached tokens are medians. Cost per success = total cost / accepted cells
+(every cell was accepted, so it equals the mean cost per cell). Cost is `total_cost_usd`.
 
-Metrics per arm: accepted cells (Wilson 95% interval), per-check failures, share of cells that needed the scripted
-reply (`turns` = 2, the agent stopped to ask), full and uncached tokens (median), subagents, cost per success.
-Cost is `total_cost_usd`. Round 7 gave the Claude cost baseline of the lean arm ($0.122 per success on T1–T11);
-the new tasks are larger, so the comparison is `lean-pocock` ÷ `lean` on the same tasks.
+| Task | Arm | Accepted | Full / uncached tokens | Turns = 2 | Subagents (total) | Cost per success | Pocock ÷ lean |
+|---|---|---|---|---|---|---|---|
+| T12 | lean | 9/9 | 247.6k / 34.5k | 9 of 9 | 0 | $0.323 | |
+| T12 | lean-pocock | 9/9 | 242.7k / 26.2k | 9 of 9 | 0 | $0.277 | 0.86 |
+| T13 | lean | 9/9 | 521.8k / 56.1k | 2 of 9 | 1 | $0.623 | |
+| T13 | lean-pocock | 9/9 | 615.0k / 56.2k | 4 of 9 | 1 | $0.799 | 1.28 |
+| Both | lean | 18/18, 100% (82–100%) | 418.2k / 45.3k | 11 of 18 | 1 | $0.473 | |
+| Both | lean-pocock | 18/18, 100% (82–100%) | 381.1k / 40.6k | 13 of 18 | 1 | $0.538 | 1.14 |
+
+Total cost of the 36 cells: $18.20 (lean $8.51, lean-pocock $9.69). Summed cell time: 3414 s. Per-check failures: none
+in any cell (`suite`, `lint`, `allowlist`, `assumptions`, hidden tests and `check_t13.py` all passed).
 
 Decision rule, fixed before the run. The pack goes into the lean default for Claude only if both hold:
 1. Quality: `lean-pocock` accepts at least 2 more cells than `lean` of the 18 per arm, and loses none that `lean`
-   accepts on the same task and repetition.
-2. Cost: cost per success `lean-pocock` ÷ `lean` is at most 1.15. Round 7 accepted × 1.14 (Claude, JEV) only as an
-   opt-in with no quality gain; a pack in the default needs a quality gain and may not go above 1.15.
+   accepts on the same task and repetition. Outcome: 18 vs 18, a gain of 0. It loses none. FAIL (the gain is
+   missing).
+2. Cost: cost per success `lean-pocock` ÷ `lean` is at most 1.15. Outcome: $0.538 ÷ $0.473 = 1.14. Pass, but only
+   barely, and it is split by task: 0.86 on T12 and 1.28 on T13.
 
-If either fails, the pack stays opt-in (a preset the user chooses). If `lean-pocock` accepts fewer cells than
-`lean`, record the failing checks as root causes. Even when both hold, the verdict covers Claude only: for Codex
-and OpenCode the pack enters lean only after the same check on those hosts. Limitations are those of round 7, plus:
-one host, the `assumptions` check is a text proxy, and a 2-cell gain of 18 is inside the interval, so a pass is a
-weak signal.
+Verdict: the pack stays opt-in. The pass on cost does not matter, because a pack in the default needs a quality
+gain and there is none.
 
-Run (after building the agentic that has `--skill-pack`):
+What the cells show:
+- Lean already solves both tasks on Claude. The ceiling (100% on both arms) leaves no room to show a gain, so this
+  round cannot say that the pack is useless on harder variants, only that these two tasks do not need it.
+- T12: in all 18 cells the agent stopped without a change and got the scripted reply (`turns` = 2), in both arms.
+  The `assumptions` check passed in 9 of 9 cells per arm. The pack did not make the agent ask or state assumptions
+  more often than lean did: the two arms behave the same on this task. `lean-pocock` was cheaper here (0.86).
+- T13: `lean-pocock` needed the scripted reply in 4 of 9 cells (lean: 2 of 9), and its cost per success is 1.28 times
+  that of `lean`. Its most expensive cell (`r2`, $1.815, 1 subagent, 1718k full tokens) is the largest in the round;
+  the largest lean cell was `r8` at $1.263 (1 subagent).
+- Medians of tokens are close in both arms; the cost gap on T13 comes from a few expensive cells, with n = 9.
+
+Limitations. Those of round 7, plus: one host; two tasks; the `assumptions` check is a text proxy; accepted is at
+the ceiling, so quality differences below the gate (code or doc quality beyond the checks) are not measured; n = 9 per
+task and arm gives wide intervals on cost; the run was split across passes by a quota stop. Codex and OpenCode are
+unmeasured: the verdict covers Claude only.
+
+Run:
 
 ```
 make bench BENCH_OUT=.agentic-blackbox/bench-r8-claude \
