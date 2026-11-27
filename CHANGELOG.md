@@ -5,23 +5,29 @@
 - TUI: a new "Skills" step right after the integrations step (where you choose JEV) replaces the free-text
   "Skill pack" step. It is a single select: `None`, the presets mattpocock/skills, obra/superpowers, and
   anthropics/skills, or `Custom source…` (the text input for `<url>[#ref][:skills_root]` or a directory). Each
-  preset row shows a short description, the skill count, the license, and the GitHub stars, for example
-  `mattpocock/skills — grilling, spec, tickets, TDD, ADR · 21 skills · MIT · ★ 333.8k`. The cursor starts on the
+  preset row shows the skill count, the license, and the GitHub stars, for example
+  `mattpocock/skills · 21 skills · MIT · ★ 333.8k`, and fits 80 columns; the footer line describes the row
+  under the cursor. The cursor starts on the
   saved pack, so Enter keeps it; another choice replaces the saved packs, and `None` removes them. The install
   removes the files of the old pack. The issue tracker step follows only for `pocock`.
 - GitHub stars in the TUI: one background request per preset to the GitHub REST API (unauthenticated;
-  `GITHUB_TOKEN` or `GH_TOKEN` when set), one 2-second deadline, 24-hour cache in
+  `GITHUB_TOKEN` or `GH_TOKEN` only when `GH_HOST` is unset or `github.com`, and a retry without the token on
+  401/403), one 2-second deadline, 24-hour cache in
   `~/.cache/agentic/github-stars.json`. Offline or rate-limited, the row shows the cached or snapshot count with
   its date. `AGENTIC_NO_GITHUB_STARS=1` turns the requests off. Non-interactive commands never ask GitHub.
 - Preset `superpowers`: 13 skills of [obra/superpowers](https://github.com/obra/superpowers) (MIT, Jesse
   Vincent), pinned to a commit. It leaves out `using-superpowers` (loaded by the upstream plugin hook) and
   `diagnosing-superpowers`.
-- Preset `anthropic`: 9 developer skills of [anthropics/skills](https://github.com/anthropics/skills)
+- Preset `anthropic`: 8 developer skills of [anthropics/skills](https://github.com/anthropics/skills)
   (Apache-2.0 per skill, Anthropic), pinned to a commit: `skill-creator`, `mcp-builder`, `webapp-testing`,
-  `frontend-design`, `claude-api`, `docx`, `pdf`, `pptx`, `xlsx`. Each skill keeps its own `LICENSE.txt`; the
+  `frontend-design`, `docx`, `pdf`, `pptx`, `xlsx` (not `claude-api`: Claude Code has a built-in skill with
+  that name). Each skill keeps its own `LICENSE.txt`; the
   pack needs no root license.
-- Skill pack files with an execute bit upstream (scripts that a skill runs by path) keep the execute bits on
-  install (Unix).
+- Skill pack files with an execute bit upstream (scripts that a skill runs by path) get exactly the upstream
+  execute bits, within the umask (Unix), on install, `agentic skills add|update|remove`, and `agentic upgrade`.
+- Fix: `agentic skills` and `agentic upgrade` created new project files with mode `0600` and dropped execute
+  bits. New files now get the normal umask mode (for example `0644`), and the staging transaction carries the
+  execute bits.
 
 ## v14.0.1
 

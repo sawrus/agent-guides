@@ -160,9 +160,9 @@ pub fn fetch_live(repos: &[String], deadline: Duration) -> BTreeMap<String, u64>
     if std::env::var(DISABLE_ENV).as_deref() == Ok("1") {
         return out;
     }
-    let token = ["GITHUB_TOKEN", "GH_TOKEN"]
-        .iter()
-        .find_map(|k| std::env::var(k).ok().filter(|v| !v.trim().is_empty()));
+    let token = github_token(std::env::var("GH_HOST").ok().as_deref(), |k| {
+        std::env::var(k).ok()
+    });
     let Ok(client) = reqwest::blocking::Client::builder()
         .user_agent(format!("agentic/{}", crate::app_version()))
         .timeout(deadline)
@@ -175,14 +175,25 @@ pub fn fetch_live(repos: &[String], deadline: Duration) -> BTreeMap<String, u64>
     for repo in repos {
         let (tx, client, token, repo) = (tx.clone(), client.clone(), token.clone(), repo.clone());
         std::thread::spawn(move || {
-            let mut request = client
-                .get(format!("{API}/{repo}"))
-                .header("Accept", "application/vnd.github+json");
-            if let Some(token) = token {
-                request = request.bearer_auth(token.trim());
+            let ask = |token: Option<&str>| {
+                let mut request = client
+                    .get(format!("{API}/{repo}"))
+                    .header("Accept", "application/vnd.github+json");
+                if let Some(token) = token {
+                    request = request.bearer_auth(token);
+                }
+                request.send()
+            };
+            let mut response = ask(token.as_deref());
+            // A token of another installation (or an expired one): ask once more without it.
+            if token.is_some()
+                && response
+                    .as_ref()
+                    .is_ok_and(|r| retry_without_token(r.status().as_u16()))
+            {
+                response = ask(None);
             }
-            let count = request
-                .send()
+            let count = response
                 .and_then(|r| r.error_for_status())
                 .and_then(|r| r.json::<Value>())
                 .ok()
@@ -203,6 +214,25 @@ pub fn fetch_live(repos: &[String], deadline: Duration) -> BTreeMap<String, u64>
         }
     }
     out
+}
+
+/// `GITHUB_TOKEN` or `GH_TOKEN` for api.github.com: only when `GH_HOST` is unset or `github.com`, since
+/// otherwise the token likely belongs to another GitHub installation.
+pub fn github_token(gh_host: Option<&str>, var: impl Fn(&str) -> Option<String>) -> Option<String> {
+    let host = gh_host.map(str::trim).unwrap_or_default();
+    if !host.is_empty() && !host.eq_ignore_ascii_case("github.com") {
+        return None;
+    }
+    ["GITHUB_TOKEN", "GH_TOKEN"].iter().find_map(|k| {
+        var(k)
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty())
+    })
+}
+
+/// 401 and 403 with a token: the request is repeated once without it.
+pub fn retry_without_token(status: u16) -> bool {
+    matches!(status, 401 | 403)
 }
 
 /// The star labels of every preset, keyed by preset id, with the cache file `cache_file`.
@@ -348,6 +378,27 @@ mod tests {
         // With the switch, no request is sent.
         std::env::set_var(DISABLE_ENV, "1");
         assert!(fetch_live(&["obra/superpowers".to_string()], DEADLINE).is_empty());
+    }
+
+    #[test]
+    fn token_goes_only_to_github_com() {
+        let vars = |k: &str| match k {
+            "GITHUB_TOKEN" => Some(" ghp_x ".to_string()),
+            "GH_TOKEN" => Some("gho_y".to_string()),
+            _ => None,
+        };
+        assert_eq!(github_token(None, vars).as_deref(), Some("ghp_x"));
+        assert_eq!(github_token(Some(""), vars).as_deref(), Some("ghp_x"));
+        assert_eq!(
+            github_token(Some("GitHub.com"), vars).as_deref(),
+            Some("ghp_x")
+        );
+        assert_eq!(github_token(Some("github.example.com"), vars), None);
+        let gh_only = |k: &str| (k == "GH_TOKEN").then(|| "gho_y".to_string());
+        assert_eq!(github_token(None, gh_only).as_deref(), Some("gho_y"));
+        assert_eq!(github_token(None, |_| Some("  ".into())), None);
+        assert!(retry_without_token(401) && retry_without_token(403));
+        assert!(!retry_without_token(404) && !retry_without_token(200));
     }
 
     #[test]

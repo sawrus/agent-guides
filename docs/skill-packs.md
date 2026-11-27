@@ -12,6 +12,9 @@ covers:
   - src/project_inventory.rs
   - src/pocock_setup.rs
   - src/github_stars.rs
+  - src/project_transaction.rs
+  - src/project_update.rs
+  - src/util.rs
   - src/pocock_setup/*.md
   - src/agentsmd.rs
 ---
@@ -78,14 +81,17 @@ TUI: the "Skills" step follows the "Select integrations (MCP / skills)" step, wh
 The "Skills" step is a single select: the project gets one skill pack, or none. The rows:
 
 ```text
-None — no skill pack
-mattpocock/skills — grilling, spec, tickets, TDD, ADR · 21 skills · MIT · ★ 333.8k
-obra/superpowers — brainstorm, plans, TDD, debugging, code review · 13 skills · MIT · ★ 327.8k
-anthropics/skills — skill & MCP builders, webapp testing, docx/pdf/pptx/xlsx · 9 skills · Apache-2.0 · ★ 201.2k
-Custom source… (git <url>[#ref][:skills_root] or directory)
+None
+mattpocock/skills · 21 skills · MIT · ★ 333.8k
+obra/superpowers · 13 skills · MIT · ★ 327.8k
+anthropics/skills · 8 skills · Apache-2.0 · ★ 201.2k (2026-11-27)
+Custom source… (git URL or directory)
 ```
 
-- `None` removes the saved packs (`None — remove the saved skill pack` when the project has one).
+Every row fits an 80-column terminal, also with a dated star count. The footer line shows what the row under
+the cursor does, for example `obra/superpowers: brainstorm, plans, TDD, debugging, code review`.
+
+- `None` removes the saved packs (`None (remove the saved pack)` when the project has one).
 - A preset row installs that preset ([Presets](#presets)).
 - `Custom source…` opens a text input for a git spec `<url>[#ref][:skills_root]`, a directory, or a preset id.
   An empty answer or Esc keeps the saved choice. An invalid spec stops the wizard with the error.
@@ -99,8 +105,9 @@ Custom source… (git <url>[#ref][:skills_root] or directory)
 
 Each preset row shows the GitHub star count. agentic asks `GET https://api.github.com/repos/<owner>/<repo>`
 (`stargazers_count`) when the wizard starts, in the background, one request per preset in parallel, with one
-2-second deadline for all of them. The requests are unauthenticated; agentic sends `GITHUB_TOKEN` or `GH_TOKEN`
-only when one is set. The counts stay for 24 hours in `~/.cache/agentic/github-stars.json`
+2-second deadline for all of them. The requests are unauthenticated. agentic sends `GITHUB_TOKEN` or `GH_TOKEN`
+when one is set and `GH_HOST` is unset or `github.com` (a token for another GitHub installation never goes to
+api.github.com). On 401 or 403 with a token, agentic asks once more without it. The counts stay for 24 hours in `~/.cache/agentic/github-stars.json`
 (`$XDG_CACHE_HOME/agentic/` when set). In that time the TUI sends no request. Offline, rate-limited, or after
 the deadline, the row shows the last cached count or the snapshot that the preset carries, with its date:
 `★ 333.8k (2026-11-27)`. The Skills step waits at most 2 seconds more. `AGENTIC_NO_GITHUB_STARS=1` turns the
@@ -165,7 +172,10 @@ The license copy is outside every host skills directory, so no host reads it as 
 unchanged, except a frontmatter marker in Markdown: `SKILL.md` and other `*.md` files get an `agentic:` block
 inside their frontmatter (also with CRLF line endings). Other files (scripts, JSON, SVG, CSV, the license) are
 copied byte for byte; the manifest `content_hash` alone tracks them. A file with an execute bit upstream (a
-script that a skill runs by its path) gets the execute bits on install (Unix). Git checkouts of packs use
+script that a skill runs by its path) gets exactly the upstream execute bits, within the umask (Unix). Install,
+`agentic skills`, and `agentic upgrade` give the same modes: the staging transaction carries the execute bits,
+and a new file gets the normal mode of the umask (for example `0644`). When upstream drops the bit, the next
+update drops it too. Git checkouts of packs use
 `core.autocrlf=false`, so upstream line endings stay.
 
 Manifest entries have `marker: skill-pack` and `source: skill-pack:<id>/<name>/<path>` (license:
@@ -278,7 +288,7 @@ parser, URL redaction, the git cache and fetch, and the file walk. `src/skill_pa
 |---|---|---|---|---|---|
 | `pocock` | [mattpocock/skills](https://github.com/mattpocock/skills) | Matt Pocock | MIT (root `LICENSE`) | `6f7f7831a625f040a8e06a0e7954826b87ce775a` | 21 ([Preset pocock](#preset-pocock)) |
 | `superpowers` | [obra/superpowers](https://github.com/obra/superpowers) | Jesse Vincent (obra) | MIT (root `LICENSE`) | `22f0b463e7a5e579904dd6211a520321035526f7` | 13 ([Preset superpowers](#preset-superpowers)) |
-| `anthropic` | [anthropics/skills](https://github.com/anthropics/skills) | Anthropic | Apache-2.0 (`LICENSE.txt` in each skill; no root license) | `e4bb5d960d87126ff3b3a8af1a104b7db67560ba` | 9 ([Preset anthropic](#preset-anthropic)) |
+| `anthropic` | [anthropics/skills](https://github.com/anthropics/skills) | Anthropic | Apache-2.0 (`LICENSE.txt` in each skill; no root license) | `e4bb5d960d87126ff3b3a8af1a104b7db67560ba` | 8 ([Preset anthropic](#preset-anthropic)) |
 
 `agentic skills add <id>` and `agentic install --skill-pack <id>` use a preset, for example
 `agentic skills add superpowers` or `agentic install --skill-pack anthropic`. `--select` and `--exclude`
@@ -375,6 +385,10 @@ skill is `<name>`; the agent finds it by that name. `executing-plans` and `subag
 their bundled scripts (`scripts/task-start`, `scripts/sdd-workspace`) by path; agentic keeps the execute bits
 ([Layout](#layout)). Some scripts and `brainstorming` (the visual companion) need `bash` or `node`.
 
+Known limitation: `executing-plans` and `writing-skills` link to `../using-superpowers/references/` (the
+harness tool notes of the excluded skill). Those links point to nothing in the project; the skills work without
+them.
+
 ### Preset anthropic
 
 Attribution: the skills come from [anthropics/skills](https://github.com/anthropics/skills), author Anthropic.
@@ -383,19 +397,20 @@ has no root license, so `.agent/skill-packs/anthropic/` stays empty. The upstrea
 covers fonts, FFmpeg, imageio, and Pillow, which the selected skills do not ship.
 
 Selected skills (developer tools): `skill-creator`, `mcp-builder`, `webapp-testing`, `frontend-design`,
-`claude-api`, `docx`, `pdf`, `pptx`, `xlsx`.
+`docx`, `pdf`, `pptx`, `xlsx`.
 
 Not selected:
 
 - `web-artifacts-builder`: its init script needs the binary `scripts/shadcn-components.tar.gz`; agentic
   installs only UTF-8 text files ([Layout](#layout)).
 - `doc-coauthoring`: it has no license file at the pinned commit.
+- `claude-api`: Claude Code has a built-in skill with the same name; a project skill would shadow or duplicate
+  it.
 - Brand, organization, or art skills: `brand-guidelines`, `internal-comms`, `slack-gif-creator`,
   `academy-guide`, `discernment-nudge`, `theme-factory`, `algorithmic-art`, `canvas-design`.
 - `template/` and `spec/` are outside `skills_root` and are never skills.
 
-`claude-api` has the same name as a skill that Claude Code may provide itself; the project skill then takes
-precedence in that project. Several skills (`docx`, `pdf`, `pptx`, `xlsx`, `webapp-testing`) run Python scripts
+Several skills (`docx`, `pdf`, `pptx`, `xlsx`, `webapp-testing`) run Python scripts
 and need the Python packages that their `SKILL.md` names.
 
 ## Check
@@ -411,9 +426,11 @@ and need the Python packages that their `SKILL.md` names.
 - `cargo test --bin agentic pocock`: the preset, its `select` list against a fixture, the setup files for each
   tracker, a repeated install, user edits, and removal.
 - `cargo test --bin agentic preset`: the order and fields of every preset, the `superpowers` and `anthropic`
-  `select` lists against fixtures (excluded skills, per-skill licenses, no root license, execute bits), and
-  all three presets side by side without a name clash.
-- `cargo test --bin agentic tui::`: the "Skills" step right after the JEV step, its rows, the preselected
+  `select` lists against fixtures (excluded skills, per-skill licenses, no root license, execute bits), the
+  execute bits and file modes after `skills add` and upgrade (the staging transaction), and all three presets
+  side by side without a name clash.
+- `cargo test --bin agentic tui::`: the "Skills" step right after the JEV step, its rows (80 columns), the
+  hint line, the preselected
   saved pack, none/preset/custom/keep/replace, and removal on the next install.
 - `cargo test --bin agentic github_stars`: the `k`/`M` format, the snapshot with its date, and the cache
-  (write, 24-hour expiry, broken file). The tests never use the network.
+  (write, 24-hour expiry, broken file), and the token rules. The tests never use the network.

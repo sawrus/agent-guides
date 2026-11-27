@@ -139,7 +139,7 @@ pack files and nothing else. Built-in presets install a pinned, curated set by n
 |---|---|---|---|
 | `pocock` | [mattpocock/skills](https://github.com/mattpocock/skills) | MIT | 21, plus the project setup (`--issue-tracker local\|github\|gitlab`) |
 | `superpowers` | [obra/superpowers](https://github.com/obra/superpowers) | MIT | 13 |
-| `anthropic` | [anthropics/skills](https://github.com/anthropics/skills) | Apache-2.0 | 9 |
+| `anthropic` | [anthropics/skills](https://github.com/anthropics/skills) | Apache-2.0 | 8 |
 
 The TUI offers them in the "Skills" step, right after the integrations step. See [skill packs](docs/skill-packs.md).
 

@@ -182,7 +182,7 @@ agentic skills add pocock --issue-tracker github
 ```
 
 Two more presets need no setup: `superpowers` installs 13 skills of obra/superpowers (MIT, Jesse Vincent), and
-`anthropic` installs 9 developer skills of anthropics/skills (Apache-2.0 per skill, Anthropic):
+`anthropic` installs 8 developer skills of anthropics/skills (Apache-2.0 per skill, Anthropic):
 
 ```bash
 agentic skills add superpowers
@@ -308,8 +308,8 @@ The labels show the roles and the kind, for example `lean · explorer · native 
 `team · 9 roles: product-owner, pm, team-lead, …`, or `my · developer, qa · base team · models: anthropic`.
 The choice is saved in `.agentic.json` (`settings.profile_ids`).
 Right after the integrations step (where you choose JEV), the "Skills" step offers one skill pack: `None`,
-the presets mattpocock/skills, obra/superpowers, and anthropics/skills (each row with a short description, the
-skill count, the license, and the GitHub stars), or `Custom source…` for a git spec or a directory. The cursor
+the presets mattpocock/skills, obra/superpowers, and anthropics/skills (each row with the skill count, the license,
+and the GitHub stars; the footer describes the row under the cursor), or `Custom source…` for a git spec or a directory. The cursor
 starts on the saved pack, so Enter keeps it; another choice replaces it. The issue tracker step follows only
 for `pocock`. See [skill packs](skill-packs.md#tui).
 The last, optional step "Company rules" asks for a directory and a git repository with company rules

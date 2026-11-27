@@ -33,6 +33,8 @@ pub struct SelectState {
     pub multi: bool,
     pub done: bool,
     pub cancelled: bool,
+    /// Optional hint per option, shown in the footer for the row under the cursor.
+    pub hints: Vec<String>,
 }
 
 impl SelectState {
@@ -46,6 +48,7 @@ impl SelectState {
             multi,
             done: false,
             cancelled: false,
+            hints: Vec::new(),
         }
     }
 
@@ -270,7 +273,12 @@ pub fn render_select(frame: &mut Frame, state: &SelectState, active_theme: &str,
     let mut list_state = ListState::default();
     list_state.select(Some(state.cursor));
     frame.render_stateful_widget(list, chunks[1], &mut list_state);
-    frame.render_widget(Paragraph::new(Span::styled(help, dim)), chunks[2]);
+    let footer = state
+        .hints
+        .get(state.cursor)
+        .filter(|h| !h.is_empty())
+        .map_or(help, String::as_str);
+    frame.render_widget(Paragraph::new(Span::styled(footer, dim)), chunks[2]);
 }
 
 pub fn render_input(frame: &mut Frame, state: &InputState, active_theme: &str, subtitle: &str) {
@@ -740,7 +748,7 @@ fn wizard_steps<B: Backend>(
     };
     let custom = if choice == SkillsChoice::Custom {
         let input = screens.input(InputState::new(
-            "Custom skill pack: git repository <url>[#ref][:skills_root] or directory (empty = keep the saved choice)",
+            "Custom skill pack: <url>[#ref][:skills_root] or directory (empty = keep)",
             "",
         ))?;
         if input.cancelled {
@@ -842,19 +850,17 @@ pub enum SkillsChoice {
     Custom,
 }
 
-pub const SKILLS_TITLE: &str =
-    "Skills: choose one skill pack (Enter selects, Esc keeps the saved choice):";
-pub const SKILLS_CUSTOM_ROW: &str = "Custom source… (git <url>[#ref][:skills_root] or directory)";
+pub const SKILLS_TITLE: &str = "Skills: one skill pack (Enter selects, Esc keeps the saved one):";
+pub const SKILLS_CUSTOM_ROW: &str = "Custom source… (git URL or directory)";
 
-/// `mattpocock/skills — grilling, spec, tickets, TDD, ADR · 21 skills · MIT · ★ 333.8k`.
+/// `mattpocock/skills · 21 skills · MIT · ★ 333.8k`; the summary is the hint line of the row.
 pub fn preset_row(
     preset: &crate::skill_packs::Preset,
     stars: Option<&crate::github_stars::Stars>,
 ) -> String {
     let mut row = format!(
-        "{} — {} · {} skills · {}",
+        "{} · {} skills · {}",
         preset.repo,
-        preset.summary,
         preset.select.len(),
         preset.license
     );
@@ -879,6 +885,7 @@ pub fn skills_step(
         _ => None,
     };
     let mut rows = Vec::new();
+    let mut hints = Vec::new();
     let mut choices = Vec::new();
     if !saved.is_empty() && saved_preset.is_none() {
         let names: Vec<String> = saved
@@ -886,13 +893,16 @@ pub fn skills_step(
             .map(|p| format!("{} ({})", p.id, crate::source::source_id(&p.source)))
             .collect();
         rows.push(format!("Keep saved: {}", names.join(", ")));
+        hints.push("Keep the saved skill packs unchanged".to_string());
         choices.push(SkillsChoice::Keep);
     }
-    rows.push(if saved.is_empty() {
-        "None — no skill pack".to_string()
+    if saved.is_empty() {
+        rows.push("None".to_string());
+        hints.push("No skill pack".to_string());
     } else {
-        "None — remove the saved skill pack".to_string()
-    });
+        rows.push("None (remove the saved pack)".to_string());
+        hints.push("Remove the saved skill pack and its files".to_string());
+    }
     choices.push(SkillsChoice::None);
     for preset in crate::skill_packs::PRESETS {
         let mut row = preset_row(preset, stars.get(preset.id));
@@ -900,11 +910,14 @@ pub fn skills_step(
             row.push_str(" · saved");
         }
         rows.push(row);
+        hints.push(format!("{}: {}", preset.repo, preset.summary));
         choices.push(SkillsChoice::Preset(preset.id));
     }
     rows.push(SKILLS_CUSTOM_ROW.to_string());
+    hints.push("A git spec <url>[#ref][:skills_root], a directory, or a preset id".to_string());
     choices.push(SkillsChoice::Custom);
     let mut state = SelectState::new(SKILLS_TITLE, rows, false);
+    state.hints = hints;
     state.cursor = choices
         .iter()
         .position(|c| match (c, saved_preset) {
@@ -1237,23 +1250,77 @@ mod tests {
         );
         assert_eq!(state.cursor, 0);
         assert!(!state.multi);
-        assert_eq!(state.options[0], "None — no skill pack");
+        assert_eq!(state.options[0], "None");
         assert_eq!(
             state.options[1],
-            "mattpocock/skills — grilling, spec, tickets, TDD, ADR · 21 skills · MIT · ★ 333.8k"
+            "mattpocock/skills · 21 skills · MIT · ★ 333.8k"
         );
         assert_eq!(
             state.options[2],
-            "obra/superpowers — brainstorm, plans, TDD, debugging, code review · 13 skills · MIT · ★ 327.8k (2026-11-27)"
+            "obra/superpowers · 13 skills · MIT · ★ 327.8k (2026-11-27)"
         );
         assert_eq!(
             state.options[3],
-            "anthropics/skills — skill & MCP builders, webapp testing, docx/pdf/pptx/xlsx · 9 skills · Apache-2.0 · ★ 201.2k (2026-11-27)"
+            "anthropics/skills · 8 skills · Apache-2.0 · ★ 201.2k (2026-11-27)"
         );
         assert_eq!(state.options[4], SKILLS_CUSTOM_ROW);
-        let screen = rendered(&state);
-        assert!(screen.contains("Skills: choose one skill pack"), "{screen}");
-        assert!(screen.contains("obra/superpowers — brainstorm"), "{screen}");
+        assert_eq!(
+            state.hints[1],
+            "mattpocock/skills: grilling, spec, tickets, TDD, ADR"
+        );
+        let mut on_superpowers = state.clone();
+        on_superpowers.cursor = 2;
+        let screen = rendered(&on_superpowers);
+        assert!(screen.contains("Skills: one skill pack"), "{screen}");
+        assert!(
+            screen.contains("obra/superpowers: brainstorm, plans, TDD, debugging, code review"),
+            "hint line: {screen}"
+        );
+    }
+
+    /// Longest row that an 80-column terminal shows whole: borders and the `> ` cursor take 4 columns.
+    const SKILLS_ROW_MAX: usize = 76;
+
+    #[test]
+    fn skills_rows_fit_80_columns() {
+        // The longest case: dated stars with seven digits and the `saved` mark on every preset.
+        let old: BTreeMap<String, crate::github_stars::Stars> = crate::skill_packs::PRESETS
+            .iter()
+            .map(|p| {
+                let stars = crate::github_stars::Stars {
+                    count: 9_999_999,
+                    date: Some("2026-11-27".into()),
+                };
+                (p.id.to_string(), stars)
+            })
+            .collect();
+        for preset in crate::skill_packs::PRESETS {
+            let saved = vec![saved_preset(preset.id)];
+            let (state, _) = skills_step(&saved, &old);
+            for row in &state.options {
+                assert!(
+                    row.chars().count() <= SKILLS_ROW_MAX,
+                    "{} > {SKILLS_ROW_MAX}: {row}",
+                    row.chars().count()
+                );
+            }
+            assert!(state.title.chars().count() <= 78, "{}", state.title);
+            for hint in &state.hints {
+                assert!(hint.chars().count() <= 80, "{hint}");
+            }
+            // Rendered at 80 columns, every row ends inside the frame.
+            let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+            terminal
+                .draw(|f| render_select(f, &state, "dark", "test"))
+                .unwrap();
+            let buffer = terminal.backend().buffer().clone();
+            let lines: Vec<String> = (0..24)
+                .map(|y| (0..80).map(|x| buffer[(x, y)].symbol()).collect())
+                .collect();
+            for row in &state.options {
+                assert!(lines.iter().any(|l| l.contains(row.as_str())), "cut: {row}");
+            }
+        }
     }
 
     #[test]
@@ -1264,7 +1331,7 @@ mod tests {
         let (mut state, choices) = skills_step(&saved, &none);
         assert_eq!(choices[state.cursor], SkillsChoice::Preset("superpowers"));
         assert!(state.options[state.cursor].ends_with(" · saved"));
-        assert_eq!(state.options[0], "None — remove the saved skill pack");
+        assert_eq!(state.options[0], "None (remove the saved pack)");
         state.handle_key(KeyCode::Enter);
         let picked = skills_selection(saved.clone(), &choices[state.cursor], "").unwrap();
         assert_eq!(picked, saved);

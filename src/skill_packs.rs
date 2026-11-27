@@ -34,7 +34,7 @@ pub struct Preset {
     pub id: &'static str,
     /// `owner/repo` on GitHub: the TUI name of the preset and the star count source.
     pub repo: &'static str,
-    /// One line for the TUI "Skills" step.
+    /// What the skills do: the hint line of the TUI "Skills" step.
     pub summary: &'static str,
     /// SPDX id of the upstream license.
     pub license: &'static str,
@@ -123,13 +123,13 @@ pub const PRESETS: &[Preset] = &[
         skills_root: "skills",
         // Each skill has its own LICENSE.txt (installed with the skill); the repository has no root
         // license. Not `web-artifacts-builder` (needs a binary tarball), not `doc-coauthoring` (no
-        // license file), and no brand or organization skills.
+        // license file), not `claude-api` (Claude Code has a built-in skill with that name), and no
+        // brand or organization skills.
         select: &[
             "skill-creator",
             "mcp-builder",
             "webapp-testing",
             "frontend-design",
-            "claude-api",
             "docx",
             "pdf",
             "pptx",
@@ -510,8 +510,8 @@ pub struct PackSkill {
     pub pack: String,
     pub name: String,
     pub files: Vec<(String, String)>,
-    /// Paths of `files` that are executable upstream (scripts that a skill runs by path).
-    pub executable: Vec<String>,
+    /// Execute bits (`0o111` mask) of the `files` that are executable upstream, by path.
+    pub exec_bits: BTreeMap<String, u32>,
 }
 
 #[derive(Debug, Default)]
@@ -854,12 +854,13 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
             let mut all = Vec::new();
             source::collect_all(&dir, &dir, &mut all);
             let mut files = Vec::new();
-            let mut executable = Vec::new();
+            let mut exec_bits = BTreeMap::new();
             for (rel, text) in all {
                 match text {
                     Some(text) => {
-                        if is_executable(&dir.join(&rel)) {
-                            executable.push(rel.clone());
+                        let bits = util::exec_bits(&dir.join(&rel));
+                        if bits != 0 {
+                            exec_bits.insert(rel.clone(), bits);
                         }
                         files.push((rel, text))
                     }
@@ -873,7 +874,7 @@ pub fn prepare(app: &mut App, company: &crate::company::Prepared) -> crate::Resu
                 pack: id.to_string(),
                 name,
                 files,
-                executable,
+                exec_bits,
             });
         }
         if let Some(name) = LICENSE_NAMES
@@ -1072,10 +1073,11 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
                 desired.insert(app.project_rel_path(&dest));
                 let source = source_ref(&skill.pack, &format!("{}/{rel}", skill.name));
                 write(app, &text, &dest, &source)?;
+                // The upstream execute bits (scripts that a skill runs by path), also when they
+                // change; a file that the user kept stays as it is.
                 let rel_path = app.project_rel_path(&dest);
-                if skill.executable.contains(rel) && !app.skipped_managed_paths.contains(&rel_path)
-                {
-                    set_executable(&dest);
+                if !app.skipped_managed_paths.contains(&rel_path) && dest.is_file() {
+                    util::set_exec_bits(&dest, skill.exec_bits.get(rel).copied().unwrap_or(0))?;
                 }
             }
             if host == "codex" && user_invoked(skill) {
@@ -1103,7 +1105,7 @@ pub fn install(app: &mut App, project_dir: &Path, prepared: &Prepared) -> crate:
                 "SKILL.md".to_string(),
                 crate::pocock_setup::SETUP_SKILL_TEXT.to_string(),
             )],
-            executable: Vec::new(),
+            exec_bits: BTreeMap::new(),
         };
         for (host, dir) in &dirs {
             let text = adapt_for_host(
@@ -1170,38 +1172,6 @@ fn warn_own_codex_metadata(app: &mut App, skill: &PackSkill) {
             ),
         );
     }
-}
-
-/// True for a file with an execute bit (always false on Windows).
-fn is_executable(path: &Path) -> bool {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::metadata(path).is_ok_and(|m| m.permissions().mode() & 0o111 != 0)
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = path;
-        false
-    }
-}
-
-/// Add the execute bits (where the read bits are) to an installed pack script, so that a skill can
-/// run it by its path as upstream does. A file that the user kept is not changed.
-fn set_executable(path: &Path) {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        if let Ok(meta) = std::fs::metadata(path) {
-            let mode = meta.permissions().mode();
-            let wanted = mode | ((mode & 0o444) >> 2);
-            if wanted != mode {
-                let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(wanted));
-            }
-        }
-    }
-    #[cfg(not(unix))]
-    let _ = path;
 }
 
 /// Never overwrite a file that another installer step wrote in this run; before the first install a
@@ -1813,7 +1783,7 @@ mod tests {
             pack: "demo".into(),
             name: "x".into(),
             files: vec![("SKILL.md".into(), text.into())],
-            executable: Vec::new(),
+            exec_bits: BTreeMap::new(),
         };
         assert!(user_invoked(&skill(USER_SKILL)));
         assert!(user_invoked(&skill(
@@ -2392,7 +2362,7 @@ mod tests {
         assert_eq!(ids, ["pocock", "superpowers", "anthropic"], "TUI order");
         for (id, url, count) in [
             ("superpowers", "https://github.com/obra/superpowers.git", 13),
-            ("anthropic", "https://github.com/anthropics/skills.git", 9),
+            ("anthropic", "https://github.com/anthropics/skills.git", 8),
         ] {
             let pack = parse_spec(id).unwrap();
             assert_eq!(pack.id, id);
@@ -2437,6 +2407,7 @@ mod tests {
             "canvas-design",
             "web-artifacts-builder",
             "doc-coauthoring",
+            "claude-api",
             "template",
         ] {
             assert!(!anthropic.contains(&banned), "{banned}");
@@ -2567,7 +2538,7 @@ mod tests {
             manifest["settings"]["skill_packs"][0]["preset"],
             "anthropic"
         );
-        assert_eq!(installed_skills(&manifest, "anthropic").len(), 9);
+        assert_eq!(installed_skills(&manifest, "anthropic").len(), 8);
     }
 
     #[test]
@@ -2584,7 +2555,7 @@ mod tests {
         let mut app = app_for(&project, tmp.path());
         app.skill_packs = packs;
         let prepared = prepare(&mut app, &crate::company::Prepared::default()).unwrap();
-        assert_eq!(prepared.skills.len(), 21 + 13 + 9);
+        assert_eq!(prepared.skills.len(), 21 + 13 + 8);
     }
 
     #[test]
@@ -2696,6 +2667,84 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(project.join("docs/agents/domain.md")).unwrap(),
             user
+        );
+    }
+
+    #[cfg(unix)]
+    fn mode(path: &Path) -> u32 {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::metadata(path).unwrap().permissions().mode() & 0o7777
+    }
+
+    #[cfg(unix)]
+    fn chmod(path: &Path, mode: u32) {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn synchronize_keeps_upstream_execute_bits_and_umask_modes() {
+        // `skills add|update|remove` and `upgrade` go through the staging transaction, which moved
+        // only bytes: scripts landed as 0600 and executing-plans could not run them.
+        let allowed = util::umask_allowed();
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = preset_fixture(tmp.path(), "superpowers", &[], true);
+        let scripts = dir.join("skills/executing-plans/scripts");
+        write(
+            &scripts.join("task-start"),
+            "#!/usr/bin/env bash\necho ok\n",
+        );
+        write(&scripts.join("owner-only"), "#!/bin/sh\n");
+        chmod(&scripts.join("task-start"), 0o775);
+        chmod(&scripts.join("owner-only"), 0o700);
+        let project = tmp.path().join("p");
+        let home = tmp.path().join("home");
+        full_install(&project, &home);
+        let mut pack = parse_spec("superpowers").unwrap();
+        pack.source = Source::Path(dir.to_string_lossy().to_string());
+        let (result, _) = synchronize_with(&project, &home, vec![pack.clone()], None);
+        result.unwrap();
+        for host in [".claude/skills", ".agents/skills", ".opencode/skills"] {
+            let skill = project.join(host).join("executing-plans");
+            assert_eq!(
+                mode(&skill.join("scripts/task-start")),
+                0o775 & allowed,
+                "{host}"
+            );
+            // Exactly the upstream bits: an owner-only script stays owner-only.
+            assert_eq!(
+                mode(&skill.join("scripts/owner-only")) & 0o111,
+                0o100,
+                "{host}"
+            );
+            // A new plain file gets the normal mode, not the 0600 of a temp file.
+            assert_eq!(mode(&skill.join("SKILL.md")), 0o666 & allowed, "{host}");
+        }
+        // Upstream drops the bit: the next update drops it too; a mode-only change is applied.
+        chmod(&scripts.join("task-start"), 0o644);
+        let (result, _) = synchronize_with(&project, &home, vec![pack.clone()], None);
+        result.unwrap();
+        let script = project.join(".claude/skills/executing-plans/scripts/task-start");
+        assert_eq!(mode(&script) & 0o111, 0);
+        // The same result as a plain install.
+        chmod(&scripts.join("task-start"), 0o775);
+        let other = tmp.path().join("q");
+        let mut app = preset_app(&other, &dir, "superpowers");
+        run_install(&mut app, &other).unwrap();
+        assert_eq!(
+            mode(&other.join(".claude/skills/executing-plans/scripts/task-start")),
+            0o775 & allowed
+        );
+        // Unchanged bits: nothing to write.
+        let (result, _) = synchronize_with(&project, &home, vec![pack.clone()], None);
+        result.unwrap();
+        let (result, app) = synchronize_with(&project, &home, vec![pack], None);
+        result.unwrap();
+        assert!(
+            !app.upgrade_actions.iter().any(|a| a.contains("task-start")),
+            "{:?}",
+            app.upgrade_actions
         );
     }
 
